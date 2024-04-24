@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/client"
 	"go.uber.org/zap"
 	"smr/pkg/container"
+	"smr/pkg/dns"
 	"smr/pkg/logger"
 	"smr/pkg/registry"
 	"smr/pkg/runtime"
@@ -22,7 +23,7 @@ func New() *Reconciler {
 	}
 }
 
-func (reconciler *Reconciler) ListenEvents(registry *registry.Registry) {
+func (reconciler *Reconciler) ListenEvents(registry *registry.Registry, dnsCache *dns.Records) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -37,18 +38,19 @@ func (reconciler *Reconciler) ListenEvents(registry *registry.Registry) {
 		case err := <-cErr:
 			fmt.Println(err)
 		case msg := <-cEvents:
-			reconciler.Event(registry, msg)
+			reconciler.Event(registry, dnsCache, msg)
 		}
 	}
 }
 
-func (reconciler *Reconciler) Event(registry *registry.Registry, event events.Message) {
+func (reconciler *Reconciler) Event(registry *registry.Registry, dnsCache *dns.Records, event events.Message) {
 	if utils.Contains([]string{"start", "kill", "stop", "die"}, event.Status) {
 		container := registry.Find(event.Actor.Attributes["group"], event.Actor.Attributes["name"])
 
 		c := container.Get()
 		managed := false
 
+		// only manage smr created containers, others are left alone to live and die in peace
 		if c.Labels["managed"] == "smr" {
 			managed = true
 		}
@@ -71,7 +73,7 @@ func (reconciler *Reconciler) Event(registry *registry.Registry, event events.Me
 			break
 		case "die":
 			if managed {
-				reconciler.HandleDie(registry, container)
+				reconciler.HandleDie(registry, dnsCache, container)
 			}
 			break
 		default:
@@ -96,8 +98,13 @@ func (reconciler *Reconciler) HandleStop(registry *registry.Registry, container 
 	container.Status.Running = false
 }
 
-func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *container.Container) {
+func (reconciler *Reconciler) HandleDie(registry *registry.Registry, dnsCache *dns.Records, container *container.Container) {
 	container.Status.Running = false
+
+	for _, n := range container.Runtime.Networks {
+		dnsCache.RemoveARecord(container.GetDomain(), n.IP)
+		dnsCache.RemoveARecord(container.GetHeadlessDomain(), n.IP)
+	}
 
 	if !container.Status.Reconciling {
 		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", container.Static.GeneratedName))
@@ -107,7 +114,7 @@ func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *
 	}
 }
 
-func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *runtime.Runtime, db *badger.DB, dnsCache map[string]string) {
+func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *runtime.Runtime, db *badger.DB, dnsCache *dns.Records) {
 	for {
 		select {
 		case queue := <-reconciler.QueueChan:
@@ -175,4 +182,18 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 			break
 		}
 	}
+}
+
+func (reconciler *Reconciler) SmrManaged(container *container.Container) bool {
+	if container == nil {
+		return false
+	}
+
+	c := container.Get()
+
+	if c.Labels["managed"] == "smr" {
+		return true
+	}
+
+	return false
 }

@@ -14,8 +14,6 @@ func (registry *Registry) AddOrUpdate(group string, name string, project string,
 	} else {
 		registry.Containers[group][name] = containerAddr
 	}
-
-	fmt.Println(registry.Containers[group])
 }
 
 func (registry *Registry) Remove(group string, name string, project string) bool {

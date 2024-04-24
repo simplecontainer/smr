@@ -62,12 +62,8 @@ func main() {
 		router.POST("/apply", api.Apply)
 		router.GET("/ps", api.Ps)
 
-		// Definition
-		// router.GET("/definition", mgr.Api.List)
-		// router.GET("/definition/:definitionName", mgr.Api.List)
-
 		// Database
-
+		//router.GET("/database/", api.DatabaseGetAll)
 		router.GET("/database/:key", api.DatabaseGet)
 		router.POST("/database/:key", api.DatabaseSet)
 		router.PUT("/database/:key", api.DatabaseSet)
