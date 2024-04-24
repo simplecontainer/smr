@@ -58,8 +58,8 @@ func (operator *Operator) ListSupported(args ...interface{}) operators.Response 
 	}
 }
 
-func (operator *Operator) DatabaseReady(data map[string]any) operators.Response {
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", data["username"], data["password"], data["ip"], data["port"]))
+func (operator *Operator) DatabaseReady(request operators.Request) operators.Response {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", request.Data["username"], request.Data["password"], request.Data["ip"], request.Data["port"]))
 	defer db.Close()
 
 	if err != nil {
