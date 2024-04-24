@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/dgraph-io/badger/v4"
 	"smr/pkg/config"
+	"smr/pkg/dns"
 	"smr/pkg/manager"
 	"smr/pkg/reconciler"
 	"smr/pkg/registry"
@@ -16,7 +17,7 @@ type Api struct {
 	Reconciler *reconciler.Reconciler
 	Manager    *manager.Manager
 	Badger     *badger.DB
-	DnsCache   map[string]string
+	DnsCache   *dns.Records
 }
 
 type Kv struct {

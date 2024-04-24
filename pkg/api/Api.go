@@ -5,6 +5,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"smr/pkg/config"
 	"smr/pkg/container"
+	"smr/pkg/dns"
 	"smr/pkg/manager"
 	"smr/pkg/reconciler"
 	"smr/pkg/registry"
@@ -19,7 +20,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 		Reconciler: reconciler.New(),
 		Manager:    &manager.Manager{},
 		Badger:     badger,
-		DnsCache:   map[string]string{},
+		DnsCache:   &dns.Records{},
 	}
 
 	fmt.Println(api.Reconciler.QueueChan)

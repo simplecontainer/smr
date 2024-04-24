@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
+	"smr/pkg/dns"
 	"smr/pkg/logger"
 	"smr/pkg/runtime"
 	"smr/pkg/static"
@@ -203,7 +204,7 @@ func GetContainersAllStates() []types.Container {
 	return containersFiltered
 }
 
-func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, dnsCache map[string]string) (*types.Container, error) {
+func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
 	c := container.Get()
 
 	if c == nil {
@@ -213,7 +214,7 @@ func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, dns
 	return c, nil
 }
 
-func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Badger *badger.DB, dnsCache map[string]string) (*types.Container, error) {
+func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Badger *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
 	err := container.CreateNetwork()
 
 	if err != nil {
@@ -294,7 +295,11 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 
 			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
 			database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
-			dnsCache[container.Static.GeneratedName] = container.Runtime.Networks[nid.NetworkId].IP
+
+			// Add ip to the dnsCache so that in cluster resolve works correctly
+			dnsCache.AddARecord(container.GetDomain(), container.Runtime.Networks[nid.NetworkId].IP)
+			// Generate headless service alike response to target multiple containers in the cluster
+			dnsCache.AddARecord(container.GetHeadlessDomain(), container.Runtime.Networks[nid.NetworkId].IP)
 		}
 
 		agent.Get()

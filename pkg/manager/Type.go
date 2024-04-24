@@ -2,6 +2,7 @@ package manager
 
 import (
 	"github.com/dgraph-io/badger/v4"
+	"smr/pkg/dns"
 	"smr/pkg/reconciler"
 	"smr/pkg/registry"
 	"smr/pkg/runtime"
@@ -14,5 +15,5 @@ type Manager struct {
 	Registry   *registry.Registry
 	Reconciler *reconciler.Reconciler
 	Badger     *badger.DB
-	DnsCache   map[string]string
+	DnsCache   *dns.Records
 }

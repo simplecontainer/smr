@@ -12,7 +12,7 @@ import (
 	"smr/pkg/logger"
 )
 
-const STARTING_SUBNET string = "172.18.0.2/29"
+const STARTING_SUBNET string = "172.18.0.2/24"
 
 func (container *Container) CreateNetwork() error {
 	if !container.FindNetwork() {
@@ -122,7 +122,7 @@ func (container *Container) GenerateNetworkSubnet() (string, error) {
 
 	for _, subnet := range subnets {
 		for intersect(IPv4net, subnet) {
-			IPv4net, _ = cidr.NextSubnet(IPv4net, 29)
+			IPv4net, _ = cidr.NextSubnet(IPv4net, 24)
 		}
 	}
 
