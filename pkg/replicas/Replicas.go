@@ -105,7 +105,7 @@ func (replicas *Replicas) GetReplicaNumbers(replicasNumber int, generatedNumber 
 	if replicasNumber > generatedNumber {
 		return replicasNumber, 0, generatedNumber
 	} else if replicasNumber == generatedNumber {
-		return 1, 0, generatedNumber
+		return generatedNumber, 0, generatedNumber
 	} else {
 		return 0, generatedNumber - replicasNumber, generatedNumber
 	}
