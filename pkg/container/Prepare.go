@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"regexp"
+	"smr/pkg/database"
 	"smr/pkg/template"
 	"strings"
 )
@@ -12,7 +13,12 @@ import (
 
 func (container *Container) Prepare(db *badger.DB) bool {
 	var err error
-	container.Runtime.Configuration, err = template.ParseTemplate(db, container.Runtime.Configuration)
+	format := database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
+
+	fmt.Println("FROM PREPARE CALINNNNNNNNNNNNNNNGGG")
+	fmt.Println(format)
+
+	container.Runtime.Configuration, err = template.ParseTemplate(db, container.Runtime.Configuration, &format)
 
 	if err != nil {
 		return false
@@ -21,7 +27,7 @@ func (container *Container) Prepare(db *badger.DB) bool {
 	// TODO: implement saving configuration to key-value store after parsing
 
 	for keyOriginal, _ := range container.Runtime.Resources {
-		container.Runtime.Resources[keyOriginal].Data, err = template.ParseTemplate(db, container.Runtime.Resources[keyOriginal].Data)
+		container.Runtime.Resources[keyOriginal].Data, err = template.ParseTemplate(db, container.Runtime.Resources[keyOriginal].Data, nil)
 	}
 
 	if err != nil {

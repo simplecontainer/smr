@@ -33,4 +33,4 @@ go build
 docker stop $(docker ps -q)
 docker rm $(docker ps -aq)
 docker build . --file docker/Dockerfile --tag smr:0.0.1
-docker run -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -p 127.0.0.1:8080:8080 --name smr-agent -it smr:0.0.1
+docker run -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -p 127.0.0.1:8080:8080 --name smr-agent -it --dns 127.0.0.1 smr:0.0.1

@@ -102,7 +102,7 @@ func Depends(mgr *manager.Manager, host string, name string, operator string, js
 
 	if operator != "" {
 		var err error
-		json, err = template.ParseTemplate(mgr.Badger, json)
+		json, err = template.ParseTemplate(mgr.Badger, json, nil)
 
 		group, _ := utils.ExtractGroupAndId(name)
 		url := fmt.Sprintf("%s/%s/%s", host, group, operator)
