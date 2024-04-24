@@ -37,13 +37,9 @@ func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.Fo
 					val, err := database.Get(db, key)
 
 					if err != nil {
-						logger.Log.Error(val)
+						logger.Log.Error(err.Error(), zap.String("key", key))
 						return nil, err
 					}
-
-					fmt.Println("Replaaaaaaaaaaaaaaaaaaaaaaaaacing")
-					fmt.Println(strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1))
-					fmt.Println("::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::;")
 
 					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
 				}
