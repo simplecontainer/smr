@@ -23,6 +23,10 @@ import (
 	"time"
 )
 
+func NewContainer() *Container {
+	return &Container{}
+}
+
 func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition definitions.Container) *Container {
 	// Make deep copy of the definition, so we can preserve it for deep equals later
 	definitionEncoded, err := json.Marshal(definition)
@@ -45,11 +49,14 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 		definition.Spec.Container.Tag = "latest"
 	}
 
+	fmt.Println(definition.Meta.Labels)
+
 	return &Container{
 		Static: Static{
 			Name:                   definition.Meta.Name,
 			GeneratedName:          name,
 			GeneratedNameNoProject: strings.Replace(name, fmt.Sprintf("%s-", runtime.PROJECT), "", 1),
+			Labels:                 definition.Meta.Labels,
 			Group:                  definition.Meta.Group,
 			Image:                  definition.Spec.Container.Image,
 			Tag:                    definition.Spec.Container.Tag,
@@ -380,6 +387,29 @@ func (container *Container) Get() *types.Container {
 	}
 }
 
+func (container *Container) GetFromId(runtimeId string) *types.Container {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+	defer cli.Close()
+
+	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{
+		All: true,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	if c := container.selfId(containers, runtimeId); c != nil {
+		return c
+	} else {
+		return nil
+	}
+}
+
 func (container *Container) Start() bool {
 	if c := container.Get(); c != nil && c.State == "exited" {
 		ctx := context.Background()
@@ -556,11 +586,24 @@ func (container *Container) Exec(command []string) ExecResult {
 
 func (container *Container) GenerateLabels() map[string]string {
 	now := time.Now()
-	return map[string]string{
-		"managed":     "smr",
-		"group":       container.Static.Group,
-		"last-update": string(now.Unix()),
+
+	if len(container.Static.Labels) > 0 {
+		container.Static.Labels["managed"] = "smr"
+		container.Static.Labels["group"] = container.Static.Group
+		container.Static.Labels["name"] = container.Static.GeneratedName
+		container.Static.Labels["last-update"] = string(now.Unix())
+	} else {
+		tmp := map[string]string{
+			"managed":     "smr",
+			"group":       container.Static.Group,
+			"name":        container.Static.GeneratedName,
+			"last-update": string(now.Unix()),
+		}
+
+		container.Static.Labels = tmp
 	}
+
+	return container.Static.Labels
 }
 
 func (container *Container) self(containers []types.Container) *types.Container {
@@ -572,6 +615,16 @@ func (container *Container) self(containers []types.Container) *types.Container 
 
 				return &containers[i]
 			}
+		}
+	}
+
+	return nil
+}
+
+func (container *Container) selfId(containers []types.Container, runtimeId string) *types.Container {
+	for i, c := range containers {
+		if c.ID == runtimeId {
+			return &containers[i]
 		}
 	}
 

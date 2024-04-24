@@ -18,6 +18,7 @@ type Static struct {
 	Name                   string
 	GeneratedName          string
 	GeneratedNameNoProject string
+	Labels                 map[string]string
 	Group                  string
 	Image                  string
 	Tag                    string
