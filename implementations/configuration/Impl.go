@@ -2,19 +2,28 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
+	"smr/pkg/implementations"
 	"smr/pkg/manager"
+	"smr/pkg/objects"
 )
 
-func (implementation *ImplementationInternal) ImplementationInternal(mgr *manager.Manager, jsonData []byte) (string, error) {
+func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
 	var config definitions.Configuration
 
 	if err := json.Unmarshal(jsonData, &config); err != nil {
-		panic(err)
+		return implementations.Response{
+			HttpStatus:       400,
+			Explanation:      "invalid configuration sent: json is not valid",
+			ErrorExplanation: "invalid configuration sent: json is not valid",
+			Error:            true,
+			Success:          false,
+		}, err
 	}
 
 	data := make(map[string]interface{})
@@ -27,18 +36,50 @@ func (implementation *ImplementationInternal) ImplementationInternal(mgr *manage
 
 	var format database.FormatStructure
 
-	for key, value := range config.Spec.Data {
-		format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, key)
+	format = database.Format("object-configuration", config.Meta.Group, config.Meta.Identifier, "object")
+	obj := objects.New()
+	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
 
-		if format.Identifier != "*" {
-			format.Identifier = fmt.Sprintf("%s-%s", viper.GetString("project"), config.Meta.Identifier)
+	var jsonStringFromRequest string
+	jsonStringFromRequest, err = config.ToJsonString()
+
+	if obj.Exists() {
+		if obj.Diff(jsonStringFromRequest) {
+			err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
 		}
-
-		dbKey := fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key)
-		database.Put(mgr.Badger, dbKey, value)
+	} else {
+		err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
 	}
 
-	return KIND, nil
+	if obj.ChangeDetected() || !obj.Exists() {
+		for key, value := range config.Spec.Data {
+			format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, key)
+
+			if format.Identifier != "*" {
+				format.Identifier = fmt.Sprintf("%s-%s", viper.GetString("project"), config.Meta.Identifier)
+			}
+
+			database.Put(mgr.Badger, format.ToString(), value)
+		}
+
+		mgr.ConfigChangeEmit(config.Meta.Group, config.Meta.Identifier)
+	} else {
+		return implementations.Response{
+			HttpStatus:       200,
+			Explanation:      "object is same as the one on the server",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+		}, errors.New("object is same on the server")
+	}
+
+	return implementations.Response{
+		HttpStatus:       200,
+		Explanation:      "everything went smoothly: good job!",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+	}, nil
 }
 
-var Configuration ImplementationInternal
+var Configuration Implementation

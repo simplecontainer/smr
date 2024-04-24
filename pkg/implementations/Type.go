@@ -1,15 +1,18 @@
 package implementations
 
 import (
-	"smr/pkg/definitions"
 	"smr/pkg/manager"
 )
 
 // Plugin contracts
 type Implementation interface {
-	Implementation(*manager.Manager, string, definitions.Definition) ([]string, []string)
+	Implementation(*manager.Manager, []byte) (Response, error)
 }
 
-type ImplementationInternal interface {
-	ImplementationInternal(*manager.Manager, []byte) (string, error)
+type Response struct {
+	HttpStatus       int
+	Explanation      string
+	ErrorExplanation string
+	Error            bool
+	Success          bool
 }

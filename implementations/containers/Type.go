@@ -4,4 +4,4 @@ type Implementation struct{}
 
 // Local contracts
 
-const GROUP string = "container"
+const KIND string = "containers"

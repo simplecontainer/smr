@@ -14,6 +14,8 @@ func (registry *Registry) AddOrUpdate(group string, name string, project string,
 	} else {
 		registry.Containers[group][name] = containerAddr
 	}
+
+	fmt.Println(registry.Containers[group])
 }
 
 func (registry *Registry) Remove(group string, name string, project string) bool {
@@ -37,13 +39,13 @@ func (registry *Registry) Find(group string, name string) *container.Container {
 	}
 }
 
-func (registry *Registry) Name(baseName string, project string) (string, int) {
-	index := registry.GenerateIndex(baseName, project)
-	return fmt.Sprintf("%s-%s-%d", project, baseName, index), index
+func (registry *Registry) Name(group string, name string, project string) (string, int) {
+	index := registry.GenerateIndex(group, project)
+	return fmt.Sprintf("%s-%s-%s-%d", project, group, name, index), index
 }
 
-func (registry *Registry) NameReplicas(baseName string, project string, index int) (string, int) {
-	return fmt.Sprintf("%s-%s-%d", project, baseName, index), index
+func (registry *Registry) NameReplicas(group string, name string, project string, index int) (string, int) {
+	return fmt.Sprintf("%s-%s-%s-%d", project, group, name, index), index
 }
 
 func (registry *Registry) BackOffTracking(group string, name string) {

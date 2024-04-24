@@ -9,6 +9,8 @@ const CONFIGDIR string = "config"
 const CONFIGFILE string = "smr.config"
 const TEMPLATESDIR string = "templates"
 
+const DOCKER_DNS_IP string = "127.0.0.11"
+
 const SMR string = "smr"
 
 const GHOST string = "ghost"
