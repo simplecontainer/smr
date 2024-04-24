@@ -55,8 +55,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		fmt.Println(gitopsDefinition)
 		newRepositoryWatcher := gitops.NewWatcher(gitopsDefinition)
 		newRepositoryWatcher.Prepare(mgr.Badger)
-
-		mgr.EmitChange(KIND, gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier)
+		newRepositoryWatcher.RunWatcher()
 	} else {
 		return implementations.Response{
 			HttpStatus:       200,

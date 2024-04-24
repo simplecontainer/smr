@@ -29,7 +29,7 @@ func NewContainer() *Container {
 }
 
 func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition definitions.Container) *Container {
-	// Make deep copy of the definition, so we can preserve it for deep equals later
+	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
 	if err != nil {

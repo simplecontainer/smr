@@ -1,5 +1,6 @@
 package main
 
+import "C"
 import (
 	"encoding/json"
 	"errors"
@@ -138,6 +139,14 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 							_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.DnsCache)
 
 							if err != nil {
+								format := database.Format("container", container.Static.Group, container.Static.Name, "object")
+
+								// clear the object in the store since container failed to run
+								obj := objects.New()
+								obj.Update(mgr.Registry.Object, mgr.Badger, format, "")
+
+								mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
+
 								return implementations.Response{
 									HttpStatus:       500,
 									Explanation:      "failed to start container",
@@ -148,6 +157,8 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 							}
 						}
 					} else {
+						mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
+
 						return implementations.Response{
 							HttpStatus:       500,
 							Explanation:      "failed to solve container dependencies",
