@@ -2,4 +2,4 @@ package main
 
 type Operator struct{}
 
-const KIND string = "mysql"
+const KIND string = "readiness"

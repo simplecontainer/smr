@@ -97,4 +97,4 @@ func (operator *Operator) DatabaseReady(request operators.Request) operators.Res
 }
 
 // Exported
-var Mysql Operator
+var Readiness Operator
