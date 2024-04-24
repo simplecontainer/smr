@@ -36,7 +36,9 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": fmt.Sprintf("internal implementation is not present on the server: %s", kind),
-			"error":   err,
+			"error":   err.Error(),
+			"fail":    true,
+			"success": false,
 		})
 
 		return
@@ -47,7 +49,9 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": fmt.Sprintf("plugin lookup failed: %s", cases.Title(language.English).String(kind)),
-				"error":   err,
+				"error":   err.Error(),
+				"fail":    true,
+				"success": false,
 			})
 
 			return
@@ -58,7 +62,9 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "internal implementation malfunctioned on the server",
-				"error":   ok,
+				"error":   "check server logs",
+				"fail":    true,
+				"success": false,
 			})
 
 			return
@@ -78,6 +84,9 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "internal implementation is not present on the server",
+			"error":   " internal implementation is not present on the server",
+			"fail":    true,
+			"success": false,
 		})
 
 		return

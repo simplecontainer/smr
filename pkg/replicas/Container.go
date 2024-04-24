@@ -2,7 +2,6 @@ package replicas
 
 import (
 	"errors"
-	"fmt"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"smr/pkg/container"
@@ -13,18 +12,15 @@ import (
 	"strings"
 )
 
-func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
+func (replicas *Replicas) HandleContainer(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
 
 	numberOfReplicasToCreate, numberOfReplicasToDestroy, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
 
-	fmt.Println(fmt.Sprintf("NumberOfReplicasToCreate: %d", numberOfReplicasToCreate))
-	fmt.Println(fmt.Sprintf("NumberOfReplicasToDestroy %d", numberOfReplicasToDestroy))
-
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
-			name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
+			name := containerDefinition.Meta.Name
 			container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
 
 			existingContainer := mgr.Registry.Find(container.Static.Group, name)
@@ -39,7 +35,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	}
 
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
-		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
+		name := containerDefinition.Meta.Name
 		container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
 
 		for i, v := range container.Runtime.Resources {
@@ -99,14 +95,4 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	}
 
 	return groups, names, nil
-}
-
-func (replicas *Replicas) GetReplicaNumbers(replicasNumber int, generatedNumber int) (int, int, int) {
-	if replicasNumber > generatedNumber {
-		return replicasNumber, 0, generatedNumber
-	} else if replicasNumber == generatedNumber {
-		return 1, 0, generatedNumber
-	} else {
-		return 0, generatedNumber - replicasNumber, generatedNumber
-	}
 }

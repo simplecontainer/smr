@@ -59,12 +59,13 @@ type Status struct {
 	Running         bool
 	Reconciling     bool
 	DefinitionDrift bool
+	PendingDelete   bool
 }
 
 type Resource struct {
 	Identifier string
 	Key        string
-	Data       map[string]string
+	Data       map[string]any
 	MountPoint string
 }
 

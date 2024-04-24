@@ -19,11 +19,12 @@ import (
 
 func New() *Reconciler {
 	return &Reconciler{
-		QueueChan: make(chan Reconcile),
+		QueueChan:   make(chan Reconcile),
+		QueueEvents: make(chan Events),
 	}
 }
 
-func (reconciler *Reconciler) ListenEvents(registry *registry.Registry, dnsCache *dns.Records) {
+func (reconciler *Reconciler) ListenDockerEvents(registry *registry.Registry, dnsCache *dns.Records) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -38,12 +39,21 @@ func (reconciler *Reconciler) ListenEvents(registry *registry.Registry, dnsCache
 		case err := <-cErr:
 			fmt.Println(err)
 		case msg := <-cEvents:
-			reconciler.Event(registry, dnsCache, msg)
+			reconciler.DockerEvent(registry, dnsCache, msg)
 		}
 	}
 }
 
-func (reconciler *Reconciler) Event(registry *registry.Registry, dnsCache *dns.Records, event events.Message) {
+func (reconciler *Reconciler) ListenEvents(registry *registry.Registry, dnsCache *dns.Records) {
+	for {
+		select {
+		case event := <-reconciler.QueueEvents:
+			reconciler.Event(registry, dnsCache, event)
+		}
+	}
+}
+
+func (reconciler *Reconciler) DockerEvent(registry *registry.Registry, dnsCache *dns.Records, event events.Message) {
 	var container *container.Container
 
 	// handle container events
@@ -104,6 +114,36 @@ func (reconciler *Reconciler) Event(registry *registry.Registry, dnsCache *dns.R
 	}
 }
 
+func (reconciler *Reconciler) Event(registry *registry.Registry, dnsCache *dns.Records, event Events) {
+	var container *container.Container
+
+	// handle container events
+	if utils.Contains([]string{"change"}, event.Kind) {
+		container = registry.Find(event.Container.Static.Group, event.Container.Static.GeneratedName)
+	}
+
+	if container == nil {
+		return
+	}
+
+	c := container.Get()
+	managed := false
+
+	// only manage smr created containers, others are left alone to live and die in peace
+	if c.Labels["managed"] == "smr" {
+		managed = true
+	}
+
+	switch event.Kind {
+	case "change":
+		if managed {
+			reconciler.HandleChange(registry, dnsCache, container)
+		}
+		break
+	default:
+	}
+}
+
 func (reconciler *Reconciler) HandleConnect(registry *registry.Registry, dnsCache *dns.Records, container *container.Container, event events.Message) {
 	// Handle network connect here
 }
@@ -141,6 +181,26 @@ func (reconciler *Reconciler) HandleStop(registry *registry.Registry, container 
 func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *container.Container) {
 	container.Status.Running = false
 
+	reconcile := true
+
+	// labels for ignoring events for specific container
+	val, exists := container.Static.Labels["reconcile"]
+	if exists {
+		if val == "false" {
+			logger.Log.Info("reconcile label set to false for the container, skipping reconcile", zap.String("container", container.Static.GeneratedName))
+			reconcile = false
+		}
+	}
+
+	if !container.Status.Reconciling && reconcile {
+		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", container.Static.GeneratedName))
+		reconciler.QueueChan <- Reconcile{
+			Container: container,
+		}
+	}
+}
+
+func (reconciler *Reconciler) HandleChange(registry *registry.Registry, dnsCache *dns.Records, container *container.Container) {
 	reconcile := true
 
 	// labels for ignoring events for specific container
@@ -215,12 +275,15 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 				err := container.Delete()
 
 				if err == nil {
-					container.Prepare(db)
-					_, err = container.Run(runtime, db, dnsCache)
-
+					if !container.Status.PendingDelete {
+						container.Prepare(db)
+						_, err = container.Run(runtime, db, dnsCache)
+					} else {
+						logger.Log.Info("we should forget about this container", zap.String("container", container.Static.GeneratedName))
+					}
 					break
 				} else {
-
+					logger.Log.Info("failed to delete container", zap.String("container", container.Static.GeneratedName))
 				}
 			}
 
@@ -228,18 +291,4 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 			break
 		}
 	}
-}
-
-func (reconciler *Reconciler) SmrManaged(container *container.Container) bool {
-	if container == nil {
-		return false
-	}
-
-	c := container.Get()
-
-	if c.Labels["managed"] == "smr" {
-		return true
-	}
-
-	return false
 }

@@ -16,7 +16,6 @@ func Delete() {
 		functions: []func(*manager.Manager, []string){
 			func(mgr *manager.Manager, args []string) {
 				if utils.Confirm(fmt.Sprintf("Are you sure? Delete project %s is irreversible?", mgr.Runtime.PROJECT)) {
-					mgr.Load()
 					mgr.DeleteProject(viper.GetString("project"))
 				}
 			},

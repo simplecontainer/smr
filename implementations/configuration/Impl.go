@@ -62,7 +62,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 			database.Put(mgr.Badger, format.ToString(), value)
 		}
 
-		mgr.ConfigChangeEmit(config.Meta.Group, config.Meta.Identifier)
+		mgr.EmitChange(config.Meta.Group, config.Meta.Identifier)
 	} else {
 		return implementations.Response{
 			HttpStatus:       200,

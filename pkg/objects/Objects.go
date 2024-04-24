@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"reflect"
 	"smr/pkg/database"
@@ -12,6 +13,7 @@ import (
 
 func New() *Object {
 	return &Object{
+		Changelog:  diff.Changelog{},
 		definition: map[string]any{},
 		exists:     false,
 		changed:    false,
@@ -29,6 +31,10 @@ func ConvertToMap(jsonData []byte) (map[string]any, error) {
 	}
 
 	return data, nil
+}
+
+func (obj *Object) GetDefinition() map[string]any {
+	return obj.definition
 }
 
 func (obj *Object) Add(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure, data string) error {
@@ -140,9 +146,13 @@ func (obj *Object) Diff(definition string) bool {
 		return true
 	}
 
+	var changelog diff.Changelog
+
 	if reflect.DeepEqual(obj.definition, data) {
 		obj.changed = false
 	} else {
+		changelog, _ = diff.Diff(obj.definition, data)
+		obj.Changelog = changelog
 		obj.changed = true
 	}
 

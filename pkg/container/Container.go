@@ -51,7 +51,7 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 
 	fmt.Println(definition.Meta.Labels)
 
-	return &Container{
+	container := &Container{
 		Static: Static{
 			Name:                   definition.Meta.Name,
 			GeneratedName:          name,
@@ -87,6 +87,17 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Running:        false,
 		},
 	}
+
+	if container.Runtime.Configuration == nil {
+		container.Runtime.Configuration = make(map[string]any)
+	}
+
+	container.Runtime.Configuration["name"] = name
+	container.Runtime.Configuration["group"] = container.Static.Group
+	container.Runtime.Configuration["image"] = container.Static.Image
+	container.Runtime.Configuration["tag"] = container.Static.Tag
+
+	return container
 }
 
 func Existing(name string) *Container {
@@ -591,13 +602,13 @@ func (container *Container) GenerateLabels() map[string]string {
 		container.Static.Labels["managed"] = "smr"
 		container.Static.Labels["group"] = container.Static.Group
 		container.Static.Labels["name"] = container.Static.GeneratedName
-		container.Static.Labels["last-update"] = string(now.Unix())
+		container.Static.Labels["last-update"] = strconv.FormatInt(now.Unix(), 10)
 	} else {
 		tmp := map[string]string{
 			"managed":     "smr",
 			"group":       container.Static.Group,
 			"name":        container.Static.GeneratedName,
-			"last-update": string(now.Unix()),
+			"last-update": strconv.FormatInt(now.Unix(), 10),
 		}
 
 		container.Static.Labels = tmp

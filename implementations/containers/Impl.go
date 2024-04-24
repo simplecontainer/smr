@@ -3,14 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
+	"smr/pkg/dependency"
 	"smr/pkg/implementations"
 	"smr/pkg/logger"
 	"smr/pkg/manager"
 	"smr/pkg/objects"
-	"smr/pkg/operators"
 	"smr/pkg/reconciler"
 	"smr/pkg/replicas"
 )
@@ -40,6 +41,8 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 			if obj.Exists() {
 				if obj.Diff(jsonStringFromRequest) {
+					// Detect only change on replicas, if that's true tackle only scale up or scale down without recreating
+					// containers that are there already, otherwise recreate everything
 					err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
 				}
 			} else {
@@ -51,7 +54,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 				name := definition.Meta.Name
 				logger.Log.Info(fmt.Sprintf("trying to generate container %s object", name))
-				groups, names, err := implementation.generateReplicaNamesAndGroups(mgr, definitionSent.Containers[name])
+				groups, names, err := implementation.generateReplicaNamesAndGroups(mgr, definitionSent.Containers[name], obj.Changelog)
 
 				if err == nil {
 					logger.Log.Info(fmt.Sprintf("generated container %s object", name))
@@ -91,43 +94,54 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 			var solved bool
 
 			for _, container := range order {
-				solved, err = operators.Ready(mgr, container.Static.Group, container.Static.GeneratedName, container.Static.Definition.Spec.Container.Dependencies)
+				if container.Status.PendingDelete {
+					logger.Log.Info(fmt.Sprintf("container is pending to delete %s", container.Static.GeneratedName))
 
-				if solved {
-					if container.Status.DefinitionDrift {
-						// This the case when we know container already exists and definition was reapplied
-						// We should trigger the reconcile
-						logger.Log.Info("sending container to reconcile state", zap.String("container", container.Static.GeneratedName))
+					mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
-						mgr.Reconciler.QueueChan <- reconciler.Reconcile{
-							Container: container,
-						}
-					} else {
-						// This the case when we know container doesn't exist, and we are running it the first time
-
-						logger.Log.Info("trying to run container", zap.String("group", container.Static.Group), zap.String("name", container.Static.Name))
-
-						container.Prepare(mgr.Badger)
-						_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.DnsCache)
-
-						if err != nil {
-							return implementations.Response{
-								HttpStatus:       500,
-								Explanation:      "failed to start container",
-								ErrorExplanation: err.Error(),
-								Error:            true,
-								Success:          false,
-							}, err
-						}
+					mgr.Reconciler.QueueChan <- reconciler.Reconcile{
+						Container: container,
 					}
 				} else {
-					return implementations.Response{
-						HttpStatus:       500,
-						Explanation:      "failed to solve container dependencies",
-						ErrorExplanation: err.Error(),
-						Error:            true,
-						Success:          false,
-					}, err
+
+					solved, err = dependency.Ready(mgr, container.Static.Group, container.Static.GeneratedName, container.Static.Definition.Spec.Container.Dependencies)
+
+					if solved {
+						if container.Status.DefinitionDrift {
+							// This the case when we know container already exists and definition was reapplied
+							// We should trigger the reconcile
+							logger.Log.Info("sending container to reconcile state", zap.String("container", container.Static.GeneratedName))
+
+							mgr.Reconciler.QueueChan <- reconciler.Reconcile{
+								Container: container,
+							}
+						} else {
+							// This the case when we know container doesn't exist, and we are running it the first time
+
+							logger.Log.Info("trying to run container", zap.String("group", container.Static.Group), zap.String("name", container.Static.Name))
+
+							container.Prepare(mgr.Badger)
+							_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.DnsCache)
+
+							if err != nil {
+								return implementations.Response{
+									HttpStatus:       500,
+									Explanation:      "failed to start container",
+									ErrorExplanation: err.Error(),
+									Error:            true,
+									Success:          false,
+								}, err
+							}
+						}
+					} else {
+						return implementations.Response{
+							HttpStatus:       500,
+							Explanation:      "failed to solve container dependencies",
+							ErrorExplanation: err.Error(),
+							Error:            true,
+							Success:          false,
+						}, err
+					}
 				}
 			}
 
@@ -150,15 +164,16 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	}
 }
 
-func (implementation *Implementation) generateReplicaNamesAndGroups(mgr *manager.Manager, containerDefinition definitions.Container) ([]string, []string, error) {
+func (implementation *Implementation) generateReplicaNamesAndGroups(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
 	_, index := mgr.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT)
 
 	r := replicas.Replicas{
 		Group:          containerDefinition.Meta.Group,
-		GeneratedIndex: index,
+		GeneratedIndex: index - 1,
+		Replicas:       containerDefinition.Spec.Container.Replicas,
 	}
 
-	groups, names, err := r.HandleReplica(mgr, containerDefinition)
+	groups, names, err := r.HandleReplica(mgr, containerDefinition, changelog)
 
 	return groups, names, err
 }

@@ -3,9 +3,16 @@ package reconciler
 import "smr/pkg/container"
 
 type Reconciler struct {
-	QueueChan chan Reconcile
+	QueueChan   chan Reconcile
+	QueueEvents chan Events
 }
 
 type Reconcile struct {
+	Container *container.Container
+}
+
+type Events struct {
+	Kind      string
+	Message   string
 	Container *container.Container
 }

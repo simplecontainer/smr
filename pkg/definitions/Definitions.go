@@ -14,6 +14,11 @@ func (configuration *Configuration) ToJsonString() (string, error) {
 	return string(bytes), err
 }
 
+func (operator *Operator) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(operator)
+	return string(bytes), err
+}
+
 func (resource *Resource) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(resource)
 	return string(bytes), err
