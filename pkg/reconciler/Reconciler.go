@@ -44,41 +44,77 @@ func (reconciler *Reconciler) ListenEvents(registry *registry.Registry, dnsCache
 }
 
 func (reconciler *Reconciler) Event(registry *registry.Registry, dnsCache *dns.Records, event events.Message) {
-	if utils.Contains([]string{"start", "kill", "stop", "die"}, event.Status) {
-		container := registry.Find(event.Actor.Attributes["group"], event.Actor.Attributes["name"])
+	var container *container.Container
 
-		c := container.Get()
-		managed := false
-
-		// only manage smr created containers, others are left alone to live and die in peace
-		if c.Labels["managed"] == "smr" {
-			managed = true
-		}
-
-		switch event.Status {
-		case "start":
-			if managed {
-				reconciler.HandleStart(registry, container)
-			}
-			break
-		case "kill":
-			if managed {
-				reconciler.HandleKill(registry, container)
-			}
-			break
-		case "stop":
-			if managed {
-				reconciler.HandleStop(registry, container)
-			}
-			break
-		case "die":
-			if managed {
-				reconciler.HandleDie(registry, dnsCache, container)
-			}
-			break
-		default:
-		}
+	// handle container events
+	if utils.Contains([]string{"start", "kill", "stop", "die"}, event.Action) {
+		container = registry.Find(event.Actor.Attributes["group"], event.Actor.Attributes["name"])
 	}
+
+	// handle network events
+	if utils.Contains([]string{"connect", "disconnect"}, event.Action) {
+		c := container.GetFromId(event.Actor.Attributes["container"])
+		container = registry.Find(c.Labels["group"], c.Labels["name"])
+	}
+
+	if container == nil {
+		return
+	}
+
+	c := container.Get()
+	managed := false
+
+	// only manage smr created containers, others are left alone to live and die in peace
+	if c.Labels["managed"] == "smr" {
+		managed = true
+	}
+
+	switch event.Action {
+	case "connect":
+		if managed {
+			reconciler.HandleConnect(registry, dnsCache, container, event)
+		}
+		break
+	case "disconnect":
+		if managed {
+			reconciler.HandleDisconnect(registry, dnsCache, container, event)
+		}
+		break
+	case "start":
+		if managed {
+			reconciler.HandleStart(registry, container)
+		}
+		break
+	case "kill":
+		if managed {
+			reconciler.HandleKill(registry, dnsCache, container)
+		}
+		break
+	case "stop":
+		if managed {
+			reconciler.HandleStop(registry, container)
+		}
+		break
+	case "die":
+		if managed {
+			reconciler.HandleDie(registry, container)
+		}
+		break
+	default:
+	}
+}
+
+func (reconciler *Reconciler) HandleConnect(registry *registry.Registry, dnsCache *dns.Records, container *container.Container, event events.Message) {
+	// Handle network connect here
+}
+
+func (reconciler *Reconciler) HandleDisconnect(registry *registry.Registry, dnsCache *dns.Records, container *container.Container, event events.Message) {
+	for _, ip := range dnsCache.FindDeleteQueue(container.GetDomain()) {
+		dnsCache.RemoveARecord(container.GetDomain(), ip)
+		dnsCache.RemoveARecord(container.GetHeadlessDomain(), ip)
+	}
+
+	dnsCache.ResetDeleteQueue(container.GetDomain())
 }
 
 func (reconciler *Reconciler) HandleStart(registry *registry.Registry, container *container.Container) {
@@ -88,9 +124,13 @@ func (reconciler *Reconciler) HandleStart(registry *registry.Registry, container
 	container.Status.Running = true
 }
 
-func (reconciler *Reconciler) HandleKill(registry *registry.Registry, container *container.Container) {
+func (reconciler *Reconciler) HandleKill(registry *registry.Registry, dnsCache *dns.Records, container *container.Container) {
 	// It can happen that kill signal occurs in the container even if it is not dying; eg killing thread, goroutine etc.
 	container.Status.Running = true
+
+	for _, n := range container.Runtime.Networks {
+		dnsCache.RemoveARecordQueue(container.GetDomain(), n.IP)
+	}
 }
 
 func (reconciler *Reconciler) HandleStop(registry *registry.Registry, container *container.Container) {
@@ -98,15 +138,21 @@ func (reconciler *Reconciler) HandleStop(registry *registry.Registry, container 
 	container.Status.Running = false
 }
 
-func (reconciler *Reconciler) HandleDie(registry *registry.Registry, dnsCache *dns.Records, container *container.Container) {
+func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *container.Container) {
 	container.Status.Running = false
 
-	for _, n := range container.Runtime.Networks {
-		dnsCache.RemoveARecord(container.GetDomain(), n.IP)
-		dnsCache.RemoveARecord(container.GetHeadlessDomain(), n.IP)
+	reconcile := true
+
+	// labels for ignoring events for specific container
+	val, exists := container.Static.Labels["reconcile"]
+	if exists {
+		if val == "false" {
+			logger.Log.Info("reconcile label set to false for the container, skipping reconcile", zap.String("container", container.Static.GeneratedName))
+			reconcile = false
+		}
 	}
 
-	if !container.Status.Reconciling {
+	if !container.Status.Reconciling && reconcile {
 		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", container.Static.GeneratedName))
 		reconciler.QueueChan <- Reconcile{
 			Container: container,

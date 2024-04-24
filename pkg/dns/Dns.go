@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"go.uber.org/zap"
-	"log"
 	"net"
 	"smr/pkg/logger"
 )
@@ -22,6 +21,9 @@ func (r *Records) AddARecord(domain string, ip string) {
 			tmp[domain] = ARecord{
 				map[string][]string{
 					domain: {ip},
+				},
+				map[string][]string{
+					domain: {},
 				},
 			}
 
@@ -49,6 +51,9 @@ func (r *Records) AddARecord(domain string, ip string) {
 				map[string][]string{
 					domain: {ip},
 				},
+				map[string][]string{
+					domain: {},
+				},
 			}
 
 			r.ARecords[domain] = tmp
@@ -58,6 +63,9 @@ func (r *Records) AddARecord(domain string, ip string) {
 			domain: {
 				map[string][]string{
 					domain: {ip},
+				},
+				map[string][]string{
+					domain: {},
 				},
 			},
 		}
@@ -70,11 +78,27 @@ func (r *Records) RemoveARecord(domain string, ip string) bool {
 
 	for i, v := range ips {
 		if v == ip {
+			logger.Log.Info(fmt.Sprintf("removing %s address from %s domain", domain, v))
 			ips = append(ips[:i], ips[i+1:]...)
 		}
 	}
 
 	r.ARecords[domain].Domain[domain] = ips
+
+	return true
+}
+
+func (r *Records) RemoveARecordQueue(domain string, ip string) bool {
+	ips := r.Find(domain)
+
+	for i, v := range ips {
+		if v == ip {
+			logger.Log.Info(fmt.Sprintf("added %s address for %s domain to delete queue", v, domain))
+			ips = append(ips[:i], ips[i+1:]...)
+		}
+	}
+
+	r.ARecords[domain].DomainDelete[domain] = ips
 
 	return true
 }
@@ -89,11 +113,30 @@ func (r *Records) Find(domain string) []string {
 	}
 }
 
+func (r *Records) FindDeleteQueue(domain string) []string {
+	arecords, exists := r.ARecords[domain]
+
+	if exists {
+		return arecords.DomainDelete[domain]
+	} else {
+		return []string{}
+	}
+}
+
+func (r *Records) ResetDeleteQueue(domain string) {
+	arecords, exists := r.ARecords[domain]
+
+	if exists {
+		logger.Log.Info(fmt.Sprintf("cleared delete queue from domain %s", domain))
+		arecords.DomainDelete[domain] = []string{}
+	}
+}
+
 func ParseQuery(cache *Records, m *dns.Msg) {
 	for _, q := range m.Question {
 		switch q.Qtype {
 		case dns.TypeA:
-			log.Printf("Query for %s\n", q.Name)
+			logger.Log.Info("Querying dns server", zap.String("fqdn", q.Name))
 			ips := cache.Find(q.Name)
 
 			if len(ips) > 0 {
@@ -124,12 +167,12 @@ func ParseQuery(cache *Records, m *dns.Msg) {
 
 				r, _, err := c.Exchange(ms, net.JoinHostPort(config.Servers[0], config.Port))
 				if r == nil {
-					logger.Log.Warn("*** error: %s\n", zap.String("error", err.Error()))
+					logger.Log.Warn("dns resolution error", zap.String("error", err.Error()))
 					return
 				}
 
 				if r.Rcode != dns.RcodeSuccess {
-					logger.Log.Warn(" *** invalid answer name after A query", zap.String("domain", q.Name))
+					logger.Log.Warn("dns invalid answer name after A query", zap.String("domain", q.Name))
 					return
 				}
 

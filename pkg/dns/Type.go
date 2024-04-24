@@ -5,5 +5,6 @@ type Records struct {
 }
 
 type ARecord struct {
-	Domain map[string][]string
+	Domain       map[string][]string
+	DomainDelete map[string][]string
 }

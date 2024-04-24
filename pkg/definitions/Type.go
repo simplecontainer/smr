@@ -16,9 +16,10 @@ type Container struct {
 }
 
 type Meta struct {
-	Enabled bool   `yaml:"enabled"`
-	Name    string `yaml:"name"`
-	Group   string `yaml:"group"`
+	Enabled bool              `yaml:"enabled"`
+	Name    string            `yaml:"name"`
+	Group   string            `yaml:"group"`
+	Labels  map[string]string `mapstructure:"labels"`
 }
 
 type Spec struct {
