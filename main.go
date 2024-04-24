@@ -41,7 +41,7 @@ func main() {
 
 		mdns.HandleFunc(".", api.HandleDns)
 
-		// start server in go routine to detach from main
+		// start dns server in go routine to detach from main
 		port := 53
 		server := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
 		go server.ListenAndServe()

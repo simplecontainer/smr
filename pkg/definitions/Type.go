@@ -10,6 +10,11 @@ type Containers struct {
 	Containers map[string]Container `mapstructure:"container"`
 }
 
+type Operator struct {
+	Meta Meta `mapstructure:"meta"`
+	Spec Spec `mapstructure:"spec"`
+}
+
 type Container struct {
 	Meta Meta `mapstructure:"meta"`
 	Spec Spec `mapstructure:"spec"`
@@ -81,5 +86,5 @@ type ResourceMeta struct {
 }
 
 type ResourceSpec struct {
-	Data map[string]string `json:"data"`
+	Data map[string]any `json:"data"`
 }

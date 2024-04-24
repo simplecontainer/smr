@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"smr/pkg/operators"
 )
 
-func (operator *Operator) Run(operation string, args ...interface{}) map[string]any {
+func (operator *Operator) Run(operation string, args ...interface{}) operators.Response {
 	reflected := reflect.TypeOf(operator)
 	reflectedValue := reflect.ValueOf(operator)
 
@@ -22,16 +23,21 @@ func (operator *Operator) Run(operation string, args ...interface{}) map[string]
 
 			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
 
-			return returnValue[0].Interface().(map[string]any)
+			return returnValue[0].Interface().(operators.Response)
 		}
 	}
 
-	return map[string]any{
-		"message": "Operator doesn't have that functionality.",
+	return operators.Response{
+		HttpStatus:       400,
+		Explanation:      "server doesn't support requested functionality",
+		ErrorExplanation: "implementation is missing",
+		Error:            true,
+		Success:          false,
+		Data:             nil,
 	}
 }
 
-func (operator *Operator) ListSupported(args ...interface{}) map[string]any {
+func (operator *Operator) ListSupported(args ...interface{}) operators.Response {
 	reflected := reflect.TypeOf(operator)
 
 	supportedOperations := map[string]any{}
@@ -42,31 +48,51 @@ func (operator *Operator) ListSupported(args ...interface{}) map[string]any {
 		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
 	}
 
-	return supportedOperations
+	return operators.Response{
+		HttpStatus:       200,
+		Explanation:      "",
+		ErrorExplanation: "",
+		Error:            true,
+		Success:          false,
+		Data:             supportedOperations,
+	}
 }
 
-func (operator *Operator) DatabaseReady(data map[string]any) map[string]any {
+func (operator *Operator) DatabaseReady(data map[string]any) operators.Response {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", data["username"], data["password"], data["ip"], data["port"]))
 	defer db.Close()
 
 	if err != nil {
-		return map[string]any{
-			"message": err.Error(),
-			"success": "false",
+		return operators.Response{
+			HttpStatus:       400,
+			Explanation:      "database connection can't be opened",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
 		}
 	}
 
 	err = db.Ping()
 
 	if err != nil {
-		return map[string]any{
-			"message": err.Error(),
-			"success": "false",
+		return operators.Response{
+			HttpStatus:       400,
+			Explanation:      "database can't be pinged",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
 		}
 	}
 
-	return map[string]any{
-		"success": "true",
+	return operators.Response{
+		HttpStatus:       200,
+		Explanation:      "database connection is ready",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
 	}
 }
 

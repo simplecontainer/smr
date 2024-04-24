@@ -16,7 +16,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, project string,
 	}
 }
 
-func (registry *Registry) Remove(group string, name string, project string) bool {
+func (registry *Registry) Remove(group string, name string) bool {
 	if registry.Containers[group] == nil {
 		return true
 	} else {

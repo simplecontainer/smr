@@ -1,8 +1,12 @@
 package objects
 
-import "time"
+import (
+	"github.com/r3labs/diff/v3"
+	"time"
+)
 
 type Object struct {
+	Changelog  diff.Changelog
 	definition map[string]any
 	changed    bool
 	exists     bool

@@ -1,91 +1,50 @@
 package template
 
 import (
-	"errors"
 	"fmt"
-	"go.uber.org/zap"
-	"os"
-	"smr/pkg/config"
-	"smr/pkg/container"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/spf13/viper"
+	"regexp"
+	"smr/pkg/database"
 	"smr/pkg/logger"
-	"smr/pkg/runtime"
+	"strings"
 )
 
-func RenderResource(templateDir string, resourceDir string, file string, config *config.Config, runtime runtime.Runtime) {
-	/*
-		if file != "" {
-			combinator := &Combinator{
-				config.Configuration,
-				runtime,
+func ParseTemplate(db *badger.DB, values map[string]any) (map[string]any, error) {
+	var parsedMap = make(map[string]any)
+	parsedMap = values
+
+	for keyOriginal, value := range values {
+		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+		matches := regexDetectBigBrackets.FindAllStringSubmatch(value.(string), -1)
+
+		if len(matches) > 0 {
+			for index, _ := range matches {
+				SplitByDot := strings.SplitN(matches[index][1], ".", 3)
+
+				regexExtractGroupAndId := regexp.MustCompile(`([^\[\n\]]*)`)
+				GroupAndIdExtractor := regexExtractGroupAndId.FindAllStringSubmatch(SplitByDot[1], -1)
+
+				if len(GroupAndIdExtractor) > 1 {
+					format := database.Format(SplitByDot[0], GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0], SplitByDot[2])
+
+					if format.Identifier != "*" {
+						format.Identifier = fmt.Sprintf("%s-%s", viper.GetString("project"), GroupAndIdExtractor[1][0])
+					}
+
+					key := strings.TrimSpace(fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key))
+					val, err := database.Get(db, key)
+
+					if err != nil {
+						logger.Log.Error(val)
+						return nil, err
+					}
+
+					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
+				}
 			}
-
-			filePath := fmt.Sprintf("%s/%s", templateDir, file)
-			p, err := filepath.Abs(filePath)
-
-			CustomFunctions := template.FuncMap{
-				"Normalize": func(str string) string {
-					return strings.ToLower(strings.Replace(str, ".", "_", 1))
-				},
-			}
-
-			fi, err := os.OpenFile(fmt.Sprintf("%s/%s", resourceDir, file), os.O_CREATE|os.O_WRONLY, os.ModePerm)
-			if err != nil {
-				logger.Log.Fatal("Failed to open rendered file",
-					zap.String("error", err.Error()))
-			}
-			defer fi.Close()
-
-			t := template.Must(template.New(filepath.Base(p)).Funcs(CustomFunctions).ParseFiles(filePath))
-			err = t.Execute(fi, combinator)
-			if err != nil {
-				panic(err)
-			}
-		}
-	*/
-}
-
-func GetEnvs(container *container.Container, runtime runtime.Runtime) ([]string, error) {
-	/*
-		path := fmt.Sprintf("%s/%s", container.Static.ResourcesDir, ".envs")
-
-		if _, err := os.Stat(path); err == nil {
-			file, err := os.Open(path)
-			if err != nil {
-				return nil, err
-			}
-			defer file.Close()
-
-			var lines []string
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				lines = append(lines, scanner.Text())
-			}
-			return lines, scanner.Err()
-		}
-	*/
-	return nil, nil
-}
-
-func CreateOrClearRenderDir(renderDir string, image string, config *config.Config) {
-	path := fmt.Sprintf("%s", renderDir)
-
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		err := os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			logger.Log.Fatal("Failed to create render directory",
-				zap.String("error", err.Error()))
-		}
-	} else {
-		err := os.RemoveAll(path)
-		if err != nil {
-			logger.Log.Fatal("Failed to clear render directory",
-				zap.String("error", err.Error()))
-		}
-
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			logger.Log.Fatal("Failed to create render directory",
-				zap.String("error", err.Error()))
 		}
 	}
+
+	return parsedMap, nil
 }

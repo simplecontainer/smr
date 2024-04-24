@@ -59,10 +59,10 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 				format.Identifier = fmt.Sprintf("%s-%s", viper.GetString("project"), resource.Meta.Identifier)
 			}
 
-			database.Put(mgr.Badger, format.ToString(), value)
+			database.Put(mgr.Badger, format.ToString(), value.(string))
 		}
 
-		mgr.ResourceChangeEmit(resource.Meta.Group, resource.Meta.Identifier)
+		mgr.EmitChange(resource.Meta.Group, resource.Meta.Identifier)
 	} else {
 		return implementations.Response{
 			HttpStatus:       200,

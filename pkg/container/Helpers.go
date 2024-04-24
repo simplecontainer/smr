@@ -20,7 +20,7 @@ func (container *Container) mappingToMounts(runtime *runtime.Runtime) []mount.Mo
 			log.Fatal(err)
 		}
 
-		if _, err := tmpFile.WriteString(v.Data[v.Key]); err != nil {
+		if _, err := tmpFile.WriteString(v.Data[v.Key].(string)); err != nil {
 			log.Fatal(err)
 		}
 
@@ -80,7 +80,7 @@ func mapAnyToResources(definition []map[string]any) []Resource {
 	}
 
 	for i, _ := range resources {
-		resources[i].Data = make(map[string]string)
+		resources[i].Data = make(map[string]any)
 	}
 
 	return resources

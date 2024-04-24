@@ -78,7 +78,7 @@ func (r *Records) RemoveARecord(domain string, ip string) bool {
 
 	for i, v := range ips {
 		if v == ip {
-			logger.Log.Info(fmt.Sprintf("removing %s address from %s domain", domain, v))
+			logger.Log.Info(fmt.Sprintf("removing %s ip address from %s domain", v, domain))
 			ips = append(ips[:i], ips[i+1:]...)
 		}
 	}
@@ -91,14 +91,12 @@ func (r *Records) RemoveARecord(domain string, ip string) bool {
 func (r *Records) RemoveARecordQueue(domain string, ip string) bool {
 	ips := r.Find(domain)
 
-	for i, v := range ips {
+	for _, v := range ips {
 		if v == ip {
 			logger.Log.Info(fmt.Sprintf("added %s address for %s domain to delete queue", v, domain))
-			ips = append(ips[:i], ips[i+1:]...)
+			r.ARecords[domain].DomainDelete[domain] = append(r.ARecords[domain].DomainDelete[domain], v)
 		}
 	}
-
-	r.ARecords[domain].DomainDelete[domain] = ips
 
 	return true
 }
@@ -128,7 +126,7 @@ func (r *Records) ResetDeleteQueue(domain string) {
 
 	if exists {
 		logger.Log.Info(fmt.Sprintf("cleared delete queue from domain %s", domain))
-		arecords.DomainDelete[domain] = []string{}
+		arecords.DomainDelete[domain] = nil
 	}
 }
 

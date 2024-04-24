@@ -22,8 +22,12 @@ func (api *Api) RunOperators(c *gin.Context) {
 
 	for _, forbidenOperator := range invalidOperators {
 		if forbidenOperator == operator {
-			c.JSON(http.StatusForbidden, gin.H{
-				"message": "Hey there captain. This is not allowed!",
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "this operation is restricted",
+				"error":   "can't call internal methods on the operators",
+				"fail":    true,
+				"success": false,
+				"data":    nil,
 			})
 
 			return
@@ -34,7 +38,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Operator is not present on the server",
+			"message": "operator is not present on the server",
+			"error":   err.Error(),
+			"fail":    true,
+			"success": false,
+			"data":    nil,
 		})
 
 		return
@@ -44,7 +52,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 		Operator, err := plugin.Lookup(cases.Title(language.English).String(group))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Operator is not present on the server",
+				"message": "operator is not present on the server",
+				"error":   err.Error(),
+				"fail":    true,
+				"success": false,
+				"data":    nil,
 			})
 
 			return
@@ -55,7 +67,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Operator malfunctioned on the server",
+				"message": "operator implementation malfunctioned on the server",
+				"error":   "check server logs",
+				"fail":    true,
+				"success": false,
+				"data":    nil,
 			})
 
 			return
@@ -67,7 +83,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 			jsonData, err := io.ReadAll(c.Request.Body)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"message": "Invalid JSON sent as the body.",
+					"message": "invalid JSON sent as the body",
+					"error":   err.Error(),
+					"fail":    true,
+					"success": false,
+					"data":    nil,
 				})
 
 				return
@@ -77,20 +97,37 @@ func (api *Api) RunOperators(c *gin.Context) {
 
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"message": "Invalid JSON sent as the body.",
+					"message": "invalid JSON sent as the body",
+					"error":   err.Error(),
+					"fail":    true,
+					"success": false,
+					"data":    nil,
 				})
 
 				return
 			}
 		}
 
-		message := pl.Run(operator, body)
-
-		if message["success"] != "true" {
-			c.JSON(http.StatusExpectationFailed, message)
-		} else {
-			c.JSON(http.StatusOK, message)
+		request := operators.Request{
+			Config:     api.Config,
+			Runtime:    api.Runtime,
+			Registry:   api.Registry,
+			Reconciler: api.Reconciler,
+			Manager:    api.Manager,
+			Badger:     api.Badger,
+			DnsCache:   api.DnsCache,
+			Data:       body,
 		}
+
+		operatorResponse := pl.Run(operator, request)
+
+		c.JSON(operatorResponse.HttpStatus, gin.H{
+			"message": operatorResponse.Explanation,
+			"error":   operatorResponse.ErrorExplanation,
+			"fail":    operatorResponse.Error,
+			"success": operatorResponse.Success,
+			"data":    operatorResponse.Data,
+		})
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Operator is not present on the server",
@@ -107,7 +144,11 @@ func (api *Api) ListSupported(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Operator is not present on the server",
+			"message": "operator is not present on the server",
+			"error":   err.Error(),
+			"fail":    true,
+			"success": false,
+			"data":    nil,
 		})
 
 		return
@@ -117,7 +158,11 @@ func (api *Api) ListSupported(c *gin.Context) {
 		Operator, err := plugin.Lookup(cases.Title(language.English).String(group))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Operator is not present on the server",
+				"message": "operator is not present on the server",
+				"error":   err.Error(),
+				"fail":    true,
+				"success": false,
+				"data":    nil,
 			})
 
 			return
@@ -128,14 +173,18 @@ func (api *Api) ListSupported(c *gin.Context) {
 
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Operator malfunctioned on the server",
+				"message": "operator implementation malfunctioned on the server",
+				"error":   "check server logs",
+				"fail":    true,
+				"success": false,
+				"data":    nil,
 			})
 
 			return
 		}
 
-		message := pl.Run("ListSupported", map[string]any{"test": "test"})
-		supportedOperatorList := message["SupportedOperations"].([]string)
+		operatorResponse := pl.Run("ListSupported", map[string]any{"test": "test"})
+		supportedOperatorList := operatorResponse.Data["SupportedOperations"].([]string)
 
 		for index, supported := range supportedOperatorList {
 			for _, forbiddenOperator := range invalidOperators {
@@ -149,12 +198,22 @@ func (api *Api) ListSupported(c *gin.Context) {
 			}
 		}
 
-		c.JSON(http.StatusOK, gin.H{"SupportedOperators": supportedOperatorList})
+		c.JSON(http.StatusOK, gin.H{
+			"message": "",
+			"error":   "",
+			"fail":    true,
+			"success": false,
+			"data":    supportedOperatorList,
+		})
 
 		return
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Operator is not present on the server",
+			"message": "operator is not present on the server",
+			"error":   err.Error(),
+			"fail":    true,
+			"success": false,
+			"data":    nil,
 		})
 
 		return
