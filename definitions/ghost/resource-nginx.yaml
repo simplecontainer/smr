@@ -1,0 +1,14 @@
+kind: resource
+resource:
+  meta:
+    group: nginx
+    identifier: "*"
+  spec:
+    data:
+      nginx-configuration: |
+        server {
+          listen   80;
+          listen   [::]:80;
+          
+          server_name localhost;
+        }

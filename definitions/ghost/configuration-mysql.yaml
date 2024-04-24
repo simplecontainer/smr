@@ -1,0 +1,8 @@
+kind: configuration
+configuration:
+  meta:
+    group: mysql
+    identifier: "*"
+  spec:
+    data:
+      password: "password123"
