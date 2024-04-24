@@ -38,7 +38,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		var globalGroups []string
 		var globalNames []string
 
-		format := database.Format("object-operator", operatorContainer.Meta.Group, operatorContainer.Meta.Name, "object")
+		format := database.Format("operator", operatorContainer.Meta.Group, operatorContainer.Meta.Name, "object")
 		obj := objects.New()
 		err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
 

@@ -1,0 +1,158 @@
+basePath: /api/v1
+definitions:
+  api.Kv:
+    properties:
+      value:
+        type: string
+    type: object
+  database.Response:
+    properties:
+      data:
+        additionalProperties: {}
+        type: object
+      error:
+        type: boolean
+      errorExplanation:
+        type: string
+      explanation:
+        type: string
+      success:
+        type: boolean
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
+info:
+  contact:
+    name: API Support
+    url: https://github.com/qdnqn/smr
+  description: This is a container orchestrator service.
+  license:
+    name: GNU General Public License v3.0
+    url: https://github.com/qdnqn/smr/blob/main/LICENSE
+  termsOfService: http://smr.qdnqn.com/terms
+  title: Simple container manager API
+  version: "1.0"
+paths:
+  /database/{key}:
+    get:
+      description: get string by key from the key-value store
+      parameters:
+      - description: RandomKey
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/database.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/database.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/database.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/database.Response'
+      summary: Get value from the key-value store
+      tags:
+      - database
+    post:
+      description: set string by key in the key-value store
+      parameters:
+      - description: RandomKey
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: value
+        in: body
+        name: value
+        required: true
+        schema:
+          $ref: '#/definitions/api.Kv'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/database.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/database.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/database.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/database.Response'
+      summary: Set value in the key-value store
+      tags:
+      - database
+  /database/{key}/{prefix}:
+    get:
+      description: get all keys by prefix in the key-value store
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/database.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/database.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/database.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/database.Response'
+      summary: Get keys by prefix in the key-value store
+      tags:
+      - database
+  /database/keys:
+    get:
+      description: get all keys by prefix in the key-value store
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/database.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/database.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/database.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/database.Response'
+      summary: Get keys by prefix in the key-value store
+      tags:
+      - database
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

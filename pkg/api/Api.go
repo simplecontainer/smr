@@ -1,11 +1,11 @@
 package api
 
 import (
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"smr/pkg/config"
 	"smr/pkg/container"
 	"smr/pkg/dns"
+	"smr/pkg/gitops"
 	"smr/pkg/manager"
 	"smr/pkg/reconciler"
 	"smr/pkg/registry"
@@ -14,21 +14,24 @@ import (
 
 func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api := &Api{
-		Config:     config,
-		Runtime:    &runtime.Runtime{},
-		Registry:   &registry.Registry{},
-		Reconciler: reconciler.New(),
-		Manager:    &manager.Manager{},
-		Badger:     badger,
-		DnsCache:   &dns.Records{},
+		Config:              config,
+		Runtime:             &runtime.Runtime{},
+		Registry:            &registry.Registry{},
+		Reconciler:          reconciler.New(),
+		Manager:             &manager.Manager{},
+		Badger:              badger,
+		DnsCache:            &dns.Records{},
+		RepostitoryWatchers: &gitops.RepositoryWatchers{},
 	}
-
-	fmt.Println(api.Reconciler.QueueChan)
 
 	api.Registry = &registry.Registry{
 		Containers:     make(map[string]map[string]*container.Container),
 		Indexes:        make(map[string][]int),
 		BackOffTracker: make(map[string]map[string]int),
+	}
+
+	api.RepostitoryWatchers = &gitops.RepositoryWatchers{
+		Repositories: make(map[string]*gitops.Gitops),
 	}
 
 	api.Runtime = runtime.GetRuntimeInfo()
@@ -38,6 +41,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api.Manager.Reconciler = api.Reconciler
 	api.Manager.Badger = badger
 	api.Manager.DnsCache = api.DnsCache
+	api.Manager.RepositoryWatchers = api.RepostitoryWatchers
 
 	return api
 }

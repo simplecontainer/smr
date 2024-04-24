@@ -1,6 +1,7 @@
 package dependency
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/imroc/req/v3"
@@ -10,102 +11,153 @@ import (
 	"smr/pkg/manager"
 	"smr/pkg/template"
 	"smr/pkg/utils"
-	"sync"
 	"time"
 )
 
-func SolveDepends(mgr *manager.Manager, depend definitions.DependsOn, c chan State) {
-	var State State
+func NewDependencyFromDefinition(depend definitions.DependsOn) *Dependency {
+	if depend.Timeout == "" {
+		depend.Timeout = "30s"
+	}
 
-	State = Depends(mgr, "http://smr-agent:8080/operators", depend.Name, depend.Operator, depend.Body)
+	timeout, err := time.ParseDuration(depend.Timeout)
 
-	c <- State
+	var ctx context.Context
+	if err == nil {
+		ctx, _ = context.WithTimeout(context.Background(), timeout)
+	} else {
+		return nil
+	}
+
+	return &Dependency{
+		Name:     depend.Name,
+		Operator: depend.Operator,
+		Timeout:  depend.Timeout,
+		Body:     depend.Body,
+		Solved:   depend.Solved,
+		Ctx:      ctx,
+	}
+}
+
+func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
+	if depend.Timeout == "" {
+		depend.Timeout = "30s"
+	}
+
+	timeout, err := time.ParseDuration(depend.Timeout)
+
+	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		ch := make(chan State)
+		defer close(ch)
+
+		logger.Log.Info("trying to solve dependency", zap.String("name", depend.Name))
+
+		go Depends(mgr, "http://smr-agent:8080/operators", depend, ch)
+
+		for {
+			select {
+			case d := <-ch:
+				c <- d
+			case <-ctx.Done():
+				c <- State{
+					Success: false,
+					Missing: false,
+					Timeout: true,
+					Depend:  depend,
+				}
+			}
+		}
+	} else {
+		c <- State{
+			Success: false,
+			Missing: false,
+			Timeout: false,
+			Error:   err,
+			Depend:  depend,
+		}
+	}
 }
 
 func Ready(mgr *manager.Manager, group string, name string, dependsOn []definitions.DependsOn) (bool, error) {
 	if len(dependsOn) > 0 {
-		var wg sync.WaitGroup
+		var allDependenciesSolved = true
+		logger.Log.Info("trying to solve dependencies", zap.String("group", group), zap.String("name", name))
 
-		waitGroupCount := len(dependsOn)
-		wg.Add(waitGroupCount)
-
-		logger.Log.Info("wait group for dependencies", zap.Int("waitGroupCount", waitGroupCount))
 		c := make(chan State)
-
-		for i, depend := range dependsOn {
-			for {
-				if dependsOn[i].Solved {
-					break
-				}
-
-				timeout, err := time.ParseDuration(depend.Timeout)
-
-				if err != nil {
-					logger.Log.Error("invalid timeout provided")
-					return false, errors.New("invalid timeout provided")
-				}
-
-				go SolveDepends(mgr, depend, c)
-
-				select {
-				case d := <-c:
-					if d.Success {
-						logger.Log.Info("success from dependency", zap.Int("waitGroupCount", waitGroupCount))
-
-						if waitGroupCount > 0 {
-							waitGroupCount -= 1
-							wg.Done()
-						}
-
-						dependsOn[i].Solved = true
-					} else {
-						time.Sleep(5 * time.Second)
-					}
-				case <-time.After(timeout):
-					logger.Log.Info("success from dependency", zap.Int("waitGroupCount", waitGroupCount))
-
-					if waitGroupCount > 0 {
-						waitGroupCount -= 1
-						wg.Done()
-					}
-
-					dependsOn[i].Solved = false
-				}
-			}
-		}
-		wg.Wait()
-
-		close(c)
-
-		logger.Log.Info("ready finished", zap.String("group", group), zap.String("name", name))
-		logger.Log.Info("updating status of dependency solver", zap.Bool("DependsSolver", mgr.Registry.Containers[group][name].Status.DependsSolved))
-
-		mgr.Registry.Containers[group][name].Status.DependsSolved = true
-
 		for _, depend := range dependsOn {
-			if !depend.Solved {
-				mgr.Registry.Containers[group][name].Status.DependsSolved = false
-				return false, errors.New("didn't solve all dependencies")
+			dependency := NewDependencyFromDefinition(depend)
+			go SolveDepends(mgr, dependency, c)
+		}
+
+		for len(dependsOn) > 0 {
+			select {
+			case d := <-c:
+				if d.Missing {
+					allDependenciesSolved = false
+
+					for i, v := range dependsOn {
+						if v.Name == d.Depend.Name {
+							dependsOn = append(dependsOn[:i], dependsOn[i+1:]...)
+						}
+					}
+				}
+
+				if d.Success {
+					logger.Log.Info("dependency solved", zap.String("group", group), zap.String("name", name))
+
+					for i, v := range dependsOn {
+						if v.Name == d.Depend.Name {
+							dependsOn = append(dependsOn[:i], dependsOn[i+1:]...)
+						}
+					}
+				} else {
+					deadline, _ := d.Depend.Ctx.Deadline()
+
+					if deadline.After(time.Now()) {
+						time.Sleep(5 * time.Second)
+						go SolveDepends(mgr, d.Depend, c)
+					} else {
+						logger.Log.Info("deadline exceeded", zap.String("group", group), zap.String("name", name))
+						allDependenciesSolved = false
+
+						for i, v := range dependsOn {
+							if v.Name == d.Depend.Name {
+								dependsOn = append(dependsOn[:i], dependsOn[i+1:]...)
+							}
+						}
+					}
+				}
 			}
 		}
-	} else {
+
 		mgr.Registry.Containers[group][name].Status.DependsSolved = true
+
+		if !allDependenciesSolved {
+			mgr.Registry.Containers[group][name].Status.DependsSolved = false
+			return false, errors.New("didn't solve all dependencies")
+		} else {
+			logger.Log.Info("all dependencies solved", zap.String("group", group), zap.String("name", name))
+			return true, nil
+		}
 	}
 
-	logger.Log.Info("Ready finished", zap.String("group", group), zap.String("name", name), zap.Bool("DependsSolver", mgr.Registry.Containers[group][name].Status.DependsSolved))
+	logger.Log.Info("no dependencies defined", zap.String("group", group), zap.String("name", name))
+	mgr.Registry.Containers[group][name].Status.DependsSolved = true
 
 	return true, nil
 }
 
-func Depends(mgr *manager.Manager, host string, name string, operator string, json map[string]any) State {
+func Depends(mgr *manager.Manager, host string, depend *Dependency, ch chan State) {
 	client := req.C().DevMode()
 
-	if operator != "" {
+	if depend.Operator != "" {
 		var err error
-		json, err = template.ParseTemplate(mgr.Badger, json, nil)
+		json, err := template.ParseTemplate(mgr.Badger, depend.Body, nil)
 
-		group, _ := utils.ExtractGroupAndId(name)
-		url := fmt.Sprintf("%s/%s/%s", host, group, operator)
+		group, _ := utils.ExtractGroupAndId(depend.Name)
+		url := fmt.Sprintf("%s/%s/%s", host, group, depend.Operator)
 		var result Result
 
 		logger.Log.Info(fmt.Sprintf("trying to call operator: %s", url))
@@ -118,45 +170,62 @@ func Depends(mgr *manager.Manager, host string, name string, operator string, js
 		}
 
 		if resp.IsSuccessState() {
-			return State{
-				Name:    fmt.Sprintf("%s/%s", name, operator),
+			ch <- State{
 				Success: true,
+				Depend:  depend,
 			}
 		} else {
-			return State{
-				Name:    fmt.Sprintf("%s/%s", name, operator),
+			ch <- State{
 				Success: false,
+				Depend:  depend,
 			}
 		}
 	} else {
-		status := false
-
-		group, id := utils.ExtractGroupAndId(name)
+		group, id := utils.ExtractGroupAndId(depend.Name)
 
 		logger.Log.Info("trying to check if depends solved", zap.String("group", group), zap.String("name", id))
 
 		if mgr.Registry.Containers[group] != nil {
 			if id == "*" {
-				status = true
-
 				for _, container := range mgr.Registry.Containers[group] {
 					if !container.Status.DependsSolved {
-						return State{
-							Name:    fmt.Sprintf("%s/%s", name, operator),
+						ch <- State{
 							Success: false,
+							Depend:  depend,
 						}
+
+						return
 					}
 				}
+
+				ch <- State{
+					Success: true,
+					Missing: false,
+					Depend:  depend,
+				}
+
+				return
 			} else {
 				if mgr.Registry.Containers[group][id] != nil {
-					status = mgr.Registry.Containers[group][id].Status.DependsSolved
+					ch <- State{
+						Success: true,
+						Missing: false,
+						Depend:  depend,
+					}
+				} else {
+					ch <- State{
+						Success: false,
+						Missing: true,
+						Depend:  depend,
+					}
 				}
 			}
-		}
-
-		return State{
-			Name:    fmt.Sprintf("%s/%s", name, operator),
-			Success: status,
+		} else {
+			ch <- State{
+				Success: false,
+				Missing: true,
+				Depend:  depend,
+			}
 		}
 	}
 }

@@ -15,9 +15,6 @@ func (container *Container) Prepare(db *badger.DB) bool {
 	var err error
 	format := database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
 
-	fmt.Println("FROM PREPARE CALINNNNNNNNNNNNNNNGGG")
-	fmt.Println(format)
-
 	container.Runtime.Configuration, err = template.ParseTemplate(db, container.Runtime.Configuration, &format)
 
 	if err != nil {

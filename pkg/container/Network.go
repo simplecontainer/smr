@@ -12,7 +12,7 @@ import (
 	"smr/pkg/logger"
 )
 
-const STARTING_SUBNET string = "172.18.0.2/24"
+const STARTING_SUBNET string = "10.10.0.0/16"
 
 func (container *Container) CreateNetwork() error {
 	if !container.FindNetwork() {
@@ -75,12 +75,14 @@ func (container *Container) FindNetwork() bool {
 	return false
 }
 
-func (container *Container) GenerateNetwork() *network.NetworkingConfig {
+func (container *Container) GetNetwork() *network.NetworkingConfig {
 	dnetw := network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{}}
 
-	for _, netw := range container.Static.Networks {
-		dnetw.EndpointsConfig[netw] = &network.EndpointSettings{
-			NetworkID: netw,
+	if container.Static.NetworkMode != "host" {
+		for _, netw := range container.Static.Networks {
+			dnetw.EndpointsConfig[netw] = &network.EndpointSettings{
+				NetworkID: netw,
+			}
 		}
 	}
 
@@ -97,7 +99,7 @@ func (container *Container) GenerateNetworkSubnet() (string, error) {
 
 	_, IPv4net, err := net.ParseCIDR(STARTING_SUBNET)
 
-	logger.Log.Info(fmt.Sprintf("IPV4: %s", IPv4net))
+	logger.Log.Info(fmt.Sprintf("generating network IPV4: %s", IPv4net))
 
 	networks, err := cli.NetworkList(ctx, types.NetworkListOptions{})
 	subnets := make([]*net.IPNet, 0)
@@ -122,7 +124,7 @@ func (container *Container) GenerateNetworkSubnet() (string, error) {
 
 	for _, subnet := range subnets {
 		for intersect(IPv4net, subnet) {
-			IPv4net, _ = cidr.NextSubnet(IPv4net, 24)
+			IPv4net, _ = cidr.NextSubnet(IPv4net, 32)
 		}
 	}
 

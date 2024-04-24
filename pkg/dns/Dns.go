@@ -13,6 +13,8 @@ func New() *Records {
 }
 
 func (r *Records) AddARecord(domain string, ip string) {
+	logger.Log.Info("adding ip to dns", zap.String("ip", ip), zap.String("domain", domain))
+
 	if len(r.ARecords) > 0 {
 		_, ARecordexists := r.ARecords[domain]
 

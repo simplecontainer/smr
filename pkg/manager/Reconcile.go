@@ -8,7 +8,7 @@ func (mgr *Manager) Reconcile() {
 	go mgr.Reconciler.ListenEvents(mgr.Registry, mgr.DnsCache)
 }
 
-func (mgr *Manager) EmitChange(group string, identifier string) {
+func (mgr *Manager) EmitChange(kind string, group string, identifier string) {
 	if mgr.Registry.Containers[group] != nil {
 		if identifier == "*" {
 			for identifierFromRegistry, _ := range mgr.Registry.Containers[group] {

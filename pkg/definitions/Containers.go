@@ -1,18 +1,10 @@
 package definitions
 
-import (
-	"smr/pkg/network"
-)
+import "smr/pkg/network"
 
-// Local contracts
 type Containers struct {
 	Kind       string               `yaml:"kind"`
 	Containers map[string]Container `mapstructure:"container"`
-}
-
-type Operator struct {
-	Meta Meta `mapstructure:"meta"`
-	Spec Spec `mapstructure:"spec"`
 }
 
 type Container struct {
@@ -36,15 +28,18 @@ type ContainerInternal struct {
 	Tag           string                 `yaml:"tag""`
 	Envs          []string               `yaml:"envs"`
 	Entrypoint    []string               `yaml:"entrypoint"`
-	Cmd           []string               `yaml:"cmd"`
+	Command       []string               `json:"command"`
 	Dependencies  []DependsOn            `yaml:"dependencies"`
 	Networks      []string               `yaml:"networks"`
 	Ports         []network.PortMappings `yaml:"ports"`
-	FileMounts    []map[string]string    `yaml:"fileMounts"`
+	Volumes       []map[string]string    `yaml:"volumes"`
 	Operators     []map[string]any       `yaml:"operators"`
 	Configuration map[string]any         `mapstructure:"configuration"`
 	Resources     []map[string]any       `mapstructure:"resources"`
 	Replicas      int                    `yaml:"replicas"`
+	Capabilities  []string               `json:"capabilities"`
+	Privileged    bool                   `json:"privileged"`
+	NetworkMode   string                 `json:"network_mode"`
 }
 
 type DependsOn struct {
@@ -53,38 +48,4 @@ type DependsOn struct {
 	Timeout  string         `yaml:"timeout"`
 	Body     map[string]any `mapstructure:"body"`
 	Solved   bool
-}
-
-// Internal implementation contracts
-
-// Configuration
-
-type Configuration struct {
-	Meta ConfigurationMeta `mapstructure:"meta"`
-	Spec ConfigurationSpec `mapstructure:"spec"`
-}
-
-type ConfigurationMeta struct {
-	Group      string `json:"group"`
-	Identifier string `json:"identifier"`
-}
-
-type ConfigurationSpec struct {
-	Data map[string]string `json:"data"`
-}
-
-// Template
-
-type Resource struct {
-	Meta ResourceMeta `mapstructure:"meta"`
-	Spec ResourceSpec `mapstructure:"spec"`
-}
-
-type ResourceMeta struct {
-	Group      string `json:"group"`
-	Identifier string `json:"identifier"`
-}
-
-type ResourceSpec struct {
-	Data map[string]any `json:"data"`
 }

@@ -6,3 +6,11 @@ type FormatStructure struct {
 	Identifier string
 	Key        string
 }
+
+type Response struct {
+	Explanation      string
+	ErrorExplanation string
+	Error            bool
+	Success          bool
+	Data             map[string]any
+}
