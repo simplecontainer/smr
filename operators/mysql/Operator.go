@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"reflect"
 	"smr/pkg/operators"
 )
@@ -60,8 +61,6 @@ func (operator *Operator) ListSupported(args ...interface{}) operators.Response 
 
 func (operator *Operator) DatabaseReady(request operators.Request) operators.Response {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", request.Data["username"], request.Data["password"], request.Data["ip"], request.Data["port"]))
-	defer db.Close()
-
 	if err != nil {
 		return operators.Response{
 			HttpStatus:       400,
@@ -73,6 +72,7 @@ func (operator *Operator) DatabaseReady(request operators.Request) operators.Res
 		}
 	}
 
+	defer db.Close()
 	err = db.Ping()
 
 	if err != nil {
