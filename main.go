@@ -5,6 +5,9 @@ import (
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/spf13/viper"
+	"github.com/swaggo/files"
+	"github.com/swaggo/gin-swagger"
+	_ "smr/docs"
 	"smr/pkg/api"
 	"smr/pkg/commands"
 	_ "smr/pkg/commands"
@@ -12,6 +15,25 @@ import (
 	"smr/pkg/logger"
 	"strconv"
 )
+
+//	@title			Simple container manager API
+//	@version		1.0
+//	@description	This is a container orchestrator service.
+//	@termsOfService	http://smr.qdnqn.com/terms
+
+//	@contact.name	API Support
+//	@contact.url	https://github.com/qdnqn/smr
+
+//	@license.name	GNU General Public License v3.0
+//	@license.url	https://github.com/qdnqn/smr/blob/main/LICENSE
+
+//	@host		localhost:8080
+//	@BasePath	/api/v1
+
+//	@securityDefinitions.basic	BasicAuth
+
+//	@externalDocs.description	OpenAPI
+//	@externalDocs.url			https://swagger.io/resources/open-api/
 
 func main() {
 	logger.Log = logger.NewLogger()
@@ -47,26 +69,44 @@ func main() {
 		go server.ListenAndServe()
 		defer server.Shutdown()
 
+		if viper.GetBool("cilium") {
+			// Start cilium containers for multi host networking
+		}
+
 		api.Manager.Reconcile()
 		router := gin.Default()
 
-		// System
+		v1 := router.Group("/api/v1")
+		{
+			operators := v1.Group("/operators")
+			{
+				operators.GET(":group", api.ListSupported)
+				operators.GET(":group/:operator", api.RunOperators)
+				operators.POST(":group/:operator", api.RunOperators)
+			}
+
+			objects := v1.Group("/")
+			{
+				objects.POST("apply", api.Apply)
+			}
+
+			containers := v1.Group("/")
+			{
+				containers.GET("ps", api.Ps)
+			}
+
+			database := v1.Group("database")
+			{
+				database.GET(":key", api.DatabaseGet)
+				database.GET("keys", api.DatabaseGetKeys)
+				database.GET("keys/:prefix", api.DatabaseGetKeysPrefix)
+				database.POST(":key", api.DatabaseSet)
+				database.PUT(":key", api.DatabaseSet)
+			}
+		}
+
+		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 		router.GET("/healthz", api.Health)
-
-		// Operators
-		router.GET("/operators/:group/", api.ListSupported)
-		router.GET("/operators/:group/:operator", api.RunOperators)
-		router.POST("/operators/:group/:operator", api.RunOperators)
-
-		// Containers
-		router.POST("/apply", api.Apply)
-		router.GET("/ps", api.Ps)
-
-		// Database
-		//router.GET("/database/", api.DatabaseGetAll)
-		router.GET("/database/:key", api.DatabaseGet)
-		router.POST("/database/:key", api.DatabaseSet)
-		router.PUT("/database/:key", api.DatabaseSet)
 
 		router.Run()
 	}

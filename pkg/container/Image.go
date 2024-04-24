@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/client"
 	"io"
 	"smr/pkg/logger"
+	"strings"
 )
 
 func (container *Container) PullImage(ctx context.Context, cli *client.Client) error {
@@ -39,11 +40,11 @@ func (container *Container) PullImage(ctx context.Context, cli *client.Client) e
 		}
 
 		defer reader.Close()
-		logger.Log.Info(fmt.Sprintf("Pulled the image %s:%s", container.Static.Image, container.Static.Tag))
+		logger.Log.Info(fmt.Sprintf("pulled the image %s:%s", container.Static.Image, container.Static.Tag))
 
 		return nil
 	} else {
-		logger.Log.Info(fmt.Sprintf("Image %s:%s already present", container.Static.Image, container.Static.Tag))
+		logger.Log.Info(fmt.Sprintf("image %s:%s already present", container.Static.Image, container.Static.Tag))
 		return nil
 	}
 }
@@ -54,14 +55,17 @@ func (container *Container) CheckIfImagePresent(ctx context.Context, cli *client
 	})
 
 	if err != nil {
-		logger.Log.Fatal("Failed to list container images")
+		logger.Log.Fatal("failed to list container images")
 	}
 
 	searchingFor := fmt.Sprintf("%s:%s", container.Static.Image, container.Static.Tag)
 
 	for _, image := range images {
 		for _, tag := range image.RepoTags {
-			if tag == searchingFor {
+			registryTo, imageTo := splitReposSearchTerm(tag)
+			registryFrom, imageFrom := splitReposSearchTerm(searchingFor)
+
+			if registryTo == registryFrom && imageTo == imageFrom {
 				return true
 			}
 		}
@@ -74,4 +78,20 @@ func (container *Container) GetDockerAuth() types.ImagePullOptions {
 	return types.ImagePullOptions{
 		RegistryAuth: container.Runtime.Auth,
 	}
+}
+
+func splitReposSearchTerm(reposName string) (string, string) {
+	nameParts := strings.SplitN(reposName, "/", 2)
+	var indexName, remoteName string
+	if len(nameParts) == 1 || (!strings.Contains(nameParts[0], ".") &&
+		!strings.Contains(nameParts[0], ":") && nameParts[0] != "localhost") {
+		// This is a Docker Index repos (ex: samalba/hipache or ubuntu)
+		// 'docker.io'
+		indexName = "docker.io"
+		remoteName = reposName
+	} else {
+		indexName = nameParts[0]
+		remoteName = nameParts[1]
+	}
+	return indexName, remoteName
 }

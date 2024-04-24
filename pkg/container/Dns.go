@@ -6,7 +6,7 @@ import (
 )
 
 func (container *Container) GetDomain() string {
-	return fmt.Sprintf("%s.%s.", container.Static.GeneratedName, static.SMR_LOCAL_DOMAIN)
+	return fmt.Sprintf("%s.%s.%s.", container.Static.Group, container.Static.GeneratedName, static.SMR_LOCAL_DOMAIN)
 }
 
 func (container *Container) GetHeadlessDomain() string {

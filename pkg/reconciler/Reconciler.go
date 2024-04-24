@@ -228,13 +228,13 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 			queue.Container.Status.Reconciling = true
 
 			container := queue.Container
-			registry.BackOffTracking(container.Static.Group, container.Static.Name)
+			registry.BackOffTracking(container.Static.Group, container.Static.GeneratedName)
 
 			for {
 				if registry.BackOffTracker[container.Static.Group][container.Static.GeneratedName] > 5 {
-					logger.Log.Error(fmt.Sprintf("%s container is backoff restarting", container.Static.Name))
+					logger.Log.Error(fmt.Sprintf("%s container is backoff restarting", container.Static.GeneratedName))
 
-					registry.BackOffReset(container.Static.Group, container.Static.Name)
+					registry.BackOffReset(container.Static.Group, container.Static.GeneratedName)
 					container.Status.BackOffRestart = true
 					container.Status.Healthy = false
 

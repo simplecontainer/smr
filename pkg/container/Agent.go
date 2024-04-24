@@ -17,6 +17,8 @@ func (container *Container) ConnectToTheSameNetwork(containerId string, networkI
 		}
 		defer cli.Close()
 
+		// TODO: Don't connect if the network is same
+
 		EndpointSettings := &network.EndpointSettings{
 			NetworkID: networkId,
 		}

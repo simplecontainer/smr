@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
@@ -23,7 +24,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		return implementations.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
-			ErrorExplanation: "json is not valid",
+			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
 		}, err
@@ -32,7 +33,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		var globalNames []string
 
 		for _, definition := range definitionSent.Containers {
-			format := database.Format("object-container", definition.Meta.Group, definition.Meta.Name, "object")
+			format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 			obj := objects.New()
 			err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
 
@@ -43,7 +44,6 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 				if obj.Diff(jsonStringFromRequest) {
 					// Detect only change on replicas, if that's true tackle only scale up or scale down without recreating
 					// containers that are there already, otherwise recreate everything
-					err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
 				}
 			} else {
 				err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
@@ -54,6 +54,19 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 				name := definition.Meta.Name
 				logger.Log.Info(fmt.Sprintf("trying to generate container %s object", name))
+
+				_, ok := definitionSent.Containers[name]
+
+				if !ok {
+					return implementations.Response{
+						HttpStatus:       400,
+						Explanation:      "container definition invalid",
+						ErrorExplanation: fmt.Sprintf("container definintion with name %s not found", name),
+						Error:            true,
+						Success:          false,
+					}, errors.New(fmt.Sprintf("container definintion with name %s not found", name))
+				}
+
 				groups, names, err := implementation.generateReplicaNamesAndGroups(mgr, definitionSent.Containers[name], obj.Changelog)
 
 				if err == nil {
@@ -61,6 +74,8 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 					globalGroups = append(globalGroups, groups...)
 					globalNames = append(globalNames, names...)
+
+					err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
 				} else {
 					logger.Log.Error("failed to generate names and groups")
 
@@ -103,7 +118,6 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 						Container: container,
 					}
 				} else {
-
 					solved, err = dependency.Ready(mgr, container.Static.Group, container.Static.GeneratedName, container.Static.Definition.Spec.Container.Dependencies)
 
 					if solved {

@@ -36,7 +36,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 	var format database.FormatStructure
 
-	format = database.Format("object-configuration", config.Meta.Group, config.Meta.Identifier, "object")
+	format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
 	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
 
@@ -62,7 +62,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 			database.Put(mgr.Badger, format.ToString(), value)
 		}
 
-		mgr.EmitChange(config.Meta.Group, config.Meta.Identifier)
+		mgr.EmitChange(KIND, config.Meta.Group, config.Meta.Identifier)
 	} else {
 		return implementations.Response{
 			HttpStatus:       200,

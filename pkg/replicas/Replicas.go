@@ -17,10 +17,10 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	groups := make([]string, 0)
 	names := make([]string, 0)
 
-	numberOfReplicasToCreate, numberOfReplicasToDestroy, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
+	fmt.Println("REEEEEEEEEEEEEEEEEEEPLICAS STATE")
+	fmt.Println(replicas)
 
-	fmt.Println(fmt.Sprintf("NumberOfReplicasToCreate: %d", numberOfReplicasToCreate))
-	fmt.Println(fmt.Sprintf("NumberOfReplicasToDestroy %d", numberOfReplicasToDestroy))
+	numberOfReplicasToCreate, numberOfReplicasToDestroy, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
 
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {

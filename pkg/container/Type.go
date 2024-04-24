@@ -26,11 +26,14 @@ type Static struct {
 	Networks               []string
 	Env                    []string
 	Entrypoint             []string
-	Cmd                    []string
+	Command                []string
 	MappingFiles           []map[string]string
 	MappingPorts           []network.PortMappings
 	ExposedPorts           []string
 	MountFiles             []string
+	Capabilities           []string
+	NetworkMode            string
+	Privileged             bool
 	Definition             definitions.Container
 }
 

@@ -11,6 +11,7 @@ import (
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
@@ -64,10 +65,13 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Networks:               definition.Spec.Container.Networks,
 			Env:                    definition.Spec.Container.Envs,
 			Entrypoint:             definition.Spec.Container.Entrypoint,
-			Cmd:                    definition.Spec.Container.Cmd,
-			MappingFiles:           definition.Spec.Container.FileMounts,
+			Command:                definition.Spec.Container.Command,
+			MappingFiles:           definition.Spec.Container.Volumes,
 			MappingPorts:           definition.Spec.Container.Ports,
 			ExposedPorts:           convertPortMappingsToExposedPorts(definition.Spec.Container.Ports),
+			Capabilities:           definition.Spec.Container.Capabilities,
+			NetworkMode:            definition.Spec.Container.NetworkMode,
+			Privileged:             definition.Spec.Container.Privileged,
 			Definition:             definitionCopy,
 		},
 		Runtime: Runtime{
@@ -81,10 +85,14 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Resources:     mapAnyToResources(definition.Spec.Container.Resources),
 		},
 		Status: Status{
-			BackOffRestart: false,
-			Healthy:        true,
-			Ready:          true,
-			Running:        false,
+			DependsSolved:   false,
+			BackOffRestart:  false,
+			Healthy:         false,
+			Ready:           false,
+			Running:         false,
+			Reconciling:     false,
+			DefinitionDrift: false,
+			PendingDelete:   false,
 		},
 	}
 
@@ -262,7 +270,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		Image:        container.Static.Image + ":" + container.Static.Tag,
 		Env:          container.Static.Env,
 		Entrypoint:   container.Static.Entrypoint,
-		Cmd:          container.Static.Cmd,
+		Cmd:          container.Static.Command,
 		Tty:          false,
 		ExposedPorts: container.exposedPorts(),
 	}, &dockerContainer.HostConfig{
@@ -271,15 +279,20 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		},
 		Mounts:       container.mappingToMounts(runtime),
 		PortBindings: container.portMappings(),
-	}, container.GenerateNetwork(), nil, container.Static.GeneratedName)
+		NetworkMode:  dockerContainer.NetworkMode(container.Static.NetworkMode),
+		Privileged:   container.Static.Privileged,
+		CapAdd:       container.Static.Capabilities,
+	}, container.GetNetwork(), nil, container.Static.GeneratedName)
 
 	if err != nil {
 		return nil, err
 	}
 
+	logger.Log.Info("starting container", zap.String("container", container.Static.GeneratedName))
 	if err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
+	logger.Log.Info("started container", zap.String("container", container.Static.GeneratedName))
 
 	data, err := cli.ContainerInspect(ctx, resp.ID)
 
@@ -294,52 +307,63 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		}
 	}
 
-	agent := Existing("smr-agent")
-
-	if agent != nil {
-		for _, nid := range container.Runtime.Networks {
-			logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
-
-			if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
-				err = container.ConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId)
-				if err == nil {
-					logger.Log.Info(fmt.Sprintf("smr-agent attached to the network %s", nid.NetworkId))
-				} else {
-					container.Stop()
-					container.Delete()
-					return c, err
-				}
-			}
-
-			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
-			database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
-
-			// Add ip to the dnsCache so that in cluster resolve works correctly
-			dnsCache.AddARecord(container.GetDomain(), container.Runtime.Networks[nid.NetworkId].IP)
-			// Generate headless service alike response to target multiple containers in the cluster
-			dnsCache.AddARecord(container.GetHeadlessDomain(), container.Runtime.Networks[nid.NetworkId].IP)
-		}
-
+	if container.Static.NetworkMode != "host" {
+		agent := Existing("smr-agent")
 		agent.Get()
 
-		for _, nid := range agent.Runtime.Networks {
-			if nid.IP == runtime.AGENTIP.String() {
-				err = container.ConnectToTheSameNetwork(resp.ID, nid.NetworkId)
-				if err != nil {
-					container.Stop()
-					container.Delete()
-					return c, err
-				} else {
-					format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
-					database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
+		if agent != nil {
+			for _, nid := range container.Runtime.Networks {
+				logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
 
-					logger.Log.Info(fmt.Sprintf("container %s attached to the network %s", container.Static.GeneratedName, nid.NetworkId))
+				if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
+					err = container.ConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId)
+					if err == nil {
+						logger.Log.Info(fmt.Sprintf("smr-agent attached to the network %s", nid.NetworkId))
+					} else {
+						container.Stop()
+						container.Delete()
+						return c, err
+					}
 				}
 
-				break
-			}
-		}
+				format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
+				database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
 
+				// Add ip to the dnsCache so that in cluster resolve works correctly
+				dnsCache.AddARecord(container.GetDomain(), container.Runtime.Networks[nid.NetworkId].IP)
+				// Generate headless service alike response to target multiple containers in the cluster
+				dnsCache.AddARecord(container.GetHeadlessDomain(), container.Runtime.Networks[nid.NetworkId].IP)
+			}
+
+			for _, nid := range agent.Runtime.Networks {
+				if nid.IP == runtime.AGENTIP.String() {
+					err = container.ConnectToTheSameNetwork(resp.ID, nid.NetworkId)
+					if err != nil {
+						container.Stop()
+						container.Delete()
+						return c, err
+					} else {
+						logger.Log.Info(fmt.Sprintf("container %s attached to the network of the agent %s", container.Static.GeneratedName, nid.NetworkId))
+					}
+
+					break
+				}
+			}
+
+			container.Runtime.FoundRunning = false
+			container.Status.DefinitionDrift = false
+
+			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
+			database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
+
+			return container.Get(), nil
+		} else {
+			logger.Log.Error(fmt.Sprintf("smr-agent not found"))
+			container.Stop()
+			container.Delete()
+			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
+		}
+	} else {
 		container.Runtime.FoundRunning = false
 		container.Status.DefinitionDrift = false
 
@@ -347,13 +371,9 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
 
 		return container.Get(), nil
-	} else {
-		logger.Log.Error(fmt.Sprintf("smr-agent not found"))
-		container.Stop()
-		container.Delete()
-		return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 	}
 }
+
 func (container *Container) Get() *types.Container {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())

@@ -13,12 +13,13 @@ import (
 
 func New() *Object {
 	return &Object{
-		Changelog:  diff.Changelog{},
-		definition: map[string]any{},
-		exists:     false,
-		changed:    false,
-		created:    time.Now(),
-		updated:    time.Now(),
+		Changelog:      diff.Changelog{},
+		definition:     map[string]any{},
+		definitionByte: make([]byte, 0),
+		exists:         false,
+		changed:        false,
+		created:        time.Now(),
+		updated:        time.Now(),
 	}
 }
 
@@ -35,6 +36,9 @@ func ConvertToMap(jsonData []byte) (map[string]any, error) {
 
 func (obj *Object) GetDefinition() map[string]any {
 	return obj.definition
+}
+func (obj *Object) GetDefinitionByte() []byte {
+	return obj.definitionByte
 }
 
 func (obj *Object) Add(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure, data string) error {
@@ -96,6 +100,7 @@ func (obj *Object) Find(registryObjects map[string]Object, db *badger.DB, format
 		}
 
 		obj.definition = data
+		obj.definitionByte = []byte(val)
 	} else {
 		return err
 	}

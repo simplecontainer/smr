@@ -3,9 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
-	"github.com/spf13/viper"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
 	"smr/pkg/implementations"
@@ -14,34 +12,34 @@ import (
 )
 
 func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
-	var resource definitions.Resource
+	var certkey definitions.CertKey
 
-	if err := json.Unmarshal(jsonData, &resource); err != nil {
-		panic(err)
-	}
-
-	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
-	if err != nil {
+	if err := json.Unmarshal(jsonData, &certkey); err != nil {
 		return implementations.Response{
 			HttpStatus:       400,
-			Explanation:      "invalid resource sent: json is not valid",
-			ErrorExplanation: "invalid resource sent: json is not valid",
+			Explanation:      "invalid configuration sent: json is not valid",
+			ErrorExplanation: "invalid configuration sent: json is not valid",
 			Error:            true,
 			Success:          false,
 		}, err
 	}
 
-	mapstructure.Decode(data["resource"], &resource)
+	data := make(map[string]interface{})
+	err := json.Unmarshal(jsonData, &data)
+	if err != nil {
+		panic(err)
+	}
+
+	mapstructure.Decode(data["certkey"], &certkey)
 
 	var format database.FormatStructure
 
-	format = database.Format("resource", resource.Meta.Group, resource.Meta.Identifier, "object")
+	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
 	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = resource.ToJsonString()
+	jsonStringFromRequest, err = certkey.ToJsonString()
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -52,17 +50,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		for key, value := range resource.Spec.Data {
-			format = database.Format("resource", resource.Meta.Group, resource.Meta.Identifier, key)
-
-			if format.Identifier != "*" {
-				format.Identifier = fmt.Sprintf("%s-%s", viper.GetString("project"), resource.Meta.Identifier)
-			}
-
-			database.Put(mgr.Badger, format.ToString(), value.(string))
-		}
-
-		mgr.EmitChange(KIND, resource.Meta.Group, resource.Meta.Identifier)
+		mgr.EmitChange(KIND, certkey.Meta.Group, certkey.Meta.Identifier)
 	} else {
 		return implementations.Response{
 			HttpStatus:       200,
@@ -82,4 +70,4 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	}, nil
 }
 
-var Resource Implementation
+var Certkey Implementation

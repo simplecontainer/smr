@@ -8,9 +8,14 @@ import (
 )
 
 func Put(Badger *badger.DB, key string, value string) error {
-	logger.Log.Info(fmt.Sprintf("Trying to save into db %s=%s", key, value))
+	logger.Log.Info(fmt.Sprintf("saving into key-value store %s=%s", key, value))
 	err := Badger.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(key), []byte(value))
+
+		if err == nil {
+			logger.Log.Info(fmt.Sprintf("saved into key-value store %s=%s", key, value))
+		}
+
 		return err
 	})
 
@@ -18,7 +23,7 @@ func Put(Badger *badger.DB, key string, value string) error {
 }
 
 func Get(Badger *badger.DB, key string) (string, error) {
-	logger.Log.Info(fmt.Sprintf("Trying to get from db %s", key))
+	logger.Log.Info(fmt.Sprintf("getting from key-value store %s", key))
 	var value []byte
 
 	err := Badger.View(func(txn *badger.Txn) error {
@@ -29,7 +34,7 @@ func Get(Badger *badger.DB, key string) (string, error) {
 
 		value, err = item.ValueCopy(nil)
 		if err != nil {
-			return errors.New(fmt.Sprintf("failed to read %s", err.Error()))
+			return errors.New(fmt.Sprintf("failed to get %s", err.Error()))
 		}
 
 		return nil
