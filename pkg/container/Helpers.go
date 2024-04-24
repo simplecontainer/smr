@@ -11,7 +11,7 @@ import (
 	"smr/pkg/runtime"
 )
 
-func (container *Container) mappingToMounts(runtime runtime.Runtime) []mount.Mount {
+func (container *Container) mappingToMounts(runtime *runtime.Runtime) []mount.Mount {
 	var mounts []mount.Mount
 
 	for _, v := range container.Runtime.Resources {

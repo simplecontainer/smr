@@ -3,12 +3,14 @@ package main
 import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
+	mdns "github.com/miekg/dns"
 	"github.com/spf13/viper"
 	"smr/pkg/api"
 	"smr/pkg/commands"
 	_ "smr/pkg/commands"
 	"smr/pkg/config"
 	"smr/pkg/logger"
+	"strconv"
 )
 
 func main() {
@@ -37,7 +39,15 @@ func main() {
 	if viper.GetBool("daemon") {
 		conf.Load(api.Runtime.PROJECTDIR)
 
-		go api.Manager.Reconcile()
+		mdns.HandleFunc(".", api.HandleDns)
+
+		// start server in go routine to detach from main
+		port := 53
+		server := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
+		go server.ListenAndServe()
+		defer server.Shutdown()
+
+		api.Manager.Reconcile()
 		router := gin.Default()
 
 		// System

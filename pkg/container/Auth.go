@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func GetAuth(image string, runtime runtime.Runtime) string {
+func GetAuth(image string, runtime *runtime.Runtime) string {
 	dockerConfig := fmt.Sprintf("%s/%s", runtime.HOMEDIR, ".docker/config.json")
 	if _, err := os.Stat(dockerConfig); err == nil {
 		body, err := os.ReadFile(dockerConfig)

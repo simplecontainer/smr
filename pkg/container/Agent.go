@@ -2,13 +2,13 @@ package container
 
 import (
 	"context"
+	"errors"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"smr/pkg/logger"
-	"smr/pkg/static"
 )
 
-func (container *Container) AgentConnectToTheSameNetwork(containerId string, networkId string) bool {
+func (container *Container) ConnectToTheSameNetwork(containerId string, networkId string) error {
 	if c := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -17,25 +17,19 @@ func (container *Container) AgentConnectToTheSameNetwork(containerId string, net
 		}
 		defer cli.Close()
 
-		smrAgentEndpointSettings := container.GenerateAgentNetwork(networkId)
-
-		if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, networkId) {
-			err = cli.NetworkConnect(ctx, networkId, containerId, smrAgentEndpointSettings)
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-				return false
-			}
+		EndpointSettings := &network.EndpointSettings{
+			NetworkID: networkId,
 		}
 
-		return true
-	} else {
-		return false
-	}
-}
+		err = cli.NetworkConnect(ctx, networkId, containerId, EndpointSettings)
 
-func (container *Container) GenerateAgentNetwork(networkId string) *network.EndpointSettings {
-	return &network.EndpointSettings{
-		NetworkID: networkId,
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return errors.New("failed to connect to the network")
+		}
+
+		return nil
+	} else {
+		return errors.New("container is not running")
 	}
 }

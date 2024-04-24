@@ -1,6 +1,6 @@
 package main
 
-type ImplementationInternal struct{}
+type Implementation struct{}
 
 // Local contracts
 

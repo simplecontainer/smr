@@ -7,18 +7,14 @@ import (
 	"smr/pkg/logger"
 )
 
-func Put(Badger *badger.DB, key string, value string) bool {
+func Put(Badger *badger.DB, key string, value string) error {
 	logger.Log.Info(fmt.Sprintf("Trying to save into db %s=%s", key, value))
 	err := Badger.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(key), []byte(value))
 		return err
 	})
 
-	if err != nil {
-		return false
-	} else {
-		return true
-	}
+	return err
 }
 
 func Get(Badger *badger.DB, key string) (string, error) {

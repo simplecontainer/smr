@@ -1,17 +1,16 @@
 package replicas
 
 import (
-	"fmt"
+	"errors"
 	"go.uber.org/zap"
 	"smr/pkg/container"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
 	"smr/pkg/logger"
 	"smr/pkg/manager"
-	"strings"
 )
 
-func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinition definitions.Definition) ([]string, []string) {
+func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinition definitions.Container) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
 
@@ -24,13 +23,12 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	}
 
 	for i := numberOfReplicas; i > 0; i -= 1 {
-		name, _ := mgr.Registry.NameReplicas(replicas.Group, mgr.Runtime.PROJECT, i)
+		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
 		container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
 
 		for i, v := range container.Runtime.Resources {
 			format := database.Format("resource", container.Static.Group, v.Identifier, v.Key)
-			key := strings.TrimSpace(fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key))
-			val, err := database.Get(mgr.Badger, key)
+			val, err := database.Get(mgr.Badger, format.ToString())
 
 			if err != nil {
 				logger.Log.Error("Failed to get resources for the container")
@@ -41,27 +39,31 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 
 		logger.Log.Info("retrieved resources for container", zap.String("container", container.Static.Name))
 
-		if container.Get() != nil {
-			if mgr.Registry.Containers[container.Static.Group][container.Static.Name] != nil {
-				logger.Log.Info("Checking if change in definition")
+		/*
+			Do all pre-checks here before rewriting container in the registry
+		*/
 
-				if definitions.Compare(mgr.Registry.Containers[container.Static.Group][container.Static.Name].Static.Definition, container.Static.Definition) {
-					logger.Log.Info("definition is same, ignoring request")
-					continue
-				}
-			} else {
-				container.Stop()
-				container.Delete()
-				mgr.Registry.Remove(replicas.Group, name, mgr.Runtime.PROJECT)
+		logger.Log.Info("checking if pre-check conditions ready before add/update container in registry", zap.String("container", container.Static.Name))
+		existingContainer := mgr.Registry.Find(container.Static.Group, name)
+
+		if existingContainer != nil {
+			logger.Log.Info("container already existing on the server", zap.String("container", container.Static.Name))
+
+			if existingContainer.Status.Reconciling {
+				return nil, nil, errors.New("container is in reconciliation process try again later")
 			}
+
+			// If container got to here without any failures we need to set it definitionDrift=true so that we do reconcile
+			// in the container implementation
+			container.Status.DefinitionDrift = true
 		}
 
 		mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)
-		logger.Log.Info("added container to registry", zap.String("container", container.Static.Name))
+		logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
 
 		groups = append(groups, replicas.Group)
 		names = append(names, name)
 	}
 
-	return groups, names
+	return groups, names, nil
 }

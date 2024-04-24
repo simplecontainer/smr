@@ -3,12 +3,14 @@ package runtime
 import (
 	"fmt"
 	"github.com/spf13/viper"
+	"log"
+	"net"
 	"os"
 	"smr/pkg/static"
 	"smr/pkg/utils"
 )
 
-func GetRuntimeInfo() Runtime {
+func GetRuntimeInfo() *Runtime {
 	HOMEDIR, err := os.UserHomeDir()
 	if err != nil {
 		panic(err.Error())
@@ -30,11 +32,24 @@ func GetRuntimeInfo() Runtime {
 		viper.Set("project", static.ROOTDIR)
 	}
 
-	return Runtime{
+	return &Runtime{
 		HOMEDIR:    HOMEDIR,
 		OPTDIR:     OPTDIR,
 		PROJECT:    fmt.Sprintf("%s", viper.GetString("project")),
 		PROJECTDIR: fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, viper.GetString("project")),
 		PASSWORD:   utils.RandString(32),
+		AGENTIP:    GetOutboundIP(),
 	}
+}
+
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
 }

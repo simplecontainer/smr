@@ -5,14 +5,14 @@ import (
 )
 
 // Local contracts
-type Definitions struct {
-	Kind       string                `yaml:"kind"`
-	Definition map[string]Definition `mapstructure:"definition"`
+type Containers struct {
+	Kind       string               `yaml:"kind"`
+	Containers map[string]Container `mapstructure:"container"`
 }
 
-type Definition struct {
-	Meta Meta `yaml:"meta"`
-	Spec Spec `yaml:"spec"`
+type Container struct {
+	Meta Meta `mapstructure:"meta"`
+	Spec Spec `mapstructure:"spec"`
 }
 
 type Meta struct {
@@ -22,13 +22,15 @@ type Meta struct {
 }
 
 type Spec struct {
-	Container Container `mapstructure:"container"`
+	Container ContainerInternal `mapstructure:"container"`
 }
 
-type Container struct {
+type ContainerInternal struct {
 	Image         string                 `yaml:"image"`
 	Tag           string                 `yaml:"tag""`
 	Envs          []string               `yaml:"envs"`
+	Entrypoint    []string               `yaml:"entrypoint"`
+	Cmd           []string               `yaml:"cmd"`
 	Dependencies  []DependsOn            `yaml:"dependencies"`
 	Networks      []string               `yaml:"networks"`
 	Ports         []network.PortMappings `yaml:"ports"`

@@ -24,11 +24,13 @@ type Static struct {
 	Replicas               int
 	Networks               []string
 	Env                    []string
+	Entrypoint             []string
+	Cmd                    []string
 	MappingFiles           []map[string]string
 	MappingPorts           []network.PortMappings
 	ExposedPorts           []string
 	MountFiles             []string
-	Definition             definitions.Definition
+	Definition             definitions.Container
 }
 
 type Runtime struct {
@@ -49,11 +51,13 @@ type Network struct {
 }
 
 type Status struct {
-	DependsSolved  bool
-	BackOffRestart bool
-	Healthy        bool
-	Ready          bool
-	Running        bool
+	DependsSolved   bool
+	BackOffRestart  bool
+	Healthy         bool
+	Ready           bool
+	Running         bool
+	Reconciling     bool
+	DefinitionDrift bool
 }
 
 type Resource struct {

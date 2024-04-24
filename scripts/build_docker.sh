@@ -1,9 +1,10 @@
 #!/bin/bash
 cd "$(dirname "$0")"
+cd ..
 
-echo "Starting in directory $PWD"
+echo "Doing work in directory $PWD"
 
-BASE_DIR="../$PWD"
+BASE_DIR="$PWD"
 
 for dir in implementations/*/
 do

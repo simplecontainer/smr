@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -11,4 +12,8 @@ func Format(kind string, group string, identifier string, key string) FormatStru
 		Identifier: strings.TrimSpace(identifier),
 		Key:        strings.TrimSpace(key),
 	}
+}
+
+func (format *FormatStructure) ToString() string {
+	return fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key)
 }

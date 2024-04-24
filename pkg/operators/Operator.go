@@ -24,8 +24,6 @@ type Result struct {
 func SolveDepends(mgr *manager.Manager, depend definitions.DependsOn, c chan DependsState) {
 	var dependsState DependsState
 
-	fmt.Println(depend)
-
 	dependsState = Depends(mgr, "http://smr-agent:8080/operators", depend.Name, depend.Operator, depend.Body)
 
 	c <- dependsState
@@ -86,7 +84,8 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []definiti
 
 		close(c)
 
-		logger.Log.Info("Ready finished", zap.String("group", group), zap.String("name", name), zap.Bool("DependsSolver", mgr.Registry.Containers[group][name].Status.DependsSolved))
+		logger.Log.Info("ready finished", zap.String("group", group), zap.String("name", name))
+		logger.Log.Info("updating status of dependency solver", zap.Bool("DependsSolver", mgr.Registry.Containers[group][name].Status.DependsSolved))
 
 		mgr.Registry.Containers[group][name].Status.DependsSolved = true
 
@@ -97,8 +96,6 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []definiti
 			}
 		}
 	} else {
-		fmt.Println(group)
-		fmt.Println(name)
 		mgr.Registry.Containers[group][name].Status.DependsSolved = true
 	}
 

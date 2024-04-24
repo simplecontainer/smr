@@ -8,10 +8,8 @@ import (
 var Commands []Command
 
 func PreloadCommands() {
-	Apply()
 	Create()
 	Delete()
-	Ps()
 }
 
 func Run(mgr *manager.Manager) {

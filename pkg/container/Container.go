@@ -16,13 +16,14 @@ import (
 	"smr/pkg/definitions"
 	"smr/pkg/logger"
 	"smr/pkg/runtime"
+	"smr/pkg/static"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func NewContainerFromDefinition(runtime runtime.Runtime, name string, definition definitions.Definition) *Container {
-	// Make deep copy of the definition so we can preseve it for deep equals later
+func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition definitions.Container) *Container {
+	// Make deep copy of the definition, so we can preserve it for deep equals later
 	definitionEncoded, err := json.Marshal(definition)
 
 	if err != nil {
@@ -30,13 +31,17 @@ func NewContainerFromDefinition(runtime runtime.Runtime, name string, definition
 		return nil
 	}
 
-	var definitionCopy definitions.Definition
+	var definitionCopy definitions.Container
 
 	err = json.Unmarshal(definitionEncoded, &definitionCopy)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return nil
+	}
+
+	if definition.Spec.Container.Tag == "" {
+		definition.Spec.Container.Tag = "latest"
 	}
 
 	return &Container{
@@ -50,6 +55,8 @@ func NewContainerFromDefinition(runtime runtime.Runtime, name string, definition
 			Replicas:               definition.Spec.Container.Replicas,
 			Networks:               definition.Spec.Container.Networks,
 			Env:                    definition.Spec.Container.Envs,
+			Entrypoint:             definition.Spec.Container.Entrypoint,
+			Cmd:                    definition.Spec.Container.Cmd,
 			MappingFiles:           definition.Spec.Container.FileMounts,
 			MappingPorts:           definition.Spec.Container.Ports,
 			ExposedPorts:           convertPortMappingsToExposedPorts(definition.Spec.Container.Ports),
@@ -196,95 +203,132 @@ func GetContainersAllStates() []types.Container {
 	return containersFiltered
 }
 
-func (container *Container) Run(runtime runtime.Runtime, Badger *badger.DB) (*types.Container, error) {
+func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, dnsCache map[string]string) (*types.Container, error) {
 	c := container.Get()
 
 	if c == nil {
-		err := container.CreateNetwork()
+		return container.run(c, runtime, Badger, dnsCache)
+	}
 
-		if err != nil {
-			return nil, err
+	return c, nil
+}
+
+func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Badger *badger.DB, dnsCache map[string]string) (*types.Container, error) {
+	err := container.CreateNetwork()
+
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	cli := &client.Client{}
+
+	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Close()
+
+	err = container.PullImage(ctx, cli)
+
+	if err != nil {
+		return nil, err
+	}
+
+	resp := dockerContainer.ContainerCreateCreatedBody{}
+
+	resp, err = cli.ContainerCreate(ctx, &dockerContainer.Config{
+		Hostname:     container.Static.GeneratedName,
+		Labels:       container.GenerateLabels(),
+		Image:        container.Static.Image + ":" + container.Static.Tag,
+		Env:          container.Static.Env,
+		Entrypoint:   container.Static.Entrypoint,
+		Cmd:          container.Static.Cmd,
+		Tty:          false,
+		ExposedPorts: container.exposedPorts(),
+	}, &dockerContainer.HostConfig{
+		DNS: []string{
+			runtime.AGENTIP.String(),
+		},
+		Mounts:       container.mappingToMounts(runtime),
+		PortBindings: container.portMappings(),
+	}, container.GenerateNetwork(), nil, container.Static.GeneratedName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return nil, err
+	}
+
+	data, err := cli.ContainerInspect(ctx, resp.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, dnetw := range data.NetworkSettings.Networks {
+		container.Runtime.Networks[dnetw.NetworkID] = Network{
+			dnetw.NetworkID,
+			dnetw.IPAddress,
 		}
+	}
 
-		ctx := context.Background()
-		cli := &client.Client{}
+	agent := Existing("smr-agent")
 
-		cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-		if err != nil {
-			return nil, err
-		}
-		defer cli.Close()
+	if agent != nil {
+		for _, nid := range container.Runtime.Networks {
+			logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
 
-		err = container.PullImage(ctx, cli)
-
-		if err != nil {
-			return nil, err
-		}
-
-		resp := dockerContainer.ContainerCreateCreatedBody{}
-
-		resp, err = cli.ContainerCreate(ctx, &dockerContainer.Config{
-			Labels:       container.GenerateLabels(),
-			Image:        container.Static.Image + ":" + container.Static.Tag,
-			Env:          container.Static.Env,
-			Tty:          false,
-			ExposedPorts: container.exposedPorts(),
-		}, &dockerContainer.HostConfig{
-			Mounts:       container.mappingToMounts(runtime),
-			PortBindings: container.portMappings(),
-		}, container.GenerateNetwork(), nil, container.Static.GeneratedName)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-			return nil, err
-		}
-
-		data, err := cli.ContainerInspect(ctx, resp.ID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		for _, dnetw := range data.NetworkSettings.Networks {
-			container.Runtime.Networks[dnetw.NetworkID] = Network{
-				dnetw.NetworkID,
-				dnetw.IPAddress,
-			}
-		}
-
-		agent := Existing("smr-agent")
-		base := fmt.Sprintf("%s.%s.%s", "runtime", container.Static.Group, container.Static.GeneratedName)
-
-		if agent != nil {
-			for _, nid := range container.Runtime.Networks {
-				logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
-
-				if !container.AgentConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId) {
+			if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
+				err = container.ConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId)
+				if err == nil {
+					logger.Log.Info(fmt.Sprintf("smr-agent attached to the network %s", nid.NetworkId))
+				} else {
 					container.Stop()
 					container.Delete()
-					return c, errors.New("failed to attach agent to the same network as the container, stopping container and cleaning up")
-				} else {
-					logger.Log.Info(fmt.Sprintf("smr-agent attached to the network %s", nid.NetworkId))
-					database.Put(Badger, fmt.Sprintf("%s.%s", base, "ip"), container.Runtime.Networks[nid.NetworkId].IP)
+					return c, err
 				}
 			}
 
-			container.Runtime.FoundRunning = false
-
-			database.Put(Badger, fmt.Sprintf("%s.%s", base, "foundrunning"), strconv.FormatBool(container.Runtime.FoundRunning))
-
-			return container.Get(), nil
-		} else {
-			logger.Log.Error(fmt.Sprintf("smr-agent not found"))
-			container.Stop()
-			container.Delete()
-			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
+			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
+			database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
+			dnsCache[container.Static.GeneratedName] = container.Runtime.Networks[nid.NetworkId].IP
 		}
+
+		agent.Get()
+
+		for _, nid := range agent.Runtime.Networks {
+			if nid.IP == runtime.AGENTIP.String() {
+				err = container.ConnectToTheSameNetwork(resp.ID, nid.NetworkId)
+				if err != nil {
+					container.Stop()
+					container.Delete()
+					return c, err
+				} else {
+					format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
+					database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
+
+					logger.Log.Info(fmt.Sprintf("container %s attached to the network %s", container.Static.GeneratedName, nid.NetworkId))
+				}
+
+				break
+			}
+		}
+
+		container.Runtime.FoundRunning = false
+		container.Status.DefinitionDrift = false
+
+		format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
+		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
+
+		return container.Get(), nil
 	} else {
-		return c, nil
+		logger.Log.Error(fmt.Sprintf("smr-agent not found"))
+		container.Stop()
+		container.Delete()
+		return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 	}
 }
 func (container *Container) Get() *types.Container {
@@ -360,7 +404,7 @@ func (container *Container) Stop() bool {
 		}
 		defer cli.Close()
 
-		duration := time.Second * 10
+		duration := time.Second * 30
 		err = cli.ContainerStop(ctx, container.Runtime.Id, &duration)
 
 		if err != nil {
@@ -372,6 +416,7 @@ func (container *Container) Stop() bool {
 		return false
 	}
 }
+
 func (container *Container) Restart() bool {
 	if c := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
@@ -393,7 +438,7 @@ func (container *Container) Restart() bool {
 		return false
 	}
 }
-func (container *Container) Delete() bool {
+func (container *Container) Delete() error {
 	if c := container.Get(); c != nil && c.State != "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -407,14 +452,15 @@ func (container *Container) Delete() bool {
 		})
 
 		if err != nil {
-			return false
+			return err
 		}
 
-		return true
+		return nil
 	} else {
-		return false
+		return errors.New("cannot delete container that is running")
 	}
 }
+
 func (container *Container) Rename(newName string) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
