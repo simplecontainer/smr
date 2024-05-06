@@ -13,25 +13,22 @@ import (
 )
 
 func NewApi(config *config.Config, badger *badger.DB) *Api {
+	//TODO: create constructors for all instead of invoking pointer directly for the custom type
 	api := &Api{
 		Config:              config,
 		Runtime:             &runtime.Runtime{},
 		Registry:            &registry.Registry{},
 		Reconciler:          reconciler.New(),
 		Manager:             &manager.Manager{},
-		Badger:              badger,
+		RepostitoryWatchers: &gitops.RepositoryWatcher{},
 		DnsCache:            &dns.Records{},
-		RepostitoryWatchers: &gitops.RepositoryWatchers{},
+		Badger:              badger,
 	}
 
 	api.Registry = &registry.Registry{
 		Containers:     make(map[string]map[string]*container.Container),
 		Indexes:        make(map[string][]int),
 		BackOffTracker: make(map[string]map[string]int),
-	}
-
-	api.RepostitoryWatchers = &gitops.RepositoryWatchers{
-		Repositories: make(map[string]*gitops.Gitops),
 	}
 
 	api.Runtime = runtime.GetRuntimeInfo()
