@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"smr/pkg/database"
 	"smr/pkg/definitions"
@@ -52,10 +51,10 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		fmt.Println(gitopsDefinition)
-		newRepositoryWatcher := gitops.NewWatcher(gitopsDefinition)
-		newRepositoryWatcher.Prepare(mgr.Badger)
-		newRepositoryWatcher.RunWatcher()
+		gitopsFromDefinition := gitops.NewWatcher(gitopsDefinition)
+
+		mgr.RepositoryWatchers.AddOrUpdate(gitopsFromDefinition.RepoURL, gitopsFromDefinition)
+		go mgr.RepositoryWatchers.Find(gitopsFromDefinition.RepoURL).HandleTickerAndEvents()
 	} else {
 		return implementations.Response{
 			HttpStatus:       200,

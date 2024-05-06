@@ -19,7 +19,7 @@ type Api struct {
 	Manager             *manager.Manager
 	Badger              *badger.DB
 	DnsCache            *dns.Records
-	RepostitoryWatchers *gitops.RepositoryWatchers
+	RepostitoryWatchers *gitops.RepositoryWatcher
 }
 
 type Kv struct {
