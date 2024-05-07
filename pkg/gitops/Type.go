@@ -14,18 +14,18 @@ type RepositoryWatcher struct {
 }
 
 type Gitops struct {
-	RepoURL         string        `json:"repoURL"`
-	Revision        string        `json:"revision"`
-	DirectoryPath   string        `json:"directoryPath"`
-	PoolingInterval time.Duration `json:"poolingInterval"`
-	CertKey         *certkey.CertKey
-	HttpAuth        *httpauth.HttpAuth
-	CertKeyRef      definitions.CertKeyRef
-	HttpAuthRef     definitions.HttpauthRef
-	GitopsQueue     chan Event
-	Ctx             context.Context
-	Ticker          *time.Ticker
-
+	RepoURL          string `json:"repoURL"`
+	Revision         string `json:"revision"`
+	DirectoryPath    string `json:"directoryPath"`
+	PoolingInterval  string `json:"poolingInterval"`
+	CertKey          *certkey.CertKey
+	HttpAuth         *httpauth.HttpAuth
+	CertKeyRef       definitions.CertKeyRef
+	HttpAuthRef      definitions.HttpauthRef
+	AutomaticSync    bool
+	GitopsQueue      chan Event
+	Ctx              context.Context
+	Ticker           *time.Ticker
 	LastSyncedCommit plumbing.Hash
 }
 

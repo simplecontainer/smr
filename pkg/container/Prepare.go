@@ -13,9 +13,11 @@ import (
 
 func (container *Container) Prepare(db *badger.DB) bool {
 	var err error
+	var dependencyMap []database.FormatStructure
 	format := database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
 
-	container.Runtime.Configuration, err = template.ParseTemplate(db, container.Runtime.Configuration, &format)
+	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(db, container.Runtime.Configuration, &format)
+	container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, dependencyMap...)
 
 	if err != nil {
 		return false
@@ -24,8 +26,18 @@ func (container *Container) Prepare(db *badger.DB) bool {
 	// TODO: implement saving configuration to key-value store after parsing
 
 	for keyOriginal, _ := range container.Runtime.Resources {
-		container.Runtime.Resources[keyOriginal].Data, err = template.ParseTemplate(db, container.Runtime.Resources[keyOriginal].Data, nil)
+		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(db, container.Runtime.Resources[keyOriginal].Data, nil)
+		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, database.FormatStructure{
+			Kind:       "resource",
+			Group:      container.Static.Group,
+			Identifier: container.Runtime.Resources[keyOriginal].Identifier,
+			Key:        "",
+		})
 	}
+
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	fmt.Println(container.Runtime.ObjectDependencies)
+	fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 	if err != nil {
 		return false

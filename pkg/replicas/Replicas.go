@@ -2,7 +2,6 @@ package replicas
 
 import (
 	"errors"
-	"fmt"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"smr/pkg/container"
@@ -16,9 +15,6 @@ import (
 func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
-
-	fmt.Println("REEEEEEEEEEEEEEEEEEEPLICAS STATE")
-	fmt.Println(replicas)
 
 	numberOfReplicasToCreate, numberOfReplicasToDestroy, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
 

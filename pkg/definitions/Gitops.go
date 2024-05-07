@@ -1,9 +1,5 @@
 package definitions
 
-import (
-	"time"
-)
-
 type Gitops struct {
 	Meta GitopsMeta `mapstructure:"meta"`
 	Spec GitopsSpec `mapstructure:"spec"`
@@ -15,12 +11,13 @@ type GitopsMeta struct {
 }
 
 type GitopsSpec struct {
-	RepoURL         string        `json:"repoURL"`
-	Revision        string        `json:"revision"`
-	DirectoryPath   string        `json:"directory"`
-	PoolingInterval time.Duration `json:"poolingInterval"`
-	CertKeyRef      CertKeyRef    `json:"certKeyRef"`
-	HttpAuthRef     HttpauthRef   `json:"httpAuthRef"`
+	RepoURL         string      `json:"repoURL"`
+	Revision        string      `json:"revision"`
+	DirectoryPath   string      `json:"directory"`
+	PoolingInterval string      `json:"poolingInterval"`
+	AutomaticSync   bool        `json:"automaticSync"`
+	CertKeyRef      CertKeyRef  `json:"certKeyRef"`
+	HttpAuthRef     HttpauthRef `json:"httpAuthRef"`
 }
 
 type CertKeyRef struct {
