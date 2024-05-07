@@ -1,6 +1,7 @@
 package container
 
 import (
+	"smr/pkg/database"
 	"smr/pkg/definitions"
 	"smr/pkg/network"
 	"smr/pkg/utils"
@@ -38,15 +39,16 @@ type Static struct {
 }
 
 type Runtime struct {
-	Auth          string
-	Id            string
-	Networks      map[string]Network
-	State         string
-	FoundRunning  bool
-	FirstObserved bool
-	Ready         bool
-	Configuration map[string]any
-	Resources     []Resource
+	Auth               string
+	Id                 string
+	Networks           map[string]Network
+	State              string
+	FoundRunning       bool
+	FirstObserved      bool
+	Ready              bool
+	Configuration      map[string]any
+	Resources          []Resource
+	ObjectDependencies []database.FormatStructure
 }
 
 type Network struct {

@@ -19,6 +19,17 @@ import (
 )
 
 func NewWatcher(gitops definitions.Gitops) *Gitops {
+	if gitops.Spec.PoolingInterval == "" {
+		gitops.Spec.PoolingInterval = "30s"
+	}
+
+	interval, err := time.ParseDuration(gitops.Spec.PoolingInterval)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return nil
+	}
+
 	return &Gitops{
 		RepoURL:         gitops.Spec.RepoURL,
 		Revision:        gitops.Spec.Revision,
@@ -30,7 +41,7 @@ func NewWatcher(gitops definitions.Gitops) *Gitops {
 		HttpAuth:        nil,
 		GitopsQueue:     make(chan Event),
 		Ctx:             context.Background(),
-		Ticker:          time.NewTicker(gitops.Spec.PoolingInterval),
+		Ticker:          time.NewTicker(interval),
 	}
 }
 
@@ -44,8 +55,10 @@ func (gitops *Gitops) HandleTickerAndEvents() {
 			gitops.HandleEvent(event)
 			break
 		case t := <-gitops.Ticker.C:
-			logger.Log.Info("triggering gitops sync from the remote repository", zap.String("ticker", t.String()))
-			gitops.ReconcileGitOps()
+			if gitops.AutomaticSync {
+				logger.Log.Info("triggering gitops sync from the remote repository", zap.String("ticker", t.String()))
+				gitops.ReconcileGitOps()
+			}
 			break
 		}
 	}
@@ -89,39 +102,39 @@ func (gitops *Gitops) ReconcileGitOps() {
 		if err != nil {
 			logger.Log.Error("failed to fetch repository", zap.String("repository", gitops.RepoURL))
 		}
-	} else {
-		r, _ := git.PlainOpen(localPath)
+	}
 
-		w, _ := r.Worktree()
+	r, _ := git.PlainOpen(localPath)
 
-		_ = w.Pull(&git.PullOptions{RemoteName: "origin"})
+	w, _ := r.Worktree()
 
-		ref, _ := r.Head()
-		r.CommitObject(ref.Hash())
+	_ = w.Pull(&git.PullOptions{RemoteName: "origin"})
 
-		logger.Log.Info("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
+	ref, _ := r.Head()
+	r.CommitObject(ref.Hash())
 
-		if gitops.LastSyncedCommit != ref.Hash() {
-			entries, err := os.ReadDir(fmt.Sprintf("%s/%s", localPath, gitops.DirectoryPath))
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
+	logger.Log.Info("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
 
-			for _, e := range entries {
-				logger.Log.Info("trying to reconcile", zap.String("file", e.Name()))
-
-				definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, e.Name()))
-				if err != nil {
-					log.Fatalf("unable to read file: %v", err)
-				}
-
-				gitops.sendRequest("http://localhost:8080/apply", definition)
-			}
-
-			gitops.LastSyncedCommit = ref.Hash()
-		} else {
-			logger.Log.Info("everything synced", zap.String("repoUrl", gitops.RepoURL))
+	if gitops.LastSyncedCommit != ref.Hash() {
+		entries, err := os.ReadDir(fmt.Sprintf("%s/%s", localPath, gitops.DirectoryPath))
+		if err != nil {
+			logger.Log.Error(err.Error())
 		}
+
+		for _, e := range entries {
+			logger.Log.Info("trying to reconcile", zap.String("file", e.Name()))
+
+			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, e.Name()))
+			if err != nil {
+				log.Fatalf("unable to read file: %v", err)
+			}
+
+			gitops.sendRequest("http://localhost:8080/api/v1/apply", definition)
+		}
+
+		gitops.LastSyncedCommit = ref.Hash()
+	} else {
+		logger.Log.Info("everything synced", zap.String("repoUrl", gitops.RepoURL))
 	}
 }
 
@@ -145,7 +158,12 @@ func (gitops *Gitops) sendRequest(URL string, jsonData string) {
 	}
 
 	if !resp.IsSuccessState() {
-		fmt.Println("bad response status:", resp.Status)
+		if resp != nil {
+			logger.Log.Error("bad response status", zap.String("status", resp.Status))
+		} else {
+			logger.Log.Error("resp is nil")
+		}
+
 		return
 	}
 }

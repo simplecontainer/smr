@@ -11,8 +11,9 @@ import (
 	"strings"
 )
 
-func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.FormatStructure) (map[string]any, error) {
+func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.FormatStructure) (map[string]any, []database.FormatStructure, error) {
 	var parsedMap = make(map[string]any)
+	var dependencyMap = make([]database.FormatStructure, 0)
 	parsedMap = values
 
 	for keyOriginal, value := range values {
@@ -38,13 +39,15 @@ func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.Fo
 
 					if err != nil {
 						logger.Log.Error(err.Error(), zap.String("key", key))
-						return nil, err
+						return nil, nil, err
 					}
 
+					dependencyMap = append(dependencyMap, format)
 					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
 				}
 			}
 		} else {
+			// This is case when there is no referencing any external configuration from the container so save it in database
 			if baseFormat != nil {
 				baseFormat.Key = keyOriginal
 				logger.Log.Info("saving into key-value store", zap.String("key", baseFormat.ToString()))
@@ -53,5 +56,5 @@ func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.Fo
 		}
 	}
 
-	return parsedMap, nil
+	return parsedMap, dependencyMap, nil
 }

@@ -31,6 +31,8 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 		BackOffTracker: make(map[string]map[string]int),
 	}
 
+	api.RepostitoryWatchers.Repositories = make(map[string]*gitops.Gitops)
+
 	api.Runtime = runtime.GetRuntimeInfo()
 	api.Manager.Config = api.Config
 	api.Manager.Runtime = api.Runtime

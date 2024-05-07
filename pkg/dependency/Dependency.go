@@ -154,7 +154,8 @@ func Depends(mgr *manager.Manager, host string, depend *Dependency, ch chan Stat
 
 	if depend.Operator != "" {
 		var err error
-		json, err := template.ParseTemplate(mgr.Badger, depend.Body, nil)
+		// TODO:maybe take into account dependencyMap for this case too?
+		json, _, err := template.ParseTemplate(mgr.Badger, depend.Body, nil)
 
 		group, _ := utils.ExtractGroupAndId(depend.Name)
 		url := fmt.Sprintf("%s/%s/%s", host, group, depend.Operator)
