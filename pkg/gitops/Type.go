@@ -18,11 +18,11 @@ type Gitops struct {
 	Revision         string `json:"revision"`
 	DirectoryPath    string `json:"directoryPath"`
 	PoolingInterval  string `json:"poolingInterval"`
+	AutomaticSync    bool   `json:"automaticSync"`
 	CertKey          *certkey.CertKey
 	HttpAuth         *httpauth.HttpAuth
 	CertKeyRef       definitions.CertKeyRef
 	HttpAuthRef      definitions.HttpauthRef
-	AutomaticSync    bool
 	GitopsQueue      chan Event
 	Ctx              context.Context
 	Ticker           *time.Ticker

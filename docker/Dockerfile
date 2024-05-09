@@ -6,6 +6,7 @@ RUN mkdir /opt/smr
 RUN adduser -D smr-agent
 
 RUN mkdir -p /home/smr-agent/smr/smr
+RUN mkdir -p /home/smr-agent/.ssh
 RUN mkdir -p /badger
 
 COPY smr /opt/smr-agent/smr
@@ -16,9 +17,10 @@ RUN chmod +x /opt/smr-agent/smr
 RUN chown -R smr-agent /opt/smr-agent/smr
 RUN chown -R smr-agent /home/smr-agent
 RUN chown -R smr-agent /badger
+RUN chown -R smr-agent /home/smr-agent/.ssh
 
 USER smr-agent
 
-ENTRYPOINT /opt/smr-agent/smr create smr --daemon --optmode
+ENTRYPOINT /opt/smr-agent/smr create smr --daemon --daemon-secured --optmode
 
 EXPOSE 8080

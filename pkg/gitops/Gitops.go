@@ -35,6 +35,7 @@ func NewWatcher(gitops definitions.Gitops) *Gitops {
 		Revision:        gitops.Spec.Revision,
 		DirectoryPath:   gitops.Spec.DirectoryPath,
 		PoolingInterval: gitops.Spec.PoolingInterval,
+		AutomaticSync:   gitops.Spec.AutomaticSync,
 		CertKeyRef:      gitops.Spec.CertKeyRef,
 		HttpAuthRef:     gitops.Spec.HttpAuthRef,
 		CertKey:         nil,
@@ -55,7 +56,10 @@ func (gitops *Gitops) HandleTickerAndEvents() {
 			gitops.HandleEvent(event)
 			break
 		case t := <-gitops.Ticker.C:
-			if gitops.AutomaticSync {
+			if !gitops.AutomaticSync {
+				logger.Log.Info("triggering gitops sync is set to manual", zap.String("repository", gitops.RepoURL))
+				gitops.Ticker.Stop()
+			} else {
 				logger.Log.Info("triggering gitops sync from the remote repository", zap.String("ticker", t.String()))
 				gitops.ReconcileGitOps()
 			}
