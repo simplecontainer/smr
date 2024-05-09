@@ -1,19 +1,26 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
+	"log"
+	"net/http"
 	_ "smr/docs"
 	"smr/pkg/api"
 	"smr/pkg/commands"
 	_ "smr/pkg/commands"
 	"smr/pkg/config"
+	"smr/pkg/keys"
 	"smr/pkg/logger"
 	"strconv"
+	"strings"
 )
 
 //	@title			Simple container manager API
@@ -108,6 +115,50 @@ func main() {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 		router.GET("/healthz", api.Health)
 
-		router.Run()
+		if viper.GetBool("daemon-secured") {
+			mtls := keys.NewKeys("/home/smr/.ssh")
+
+			found, err := mtls.GenerateIfNoKeysFound()
+
+			if err != nil {
+				panic("failed to generate or read mtls keys")
+			}
+
+			if !found {
+				mtls.SaveToDirectory()
+
+				fmt.Println("Certificate is generated for the use by the smr client!")
+				fmt.Println("Copy-paste it to safe location for further use - it will not be printed anymore in the logs")
+				fmt.Println(fmt.Sprintf("%s\n%s\n%s\n", strings.TrimSpace(mtls.ClientPrivateKey.String()), strings.TrimSpace(mtls.ClientCertPem.String()), strings.TrimSpace(mtls.CAPem.String())))
+			}
+
+			certPool := x509.NewCertPool()
+
+			if ok := certPool.AppendCertsFromPEM(mtls.CAPem.Bytes()); !ok {
+				panic("invalid cert in CA PEM")
+			}
+
+			serverTLSCert, err := tls.X509KeyPair(mtls.ServerCertPem.Bytes(), mtls.ServerPrivateKey.Bytes())
+			if err != nil {
+				log.Fatalf("error opening certificate and key file for control connection. Error %v", err)
+				return
+			}
+
+			tlsConfig := &tls.Config{
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				ClientCAs:    certPool,
+				Certificates: []tls.Certificate{serverTLSCert},
+			}
+
+			server := http.Server{
+				Addr:      ":1443",
+				Handler:   router,
+				TLSConfig: tlsConfig,
+			}
+			defer server.Close()
+			server.ListenAndServeTLS("", "")
+		} else {
+			router.Run()
+		}
 	}
 }

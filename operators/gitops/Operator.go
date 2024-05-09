@@ -57,8 +57,18 @@ func (operator *Operator) ListSupported(args ...interface{}) operators.Response 
 	}
 }
 
-func (operator *Operator) Sync(request operators.Request) operators.Response {
+func (operator *Operator) List(request operators.Request) operators.Response {
+	return operators.Response{
+		HttpStatus:       200,
+		Explanation:      "sync is triggered",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	}
+}
 
+func (operator *Operator) Sync(request operators.Request) operators.Response {
 	return operators.Response{
 		HttpStatus:       200,
 		Explanation:      "sync is triggered",

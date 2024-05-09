@@ -80,6 +80,7 @@ func (c *Config) Save(projectDir string) {
 func (c *Config) ReadFlags() {
 	/* Operation mode */
 	flag.Bool("daemon", false, "Run daemon as HTTP API")
+	flag.Bool("daemon-secured", false, "Run daemon as HTTPS mTLS API")
 	flag.String("file", "", "Name of the file to apply")
 
 	/* Meta data */
