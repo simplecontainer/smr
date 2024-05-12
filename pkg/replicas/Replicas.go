@@ -2,17 +2,17 @@ package replicas
 
 import (
 	"errors"
+	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
-	"smr/pkg/container"
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/logger"
-	"smr/pkg/manager"
 	"strings"
 )
 
-func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
+func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
 

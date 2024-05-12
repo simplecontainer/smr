@@ -1,9 +1,9 @@
 package commands
 
 import (
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/manager"
 	"os"
-	"smr/pkg/logger"
-	"smr/pkg/manager"
 )
 
 func Create() {

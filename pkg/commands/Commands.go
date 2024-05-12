@@ -1,8 +1,8 @@
 package commands
 
 import (
+	"github.com/qdnqn/smr/pkg/manager"
 	"os"
-	"smr/pkg/manager"
 )
 
 var Commands []Command

@@ -1,7 +1,7 @@
 package implementations
 
 import (
-	"smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/manager"
 )
 
 // Plugin contracts

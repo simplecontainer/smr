@@ -1,6 +1,6 @@
 package manager
 
-import "smr/pkg/reconciler"
+import "github.com/qdnqn/smr/pkg/reconciler"
 
 func (mgr *Manager) Reconcile() {
 	go mgr.Reconciler.ListenQueue(mgr.Registry, mgr.Runtime, mgr.Badger, mgr.DnsCache)

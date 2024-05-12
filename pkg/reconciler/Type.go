@@ -1,6 +1,6 @@
 package reconciler
 
-import "smr/pkg/container"
+import "github.com/qdnqn/smr/pkg/container"
 
 type Reconciler struct {
 	QueueChan   chan Reconcile

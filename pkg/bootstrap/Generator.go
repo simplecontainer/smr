@@ -2,12 +2,12 @@ package bootstrap
 
 import (
 	"fmt"
+	"github.com/qdnqn/smr/pkg/config"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/static"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"os"
-	"smr/pkg/config"
-	"smr/pkg/logger"
-	"smr/pkg/static"
 )
 
 func CreateDirectoryTree(projectDir string) {

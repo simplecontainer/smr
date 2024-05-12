@@ -6,8 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"smr/pkg/static"
-	"smr/pkg/utils"
 )
 
 func GetRuntimeInfo() *Runtime {

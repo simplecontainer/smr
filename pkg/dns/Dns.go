@@ -3,9 +3,9 @@ package dns
 import (
 	"fmt"
 	"github.com/miekg/dns"
+	"github.com/qdnqn/smr/pkg/logger"
 	"go.uber.org/zap"
 	"net"
-	"smr/pkg/logger"
 )
 
 func New() *Records {

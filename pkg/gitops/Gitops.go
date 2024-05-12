@@ -9,16 +9,17 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/imroc/req/v3"
+	"github.com/qdnqn/smr/pkg/definitions"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/logger"
 	"go.uber.org/zap"
 	"log"
 	"os"
 	"path"
-	"smr/pkg/definitions"
-	"smr/pkg/logger"
 	"time"
 )
 
-func NewWatcher(gitops definitions.Gitops) *Gitops {
+func NewWatcher(gitops v1.Gitops) *Gitops {
 	if gitops.Spec.PoolingInterval == "" {
 		gitops.Spec.PoolingInterval = "30s"
 	}

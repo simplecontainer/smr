@@ -7,18 +7,18 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
+	"github.com/qdnqn/smr/pkg/api"
+	"github.com/qdnqn/smr/pkg/commands"
+	_ "github.com/qdnqn/smr/pkg/commands"
+	"github.com/qdnqn/smr/pkg/config"
+	"github.com/qdnqn/smr/pkg/keys"
+	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
-	"log"
+	"go.uber.org/zap"
 	"net/http"
 	_ "smr/docs"
-	"smr/pkg/api"
-	"smr/pkg/commands"
-	_ "smr/pkg/commands"
-	"smr/pkg/config"
-	"smr/pkg/keys"
-	"smr/pkg/logger"
 	"strconv"
 	"strings"
 )
@@ -76,10 +76,6 @@ func main() {
 		go server.ListenAndServe()
 		defer server.Shutdown()
 
-		if viper.GetBool("cilium") {
-			// Start cilium containers for multi host networking
-		}
-
 		api.Manager.Reconcile()
 		router := gin.Default()
 
@@ -133,14 +129,13 @@ func main() {
 			}
 
 			certPool := x509.NewCertPool()
-
 			if ok := certPool.AppendCertsFromPEM(mtls.CAPem.Bytes()); !ok {
 				panic("invalid cert in CA PEM")
 			}
 
 			serverTLSCert, err := tls.X509KeyPair(mtls.ServerCertPem.Bytes(), mtls.ServerPrivateKey.Bytes())
 			if err != nil {
-				log.Fatalf("error opening certificate and key file for control connection. Error %v", err)
+				logger.Log.Fatal("error opening certificate and key file for control connection", zap.String("error", err.Error()))
 				return
 			}
 

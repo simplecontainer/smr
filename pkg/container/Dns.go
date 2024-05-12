@@ -2,7 +2,7 @@ package container
 
 import (
 	"fmt"
-	"smr/pkg/static"
+	"github.com/qdnqn/smr/pkg/static"
 )
 
 func (container *Container) GetDomain() string {

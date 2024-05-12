@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/mitchellh/mapstructure"
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/gitops"
-	"smr/pkg/implementations"
-	"smr/pkg/manager"
-	"smr/pkg/objects"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/gitops"
+	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/objects"
 )
 
 func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
-	var gitopsDefinition definitions.Gitops
+	var gitopsDefinition v1.Gitops
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
 		return implementations.Response{

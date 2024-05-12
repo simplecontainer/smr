@@ -5,21 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/dependency"
+	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/objects"
+	"github.com/qdnqn/smr/pkg/reconciler"
+	"github.com/qdnqn/smr/pkg/replicas"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/dependency"
-	"smr/pkg/implementations"
-	"smr/pkg/logger"
-	"smr/pkg/manager"
-	"smr/pkg/objects"
-	"smr/pkg/reconciler"
-	"smr/pkg/replicas"
 )
 
 func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
-	definitionSent := &definitions.Containers{}
+	definitionSent := &v1.Containers{}
 
 	if err := json.Unmarshal(jsonData, &definitionSent); err != nil {
 		return implementations.Response{
@@ -189,7 +189,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	}
 }
 
-func (implementation *Implementation) generateReplicaNamesAndGroups(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
+func (implementation *Implementation) generateReplicaNamesAndGroups(mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
 	_, index := mgr.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT)
 
 	r := replicas.Replicas{

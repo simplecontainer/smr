@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/utils"
 	"github.com/spf13/viper"
-	"smr/pkg/manager"
-	"smr/pkg/utils"
 )
 
 func Delete() {

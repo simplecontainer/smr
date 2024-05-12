@@ -2,7 +2,7 @@ package api
 
 import (
 	mdns "github.com/miekg/dns"
-	"smr/pkg/dns"
+	"github.com/qdnqn/smr/pkg/dns"
 )
 
 func (api *Api) HandleDns(w mdns.ResponseWriter, r *mdns.Msg) {

@@ -3,12 +3,12 @@ package api
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/qdnqn/smr/pkg/operators"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
 	"net/http"
 	"path/filepath"
-	"smr/pkg/operators"
 )
 
 var invalidOperators []string = []string{

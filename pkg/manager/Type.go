@@ -2,13 +2,13 @@ package manager
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"smr/pkg/dns"
-	"smr/pkg/gitops"
-	"smr/pkg/reconciler"
-	"smr/pkg/registry"
-	"smr/pkg/runtime"
+	"github.com/qdnqn/smr/pkg/dns"
+	"github.com/qdnqn/smr/pkg/gitops"
+	"github.com/qdnqn/smr/pkg/reconciler"
+	"github.com/qdnqn/smr/pkg/registry"
+	"github.com/qdnqn/smr/pkg/runtime"
 )
-import "smr/pkg/config"
+import "github.com/qdnqn/smr/pkg/config"
 
 type Manager struct {
 	Config             *config.Config

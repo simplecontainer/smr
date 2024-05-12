@@ -2,8 +2,8 @@ package main
 
 import (
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/qdnqn/smr/pkg/operators"
 	"reflect"
-	"smr/pkg/operators"
 )
 
 func (operator *Operator) Run(operation string, args ...interface{}) operators.Response {

@@ -1,8 +1,8 @@
 package registry
 
 import (
-	"smr/pkg/container"
-	"smr/pkg/objects"
+	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/pkg/objects"
 )
 
 type Registry struct {

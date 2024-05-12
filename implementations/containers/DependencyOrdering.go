@@ -1,8 +1,8 @@
 package main
 
 import (
-	"smr/pkg/container"
-	"smr/pkg/registry"
+	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/pkg/registry"
 	"sort"
 )
 

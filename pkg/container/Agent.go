@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/logger"
 )
 
 func (container *Container) ConnectToTheSameNetwork(containerId string, networkId string) error {

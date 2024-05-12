@@ -2,12 +2,12 @@ package operators
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"smr/pkg/config"
-	"smr/pkg/dns"
-	"smr/pkg/manager"
-	"smr/pkg/reconciler"
-	"smr/pkg/registry"
-	"smr/pkg/runtime"
+	"github.com/qdnqn/smr/pkg/config"
+	"github.com/qdnqn/smr/pkg/dns"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/reconciler"
+	"github.com/qdnqn/smr/pkg/registry"
+	"github.com/qdnqn/smr/pkg/runtime"
 )
 
 // Plugin contracts

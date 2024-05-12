@@ -3,8 +3,8 @@ package config
 import (
 	"flag"
 	"fmt"
+	"github.com/qdnqn/smr/pkg/logger"
 	"os"
-	"smr/pkg/logger"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"

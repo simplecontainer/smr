@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/logger"
 	"io"
 	"net/http"
-	"smr/pkg/database"
-	"smr/pkg/logger"
 )
 
 // DatabaseGet godoc

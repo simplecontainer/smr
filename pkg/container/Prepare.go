@@ -3,9 +3,9 @@ package container
 import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/template"
 	"regexp"
-	"smr/pkg/database"
-	"smr/pkg/template"
 	"strings"
 )
 
