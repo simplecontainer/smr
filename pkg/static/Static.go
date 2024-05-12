@@ -27,6 +27,10 @@ var STRUCTURE = []string{
 	"persistent/smr",
 }
 
+var STRUCTURE_CLIENT = []string{
+	"contexts",
+}
+
 const SMR_ENDPOINT_NAME = "smr-agent"
 
 //go:embed resources/git/version

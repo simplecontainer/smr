@@ -81,7 +81,9 @@ func (c *Config) ReadFlags() {
 	/* Operation mode */
 	flag.Bool("daemon", false, "Run daemon as HTTP API")
 	flag.Bool("daemon-secured", false, "Run daemon as HTTPS mTLS API")
-	flag.String("file", "", "Name of the file to apply")
+
+	/* Client cli config options */
+	flag.String("context", "default", "Context file to use for connection")
 
 	/* Meta data */
 	flag.String("project", "", "Project name to operate on")
