@@ -88,7 +88,6 @@ func (c *Config) ReadFlags() {
 	/* Meta data */
 	flag.String("project", "", "Project name to operate on")
 	flag.Bool("optmode", false, "Project is setup in the /opt/smr directory act accordingly")
-	flag.Bool("context", false, "Create context file holding current project information for ease of use")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
