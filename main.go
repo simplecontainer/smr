@@ -7,6 +7,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
+	_ "github.com/qdnqn/smr/docs"
 	"github.com/qdnqn/smr/pkg/api"
 	"github.com/qdnqn/smr/pkg/commands"
 	_ "github.com/qdnqn/smr/pkg/commands"
@@ -18,7 +19,6 @@ import (
 	"github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 	"net/http"
-	_ "smr/docs"
 	"strconv"
 	"strings"
 )
