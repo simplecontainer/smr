@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/spf13/viper"
 	"math/big"
 	"net"
 	"time"
@@ -93,6 +94,7 @@ func generateCertPrivKeyPair(ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*
 			StreetAddress: []string{"BB"},
 			PostalCode:    []string{"75270"},
 		},
+		DNSNames:     []string{viper.GetString("daemon-api")},
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
