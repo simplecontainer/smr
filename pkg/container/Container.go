@@ -11,14 +11,14 @@ import (
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/dns"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/runtime"
+	"github.com/qdnqn/smr/pkg/static"
 	"go.uber.org/zap"
 	"io/ioutil"
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/dns"
-	"smr/pkg/logger"
-	"smr/pkg/runtime"
-	"smr/pkg/static"
 	"strconv"
 	"strings"
 	"time"
@@ -28,7 +28,7 @@ func NewContainer() *Container {
 	return &Container{}
 }
 
-func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition definitions.Container) *Container {
+func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition v1.Container) *Container {
 	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -37,7 +37,7 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 		return nil
 	}
 
-	var definitionCopy definitions.Container
+	var definitionCopy v1.Container
 
 	err = json.Unmarshal(definitionEncoded, &definitionCopy)
 

@@ -3,11 +3,11 @@ package objects
 import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"reflect"
-	"smr/pkg/database"
-	"smr/pkg/logger"
 	"time"
 )
 

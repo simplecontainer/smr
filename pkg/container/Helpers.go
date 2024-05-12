@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/network"
+	"github.com/qdnqn/smr/pkg/runtime"
 	"log"
 	"os"
-	"smr/pkg/logger"
-	"smr/pkg/network"
-	"smr/pkg/runtime"
 )
 
 func (container *Container) mappingToMounts(runtime *runtime.Runtime) []mount.Mount {

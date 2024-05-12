@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/spf13/viper"
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/implementations"
-	"smr/pkg/manager"
-	"smr/pkg/objects"
 )
 
 func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
-	var resource definitions.Resource
+	var resource v1.Resource
 
 	if err := json.Unmarshal(jsonData, &resource); err != nil {
 		panic(err)

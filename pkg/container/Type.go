@@ -1,10 +1,10 @@
 package container
 
 import (
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/network"
-	"smr/pkg/utils"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/network"
+	"github.com/qdnqn/smr/pkg/utils"
 	"strings"
 )
 
@@ -35,7 +35,7 @@ type Static struct {
 	Capabilities           []string
 	NetworkMode            string
 	Privileged             bool
-	Definition             definitions.Container
+	Definition             v1.Container
 }
 
 type Runtime struct {

@@ -4,19 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
+	"github.com/qdnqn/smr/pkg/database"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/objects"
+	"github.com/qdnqn/smr/pkg/replicas"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
-	"smr/pkg/database"
-	"smr/pkg/definitions"
-	"smr/pkg/implementations"
-	"smr/pkg/logger"
-	"smr/pkg/manager"
-	"smr/pkg/objects"
-	"smr/pkg/replicas"
 )
 
 func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
-	var operatorContainer definitions.Container
+	var operatorContainer v1.Container
 
 	if err := json.Unmarshal(jsonData, &operatorContainer); err != nil {
 		return implementations.Response{
@@ -92,7 +92,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	}
 }
 
-func (implementation *Implementation) generateContainerNameAndGroup(mgr *manager.Manager, containerDefinition definitions.Container, changelog diff.Changelog) ([]string, []string, error) {
+func (implementation *Implementation) generateContainerNameAndGroup(mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
 	_, index := mgr.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT)
 
 	r := replicas.Replicas{

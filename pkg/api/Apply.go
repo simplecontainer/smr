@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/qdnqn/smr/pkg/implementations"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
 	"net/http"
-	"smr/pkg/implementations"
 )
 
 func (api *Api) Apply(c *gin.Context) {

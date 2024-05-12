@@ -2,14 +2,14 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"smr/pkg/config"
-	"smr/pkg/container"
-	"smr/pkg/dns"
-	"smr/pkg/gitops"
-	"smr/pkg/manager"
-	"smr/pkg/reconciler"
-	"smr/pkg/registry"
-	"smr/pkg/runtime"
+	"github.com/qdnqn/smr/pkg/config"
+	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/pkg/dns"
+	"github.com/qdnqn/smr/pkg/gitops"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/reconciler"
+	"github.com/qdnqn/smr/pkg/registry"
+	"github.com/qdnqn/smr/pkg/runtime"
 )
 
 func NewApi(config *config.Config, badger *badger.DB) *Api {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
-	"smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/logger"
 )
 
 func Put(Badger *badger.DB, key string, value string) error {

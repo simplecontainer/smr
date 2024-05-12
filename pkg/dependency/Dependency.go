@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/imroc/req/v3"
+	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/template"
+	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
-	"smr/pkg/definitions"
-	"smr/pkg/logger"
-	"smr/pkg/manager"
-	"smr/pkg/template"
-	"smr/pkg/utils"
 	"time"
 )
 
-func NewDependencyFromDefinition(depend definitions.DependsOn) *Dependency {
+func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
 	if depend.Timeout == "" {
 		depend.Timeout = "30s"
 	}
@@ -80,7 +80,7 @@ func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
 	}
 }
 
-func Ready(mgr *manager.Manager, group string, name string, dependsOn []definitions.DependsOn) (bool, error) {
+func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.DependsOn) (bool, error) {
 	if len(dependsOn) > 0 {
 		var allDependenciesSolved = true
 		logger.Log.Info("trying to solve dependencies", zap.String("group", group), zap.String("name", name))

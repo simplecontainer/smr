@@ -5,10 +5,10 @@ import (
 )
 
 type Dependency struct {
-	Name     string         `yaml:"name"`
-	Operator string         `yaml:"operator"`
-	Timeout  string         `yaml:"timeout"`
-	Body     map[string]any `mapstructure:"body"`
+	Name     string
+	Operator string
+	Timeout  string
+	Body     map[string]any
 	Solved   bool
 	Ctx      context.Context
 }
@@ -24,5 +24,5 @@ type State struct {
 }
 
 type Result struct {
-	Data string `json:"data"`
+	Data string
 }

@@ -1,8 +1,10 @@
-package definitions
+package v1
+
+import "encoding/json"
 
 type Gitops struct {
-	Meta GitopsMeta `mapstructure:"meta"`
-	Spec GitopsSpec `mapstructure:"spec"`
+	Meta GitopsMeta `json:"meta"`
+	Spec GitopsSpec `json:"spec"`
 }
 
 type GitopsMeta struct {
@@ -28,4 +30,9 @@ type CertKeyRef struct {
 type HttpauthRef struct {
 	Group      string
 	Identifier string
+}
+
+func (gitops *Gitops) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(gitops)
+	return string(bytes), err
 }

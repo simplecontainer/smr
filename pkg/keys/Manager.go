@@ -3,8 +3,8 @@ package keys
 import (
 	"bytes"
 	"fmt"
+	"github.com/qdnqn/smr/pkg/logger"
 	"os"
-	"smr/pkg/logger"
 )
 
 func NewKeys(directory string) *Keys {
