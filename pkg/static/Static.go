@@ -28,3 +28,6 @@ var STRUCTURE = []string{
 }
 
 const SMR_ENDPOINT_NAME = "smr-agent"
+
+//go:embed resources/git/version
+var SMR_VERSION string
