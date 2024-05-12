@@ -81,6 +81,7 @@ func (c *Config) ReadFlags() {
 	/* Operation mode */
 	flag.Bool("daemon", false, "Run daemon as HTTP API")
 	flag.Bool("daemon-secured", false, "Run daemon as HTTPS mTLS API")
+	flag.String("daemon-domain", "localhost", "Domain name where daemon will be exposed to")
 
 	/* Client cli config options */
 	flag.String("context", "default", "Context file to use for connection")
