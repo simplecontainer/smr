@@ -27,8 +27,10 @@ var STRUCTURE = []string{
 	"persistent/smr",
 }
 
-var STRUCTURE_CLIENT = []string{
-	"contexts",
+var CLIENT_CONTEXT_DIR = "contexts"
+
+var CLIENT_STRUCTURE = []string{
+	CLIENT_CONTEXT_DIR,
 }
 
 const SMR_ENDPOINT_NAME = "smr-agent"
