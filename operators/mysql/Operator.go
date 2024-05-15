@@ -43,8 +43,15 @@ func (operator *Operator) ListSupported(args ...interface{}) operators.Response 
 
 	supportedOperations := map[string]any{}
 	supportedOperations["SupportedOperations"] = []string{}
+
+OUTER:
 	for i := 0; i < reflected.NumMethod(); i++ {
 		method := reflected.Method(i)
+		for _, forbiddenOperator := range invalidOperators {
+			if forbiddenOperator == method.Name {
+				continue OUTER
+			}
+		}
 
 		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
 	}

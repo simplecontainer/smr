@@ -19,14 +19,15 @@ type Gitops struct {
 	DirectoryPath    string
 	PoolingInterval  string
 	AutomaticSync    bool
-	CertKey          *certkey.CertKey
-	HttpAuth         *httpauth.HttpAuth
 	CertKeyRef       v1.CertKeyRef
 	HttpAuthRef      v1.HttpauthRef
-	GitopsQueue      chan Event
-	Ctx              context.Context
-	Ticker           *time.Ticker
 	LastSyncedCommit plumbing.Hash
+	Definition       v1.Gitops
+	CertKey          *certkey.CertKey   `json:"-"`
+	HttpAuth         *httpauth.HttpAuth `json:"-"`
+	GitopsQueue      chan Event         `json:"-"`
+	Ctx              context.Context    `json:"-"`
+	Ticker           *time.Ticker       `json:"-"`
 }
 
 const KILL string = "kill"

@@ -139,6 +139,57 @@ func (obj *Object) Find(registryObjects map[string]Object, db *badger.DB, format
 	return nil
 }
 
+func (obj *Object) FindMany(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure) error {
+	val, err := database.Get(db, format.ToString())
+
+	if err == nil {
+		data := make(map[string]any)
+		err = json.Unmarshal([]byte(val), &data)
+
+		if err != nil {
+			return err
+		}
+
+		obj.definition = data
+		obj.definitionByte = []byte(val)
+	} else {
+		return err
+	}
+
+	format.Key = "created"
+
+	val, err = database.Get(db, format.ToString())
+
+	if err == nil {
+		obj.created, err = time.Parse(time.RFC3339, val)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+
+	format.Key = "updated"
+
+	val, err = database.Get(db, format.ToString())
+
+	if err == nil {
+		obj.created, err = time.Parse(time.RFC3339, val)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+
+	obj.changed = false
+	obj.exists = true
+
+	return nil
+}
+
 func (obj *Object) Remove(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure) {
 }
 

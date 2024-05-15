@@ -41,8 +41,15 @@ func (operator *Operator) ListSupported(args ...interface{}) operators.Response 
 
 	supportedOperations := map[string]any{}
 	supportedOperations["SupportedOperations"] = []string{}
+
+OUTER:
 	for i := 0; i < reflected.NumMethod(); i++ {
 		method := reflected.Method(i)
+		for _, forbiddenOperator := range invalidOperators {
+			if forbiddenOperator == method.Name {
+				continue OUTER
+			}
+		}
 
 		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
 	}
@@ -58,13 +65,18 @@ func (operator *Operator) ListSupported(args ...interface{}) operators.Response 
 }
 
 func (operator *Operator) List(request operators.Request) operators.Response {
+	data := make(map[string]any)
+	for key, gitops := range request.Manager.RepositoryWatchers.Repositories {
+		data[key] = gitops
+	}
+
 	return operators.Response{
 		HttpStatus:       200,
-		Explanation:      "sync is triggered",
+		Explanation:      "list of the gitops objects",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
-		Data:             nil,
+		Data:             data,
 	}
 }
 
