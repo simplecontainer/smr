@@ -39,6 +39,7 @@ func NewWatcher(gitops v1.Gitops) *Gitops {
 		AutomaticSync:   gitops.Spec.AutomaticSync,
 		CertKeyRef:      gitops.Spec.CertKeyRef,
 		HttpAuthRef:     gitops.Spec.HttpAuthRef,
+		Definition:      gitops,
 		CertKey:         nil,
 		HttpAuth:        nil,
 		GitopsQueue:     make(chan Event),
