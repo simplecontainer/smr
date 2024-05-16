@@ -7,17 +7,17 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
-	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/spf13/viper"
 )
 
-func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
+func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var config v1.Configuration
 
 	if err := json.Unmarshal(jsonData, &config); err != nil {
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -64,7 +64,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 		mgr.EmitChange(KIND, config.Meta.Group, config.Meta.Identifier)
 	} else {
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,
 			Explanation:      "object is same as the one on the server",
 			ErrorExplanation: "",
@@ -73,7 +73,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		}, errors.New("object is same on the server")
 	}
 
-	return implementations.Response{
+	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",

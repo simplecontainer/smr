@@ -6,7 +6,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
-	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/objects"
@@ -15,11 +15,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
+func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var operatorContainer v1.Container
 
 	if err := json.Unmarshal(jsonData, &operatorContainer); err != nil {
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: "json is not valid",
@@ -70,7 +70,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 			} else {
 				logger.Log.Error("failed to generate names and groups")
 
-				return implementations.Response{
+				return httpcontract.ResponseImplementation{
 					HttpStatus:       500,
 					Explanation:      "failed to generate groups and names",
 					ErrorExplanation: err.Error(),
@@ -82,7 +82,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 			logger.Log.Info("object is same on the server", zap.String("container", operatorContainer.Meta.Name))
 		}
 
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,
 			Explanation:      "everything went smoothly: good job!",
 			ErrorExplanation: "",

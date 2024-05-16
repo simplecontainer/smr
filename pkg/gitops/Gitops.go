@@ -1,19 +1,24 @@
 package gitops
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/imroc/req/v3"
 	"github.com/qdnqn/smr/pkg/definitions"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/httpcontract"
+	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/logger"
 	"go.uber.org/zap"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"time"
@@ -48,7 +53,7 @@ func NewWatcher(gitops v1.Gitops) *Gitops {
 	}
 }
 
-func (gitops *Gitops) HandleTickerAndEvents() {
+func (gitops *Gitops) HandleTickerAndEvents(keys *keys.Keys) {
 	for {
 		select {
 		case <-gitops.Ctx.Done():
@@ -63,7 +68,7 @@ func (gitops *Gitops) HandleTickerAndEvents() {
 				gitops.Ticker.Stop()
 			} else {
 				logger.Log.Info("triggering gitops sync from the remote repository", zap.String("ticker", t.String()))
-				gitops.ReconcileGitOps()
+				gitops.ReconcileGitOps(keys)
 			}
 			break
 		}
@@ -82,11 +87,11 @@ func (gitops *Gitops) HandleEvent(event Event) {
 	}
 }
 
-func (gitops *Gitops) ReconcileGitOps() {
+func (gitops *Gitops) ReconcileGitOps(keys *keys.Keys) {
 	var auth transport.AuthMethod = nil
 
 	if gitops.HttpAuth != nil {
-		auth = &http.BasicAuth{
+		auth = &gitHttp.BasicAuth{
 			Username: gitops.HttpAuth.Username,
 			Password: gitops.HttpAuth.Password,
 		}
@@ -135,7 +140,13 @@ func (gitops *Gitops) ReconcileGitOps() {
 				log.Fatalf("unable to read file: %v", err)
 			}
 
-			gitops.sendRequest("http://localhost:8080/api/v1/apply", definition)
+			client, err := keys.GenerateHttpClient()
+
+			if err != nil {
+				logger.Log.Error("gitops reconciler failed to generate http client for the mtls")
+			}
+
+			gitops.sendRequest(client, "http://localhost:1443/api/v1/apply", definition)
 		}
 
 		gitops.LastSyncedCommit = ref.Hash()
@@ -144,32 +155,76 @@ func (gitops *Gitops) ReconcileGitOps() {
 	}
 }
 
-// TODO:Refactor later
+func (gitops *Gitops) sendRequest(client *http.Client, URL string, data string) *httpcontract.ResponseImplementation {
+	var req *http.Request
+	var err error
 
-type Result struct {
-	Data string `json:"data"`
-}
+	if len(data) > 0 {
+		marshaled, err := json.Marshal(data)
 
-func (gitops *Gitops) sendRequest(URL string, jsonData string) {
-	client := req.C().DevMode()
-	var result Result
-
-	resp, err := client.R().
-		SetBodyJsonString(jsonData).
-		SetSuccessResult(&result).
-		Post(URL)
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
-
-	if !resp.IsSuccessState() {
-		if resp != nil {
-			logger.Log.Error("bad response status", zap.String("status", resp.Status))
-		} else {
-			logger.Log.Error("resp is nil")
+		if err != nil {
+			return &httpcontract.ResponseImplementation{
+				HttpStatus:       0,
+				Explanation:      "failed to marshal data for sending request",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+			}
 		}
 
-		return
+		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(marshaled))
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req, err = http.NewRequest("GET", URL, nil)
+		req.Header.Set("Content-Type", "application/json")
 	}
+
+	if err != nil {
+		return &httpcontract.ResponseImplementation{
+			HttpStatus:       0,
+			Explanation:      "failed to craft request",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return &httpcontract.ResponseImplementation{
+			HttpStatus:       0,
+			Explanation:      "failed to connect to the smr-agent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return &httpcontract.ResponseImplementation{
+			HttpStatus:       0,
+			Explanation:      "invalid response from the smr-agent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}
+	}
+
+	var response httpcontract.ResponseImplementation
+	err = json.Unmarshal(body, &response)
+
+	if err != nil {
+		return &httpcontract.ResponseImplementation{
+			HttpStatus:       0,
+			Explanation:      "failed to unmarshal body response from smr-agent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}
+	}
+
+	return &response
 }

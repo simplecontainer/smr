@@ -6,6 +6,7 @@ import (
 	"github.com/qdnqn/smr/pkg/container"
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/gitops"
+	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
@@ -13,16 +14,16 @@ import (
 )
 
 func NewApi(config *config.Config, badger *badger.DB) *Api {
-	//TODO: create constructors for all instead of invoking pointer directly for the custom type
 	api := &Api{
 		Config:              config,
 		Runtime:             &runtime.Runtime{},
 		Registry:            &registry.Registry{},
 		Reconciler:          reconciler.New(),
-		Manager:             &manager.Manager{},
+		Keys:                &keys.Keys{},
 		RepostitoryWatchers: &gitops.RepositoryWatcher{},
 		DnsCache:            &dns.Records{},
 		Badger:              badger,
+		Manager:             &manager.Manager{},
 	}
 
 	api.Registry = &registry.Registry{
@@ -38,6 +39,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api.Manager.Runtime = api.Runtime
 	api.Manager.Registry = api.Registry
 	api.Manager.Reconciler = api.Reconciler
+	api.Manager.Keys = api.Keys
 	api.Manager.Badger = badger
 	api.Manager.DnsCache = api.DnsCache
 	api.Manager.RepositoryWatchers = api.RepostitoryWatchers

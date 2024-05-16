@@ -8,7 +8,7 @@ import (
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/dependency"
-	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/objects"
@@ -18,11 +18,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
+func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	definitionSent := &v1.Containers{}
 
 	if err := json.Unmarshal(jsonData, &definitionSent); err != nil {
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -59,7 +59,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 				_, ok := definitionSent.Containers[name]
 
 				if !ok {
-					return implementations.Response{
+					return httpcontract.ResponseImplementation{
 						HttpStatus:       400,
 						Explanation:      "container definition invalid",
 						ErrorExplanation: fmt.Sprintf("container definintion with name %s not found", name),
@@ -80,7 +80,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 				} else {
 					logger.Log.Error("failed to generate names and groups")
 
-					return implementations.Response{
+					return httpcontract.ResponseImplementation{
 						HttpStatus:       500,
 						Explanation:      "failed to generate groups and names",
 						ErrorExplanation: err.Error(),
@@ -147,7 +147,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 								mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
-								return implementations.Response{
+								return httpcontract.ResponseImplementation{
 									HttpStatus:       500,
 									Explanation:      "failed to start container",
 									ErrorExplanation: err.Error(),
@@ -159,7 +159,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 					} else {
 						mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
-						return implementations.Response{
+						return httpcontract.ResponseImplementation{
 							HttpStatus:       500,
 							Explanation:      "failed to solve container dependencies",
 							ErrorExplanation: err.Error(),
@@ -170,7 +170,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 				}
 			}
 
-			return implementations.Response{
+			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,
 				Explanation:      "everything went smoothly: good job!",
 				ErrorExplanation: "",
@@ -178,7 +178,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 				Success:          true,
 			}, nil
 		} else {
-			return implementations.Response{
+			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,
 				Explanation:      "object is same as the one on the server",
 				ErrorExplanation: "",
