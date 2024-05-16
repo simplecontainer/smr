@@ -87,7 +87,6 @@ func (c *Config) ReadFlags() {
 	flag.String("context", "default", "Context file to use for connection")
 
 	/* Logs and output */
-	flag.Bool("v", false, "Verbose output of the cli and daemon")
 	flag.Bool("verbose", false, "Verbose output of the cli and daemon")
 
 	/* Meta data */
