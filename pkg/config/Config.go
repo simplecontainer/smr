@@ -86,6 +86,10 @@ func (c *Config) ReadFlags() {
 	/* Client cli config options */
 	flag.String("context", "default", "Context file to use for connection")
 
+	/* Logs and output */
+	flag.Bool("v", false, "Verbose output of the cli and daemon")
+	flag.Bool("verbose", false, "Verbose output of the cli and daemon")
+
 	/* Meta data */
 	flag.String("project", "", "Project name to operate on")
 	flag.Bool("optmode", false, "Project is setup in the /opt/smr directory act accordingly")

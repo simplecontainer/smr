@@ -19,8 +19,8 @@ import (
 	"github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
 	"strconv"
-	"strings"
 )
 
 //	@title			Simple container manager API
@@ -112,28 +112,33 @@ func main() {
 		router.GET("/healthz", api.Health)
 
 		if viper.GetBool("daemon-secured") {
-			mtls := keys.NewKeys("/home/smr/.ssh")
+			api.Keys = keys.NewKeys("/home/smr/.ssh")
 
-			found, err := mtls.GenerateIfNoKeysFound()
+			found, err := api.Keys.GenerateIfNoKeysFound()
 
 			if err != nil {
 				panic("failed to generate or read mtls keys")
 			}
 
 			if !found {
-				mtls.SaveToDirectory()
+				err := api.Keys.SaveToDirectory()
+
+				if err != nil {
+					logger.Log.Error("failed to save keys to directory")
+					os.Exit(1)
+				}
 
 				fmt.Println("Certificate is generated for the use by the smr client!")
 				fmt.Println("Copy-paste it to safe location for further use - it will not be printed anymore in the logs")
-				fmt.Println(fmt.Sprintf("%s\n%s\n%s\n", strings.TrimSpace(mtls.ClientPrivateKey.String()), strings.TrimSpace(mtls.ClientCertPem.String()), strings.TrimSpace(mtls.CAPem.String())))
+				fmt.Println(api.Keys.GeneratePemBundle())
 			}
 
 			certPool := x509.NewCertPool()
-			if ok := certPool.AppendCertsFromPEM(mtls.CAPem.Bytes()); !ok {
+			if ok := certPool.AppendCertsFromPEM(api.Keys.CAPem.Bytes()); !ok {
 				panic("invalid cert in CA PEM")
 			}
 
-			serverTLSCert, err := tls.X509KeyPair(mtls.ServerCertPem.Bytes(), mtls.ServerPrivateKey.Bytes())
+			serverTLSCert, err := tls.X509KeyPair(api.Keys.ServerCertPem.Bytes(), api.Keys.ServerPrivateKey.Bytes())
 			if err != nil {
 				logger.Log.Fatal("error opening certificate and key file for control connection", zap.String("error", err.Error()))
 				return

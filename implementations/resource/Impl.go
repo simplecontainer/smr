@@ -7,13 +7,13 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
-	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/spf13/viper"
 )
 
-func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (implementations.Response, error) {
+func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var resource v1.Resource
 
 	if err := json.Unmarshal(jsonData, &resource); err != nil {
@@ -23,7 +23,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 	data := make(map[string]interface{})
 	err := json.Unmarshal(jsonData, &data)
 	if err != nil {
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid resource sent: json is not valid",
 			ErrorExplanation: "invalid resource sent: json is not valid",
@@ -64,7 +64,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 
 		mgr.EmitChange(KIND, resource.Meta.Group, resource.Meta.Identifier)
 	} else {
-		return implementations.Response{
+		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,
 			Explanation:      "object is same as the one on the server",
 			ErrorExplanation: "",
@@ -73,7 +73,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		}, errors.New("object is same on the server")
 	}
 
-	return implementations.Response{
+	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",

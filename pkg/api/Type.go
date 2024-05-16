@@ -5,6 +5,7 @@ import (
 	"github.com/qdnqn/smr/pkg/config"
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/gitops"
+	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
@@ -16,10 +17,11 @@ type Api struct {
 	Runtime             *runtime.Runtime
 	Registry            *registry.Registry
 	Reconciler          *reconciler.Reconciler
-	Manager             *manager.Manager
-	Badger              *badger.DB
+	Keys                *keys.Keys
 	DnsCache            *dns.Records
 	RepostitoryWatchers *gitops.RepositoryWatcher
+	Badger              *badger.DB
+	Manager             *manager.Manager
 }
 
 type Kv struct {

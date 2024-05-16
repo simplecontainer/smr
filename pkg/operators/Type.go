@@ -4,6 +4,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/config"
 	"github.com/qdnqn/smr/pkg/dns"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
@@ -12,7 +13,7 @@ import (
 
 // Plugin contracts
 type Operator interface {
-	Run(string, ...interface{}) Response
+	Run(string, ...interface{}) httpcontract.ResponseOperator
 }
 
 type Request struct {
@@ -24,13 +25,4 @@ type Request struct {
 	Badger     *badger.DB
 	DnsCache   *dns.Records
 	Data       map[string]any
-}
-
-type Response struct {
-	HttpStatus       int
-	Explanation      string
-	ErrorExplanation string
-	Error            bool
-	Success          bool
-	Data             map[string]any
 }
