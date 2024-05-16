@@ -56,7 +56,7 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsFromDefinition.Definition.Meta.Group, gitopsFromDefinition.Definition.Meta.Identifier)
 
 		mgr.RepositoryWatchers.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
-		go mgr.RepositoryWatchers.Find(GroupIdentifier).HandleTickerAndEvents(mgr.Keys)
+		go mgr.RepositoryWatchers.Find(GroupIdentifier).HandleTickerAndEvents(mgr.DefinitionRegistry, mgr.Keys)
 	} else {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,

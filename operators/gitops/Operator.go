@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/operators"
 	"reflect"
@@ -68,8 +69,8 @@ OUTER:
 
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
-	for key, gitops := range request.Manager.RepositoryWatchers.Repositories {
-		data[key] = gitops
+	for key, gitopsInstance := range request.Manager.RepositoryWatchers.Repositories {
+		data[key] = gitopsInstance
 	}
 
 	return httpcontract.ResponseOperator{
@@ -79,6 +80,49 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 		Error:            false,
 		Success:          true,
 		Data:             data,
+	}
+}
+
+func (operator *Operator) Delete(request operators.Request) httpcontract.ResponseOperator {
+	if request.Data == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "send some data",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
+
+	gitopsInstance := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
+
+	if gitopsInstance == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       404,
+			Explanation:      "gitops definition doesn't exists",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	} else {
+		gitopsInstance.GitopsQueue <- gitops.Event{
+			Event: gitops.KILL,
+		}
+
+		request.Manager.RepositoryWatchers.Remove(GroupIdentifier)
+	}
+
+	return httpcontract.ResponseOperator{
+		HttpStatus:       200,
+		Explanation:      "gitops definition is deleted and removed from server",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
 	}
 }
 
@@ -96,9 +140,9 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 
-	gitops := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
+	gitopsInstance := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
 
-	if gitops == nil {
+	if gitopsInstance == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
 			Explanation:      "gitops definition doesn't exists",
@@ -108,7 +152,7 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 			Data:             nil,
 		}
 	} else {
-		gitops.ReconcileGitOps(request.Manager.Keys)
+		gitopsInstance.ReconcileGitOps(request.DefinitionRegistry, request.Keys)
 	}
 
 	return httpcontract.ResponseOperator{

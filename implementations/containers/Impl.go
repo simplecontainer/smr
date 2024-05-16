@@ -30,10 +30,14 @@ func (implementation *Implementation) Implementation(mgr *manager.Manager, jsonD
 			Success:          false,
 		}, err
 	} else {
+		fmt.Println(definitionSent)
+
 		var globalGroups []string
 		var globalNames []string
 
 		for _, definition := range definitionSent.Containers {
+			fmt.Println(definition)
+
 			format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 			obj := objects.New()
 			err = obj.Find(mgr.Registry.Object, mgr.Badger, format)

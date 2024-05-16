@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/implementations"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -15,7 +16,7 @@ func (api *Api) Apply(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, implementations.Response{
+		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -27,7 +28,7 @@ func (api *Api) Apply(c *gin.Context) {
 
 		err := json.Unmarshal(jsonData, &data)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, implementations.Response{
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid definition sent",
 				ErrorExplanation: err.Error(),
@@ -44,7 +45,7 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "implementations", kind)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, implementations.Response{
+		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      fmt.Sprintf("internal implementation is not present on the server: %s", kind),
 			ErrorExplanation: err.Error(),
@@ -58,7 +59,7 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 	if plugin != nil {
 		ImplementationInternal, err := plugin.Lookup(cases.Title(language.English).String(kind))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, implementations.Response{
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      fmt.Sprintf("plugin lookup failed: %s", cases.Title(language.English).String(kind)),
 				ErrorExplanation: err.Error(),
@@ -72,7 +73,7 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 		pl, ok := ImplementationInternal.(implementations.Implementation)
 
 		if !ok {
-			c.JSON(http.StatusBadRequest, implementations.Response{
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "internal implementation malfunctioned on the server",
 				ErrorExplanation: "",
@@ -83,11 +84,11 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 			return
 		}
 
-		var response implementations.Response
+		var response httpcontract.ResponseImplementation
 		response, err = pl.Implementation(api.Manager, jsonData)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, implementations.Response{
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "internal implementation malfunctioned on the server",
 				ErrorExplanation: "",
@@ -101,7 +102,7 @@ func (api *Api) ImplementationWrapper(kind string, jsonData []byte, c *gin.Conte
 		c.JSON(response.HttpStatus, response)
 		return
 	} else {
-		c.JSON(http.StatusBadRequest, implementations.Response{
+		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      fmt.Sprintf("internal implementation is not present on the server: %s", kind),
 			ErrorExplanation: err.Error(),

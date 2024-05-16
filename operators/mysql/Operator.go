@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/operators"
 	"reflect"
 )
 
-func (operator *Operator) Run(operation string, args ...interface{}) operators.Response {
+func (operator *Operator) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
 	reflected := reflect.TypeOf(operator)
 	reflectedValue := reflect.ValueOf(operator)
 
@@ -24,11 +25,11 @@ func (operator *Operator) Run(operation string, args ...interface{}) operators.R
 
 			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
 
-			return returnValue[0].Interface().(operators.Response)
+			return returnValue[0].Interface().(httpcontract.ResponseOperator)
 		}
 	}
 
-	return operators.Response{
+	return httpcontract.ResponseOperator{
 		HttpStatus:       400,
 		Explanation:      "server doesn't support requested functionality",
 		ErrorExplanation: "implementation is missing",
@@ -38,7 +39,7 @@ func (operator *Operator) Run(operation string, args ...interface{}) operators.R
 	}
 }
 
-func (operator *Operator) ListSupported(args ...interface{}) operators.Response {
+func (operator *Operator) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
 	reflected := reflect.TypeOf(operator)
 
 	supportedOperations := map[string]any{}
@@ -56,7 +57,7 @@ OUTER:
 		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
 	}
 
-	return operators.Response{
+	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
 		Explanation:      "",
 		ErrorExplanation: "",
@@ -66,10 +67,10 @@ OUTER:
 	}
 }
 
-func (operator *Operator) DatabaseReady(request operators.Request) operators.Response {
+func (operator *Operator) DatabaseReady(request operators.Request) httpcontract.ResponseOperator {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", request.Data["username"], request.Data["password"], request.Data["ip"], request.Data["port"]))
 	if err != nil {
-		return operators.Response{
+		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
 			Explanation:      "database connection can't be opened",
 			ErrorExplanation: err.Error(),
@@ -83,7 +84,7 @@ func (operator *Operator) DatabaseReady(request operators.Request) operators.Res
 	err = db.Ping()
 
 	if err != nil {
-		return operators.Response{
+		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
 			Explanation:      "database can't be pinged",
 			ErrorExplanation: err.Error(),
@@ -93,7 +94,7 @@ func (operator *Operator) DatabaseReady(request operators.Request) operators.Res
 		}
 	}
 
-	return operators.Response{
+	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
 		Explanation:      "database connection is ready",
 		ErrorExplanation: "",
