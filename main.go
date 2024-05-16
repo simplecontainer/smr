@@ -112,7 +112,7 @@ func main() {
 		router.GET("/healthz", api.Health)
 
 		if viper.GetBool("daemon-secured") {
-			api.Keys = keys.NewKeys("/home/smr/.ssh")
+			api.Keys = keys.NewKeys("/home/smr-agent/.ssh")
 
 			found, err := api.Keys.GenerateIfNoKeysFound()
 
@@ -124,7 +124,7 @@ func main() {
 				err := api.Keys.SaveToDirectory()
 
 				if err != nil {
-					logger.Log.Error("failed to save keys to directory")
+					logger.Log.Error("failed to save keys to directory", zap.String("error", err.Error()))
 					os.Exit(1)
 				}
 

@@ -4,6 +4,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/config"
 	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/pkg/dependency"
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/keys"
@@ -23,6 +24,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 		RepostitoryWatchers: &gitops.RepositoryWatcher{},
 		DnsCache:            &dns.Records{},
 		Badger:              badger,
+		DefinitionRegistry:  &dependency.DefinitionRegistry{},
 		Manager:             &manager.Manager{},
 	}
 
@@ -43,6 +45,14 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api.Manager.Badger = badger
 	api.Manager.DnsCache = api.DnsCache
 	api.Manager.RepositoryWatchers = api.RepostitoryWatchers
+	api.Manager.DefinitionRegistry = api.DefinitionRegistry
+
+	api.DefinitionRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
+	api.DefinitionRegistry.Register("gitops", []string{"certkey", "httpauth"})
+	api.DefinitionRegistry.Register("configuration", []string{})
+	api.DefinitionRegistry.Register("resource", []string{"configuration"})
+	api.DefinitionRegistry.Register("certkey", []string{})
+	api.DefinitionRegistry.Register("httpauth", []string{})
 
 	return api
 }

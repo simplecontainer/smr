@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/qdnqn/smr/pkg/definitions"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
+	"github.com/qdnqn/smr/pkg/dependency"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/logger"
@@ -53,7 +54,7 @@ func NewWatcher(gitops v1.Gitops) *Gitops {
 	}
 }
 
-func (gitops *Gitops) HandleTickerAndEvents(keys *keys.Keys) {
+func (gitops *Gitops) HandleTickerAndEvents(definitionRegistry *dependency.DefinitionRegistry, keys *keys.Keys) {
 	for {
 		select {
 		case <-gitops.Ctx.Done():
@@ -68,7 +69,7 @@ func (gitops *Gitops) HandleTickerAndEvents(keys *keys.Keys) {
 				gitops.Ticker.Stop()
 			} else {
 				logger.Log.Info("triggering gitops sync from the remote repository", zap.String("ticker", t.String()))
-				gitops.ReconcileGitOps(keys)
+				gitops.ReconcileGitOps(definitionRegistry, keys)
 			}
 			break
 		}
@@ -87,7 +88,7 @@ func (gitops *Gitops) HandleEvent(event Event) {
 	}
 }
 
-func (gitops *Gitops) ReconcileGitOps(keys *keys.Keys) {
+func (gitops *Gitops) ReconcileGitOps(definitionRegistry *dependency.DefinitionRegistry, keys *keys.Keys) {
 	var auth transport.AuthMethod = nil
 
 	if gitops.HttpAuth != nil {
@@ -132,10 +133,37 @@ func (gitops *Gitops) ReconcileGitOps(keys *keys.Keys) {
 			logger.Log.Error(err.Error())
 		}
 
-		for _, e := range entries {
-			logger.Log.Info("trying to reconcile", zap.String("file", e.Name()))
+		var orderedByDependencies []string
 
+		for _, e := range entries {
 			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, e.Name()))
+			if err != nil {
+				log.Fatalf("unable to read file: %v", err)
+			}
+
+			data := make(map[string]interface{})
+
+			err := json.Unmarshal([]byte(definition), &data)
+			if err != nil {
+				logger.Log.Error("invalid json defined for the object", zap.String("error", err.Error()))
+			}
+
+			dependencies := definitionRegistry.GetDependencies(data["kind"].(string))
+
+			if len(dependencies) == 0 {
+				orderedByDependencies = append(orderedByDependencies, e.Name())
+			} else {
+				// TODO: Order by dependencies somehow?
+				for _, oe := range orderedByDependencies {
+					fmt.Println(oe)
+				}
+			}
+		}
+
+		for _, fileName := range orderedByDependencies {
+			logger.Log.Info("trying to reconcile", zap.String("file", fileName))
+
+			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, fileName))
 			if err != nil {
 				log.Fatalf("unable to read file: %v", err)
 			}
@@ -146,7 +174,13 @@ func (gitops *Gitops) ReconcileGitOps(keys *keys.Keys) {
 				logger.Log.Error("gitops reconciler failed to generate http client for the mtls")
 			}
 
-			gitops.sendRequest(client, "http://localhost:1443/api/v1/apply", definition)
+			response := gitops.sendRequest(client, "https://localhost:1443/api/v1/apply", definition)
+
+			if response.Success {
+				logger.Log.Info("gitops response collected", zap.String("response", response.Explanation))
+			} else {
+				logger.Log.Info("gitops response collected", zap.String("response", response.Explanation), zap.String("error", response.ErrorExplanation))
+			}
 		}
 
 		gitops.LastSyncedCommit = ref.Hash()
@@ -160,8 +194,6 @@ func (gitops *Gitops) sendRequest(client *http.Client, URL string, data string) 
 	var err error
 
 	if len(data) > 0 {
-		marshaled, err := json.Marshal(data)
-
 		if err != nil {
 			return &httpcontract.ResponseImplementation{
 				HttpStatus:       0,
@@ -172,7 +204,7 @@ func (gitops *Gitops) sendRequest(client *http.Client, URL string, data string) 
 			}
 		}
 
-		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(marshaled))
+		req, err = http.NewRequest("POST", URL, bytes.NewBuffer([]byte(data)))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
 		req, err = http.NewRequest("GET", URL, nil)

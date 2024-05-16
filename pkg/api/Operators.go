@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/operators"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -22,7 +23,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 
 	for _, forbidenOperator := range invalidOperators {
 		if forbidenOperator == operator {
-			c.JSON(http.StatusBadRequest, operators.Response{
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "this operation is restricted",
 				ErrorExplanation: "can't call internal methods on the operators",
@@ -38,7 +39,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "operators", group)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, operators.Response{
+		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      "operator is not present on the server",
 			ErrorExplanation: err.Error(),
@@ -53,7 +54,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 	if plugin != nil {
 		Operator, err := plugin.Lookup(cases.Title(language.English).String(group))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, operators.Response{
+			c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "operator is not present on the server",
 				ErrorExplanation: err.Error(),
@@ -69,7 +70,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 		pl, ok := Operator.(operators.Operator)
 
 		if !ok {
-			c.JSON(http.StatusInternalServerError, operators.Response{
+			c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "operator implementation malfunctioned on the server",
 				ErrorExplanation: "check server logs",
@@ -86,7 +87,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 		if c.Request.Method == http.MethodPost {
 			jsonData, err := io.ReadAll(c.Request.Body)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, operators.Response{
+				c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
 					HttpStatus:       http.StatusBadRequest,
 					Explanation:      "invalid JSON sent as the body",
 					ErrorExplanation: err.Error(),
@@ -101,7 +102,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 			err = json.Unmarshal([]byte(jsonData), &body)
 
 			if err != nil {
-				c.JSON(http.StatusBadRequest, operators.Response{
+				c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
 					HttpStatus:       http.StatusBadRequest,
 					Explanation:      "invalid JSON sent as the body",
 					ErrorExplanation: err.Error(),
@@ -115,21 +116,23 @@ func (api *Api) RunOperators(c *gin.Context) {
 		}
 
 		request := operators.Request{
-			Config:     api.Config,
-			Runtime:    api.Runtime,
-			Registry:   api.Registry,
-			Reconciler: api.Reconciler,
-			Manager:    api.Manager,
-			Badger:     api.Badger,
-			DnsCache:   api.DnsCache,
-			Data:       body,
+			Config:             api.Config,
+			Runtime:            api.Runtime,
+			Registry:           api.Registry,
+			Reconciler:         api.Reconciler,
+			Keys:               api.Keys,
+			Manager:            api.Manager,
+			Badger:             api.Badger,
+			DnsCache:           api.DnsCache,
+			DefinitionRegistry: api.DefinitionRegistry,
+			Data:               body,
 		}
 
 		operatorResponse := pl.Run(operator, request)
 
 		c.JSON(operatorResponse.HttpStatus, operatorResponse)
 	} else {
-		c.JSON(http.StatusInternalServerError, operators.Response{
+		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      "operator is not present on the server",
 			ErrorExplanation: err.Error(),
@@ -148,7 +151,7 @@ func (api *Api) ListSupported(c *gin.Context) {
 	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "operators", group)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, operators.Response{
+		c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "operator is not present on the server",
 			ErrorExplanation: err.Error(),
@@ -163,7 +166,7 @@ func (api *Api) ListSupported(c *gin.Context) {
 	if plugin != nil {
 		Operator, err := plugin.Lookup(cases.Title(language.English).String(group))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, operators.Response{
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "operator is not present on the server",
 				ErrorExplanation: err.Error(),
@@ -179,7 +182,7 @@ func (api *Api) ListSupported(c *gin.Context) {
 		pl, ok := Operator.(operators.Operator)
 
 		if !ok {
-			c.JSON(http.StatusInternalServerError, operators.Response{
+			c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "operator implementation malfunctioned on the server",
 				ErrorExplanation: err.Error(),

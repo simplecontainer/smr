@@ -2,6 +2,7 @@ package manager
 
 import (
 	"github.com/dgraph-io/badger/v4"
+	"github.com/qdnqn/smr/pkg/dependency"
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/keys"
@@ -20,4 +21,5 @@ type Manager struct {
 	Badger             *badger.DB
 	DnsCache           *dns.Records
 	RepositoryWatchers *gitops.RepositoryWatcher
+	DefinitionRegistry *dependency.DefinitionRegistry
 }
