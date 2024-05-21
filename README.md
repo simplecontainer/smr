@@ -37,6 +37,8 @@ Running next command will show that smr-agent is up and running.
 
 The smr-agent is up and running and is listening on the local interface only so no remote connection is possible at the moment.
 
+After starting smr-agent run docker logs smr-agent. This will print out certificate bundle needed for the authentication for the smr-client.
+
 💡
 
 The smr-agent is running as the docker container with super privileges to the /var/run/docker.sock to be able to manipulate docker daemon.
@@ -50,6 +52,20 @@ The client also can be cloned from GitHub and needs to be built and copied to th
     cd smr-client
     go build
     sudo cp smr /usr/local/bin/smr
+
+For example if the smr-agent is running on the same server as client then this will add the context to the smr CLI.
+
+`cert.pem` can be copied from the logs of the smr-agent.
+
+`--context` flag provides the option to name the context however you want.
+
+```
+smr context connect https://localhost:1443 cert.pem --context localhost
+```
+
+This will set the localhost context as the active one if the cert.pem is valid. All the smr commands will be against this context.
+
+It is possible to have multiple contexts. Just use smr context switch [name].
 
 Running containers with smr
 ---------------------------
@@ -87,10 +103,6 @@ definition-traefik.yaml
 After saving the file and running the next command:
 
     smr apply definition.yaml
-
-💡
-
-The smr-agent and smr-client must be on the same machine to communicate. Currently smr-agent is not exposed on the internet since it does not provide any auth method.
 
 The agent will pick up the definition and it will create the container via Docker API.
 
