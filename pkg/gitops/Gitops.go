@@ -12,10 +12,10 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/qdnqn/smr/pkg/definitions"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
-	"github.com/qdnqn/smr/pkg/dependency"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/objectdependency"
 	"go.uber.org/zap"
 	"io"
 	"log"
@@ -54,7 +54,7 @@ func NewWatcher(gitops v1.Gitops) *Gitops {
 	}
 }
 
-func (gitops *Gitops) HandleTickerAndEvents(definitionRegistry *dependency.DefinitionRegistry, keys *keys.Keys) {
+func (gitops *Gitops) HandleTickerAndEvents(definitionRegistry *objectdependency.DefinitionRegistry, keys *keys.Keys) {
 	for {
 		select {
 		case <-gitops.Ctx.Done():
@@ -88,7 +88,7 @@ func (gitops *Gitops) HandleEvent(event Event) {
 	}
 }
 
-func (gitops *Gitops) ReconcileGitOps(definitionRegistry *dependency.DefinitionRegistry, keys *keys.Keys) {
+func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.DefinitionRegistry, keys *keys.Keys) {
 	var auth transport.AuthMethod = nil
 
 	if gitops.HttpAuth != nil {
@@ -133,7 +133,7 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *dependency.DefinitionR
 			logger.Log.Error(err.Error())
 		}
 
-		var orderedByDependencies []string
+		orderedByDependencies := make([]map[string]string, 0)
 
 		for _, e := range entries {
 			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, e.Name()))
@@ -148,19 +148,31 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *dependency.DefinitionR
 				logger.Log.Error("invalid json defined for the object", zap.String("error", err.Error()))
 			}
 
-			dependencies := definitionRegistry.GetDependencies(data["kind"].(string))
+			position := -1
 
-			if len(dependencies) == 0 {
-				orderedByDependencies = append(orderedByDependencies, e.Name())
-			} else {
-				// TODO: Order by dependencies somehow?
-				for _, oe := range orderedByDependencies {
-					fmt.Println(oe)
+			for index, oe := range orderedByDependencies {
+				deps := definitionRegistry.GetDependencies(oe["kind"])
+
+				for _, dp := range deps {
+					fmt.Println(fmt.Sprintf("%s == %s", data["kind"].(string), dp))
+
+					if data["kind"].(string) == dp {
+						position = index
+					}
 				}
+			}
+
+			if position != -1 {
+				orderedByDependencies = append(orderedByDependencies[:position+1], orderedByDependencies[position:]...)
+				orderedByDependencies[position] = map[string]string{"name": e.Name(), "kind": data["kind"].(string)}
+			} else {
+				orderedByDependencies = append(orderedByDependencies, map[string]string{"name": e.Name(), "kind": data["kind"].(string)})
 			}
 		}
 
-		for _, fileName := range orderedByDependencies {
+		for _, fileInfo := range orderedByDependencies {
+			fileName := fileInfo["name"]
+
 			logger.Log.Info("trying to reconcile", zap.String("file", fileName))
 
 			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, fileName))

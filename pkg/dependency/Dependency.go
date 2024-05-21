@@ -1,16 +1,18 @@
 package dependency
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/imroc/req/v3"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/template"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
+	"net/http"
 	"time"
 )
 
@@ -54,7 +56,7 @@ func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
 
 		logger.Log.Info("trying to solve dependency", zap.String("name", depend.Name))
 
-		go Depends(mgr, "http://smr-agent:8080/operators", depend, ch)
+		go Depends(mgr, "https://smr-agent:8080/operators", depend, ch)
 
 		for {
 			select {
@@ -150,27 +152,32 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 }
 
 func Depends(mgr *manager.Manager, host string, depend *Dependency, ch chan State) {
-	client := req.C().DevMode()
-
 	if depend.Operator != "" {
 		var err error
-		// TODO:maybe take into account dependencyMap for this case too?
-		json, _, err := template.ParseTemplate(mgr.Badger, depend.Body, nil)
+		jsonData, _, err := template.ParseTemplate(mgr.Badger, depend.Body, nil)
 
 		group, _ := utils.ExtractGroupAndId(depend.Name)
-		url := fmt.Sprintf("%s/%s/%s", host, group, depend.Operator)
-		var result Result
+		URL := fmt.Sprintf("%s/%s/%s", host, group, depend.Operator)
 
-		logger.Log.Info(fmt.Sprintf("trying to call operator: %s", url))
-		resp, err := client.R().
-			SetBody(&json).
-			SetSuccessResult(&result).
-			Post(url)
+		jsonBytes, err := json.Marshal(jsonData)
+
+		var req *http.Request
+
+		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(jsonBytes))
+		req.Header.Set("Content-Type", "application/json")
+
+		logger.Log.Info(fmt.Sprintf("trying to call operator: %s", URL))
+		client, err := mgr.Keys.GenerateHttpClient()
 		if err != nil {
 			logger.Log.Error(err.Error())
 		}
 
-		if resp.IsSuccessState() {
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+
+		if resp.StatusCode == http.StatusOK {
 			ch <- State{
 				Success: true,
 				Depend:  depend,

@@ -61,8 +61,8 @@ OUTER:
 		HttpStatus:       200,
 		Explanation:      "",
 		ErrorExplanation: "",
-		Error:            true,
-		Success:          false,
+		Error:            false,
+		Success:          true,
 		Data:             supportedOperations,
 	}
 }

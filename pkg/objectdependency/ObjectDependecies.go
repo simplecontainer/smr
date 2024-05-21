@@ -1,7 +1,8 @@
-package dependency
+package objectdependency
 
 type DefinitionRegistry struct {
 	Dependencies map[string][]string
+	Order        []string
 }
 
 func NewDefinitionDependencyRegistry() *DefinitionRegistry {
@@ -16,7 +17,7 @@ func (defRegistry *DefinitionRegistry) Register(kind string, dependencies []stri
 }
 
 func (defRegistry *DefinitionRegistry) GetDependencies(kind string) []string {
-	dependencies, ok := defRegistry.Dependencies["foo"]
+	dependencies, ok := defRegistry.Dependencies[kind]
 
 	if ok {
 		return dependencies
