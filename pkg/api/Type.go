@@ -3,11 +3,11 @@ package api
 import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/config"
-	"github.com/qdnqn/smr/pkg/dependency"
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/objectdependency"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
 	"github.com/qdnqn/smr/pkg/runtime"
@@ -22,7 +22,7 @@ type Api struct {
 	DnsCache            *dns.Records
 	RepostitoryWatchers *gitops.RepositoryWatcher
 	Badger              *badger.DB
-	DefinitionRegistry  *dependency.DefinitionRegistry
+	DefinitionRegistry  *objectdependency.DefinitionRegistry
 	Manager             *manager.Manager
 }
 

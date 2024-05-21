@@ -35,10 +35,6 @@ func (container *Container) Prepare(db *badger.DB) bool {
 		})
 	}
 
-	fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	fmt.Println(container.Runtime.ObjectDependencies)
-	fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
 	if err != nil {
 		return false
 	}

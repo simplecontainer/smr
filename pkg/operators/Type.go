@@ -3,11 +3,11 @@ package operators
 import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/config"
-	"github.com/qdnqn/smr/pkg/dependency"
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/objectdependency"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
 	"github.com/qdnqn/smr/pkg/runtime"
@@ -27,6 +27,6 @@ type Request struct {
 	Keys               *keys.Keys
 	Badger             *badger.DB
 	DnsCache           *dns.Records
-	DefinitionRegistry *dependency.DefinitionRegistry
+	DefinitionRegistry *objectdependency.DefinitionRegistry
 	Data               map[string]any
 }
