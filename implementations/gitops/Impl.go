@@ -110,6 +110,14 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
+	} else {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       418,
+			Explanation:      "object is drifted from the definition",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+		}, nil
 	}
 
 	if obj.ChangeDetected() {
