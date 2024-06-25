@@ -4,7 +4,6 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/qdnqn/smr/pkg/database"
-	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/qdnqn/smr/pkg/operators"
@@ -71,13 +70,28 @@ OUTER:
 
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
-	for key, gitopsInstance := range request.Manager.RepositoryWatchers.Repositories {
-		data[key] = gitopsInstance
+
+	format := database.Format(KIND, "", "", "")
+	objs, err := objects.FindMany(request.Manager.Badger, format)
+
+	if err != nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "error occured",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	for k, v := range objs {
+		data[k] = v.GetDefinition()
 	}
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
-		Explanation:      "list of the gitops objects",
+		Explanation:      "list of the httpauth objects",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
@@ -142,74 +156,44 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	}
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
+	format := database.FormatEmpty().FromString(GroupIdentifier)
 
-	gitopsInstance := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
+	obj := objects.New()
+	err := obj.Find(request.Manager.Registry.Object, request.Manager.Badger, format)
 
-	if gitopsInstance == nil {
+	if err != nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
-			Explanation:      "gitops definition doesn't exists",
-			ErrorExplanation: "",
+			Explanation:      "httpauth definition is not found on the server",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	removed, err := obj.Remove(request.Manager.Badger, format)
+
+	if !removed {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       500,
+			Explanation:      "httpauth definition is not deleted",
+			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
 			Data:             nil,
 		}
 	} else {
-		gitopsInstance.GitopsQueue <- gitops.Event{
-			Event: gitops.KILL,
-		}
-
-		request.Manager.RepositoryWatchers.Remove(GroupIdentifier)
-	}
-
-	return httpcontract.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "gitops definition is deleted and removed from server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
-}
-
-func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseOperator {
-	if request.Data == nil {
 		return httpcontract.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
+			HttpStatus:       200,
+			Explanation:      "httpauth definition is deleted and removed from server",
 			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
+			Error:            false,
+			Success:          true,
 			Data:             nil,
 		}
-	}
-
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
-
-	gitopsInstance := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
-
-	if gitopsInstance == nil {
-		return httpcontract.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "gitops definition doesn't exists",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	} else {
-		go gitopsInstance.ReconcileGitOps(request.DefinitionRegistry, request.Keys)
-	}
-
-	return httpcontract.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "sync is triggered manually",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
 	}
 }
 
 // Exported
-var Gitops Operator
+var Httpauth Operator

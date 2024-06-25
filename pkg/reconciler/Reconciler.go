@@ -275,11 +275,13 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 				err := container.Delete()
 
 				if err == nil {
+					registry.BackOffReset(container.Static.Group, container.Static.GeneratedName)
+
 					if !container.Status.PendingDelete {
 						container.Prepare(db)
 						_, err = container.Run(runtime, db, dnsCache)
 					} else {
-						logger.Log.Info("we should forget about this container", zap.String("container", container.Static.GeneratedName))
+						logger.Log.Info("container stopped and deleted", zap.String("container", container.Static.GeneratedName))
 					}
 					break
 				} else {

@@ -136,6 +136,7 @@ func ParseQuery(cache *Records, m *dns.Msg) {
 	for _, q := range m.Question {
 		switch q.Qtype {
 		case dns.TypeA:
+			//TODO:Bug when doing apply without internet resolution fails because no internet connection to hit 8.8.8.8
 			logger.Log.Info("Querying dns server", zap.String("fqdn", q.Name))
 			ips := cache.Find(q.Name)
 

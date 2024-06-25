@@ -48,7 +48,13 @@ type Runtime struct {
 	Ready              bool
 	Configuration      map[string]any
 	Resources          []Resource
+	Owner              Owner
 	ObjectDependencies []database.FormatStructure
+}
+
+type Owner struct {
+	Kind            string
+	GroupIdentifier string
 }
 
 type Network struct {

@@ -18,6 +18,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 
 	numberOfReplicasToCreate, numberOfReplicasToDestroy, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
 
+	// Destroy from the end to start
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
 			name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
@@ -34,6 +35,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 		}
 	}
 
+	// Create from the start to the end
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
 		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
 		container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
@@ -92,6 +94,27 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 
 		groups = append(groups, replicas.Group)
 		names = append(names, name)
+	}
+
+	return groups, names, nil
+}
+
+func (replicas *Replicas) GetReplica(mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
+	groups := make([]string, 0)
+	names := make([]string, 0)
+
+	_, _, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
+
+	for i := existingNumberOfReplicas; i > 0; i -= 1 {
+		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
+		container := mgr.Registry.Find(containerDefinition.Meta.Group, name)
+
+		if container == nil {
+			logger.Log.Info("container doesn't exist on the server", zap.String("container", name))
+		} else {
+			groups = append(groups, replicas.Group)
+			names = append(names, name)
+		}
 	}
 
 	return groups, names, nil
