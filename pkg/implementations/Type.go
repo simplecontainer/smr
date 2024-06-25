@@ -9,5 +9,6 @@ import (
 // Plugin contracts
 type Implementation interface {
 	Apply(*manager.Manager, []byte, *gin.Context) (httpcontract.ResponseImplementation, error)
+	Compare(*manager.Manager, []byte, *gin.Context) (httpcontract.ResponseImplementation, error)
 	Delete(*manager.Manager, []byte, *gin.Context) (httpcontract.ResponseImplementation, error)
 }
