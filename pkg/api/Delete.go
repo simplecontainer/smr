@@ -12,7 +12,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) Apply(c *gin.Context) {
+func (api *Api) Delete(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -37,11 +37,11 @@ func (api *Api) Apply(c *gin.Context) {
 			})
 		}
 
-		api.ImplementationWrapperApply(data["kind"].(string), jsonData, c)
+		api.ImplementationWrapperDelete(data["kind"].(string), jsonData, c)
 	}
 }
 
-func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.Context) {
+func (api *Api) ImplementationWrapperDelete(kind string, jsonData []byte, c *gin.Context) {
 	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "implementations", kind)
 
 	if err != nil {
@@ -85,13 +85,13 @@ func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Apply(api.Manager, jsonData, c)
+		response, err = pl.Delete(api.Manager, jsonData, c)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "internal implementation malfunctioned on the server",
-				ErrorExplanation: "",
+				ErrorExplanation: err.Error(),
 				Error:            true,
 				Success:          false,
 			})

@@ -14,6 +14,63 @@ func Format(kind string, group string, identifier string, key string) FormatStru
 	}
 }
 
+func FormatEmpty() *FormatStructure {
+	return &FormatStructure{}
+}
+
+func (format *FormatStructure) FromString(f string) FormatStructure {
+	elems := strings.Split(f, ".")
+
+	if len(elems) > 3 {
+		format.Kind = elems[0]
+		format.Group = elems[1]
+		format.Identifier = elems[2]
+		format.Key = elems[3]
+	}
+
+	return *format
+}
+
 func (format *FormatStructure) ToString() string {
-	return fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key)
+	output := ""
+
+	if format.Kind != "" {
+		output = fmt.Sprintf("%s", format.Kind)
+	}
+
+	if format.Group != "" {
+		output = fmt.Sprintf("%s.%s", format.Kind, format.Group)
+	}
+
+	if format.Identifier != "" {
+		output = fmt.Sprintf("%s.%s.%s", format.Kind, format.Group, format.Identifier)
+	}
+
+	if format.Key != "" {
+		output = fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key)
+	}
+
+	return output
+}
+
+func (format *FormatStructure) ToBytes() []byte {
+	output := ""
+
+	if format.Kind != "" {
+		output = fmt.Sprintf("%s", format.Kind)
+	}
+
+	if format.Group != "" {
+		output = fmt.Sprintf("%s.%s", format.Kind, format.Group)
+	}
+
+	if format.Identifier != "" {
+		output = fmt.Sprintf("%s.%s.%s", format.Kind, format.Group, format.Identifier)
+	}
+
+	if format.Key != "" {
+		output = fmt.Sprintf("%s.%s.%s.%s", format.Kind, format.Group, format.Identifier, format.Key)
+	}
+
+	return []byte(output)
 }

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -64,11 +65,10 @@ func (gitops *Gitops) HandleTickerAndEvents(definitionRegistry *objectdependency
 			gitops.HandleEvent(event)
 			break
 		case t := <-gitops.Ticker.C:
-			if !gitops.AutomaticSync {
-				logger.Log.Info("triggering gitops sync is set to manual", zap.String("repository", gitops.RepoURL))
-				gitops.Ticker.Stop()
-			} else {
-				logger.Log.Info("triggering gitops sync from the remote repository", zap.String("ticker", t.String()))
+			gitops.CheckInSync(definitionRegistry, keys)
+
+			if gitops.AutomaticSync {
+				logger.Log.Info("triggering gitops auto sync", zap.String("ticker", t.String()))
 				gitops.ReconcileGitOps(definitionRegistry, keys)
 			}
 			break
@@ -78,6 +78,9 @@ func (gitops *Gitops) HandleTickerAndEvents(definitionRegistry *objectdependency
 
 func (gitops *Gitops) HandleEvent(event Event) {
 	switch event.Event {
+	case RESTART:
+		gitops.LastSyncedCommit = plumbing.Hash{0}
+		break
 	case STOP:
 		gitops.Ticker.Stop()
 		break
@@ -150,8 +153,8 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.Defin
 
 			position := -1
 
-			for index, oe := range orderedByDependencies {
-				deps := definitionRegistry.GetDependencies(oe["kind"])
+			for index, orderedEntry := range orderedByDependencies {
+				deps := definitionRegistry.GetDependencies(orderedEntry["kind"])
 
 				for _, dp := range deps {
 					fmt.Println(fmt.Sprintf("%s == %s", data["kind"].(string), dp))
@@ -197,8 +200,127 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.Defin
 
 		gitops.LastSyncedCommit = ref.Hash()
 	} else {
-		logger.Log.Info("everything synced", zap.String("repoUrl", gitops.RepoURL))
+		logger.Log.Info("checking if everything is in sync", zap.String("repoUrl", gitops.RepoURL))
 	}
+}
+
+func (gitops *Gitops) CheckInSync(definitionRegistry *objectdependency.DefinitionRegistry, keys *keys.Keys) {
+	var auth transport.AuthMethod = nil
+
+	if gitops.HttpAuth != nil {
+		auth = &gitHttp.BasicAuth{
+			Username: gitops.HttpAuth.Username,
+			Password: gitops.HttpAuth.Password,
+		}
+	}
+
+	if gitops.CertKey != nil {
+		auth, _ = ssh.NewPublicKeys(ssh.DefaultUsername, []byte(gitops.CertKey.PrivateKey), gitops.CertKey.PrivateKeyPassword)
+	}
+
+	localPath := fmt.Sprintf("/tmp/%s", path.Base(gitops.RepoURL))
+
+	if _, err := os.Stat(localPath); errors.Is(err, os.ErrNotExist) {
+		_, err := git.PlainClone(localPath, false, &git.CloneOptions{
+			URL:      gitops.RepoURL,
+			Progress: os.Stdout,
+			Auth:     auth,
+		})
+
+		if err != nil {
+			logger.Log.Error("failed to fetch repository", zap.String("repository", gitops.RepoURL))
+		}
+	}
+
+	r, _ := git.PlainOpen(localPath)
+
+	w, _ := r.Worktree()
+
+	_ = w.Pull(&git.PullOptions{RemoteName: "origin"})
+
+	ref, _ := r.Head()
+	r.CommitObject(ref.Hash())
+
+	logger.Log.Info("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
+	logger.Log.Info("checking if everything is in sync", zap.String("repoUrl", gitops.RepoURL))
+
+	entries, err := os.ReadDir(fmt.Sprintf("%s/%s", localPath, gitops.DirectoryPath))
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
+
+	orderedByDependencies := make([]map[string]string, 0)
+
+	for _, e := range entries {
+		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, e.Name()))
+		if err != nil {
+			log.Fatalf("unable to read file: %v", err)
+		}
+
+		data := make(map[string]interface{})
+
+		err := json.Unmarshal([]byte(definition), &data)
+		if err != nil {
+			logger.Log.Error("invalid json defined for the object", zap.String("error", err.Error()))
+		}
+
+		position := -1
+
+		for index, orderedEntry := range orderedByDependencies {
+			deps := definitionRegistry.GetDependencies(orderedEntry["kind"])
+
+			for _, dp := range deps {
+				fmt.Println(fmt.Sprintf("%s == %s", data["kind"].(string), dp))
+
+				if data["kind"].(string) == dp {
+					position = index
+				}
+			}
+		}
+
+		if position != -1 {
+			orderedByDependencies = append(orderedByDependencies[:position+1], orderedByDependencies[position:]...)
+			orderedByDependencies[position] = map[string]string{"name": e.Name(), "kind": data["kind"].(string)}
+		} else {
+			orderedByDependencies = append(orderedByDependencies, map[string]string{"name": e.Name(), "kind": data["kind"].(string)})
+		}
+	}
+
+	inSync := true
+
+	for _, fileInfo := range orderedByDependencies {
+		fileName := fileInfo["name"]
+
+		logger.Log.Info("checking in sync", zap.String("file", fileName))
+
+		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, fileName))
+		if err != nil {
+			log.Fatalf("unable to read file: %v", err)
+		}
+
+		client, err := keys.GenerateHttpClient()
+
+		if err != nil {
+			logger.Log.Error("gitops reconciler failed to generate http client for the mtls")
+		}
+
+		response := gitops.sendRequest(client, "https://localhost:1443/api/v1/compare", definition)
+
+		switch response.HttpStatus {
+		case http.StatusOK:
+			logger.Log.Info("file is in sync", zap.String("file", fileName))
+			break
+		case http.StatusTeapot:
+			logger.Log.Info("file is drifted", zap.String("file", fileName))
+			inSync = false
+			break
+		case http.StatusBadRequest:
+			logger.Log.Error(response.ErrorExplanation)
+			break
+		}
+	}
+
+	gitops.InSync = inSync
 }
 
 func (gitops *Gitops) sendRequest(client *http.Client, URL string, data string) *httpcontract.ResponseImplementation {
@@ -218,9 +340,11 @@ func (gitops *Gitops) sendRequest(client *http.Client, URL string, data string) 
 
 		req, err = http.NewRequest("POST", URL, bytes.NewBuffer([]byte(data)))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Identifier))
 	} else {
 		req, err = http.NewRequest("GET", URL, nil)
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Identifier))
 	}
 
 	if err != nil {

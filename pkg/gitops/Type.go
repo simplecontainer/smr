@@ -22,6 +22,7 @@ type Gitops struct {
 	CertKeyRef       v1.CertKeyRef
 	HttpAuthRef      v1.HttpauthRef
 	LastSyncedCommit plumbing.Hash
+	InSync           bool
 	Definition       v1.Gitops
 	CertKey          *certkey.CertKey   `json:"-"`
 	HttpAuth         *httpauth.HttpAuth `json:"-"`
@@ -30,6 +31,7 @@ type Gitops struct {
 	Ticker           *time.Ticker       `json:"-"`
 }
 
+const RESTART string = "restart"
 const KILL string = "kill"
 const STOP string = "stop"
 

@@ -82,6 +82,7 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			FoundRunning:  false,
 			FirstObserved: true,
 			Configuration: definition.Spec.Container.Configuration,
+			Owner:         Owner{},
 			Resources:     mapAnyToResources(definition.Spec.Container.Resources),
 		},
 		Status: Status{
@@ -228,6 +229,17 @@ func GetContainersAllStates() []types.Container {
 	}
 
 	return containersFiltered
+}
+
+func (container *Container) SetOwner(owner string) {
+	if owner != "" {
+		splitted := strings.SplitN(owner, ".", 2)
+
+		if len(splitted) == 2 {
+			container.Runtime.Owner.Kind = splitted[0]
+			container.Runtime.Owner.GroupIdentifier = splitted[1]
+		}
+	}
 }
 
 func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, dnsCache *dns.Records) (*types.Container, error) {

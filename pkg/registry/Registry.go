@@ -21,6 +21,11 @@ func (registry *Registry) Remove(group string, name string) bool {
 		return true
 	} else {
 		delete(registry.Containers[group], name)
+
+		if len(registry.Containers[group]) == 0 {
+			delete(registry.Containers, group)
+		}
+
 		return true
 	}
 }

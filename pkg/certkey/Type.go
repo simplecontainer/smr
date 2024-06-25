@@ -1,5 +1,7 @@
 package certkey
 
+import v1 "github.com/qdnqn/smr/pkg/definitions/v1"
+
 type CertKey struct {
 	Certificate        string `json:"certificate"`
 	PublicKey          string `json:"publicKey"`
@@ -9,4 +11,5 @@ type CertKey struct {
 	KeyStorePassword   string `json:"keyStorePassword"`
 	CertStore          string `json:"certstore"`
 	CertStorePassword  string `json:"certstorePassword"`
+	Definition         v1.CertKey
 }

@@ -91,6 +91,7 @@ func main() {
 			objects := v1.Group("/")
 			{
 				objects.POST("apply", api.Apply)
+				objects.POST("delete", api.Delete)
 			}
 
 			containers := v1.Group("/")
@@ -113,6 +114,7 @@ func main() {
 
 		if viper.GetBool("daemon-secured") {
 			api.Keys = keys.NewKeys("/home/smr-agent/.ssh")
+			api.Manager.Keys = api.Keys
 
 			found, err := api.Keys.GenerateIfNoKeysFound()
 
@@ -155,6 +157,7 @@ func main() {
 				Handler:   router,
 				TLSConfig: tlsConfig,
 			}
+
 			defer server.Close()
 			server.ListenAndServeTLS("", "")
 		} else {
