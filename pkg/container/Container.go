@@ -160,9 +160,22 @@ func Existing(name string) *Container {
 
 			for _, netw := range container.Static.Networks {
 				if data.NetworkSettings.Networks[netw] != nil {
-					container.Runtime.Networks[netw] = Network{
-						NetworkId: data.NetworkSettings.Networks[netw].NetworkID,
-						IP:        data.NetworkSettings.Networks[netw].IPAddress,
+					netwData, _ := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
+						Scope:   "",
+						Verbose: false,
+					})
+					if err != nil {
+						container.Runtime.Networks[netw] = Network{
+							NetworkId:   data.NetworkSettings.Networks[netw].NetworkID,
+							IP:          data.NetworkSettings.Networks[netw].IPAddress,
+							NetworkName: "",
+						}
+					} else {
+						container.Runtime.Networks[netw] = Network{
+							NetworkId:   netwData.ID,
+							IP:          data.NetworkSettings.Networks[netw].IPAddress,
+							NetworkName: netwData.Name,
+						}
 					}
 				}
 			}
@@ -197,33 +210,6 @@ func GetContainers() []types.Container {
 
 	for _, container := range containers {
 		if container.Labels["managed"] == "smr" && container.State == "running" {
-			containersFiltered = append(containersFiltered, container)
-		}
-	}
-
-	return containersFiltered
-}
-
-func GetContainersAllStates() []types.Container {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-	defer cli.Close()
-
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{
-		All: true,
-	})
-
-	if err != nil {
-		panic(err)
-	}
-
-	containersFiltered := make([]types.Container, 0, 0)
-
-	for _, container := range containers {
-		if container.Labels["managed"] == "ghostmgr" {
 			containersFiltered = append(containersFiltered, container)
 		}
 	}
@@ -313,9 +299,23 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 	}
 
 	for _, dnetw := range data.NetworkSettings.Networks {
-		container.Runtime.Networks[dnetw.NetworkID] = Network{
-			dnetw.NetworkID,
-			dnetw.IPAddress,
+		netwData, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
+			Scope:   "",
+			Verbose: false,
+		})
+
+		if err != nil {
+			container.Runtime.Networks[dnetw.NetworkID] = Network{
+				NetworkId:   dnetw.NetworkID,
+				IP:          dnetw.IPAddress,
+				NetworkName: "",
+			}
+		} else {
+			container.Runtime.Networks[dnetw.NetworkID] = Network{
+				NetworkId:   dnetw.NetworkID,
+				IP:          dnetw.IPAddress,
+				NetworkName: netwData.Name,
+			}
 		}
 	}
 
@@ -411,9 +411,23 @@ func (container *Container) Get() *types.Container {
 			}
 
 			for _, dnetw := range data.NetworkSettings.Networks {
-				container.Runtime.Networks[dnetw.NetworkID] = Network{
-					dnetw.NetworkID,
-					dnetw.IPAddress,
+				netwData, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
+					Scope:   "",
+					Verbose: false,
+				})
+
+				if err != nil {
+					container.Runtime.Networks[dnetw.NetworkID] = Network{
+						NetworkId:   dnetw.NetworkID,
+						IP:          dnetw.IPAddress,
+						NetworkName: "",
+					}
+				} else {
+					container.Runtime.Networks[dnetw.NetworkID] = Network{
+						NetworkId:   netwData.ID,
+						IP:          dnetw.IPAddress,
+						NetworkName: netwData.Name,
+					}
 				}
 			}
 

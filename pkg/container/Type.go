@@ -58,8 +58,9 @@ type Owner struct {
 }
 
 type Network struct {
-	NetworkId string
-	IP        string
+	NetworkId   string
+	NetworkName string
+	IP          string
 }
 
 type Status struct {
