@@ -7,11 +7,13 @@ import (
 	"github.com/qdnqn/smr/pkg/dns"
 	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/keys"
+	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/objectdependency"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
 	"github.com/qdnqn/smr/pkg/runtime"
+	"time"
 )
 
 func NewApi(config *config.Config, badger *badger.DB) *Api {
@@ -55,4 +57,15 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api.DefinitionRegistry.Register("httpauth", []string{})
 
 	return api
+}
+
+func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
+	dataKeyRotationDuration := time.Duration(3600)
+
+	dbSecrets, err := badger.Open(badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger-secrets").WithEncryptionKey(masterKey).WithEncryptionKeyRotationDuration(dataKeyRotationDuration))
+	if err != nil {
+		logger.Log.Fatal(err.Error())
+	}
+
+	api.BadgerEncrypted = dbSecrets
 }

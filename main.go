@@ -102,11 +102,19 @@ func main() {
 
 			database := v1.Group("database")
 			{
-				database.GET(":key", api.DatabaseGet)
+				database.GET("get/:key", api.DatabaseGet)
 				database.GET("keys", api.DatabaseGetKeys)
 				database.GET("keys/:prefix", api.DatabaseGetKeysPrefix)
-				database.POST(":key", api.DatabaseSet)
-				database.PUT(":key", api.DatabaseSet)
+				database.POST("create/:key", api.DatabaseSet)
+				database.PUT("update/:key", api.DatabaseSet)
+			}
+
+			secrets := v1.Group("secrets")
+			{
+				secrets.GET("get/:secret", api.SecretsGet)
+				secrets.GET("keys", api.SecretsGetKeys)
+				secrets.POST("create/:secret", api.SecretsSet)
+				secrets.PUT("update/:secret", api.SecretsSet)
 			}
 		}
 
@@ -135,6 +143,8 @@ func main() {
 				fmt.Println("Copy-paste it to safe location for further use - it will not be printed anymore in the logs")
 				fmt.Println(api.Keys.GeneratePemBundle())
 			}
+
+			api.SetupEncryptedDatabase(api.Keys.ServerPrivateKey.Bytes()[:32])
 
 			certPool := x509.NewCertPool()
 			if ok := certPool.AppendCertsFromPEM(api.Keys.CAPem.Bytes()); !ok {

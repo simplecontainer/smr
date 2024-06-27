@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-// DatabaseGet godoc
+// SecretsGet godoc
 //
 //	@Summary		Get value from the key-value store
 //	@Description	get string by key from the key-value store
@@ -22,14 +22,14 @@ import (
 //	@Failure		404	{object}	database.Response
 //	@Failure		500	{object}	database.Response
 //	@Router			/database/{key} [get]
-func (api *Api) DatabaseGet(c *gin.Context) {
-	err := api.Badger.View(func(txn *badger.Txn) error {
+func (api *Api) SecretsGet(c *gin.Context) {
+	err := api.BadgerEncrypted.View(func(txn *badger.Txn) error {
 		var value []byte
 
 		item, err := txn.Get([]byte(c.Param("key")))
 		if err != nil {
 			c.JSON(http.StatusNotFound, database.Response{
-				Explanation:      "key not found",
+				Explanation:      "secret not found",
 				ErrorExplanation: "",
 				Error:            true,
 				Success:          false,
@@ -42,7 +42,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 		value, err = item.ValueCopy(nil)
 		if err != nil {
 			c.JSON(http.StatusNotFound, database.Response{
-				Explanation:      "key not found",
+				Explanation:      "secret not found",
 				ErrorExplanation: "",
 				Error:            true,
 				Success:          false,
@@ -53,12 +53,12 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusOK, database.Response{
-			Explanation:      "found key in the key-value store",
+			Explanation:      "found secret in the secret store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
 			Data: map[string]any{
-				c.Param("key"): value,
+				c.Param("secret"): value,
 			},
 		})
 
@@ -69,7 +69,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 		logger.Log.Error(err.Error())
 
 		c.JSON(http.StatusNotFound, database.Response{
-			Explanation:      "failed to read from the key-value store",
+			Explanation:      "failed to read from the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -78,7 +78,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 	}
 }
 
-// DatabaseSet godoc
+// SecretsSet godoc
 //
 //	@Summary		Set value in the key-value store
 //	@Description	set string by key in the key-value store
@@ -92,7 +92,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 //	@Failure		404		{object}	database.Response
 //	@Failure		500		{object}	database.Response
 //	@Router			/database/{key} [post]
-func (api *Api) DatabaseSet(c *gin.Context) {
+func (api *Api) SecretsSet(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err == nil {
@@ -100,7 +100,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 
 		if err = json.Unmarshal(jsonData, &valueSent); err != nil {
 			c.JSON(http.StatusNotFound, database.Response{
-				Explanation:      "failed to store value in the key-value store",
+				Explanation:      "failed to store secret in the secret store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
 				Success:          false,
@@ -110,14 +110,14 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			return
 		}
 
-		err = api.Badger.Update(func(txn *badger.Txn) error {
-			err = txn.Set([]byte(c.Param("key")), []byte(valueSent.Value))
+		err = api.BadgerEncrypted.Update(func(txn *badger.Txn) error {
+			err = txn.Set([]byte(c.Param("secret")), []byte(valueSent.Value))
 			return err
 		})
 
 		if err != nil {
 			c.JSON(http.StatusNotFound, database.Response{
-				Explanation:      "failed to store value in the key-value store",
+				Explanation:      "failed to store secret in the secret store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
 				Success:          false,
@@ -125,18 +125,18 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			})
 		} else {
 			c.JSON(http.StatusOK, database.Response{
-				Explanation:      "value stored in the key value store",
+				Explanation:      "secret stored in the secret store",
 				ErrorExplanation: "",
 				Error:            false,
 				Success:          true,
 				Data: map[string]any{
-					c.Param("key"): valueSent.Value,
+					c.Param("secret"): valueSent.Value,
 				},
 			})
 		}
 	} else {
 		c.JSON(http.StatusNotFound, database.Response{
-			Explanation:      "failed to store value in the key-value store",
+			Explanation:      "failed to store secret in the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -145,55 +145,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 	}
 }
 
-// DatabaseGetKeysPrefix godoc
-//
-//	@Summary		Get keys by prefix in the key-value store
-//	@Description	get all keys by prefix in the key-value store
-//	@Tags			database
-//	@Produce		json
-//	@Success		200	{object}	database.Response
-//	@Failure		400	{object}	database.Response
-//	@Failure		404	{object}	database.Response
-//	@Failure		500	{object}	database.Response
-//	@Router			/database/{key}/{prefix} [get]
-func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
-	var keys []string
-
-	err := api.Badger.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		prefix := []byte(c.Param("prefix"))
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			keys = append(keys, string(k))
-		}
-
-		return nil
-	})
-
-	if err == nil {
-		c.JSON(http.StatusNotFound, database.Response{
-			Explanation:      "failed to store value in the key-value store",
-			ErrorExplanation: err.Error(),
-			Error:            false,
-			Success:          true,
-			Data: map[string]any{
-				"keys": keys,
-			},
-		})
-	} else {
-		c.JSON(http.StatusNotFound, database.Response{
-			Explanation:      "failed to retrieve keys from the key-value store",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-	}
-}
-
-// DatabaseGetKeys godoc
+// SecretsGetKeys godoc
 //
 //	@Summary		Get keys by prefix in the key-value store
 //	@Description	get all keys by prefix in the key-value store
@@ -204,10 +156,10 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 //	@Failure		404	{object}	database.Response
 //	@Failure		500	{object}	database.Response
 //	@Router			/database/keys [get]
-func (api *Api) DatabaseGetKeys(c *gin.Context) {
+func (api *Api) SecretsGetKeys(c *gin.Context) {
 	var keys []string
 
-	err := api.Badger.View(func(txn *badger.Txn) error {
+	err := api.BadgerEncrypted.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
@@ -223,7 +175,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 
 	if err == nil {
 		c.JSON(http.StatusOK, database.Response{
-			Explanation:      "succesfully retrieved keys from the key-value store",
+			Explanation:      "succesfully retrieved secrets from the secret store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
@@ -233,7 +185,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 		})
 	} else {
 		c.JSON(http.StatusNotFound, database.Response{
-			Explanation:      "failed to retrieve keys from the key-value store",
+			Explanation:      "failed to retrieve secrets from the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
