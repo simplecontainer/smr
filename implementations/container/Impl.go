@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/mitchellh/mapstructure"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/dependency"
@@ -31,6 +32,14 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 			Success:          false,
 		}, err
 	} else {
+		data := make(map[string]interface{})
+		err := json.Unmarshal(jsonData, &data)
+		if err != nil {
+			panic(err)
+		}
+
+		mapstructure.Decode(data["container"], &definition)
+
 		var globalGroups []string
 		var globalNames []string
 
@@ -90,67 +99,71 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 			   All containers existing in order should be reconciled
 			*/
 
+			logger.Log.Info(fmt.Sprintf("trying to order containers by dependencies"))
+			order := implementation.findContainers(mgr.Registry, globalGroups, globalNames)
+			logger.Log.Info(fmt.Sprintf("containers are ordered by dependencies"))
+
 			var solved bool
 
-			container := mgr.Registry.Find(definition.Meta.Group, definition.Meta.Name)
+			for _, container := range order {
+				if container.Status.PendingDelete {
+					logger.Log.Info(fmt.Sprintf("container is pending to delete %s", container.Static.GeneratedName))
 
-			if container.Status.PendingDelete {
-				logger.Log.Info(fmt.Sprintf("container is pending to delete %s", container.Static.GeneratedName))
-
-				mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
-
-				mgr.Reconciler.QueueChan <- reconciler.Reconcile{
-					Container: container,
-				}
-			} else {
-				solved, err = dependency.Ready(mgr, container.Static.Group, container.Static.GeneratedName, container.Static.Definition.Spec.Container.Dependencies)
-
-				if solved {
-					if container.Status.DefinitionDrift {
-						// This the case when we know container already exists and definition was reapplied
-						// We should trigger the reconcile
-						logger.Log.Info("sending container to reconcile state", zap.String("container", container.Static.GeneratedName))
-
-						mgr.Reconciler.QueueChan <- reconciler.Reconcile{
-							Container: container,
-						}
-					} else {
-						// This the case when we know container doesn't exist, and we are running it the first time
-
-						logger.Log.Info("trying to run container", zap.String("group", container.Static.Group), zap.String("name", container.Static.Name))
-
-						container.SetOwner(c.Request.Header.Get("Owner"))
-						container.Prepare(mgr.Badger)
-						_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.DnsCache)
-
-						if err != nil {
-							format := database.Format("container", container.Static.Group, container.Static.Name, "object")
-
-							// clear the object in the store since container failed to run
-							obj := objects.New()
-							obj.Update(mgr.Registry.Object, mgr.Badger, format, "")
-
-							mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
-
-							return httpcontract.ResponseImplementation{
-								HttpStatus:       500,
-								Explanation:      "failed to start container",
-								ErrorExplanation: err.Error(),
-								Error:            true,
-								Success:          false,
-							}, err
-						}
-					}
-				} else {
 					mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
-					return httpcontract.ResponseImplementation{
-						HttpStatus:       500,
-						Explanation:      "failed to solve container dependencies",
-						ErrorExplanation: err.Error(),
-						Error:            true,
-						Success:          false,
-					}, err
+					mgr.Reconciler.QueueChan <- reconciler.Reconcile{
+						Container: container,
+					}
+				} else {
+					solved, err = dependency.Ready(mgr, container.Static.Group, container.Static.GeneratedName, container.Static.Definition.Spec.Container.Dependencies)
+
+					if solved {
+						if container.Status.DefinitionDrift {
+							// This the case when we know container already exists and definition was reapplied
+							// We should trigger the reconcile
+							logger.Log.Info("sending container to reconcile state", zap.String("container", container.Static.GeneratedName))
+
+							mgr.Reconciler.QueueChan <- reconciler.Reconcile{
+								Container: container,
+							}
+						} else {
+							// This the case when we know container doesn't exist, and we are running it the first time
+
+							logger.Log.Info("trying to run container", zap.String("group", container.Static.Group), zap.String("name", container.Static.Name))
+
+							container.SetOwner(c.Request.Header.Get("Owner"))
+							container.Prepare(mgr.Badger)
+							_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.DnsCache)
+
+							if err != nil {
+								format := database.Format("container", container.Static.Group, container.Static.Name, "object")
+
+								// clear the object in the store since container failed to run
+								obj := objects.New()
+								obj.Update(mgr.Registry.Object, mgr.Badger, format, "")
+
+								mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
+
+								return httpcontract.ResponseImplementation{
+									HttpStatus:       500,
+									Explanation:      "failed to start container",
+									ErrorExplanation: err.Error(),
+									Error:            true,
+									Success:          false,
+								}, err
+							}
+						}
+					} else {
+						mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
+
+						return httpcontract.ResponseImplementation{
+							HttpStatus:       500,
+							Explanation:      "failed to solve container dependencies",
+							ErrorExplanation: err.Error(),
+							Error:            true,
+							Success:          false,
+						}, err
+					}
 				}
 			}
 
@@ -185,6 +198,14 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 			Success:          false,
 		}, err
 	} else {
+		data := make(map[string]interface{})
+		err := json.Unmarshal(jsonData, &data)
+		if err != nil {
+			panic(err)
+		}
+
+		mapstructure.Decode(data["container"], &definition)
+
 		format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 		obj := objects.New()
 		err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
@@ -236,6 +257,14 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 			Success:          false,
 		}, err
 	} else {
+		data := make(map[string]interface{})
+		err := json.Unmarshal(jsonData, &data)
+		if err != nil {
+			panic(err)
+		}
+
+		mapstructure.Decode(data["container"], &definition)
+
 		var globalGroups []string
 		var globalNames []string
 
@@ -297,46 +326,50 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 			   All containers existing in order should be reconciled
 			*/
 
-			container := mgr.Registry.Find(definition.Meta.Group, definition.Meta.Name)
+			logger.Log.Info(fmt.Sprintf("trying to order containers by dependencies"))
+			order := implementation.findContainers(mgr.Registry, globalGroups, globalNames)
+			logger.Log.Info(fmt.Sprintf("containers are ordered by dependencies"))
 
-			logger.Log.Info("deleting container", zap.String("container", container.Static.GeneratedName))
+			for _, container := range order {
+				logger.Log.Info("deleting container", zap.String("container", container.Static.GeneratedName))
 
-			container.Status.PendingDelete = true
-			mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
+				container.Status.PendingDelete = true
+				mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
-			mgr.Reconciler.QueueChan <- reconciler.Reconcile{
-				Container: container,
-			}
-
-			obj := objects.New()
-
-			format := database.Format("container", container.Static.Group, container.Static.Name, "")
-			deleted, err := obj.Remove(mgr.Badger, format)
-
-			format = database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "")
-			deleted, err = obj.Remove(mgr.Badger, format)
-
-			format = database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
-			deleted, err = obj.Remove(mgr.Badger, format)
-
-			if !deleted {
-				return httpcontract.ResponseImplementation{
-					HttpStatus:       500,
-					Explanation:      "failed to delete resource",
-					ErrorExplanation: err.Error(),
-					Error:            true,
-					Success:          false,
-				}, nil
-			}
-
-			switch container.Runtime.Owner.Kind {
-			case "gitops":
-				logger.Log.Info("containers owner", zap.String("kind", container.Runtime.Owner.Kind), zap.String("owner", container.Runtime.Owner.GroupIdentifier))
-
-				mgr.RepositoryWatchers.Find(container.Runtime.Owner.GroupIdentifier).GitopsQueue <- gitops.Event{
-					Event: gitops.RESTART,
+				mgr.Reconciler.QueueChan <- reconciler.Reconcile{
+					Container: container,
 				}
-				break
+
+				obj := objects.New()
+
+				format := database.Format("container", container.Static.Group, container.Static.Name, "")
+				deleted, err := obj.Remove(mgr.Badger, format)
+
+				format = database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "")
+				deleted, err = obj.Remove(mgr.Badger, format)
+
+				format = database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
+				deleted, err = obj.Remove(mgr.Badger, format)
+
+				if !deleted {
+					return httpcontract.ResponseImplementation{
+						HttpStatus:       500,
+						Explanation:      "failed to delete resource",
+						ErrorExplanation: err.Error(),
+						Error:            true,
+						Success:          false,
+					}, nil
+				}
+
+				switch container.Runtime.Owner.Kind {
+				case "gitops":
+					logger.Log.Info("containers owner", zap.String("kind", container.Runtime.Owner.Kind), zap.String("owner", container.Runtime.Owner.GroupIdentifier))
+
+					mgr.RepositoryWatchers.Find(container.Runtime.Owner.GroupIdentifier).GitopsQueue <- gitops.Event{
+						Event: gitops.RESTART,
+					}
+					break
+				}
 			}
 		}
 

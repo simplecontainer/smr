@@ -143,5 +143,43 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 	}
 }
 
+func (operator *Operator) View(request operators.Request) httpcontract.ResponseOperator {
+	if request.Data == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "send some data",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	container := request.Manager.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+
+	if container == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       404,
+			Explanation:      "container not found in the registry",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	var definition = make(map[string]any)
+	definition[container.Static.GeneratedName] = container
+
+	return httpcontract.ResponseOperator{
+		HttpStatus:       200,
+		Explanation:      "container object is found on the server",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             definition,
+	}
+}
+
 // Exported
 var Containers Operator

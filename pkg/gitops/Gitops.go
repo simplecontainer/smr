@@ -68,7 +68,7 @@ func (gitops *Gitops) HandleTickerAndEvents(definitionRegistry *objectdependency
 			gitops.CheckInSync(definitionRegistry, keys)
 
 			if gitops.AutomaticSync {
-				logger.Log.Info("triggering gitops auto sync", zap.String("ticker", t.String()))
+				logger.Log.Debug("triggering gitops auto sync", zap.String("ticker", t.String()))
 				gitops.ReconcileGitOps(definitionRegistry, keys)
 			}
 			break
@@ -128,7 +128,7 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.Defin
 	ref, _ := r.Head()
 	r.CommitObject(ref.Hash())
 
-	logger.Log.Info("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
+	logger.Log.Debug("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
 
 	if gitops.LastSyncedCommit != ref.Hash() {
 		entries, err := os.ReadDir(fmt.Sprintf("%s/%s", localPath, gitops.DirectoryPath))
@@ -157,8 +157,6 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.Defin
 				deps := definitionRegistry.GetDependencies(orderedEntry["kind"])
 
 				for _, dp := range deps {
-					fmt.Println(fmt.Sprintf("%s == %s", data["kind"].(string), dp))
-
 					if data["kind"].(string) == dp {
 						position = index
 					}
@@ -176,7 +174,7 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.Defin
 		for _, fileInfo := range orderedByDependencies {
 			fileName := fileInfo["name"]
 
-			logger.Log.Info("trying to reconcile", zap.String("file", fileName))
+			logger.Log.Debug("trying to reconcile", zap.String("file", fileName))
 
 			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, fileName))
 			if err != nil {
@@ -192,15 +190,15 @@ func (gitops *Gitops) ReconcileGitOps(definitionRegistry *objectdependency.Defin
 			response := gitops.sendRequest(client, "https://localhost:1443/api/v1/apply", definition)
 
 			if response.Success {
-				logger.Log.Info("gitops response collected", zap.String("response", response.Explanation))
+				logger.Log.Debug("gitops response collected", zap.String("response", response.Explanation))
 			} else {
-				logger.Log.Info("gitops response collected", zap.String("response", response.Explanation), zap.String("error", response.ErrorExplanation))
+				logger.Log.Debug("gitops response collected", zap.String("response", response.Explanation), zap.String("error", response.ErrorExplanation))
 			}
 		}
 
 		gitops.LastSyncedCommit = ref.Hash()
 	} else {
-		logger.Log.Info("checking if everything is in sync", zap.String("repoUrl", gitops.RepoURL))
+		logger.Log.Debug("checking if everything is in sync", zap.String("repoUrl", gitops.RepoURL))
 	}
 }
 
@@ -241,8 +239,8 @@ func (gitops *Gitops) CheckInSync(definitionRegistry *objectdependency.Definitio
 	ref, _ := r.Head()
 	r.CommitObject(ref.Hash())
 
-	logger.Log.Info("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
-	logger.Log.Info("checking if everything is in sync", zap.String("repoUrl", gitops.RepoURL))
+	logger.Log.Debug("pulled the latest changes from the git repository", zap.String("repoUrl", gitops.RepoURL))
+	logger.Log.Debug("checking if everything is in sync", zap.String("repoUrl", gitops.RepoURL))
 
 	entries, err := os.ReadDir(fmt.Sprintf("%s/%s", localPath, gitops.DirectoryPath))
 	if err != nil {
@@ -270,8 +268,6 @@ func (gitops *Gitops) CheckInSync(definitionRegistry *objectdependency.Definitio
 			deps := definitionRegistry.GetDependencies(orderedEntry["kind"])
 
 			for _, dp := range deps {
-				fmt.Println(fmt.Sprintf("%s == %s", data["kind"].(string), dp))
-
 				if data["kind"].(string) == dp {
 					position = index
 				}
@@ -291,7 +287,7 @@ func (gitops *Gitops) CheckInSync(definitionRegistry *objectdependency.Definitio
 	for _, fileInfo := range orderedByDependencies {
 		fileName := fileInfo["name"]
 
-		logger.Log.Info("checking in sync", zap.String("file", fileName))
+		logger.Log.Debug("checking in sync", zap.String("file", fileName))
 
 		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitops.DirectoryPath, fileName))
 		if err != nil {
@@ -308,10 +304,10 @@ func (gitops *Gitops) CheckInSync(definitionRegistry *objectdependency.Definitio
 
 		switch response.HttpStatus {
 		case http.StatusOK:
-			logger.Log.Info("file is in sync", zap.String("file", fileName))
+			logger.Log.Debug("file is in sync", zap.String("file", fileName))
 			break
 		case http.StatusTeapot:
-			logger.Log.Info("file is drifted", zap.String("file", fileName))
+			logger.Log.Debug("file is drifted", zap.String("file", fileName))
 			inSync = false
 			break
 		case http.StatusBadRequest:
