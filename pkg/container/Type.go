@@ -5,16 +5,16 @@ import (
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/network"
+	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"strings"
-	"time"
 )
 
 type Container struct {
 	Static  Static
 	Runtime Runtime
 	Exports Exports
-	Status  Status
+	Status  status.Status
 }
 
 type Static struct {
@@ -66,22 +66,6 @@ type Network struct {
 	NetworkId   string
 	NetworkName string
 	IP          string
-}
-
-type Status struct {
-	Created         bool
-	Readiness       bool
-	ReadinessFailed bool
-	DependsSolved   bool
-	BackOffRestart  bool
-	Healthy         bool
-	Ready           bool
-	Running         bool
-	Reconciling     bool
-	DefinitionDrift bool
-	PendingDelete   bool
-	LastUpdate      time.Time
-	CreatedTime     time.Time
 }
 
 type Resource struct {

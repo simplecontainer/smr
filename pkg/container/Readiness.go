@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/logger"
-	"github.com/qdnqn/smr/pkg/static"
+	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 	"net/http"
@@ -17,14 +17,15 @@ import (
 
 func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Client, err error) (bool, error) {
 	if err != nil {
-		logger.Log.Error("failed to genereate mtls https client")
+		logger.Log.Error("failed to generate mtls https client")
 		return false, nil
 	}
 
 	readiness := make([]Readiness, 0)
 
+	container.Status.TransitionState(status.STATUS_READINESS)
+
 	if len(container.Static.Definition.Spec.Container.Readiness) > 0 {
-		container.UpdateStatus(static.STATUS_READINESS, true)
 		var allReadinessSolved = true
 		logger.Log.Info("trying to solve readiness", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 
@@ -38,33 +39,8 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 		for len(readiness) > 0 {
 			select {
 			case d := <-c:
-				if d.Missing {
-					allReadinessSolved = false
-
-					for i, v := range readiness {
-						if v.Name == d.Readiness.Name {
-							readiness = append(readiness[:i], readiness[i+1:]...)
-						}
-					}
-				}
-
-				if d.Success {
-					logger.Log.Info("readiness solved", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
-
-					for i, v := range readiness {
-						if v.Name == d.Readiness.Name {
-							readiness = append(readiness[:i], readiness[i+1:]...)
-						}
-					}
-				} else {
-					deadline, _ := d.Readiness.Ctx.Deadline()
-
-					if deadline.After(time.Now()) {
-						time.Sleep(5 * time.Second)
-						go container.SolveReadiness(client, d.Readiness, c)
-					} else {
-						container.UpdateStatus(static.STATUS_READINESS_FAILED, true)
-						logger.Log.Info("readiness deadline exceeded", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
+				if container.Runtime.State == "running" {
+					if d.Missing {
 						allReadinessSolved = false
 
 						for i, v := range readiness {
@@ -73,22 +49,52 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 							}
 						}
 					}
+
+					if d.Success {
+						logger.Log.Info("readiness solved", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
+
+						for i, v := range readiness {
+							if v.Name == d.Readiness.Name {
+								readiness = append(readiness[:i], readiness[i+1:]...)
+							}
+						}
+					} else {
+						deadline, _ := d.Readiness.Ctx.Deadline()
+
+						if deadline.After(time.Now()) {
+							time.Sleep(5 * time.Second)
+							go container.SolveReadiness(client, d.Readiness, c)
+						} else {
+							container.Status.TransitionState(status.STATUS_READINESS_FAILED)
+							logger.Log.Info("readiness deadline exceeded", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
+							allReadinessSolved = false
+
+							for i, v := range readiness {
+								if v.Name == d.Readiness.Name {
+									readiness = append(readiness[:i], readiness[i+1:]...)
+								}
+							}
+						}
+					}
+				} else {
+					container.Status.TransitionState(status.STATUS_READINESS_FAILED)
+					return false, errors.New("container is not in running state")
 				}
 			}
 		}
 
 		if !allReadinessSolved {
-			container.Status.Ready = false
+			container.Status.TransitionState(status.STATUS_READINESS_FAILED)
 			return false, errors.New("didn't solve all readiness probes")
 		} else {
-			container.Status.Ready = true
+			container.Status.TransitionState(status.STATUS_READY)
 			logger.Log.Info("all readiness probes solved", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 			return true, nil
 		}
 	}
 
 	logger.Log.Info("no readiness defined - state is ready", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
-	container.Status.Ready = true
+	container.Status.TransitionState(status.STATUS_READY)
 
 	return true, nil
 }
