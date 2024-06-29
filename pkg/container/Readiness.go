@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
@@ -13,7 +14,7 @@ import (
 	"time"
 )
 
-func (container *Container) Ready(client *http.Client, err error) (bool, error) {
+func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Client, err error) (bool, error) {
 	if err != nil {
 		logger.Log.Error("failed to genereate mtls https client")
 		return false, nil
@@ -28,6 +29,7 @@ func (container *Container) Ready(client *http.Client, err error) (bool, error) 
 		c := make(chan ReadinessState)
 		for _, readinessElem := range container.Static.Readiness {
 			readiness = append(readiness, readinessElem)
+			readinessElem.Body = container.UnpackSecretsReadiness(BadgerEncrypted, readinessElem.Body)
 			go container.SolveReadiness(client, &readinessElem, c)
 		}
 

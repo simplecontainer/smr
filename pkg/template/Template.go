@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func ParseTemplate(db *badger.DB, dbEncrypted *badger.DB, values map[string]any, baseFormat *database.FormatStructure) (map[string]any, []database.FormatStructure, error) {
+func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.FormatStructure) (map[string]any, []database.FormatStructure, error) {
 	var parsedMap = make(map[string]any)
 	var dependencyMap = make([]database.FormatStructure, 0)
 	parsedMap = values
@@ -35,7 +35,6 @@ func ParseTemplate(db *badger.DB, dbEncrypted *badger.DB, values map[string]any,
 					}
 
 					var val string
-					var valSecret string
 					var err error
 
 					val, err = database.Get(db, format.ToString())
@@ -45,35 +44,9 @@ func ParseTemplate(db *badger.DB, dbEncrypted *badger.DB, values map[string]any,
 						return nil, nil, err
 					}
 
-					// If retrieved object is template do parsing again
-					// This is allowed one level deep and only for secrets so that we can dereference it from the store
-					// TODO: Transfer to function and refactor later
-					regexDetectBigBracketsInner := regexp.MustCompile(`{{([^{\n}]*)}}`)
-					matchesInner := regexDetectBigBracketsInner.FindAllStringSubmatch(val, -1)
-
-					if len(matchesInner) > 0 {
-						for indexInner, _ := range matchesInner {
-							formatInner := database.FormatEmpty().FromString(matchesInner[indexInner][1])
-
-							if formatInner.Kind == "secret" {
-								valSecret, err = database.Get(dbEncrypted, formatInner.ToString())
-
-								if err != nil {
-									logger.Log.Error(err.Error(), zap.String("key", formatInner.ToString()))
-									return nil, nil, err
-								}
-							}
-
-						}
-					}
-
 					dependencyMap = append(dependencyMap, format)
 
-					if valSecret == "" {
-						parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
-					} else {
-						parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), valSecret, 1)
-					}
+					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
 				}
 			}
 		} else {
@@ -87,4 +60,31 @@ func ParseTemplate(db *badger.DB, dbEncrypted *badger.DB, values map[string]any,
 	}
 
 	return parsedMap, dependencyMap, nil
+}
+
+func ParseSecretTemplate(dbEncrypted *badger.DB, value string) (string, error) {
+	regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+	matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+
+	if len(matches) > 0 {
+		for index, _ := range matches {
+			format := database.FormatEmpty().FromString(matches[index][1])
+
+			var val string
+			var err error
+
+			if format.Kind == "secret" {
+				val, err = database.Get(dbEncrypted, format.ToString())
+
+				if err != nil {
+					logger.Log.Error(err.Error(), zap.String("key", format.ToString()))
+					return value, err
+				}
+			}
+
+			value = strings.Replace(value, fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
+		}
+	}
+
+	return value, nil
 }

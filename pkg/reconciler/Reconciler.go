@@ -279,8 +279,8 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 				} else {
 					if err == nil {
 						if !container.Status.PendingDelete {
-							container.Prepare(db, dbEncrypted)
-							_, err = container.Run(runtime, db, dnsCache)
+							container.Prepare(db)
+							_, err = container.Run(runtime, db, dbEncrypted, dnsCache)
 						} else {
 							logger.Log.Info("container stopped and deleted", zap.String("container", container.Static.GeneratedName))
 						}

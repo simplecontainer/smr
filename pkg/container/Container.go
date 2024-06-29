@@ -221,17 +221,17 @@ func (container *Container) SetOwner(owner string) {
 	}
 }
 
-func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
 	c := container.Get()
 
 	if c == nil {
-		return container.run(c, runtime, Badger, dnsCache)
+		return container.run(c, runtime, Badger, BadgerEncrypted, dnsCache)
 	}
 
 	return c, nil
 }
 
-func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Badger *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
 	err := container.CreateNetwork()
 
 	if err != nil {
@@ -259,7 +259,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		Hostname:     container.Static.GeneratedName,
 		Labels:       container.GenerateLabels(),
 		Image:        container.Static.Image + ":" + container.Static.Tag,
-		Env:          container.Static.Env,
+		Env:          container.UnpackSecretsEnvs(BadgerEncrypted, container.Static.Env),
 		Entrypoint:   container.Static.Entrypoint,
 		Cmd:          container.Static.Command,
 		Tty:          false,
@@ -268,7 +268,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		DNS: []string{
 			runtime.AGENTIP.String(),
 		},
-		Mounts:       container.mappingToMounts(runtime),
+		Mounts:       container.mappingToMounts(BadgerEncrypted, runtime),
 		PortBindings: container.portMappings(),
 		NetworkMode:  dockerContainer.NetworkMode(container.Static.NetworkMode),
 		Privileged:   container.Static.Privileged,

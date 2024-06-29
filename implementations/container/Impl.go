@@ -132,8 +132,8 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 							logger.Log.Info("trying to run container", zap.String("group", container.Static.Group), zap.String("name", container.Static.Name))
 
 							container.SetOwner(c.Request.Header.Get("Owner"))
-							container.Prepare(mgr.Badger, mgr.BadgerEncrypted)
-							_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.DnsCache)
+							container.Prepare(mgr.Badger)
+							_, err = container.Run(mgr.Runtime, mgr.Badger, mgr.BadgerEncrypted, mgr.DnsCache)
 
 							if err != nil {
 								format := database.Format("container", container.Static.Group, container.Static.Name, "object")
@@ -153,7 +153,8 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 								}, err
 							}
 
-							container.Ready(mgr.Keys.GenerateHttpClient())
+							client, err := mgr.Keys.GenerateHttpClient()
+							container.Ready(mgr.BadgerEncrypted, client, err)
 						}
 					} else {
 						mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
