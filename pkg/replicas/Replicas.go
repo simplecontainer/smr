@@ -7,6 +7,7 @@ import (
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/static"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"strings"
@@ -23,6 +24,8 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
 			name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
 			container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
+
+			container.UpdateStatus(static.STATUS_CREATED, true)
 
 			existingContainer := mgr.Registry.Find(container.Static.Group, name)
 

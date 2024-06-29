@@ -12,6 +12,7 @@ import (
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/registry"
 	"github.com/qdnqn/smr/pkg/runtime"
+	"github.com/qdnqn/smr/pkg/static"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 	"time"
@@ -159,14 +160,14 @@ func (reconciler *Reconciler) HandleDisconnect(registry *registry.Registry, dnsC
 
 func (reconciler *Reconciler) HandleStart(registry *registry.Registry, container *container.Container) {
 	// Container started it is running so update status accordingly
-	container.Status.Reconciling = false
-	container.Status.DefinitionDrift = false
-	container.Status.Running = true
+	container.UpdateStatus(static.STATUS_RECONCILING, false)
+	container.UpdateStatus(static.STATUS_DRIFTED, false)
+	container.UpdateStatus(static.STATUS_RUNNING, true)
 }
 
 func (reconciler *Reconciler) HandleKill(registry *registry.Registry, dnsCache *dns.Records, container *container.Container) {
 	// It can happen that kill signal occurs in the container even if it is not dying; eg killing thread, goroutine etc.
-	container.Status.Running = true
+	container.UpdateStatus(static.STATUS_RUNNING, true)
 
 	for _, n := range container.Runtime.Networks {
 		dnsCache.RemoveARecordQueue(container.GetDomain(), n.IP)
@@ -175,11 +176,11 @@ func (reconciler *Reconciler) HandleKill(registry *registry.Registry, dnsCache *
 
 func (reconciler *Reconciler) HandleStop(registry *registry.Registry, container *container.Container) {
 	// Stop will stop the container so update the status accordingly
-	container.Status.Running = false
+	container.UpdateStatus(static.STATUS_RUNNING, false)
 }
 
 func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *container.Container) {
-	container.Status.Running = false
+	container.UpdateStatus(static.STATUS_RUNNING, false)
 
 	reconcile := true
 
@@ -225,7 +226,7 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 		select {
 		case queue := <-reconciler.QueueChan:
 			logger.Log.Info(fmt.Sprintf("detected the event for reconciling %s", queue.Container.Static.GeneratedName))
-			queue.Container.Status.Reconciling = true
+			queue.Container.UpdateStatus(static.STATUS_RECONCILING, true)
 
 			container := queue.Container
 			registry.BackOffTracking(container.Static.Group, container.Static.GeneratedName)
@@ -235,8 +236,9 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 					logger.Log.Error(fmt.Sprintf("%s container is backoff restarting", container.Static.GeneratedName))
 
 					registry.BackOffReset(container.Static.Group, container.Static.GeneratedName)
-					container.Status.BackOffRestart = true
-					container.Status.Healthy = false
+
+					container.UpdateStatus(static.STATUS_BACKOFF, true)
+					container.UpdateStatus(static.STATUS_HEALTHY, false)
 
 					break
 				}
@@ -291,7 +293,8 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 				}
 			}
 
-			queue.Container.Status.Reconciling = false
+			queue.Container.UpdateStatus(static.STATUS_RECONCILING, false)
+
 			break
 		}
 	}

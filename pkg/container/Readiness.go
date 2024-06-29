@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/qdnqn/smr/pkg/static"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 	"net/http"
@@ -23,6 +24,7 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 	readiness := make([]Readiness, 0)
 
 	if len(container.Static.Definition.Spec.Container.Readiness) > 0 {
+		container.UpdateStatus(static.STATUS_READINESS, true)
 		var allReadinessSolved = true
 		logger.Log.Info("trying to solve readiness", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 
@@ -61,6 +63,7 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 						time.Sleep(5 * time.Second)
 						go container.SolveReadiness(client, d.Readiness, c)
 					} else {
+						container.UpdateStatus(static.STATUS_READINESS_FAILED, true)
 						logger.Log.Info("readiness deadline exceeded", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 						allReadinessSolved = false
 

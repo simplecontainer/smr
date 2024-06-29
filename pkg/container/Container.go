@@ -86,6 +86,7 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Resources:     mapAnyToResources(definition.Spec.Container.Resources),
 		},
 		Status: Status{
+			Created:         false,
 			DependsSolved:   false,
 			BackOffRestart:  false,
 			Healthy:         false,
@@ -355,7 +356,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 				}
 			}
 
-			container.Status.DefinitionDrift = false
+			container.UpdateStatus(static.STATUS_DRIFTED, false)
 
 			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 			database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
@@ -368,7 +369,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		container.Status.DefinitionDrift = false
+		container.UpdateStatus(static.STATUS_DRIFTED, false)
 
 		format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
@@ -484,6 +485,8 @@ func (container *Container) Stop() bool {
 			return false
 		}
 
+		container.Runtime.State = "stoppped"
+
 		return true
 	} else {
 		return false
@@ -527,6 +530,8 @@ func (container *Container) Delete() error {
 		if err != nil {
 			return err
 		}
+
+		container.Runtime.State = "deleted"
 
 		return nil
 	} else {
