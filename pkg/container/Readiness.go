@@ -36,8 +36,6 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 		for len(readiness) > 0 {
 			select {
 			case d := <-c:
-				fmt.Println(d)
-
 				if d.Missing {
 					allReadinessSolved = false
 
