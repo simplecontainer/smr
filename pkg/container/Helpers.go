@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"encoding/json"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	v1 "github.com/qdnqn/smr/pkg/definitions/v1"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-func (container *Container) mappingToMounts(runtime *runtime.Runtime) []mount.Mount {
+func (container *Container) mappingToMounts(BadgerEncrypted *badger.DB, runtime *runtime.Runtime) []mount.Mount {
 	var mounts []mount.Mount
 
 	for _, v := range container.Runtime.Resources {
@@ -23,7 +24,7 @@ func (container *Container) mappingToMounts(runtime *runtime.Runtime) []mount.Mo
 			log.Fatal(err)
 		}
 
-		if _, err := tmpFile.WriteString(v.Data[v.Key].(string)); err != nil {
+		if _, err := tmpFile.WriteString(container.UnpackSecretsResources(BadgerEncrypted, v.Data[v.Key].(string))); err != nil {
 			log.Fatal(err)
 		}
 
