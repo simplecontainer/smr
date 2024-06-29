@@ -72,6 +72,7 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Capabilities:           definition.Spec.Container.Capabilities,
 			NetworkMode:            definition.Spec.Container.NetworkMode,
 			Privileged:             definition.Spec.Container.Privileged,
+			Readiness:              convertReadinessDefinitionToReadiness(definition.Spec.Container.Readiness),
 			Definition:             definitionCopy,
 		},
 		Runtime: Runtime{
@@ -80,7 +81,6 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Networks:      map[string]Network{},
 			State:         "",
 			FoundRunning:  false,
-			FirstObserved: true,
 			Configuration: definition.Spec.Container.Configuration,
 			Owner:         Owner{},
 			Resources:     mapAnyToResources(definition.Spec.Container.Resources),
@@ -123,7 +123,6 @@ func Existing(name string) *Container {
 			Id:            "",
 			State:         "",
 			FoundRunning:  false,
-			FirstObserved: true,
 			Networks:      map[string]Network{},
 			Ready:         false,
 			Configuration: make(map[string]any),
@@ -156,35 +155,29 @@ func Existing(name string) *Container {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
 		if c != nil && c.State == "running" {
-			container.Runtime.FoundRunning = true
-
 			for _, netw := range container.Static.Networks {
 				if data.NetworkSettings.Networks[netw] != nil {
-					netwData, _ := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
+					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
 						Scope:   "",
 						Verbose: false,
 					})
-					if err != nil {
-						container.Runtime.Networks[netw] = Network{
-							NetworkId:   data.NetworkSettings.Networks[netw].NetworkID,
-							IP:          data.NetworkSettings.Networks[netw].IPAddress,
-							NetworkName: "",
-						}
-					} else {
-						container.Runtime.Networks[netw] = Network{
-							NetworkId:   netwData.ID,
-							IP:          data.NetworkSettings.Networks[netw].IPAddress,
-							NetworkName: netwData.Name,
-						}
+
+					NetworkId := data.NetworkSettings.Networks[netw].NetworkID
+					IpAddress := data.NetworkSettings.Networks[netw].IPAddress
+					NetwrName := ""
+
+					if err == nil {
+						NetworkId = netwInspect.ID
+						NetwrName = netwInspect.Name
 					}
+
+					container.AddNetworkInfoTS(NetworkId, IpAddress, NetwrName)
 				}
 			}
 
 			container.Runtime.Id = data.ID
 			container.Runtime.State = data.State.Status
 		}
-
-		container.Runtime.FirstObserved = false
 
 		return container
 	} else {
@@ -299,24 +292,21 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 	}
 
 	for _, dnetw := range data.NetworkSettings.Networks {
-		netwData, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
+		netwInspect, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
 			Scope:   "",
 			Verbose: false,
 		})
 
-		if err != nil {
-			container.Runtime.Networks[dnetw.NetworkID] = Network{
-				NetworkId:   dnetw.NetworkID,
-				IP:          dnetw.IPAddress,
-				NetworkName: "",
-			}
-		} else {
-			container.Runtime.Networks[dnetw.NetworkID] = Network{
-				NetworkId:   dnetw.NetworkID,
-				IP:          dnetw.IPAddress,
-				NetworkName: netwData.Name,
-			}
+		NetworkId := dnetw.NetworkID
+		IpAddress := dnetw.IPAddress
+		NetwrName := ""
+
+		if err == nil {
+			NetworkId = netwInspect.ID
+			NetwrName = netwInspect.Name
 		}
+
+		container.AddNetworkInfoTS(NetworkId, IpAddress, NetwrName)
 	}
 
 	if container.Static.NetworkMode != "host" {
@@ -324,7 +314,8 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		agent.Get()
 
 		if agent != nil {
-			for _, nid := range container.Runtime.Networks {
+			networks := container.GetNetworkInfoTS()
+			for _, nid := range networks {
 				logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
 
 				if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
@@ -339,15 +330,17 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 				}
 
 				format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
-				database.Put(Badger, format.ToString(), container.Runtime.Networks[nid.NetworkId].IP)
+				database.Put(Badger, format.ToString(), networks[nid.NetworkId].IP)
 
 				// Add ip to the dnsCache so that in cluster resolve works correctly
-				dnsCache.AddARecord(container.GetDomain(), container.Runtime.Networks[nid.NetworkId].IP)
+				dnsCache.AddARecord(container.GetDomain(), networks[nid.NetworkId].IP)
 				// Generate headless service alike response to target multiple containers in the cluster
-				dnsCache.AddARecord(container.GetHeadlessDomain(), container.Runtime.Networks[nid.NetworkId].IP)
+				dnsCache.AddARecord(container.GetHeadlessDomain(), networks[nid.NetworkId].IP)
 			}
 
-			for _, nid := range agent.Runtime.Networks {
+			agentNetworks := agent.GetNetworkInfoTS()
+
+			for _, nid := range agentNetworks {
 				if nid.IP == runtime.AGENTIP.String() {
 					err = container.ConnectToTheSameNetwork(resp.ID, nid.NetworkId)
 					if err != nil {
@@ -362,7 +355,6 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 				}
 			}
 
-			container.Runtime.FoundRunning = false
 			container.Status.DefinitionDrift = false
 
 			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
@@ -376,7 +368,6 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		container.Runtime.FoundRunning = false
 		container.Status.DefinitionDrift = false
 
 		format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
@@ -406,40 +397,30 @@ func (container *Container) Get() *types.Container {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
 		if c != nil && c.State == "running" {
-			if container.Runtime.FirstObserved {
-				container.Runtime.FoundRunning = true
-			}
-
 			for _, dnetw := range data.NetworkSettings.Networks {
-				netwData, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
+				netwInspect, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
 					Scope:   "",
 					Verbose: false,
 				})
 
-				if err != nil {
-					container.Runtime.Networks[dnetw.NetworkID] = Network{
-						NetworkId:   dnetw.NetworkID,
-						IP:          dnetw.IPAddress,
-						NetworkName: "",
-					}
-				} else {
-					container.Runtime.Networks[dnetw.NetworkID] = Network{
-						NetworkId:   netwData.ID,
-						IP:          dnetw.IPAddress,
-						NetworkName: netwData.Name,
-					}
+				NetworkId := dnetw.NetworkID
+				IpAddress := dnetw.IPAddress
+				NetwrName := ""
+
+				if err == nil {
+					NetworkId = netwInspect.ID
+					NetwrName = netwInspect.Name
 				}
+
+				container.AddNetworkInfoTS(NetworkId, IpAddress, NetwrName)
 			}
 
 			container.Runtime.Id = data.ID
 			container.Runtime.State = data.State.Status
 		}
 
-		container.Runtime.FirstObserved = false
-
 		return c
 	} else {
-		container.Runtime.FirstObserved = false
 		return nil
 	}
 }

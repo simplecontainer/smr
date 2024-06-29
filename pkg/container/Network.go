@@ -14,6 +14,36 @@ import (
 
 const STARTING_SUBNET string = "10.10.0.0/16"
 
+func (container *Container) AddNetworkInfoTS(networkId string, ipAddress string, networkName string) {
+	for container.Runtime.NetworkWriteLock || container.Runtime.NetworkReadLock {
+	}
+
+	container.Runtime.NetworkWriteLock = true
+
+	container.Runtime.Networks[networkId] = Network{
+		NetworkId:   networkId,
+		NetworkName: networkName,
+		IP:          ipAddress,
+	}
+
+	container.Runtime.NetworkWriteLock = false
+}
+
+func (container *Container) GetNetworkInfoTS() map[string]Network {
+	for container.Runtime.NetworkWriteLock {
+	}
+
+	container.Runtime.NetworkReadLock = true
+
+	networkCopy := make(map[string]Network)
+	for k, v := range container.Runtime.Networks {
+		networkCopy[k] = v
+	}
+
+	container.Runtime.NetworkReadLock = false
+	return networkCopy
+}
+
 func (container *Container) CreateNetwork() error {
 	if !container.FindNetwork() {
 		cli, err := client.NewClientWithOpts(client.FromEnv)

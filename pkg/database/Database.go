@@ -8,12 +8,12 @@ import (
 )
 
 func Put(Badger *badger.DB, key string, value string) error {
-	logger.Log.Info(fmt.Sprintf("saving into the key-value store %s=%s", key, value))
+	logger.Log.Debug(fmt.Sprintf("saving into the key-value store %s=%s", key, value))
 	err := Badger.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(key), []byte(value))
 
 		if err == nil {
-			logger.Log.Info(fmt.Sprintf("saved into key-value store %s=%s", key, value))
+			logger.Log.Debug(fmt.Sprintf("saved into key-value store %s=%s", key, value))
 		}
 
 		return err
@@ -23,7 +23,7 @@ func Put(Badger *badger.DB, key string, value string) error {
 }
 
 func Get(Badger *badger.DB, key string) (string, error) {
-	logger.Log.Info(fmt.Sprintf("getting from the key-value store %s", key))
+	logger.Log.Debug(fmt.Sprintf("getting from the key-value store %s", key))
 	var value []byte
 
 	err := Badger.View(func(txn *badger.Txn) error {
@@ -48,7 +48,7 @@ func Get(Badger *badger.DB, key string) (string, error) {
 }
 
 func GetPrefix(Badger *badger.DB, key string) (map[string]string, error) {
-	logger.Log.Info(fmt.Sprintf("getting from the key-value store %s", key))
+	logger.Log.Debug(fmt.Sprintf("getting from the key-value store %s", key))
 	var value = make(map[string]string)
 
 	err := Badger.View(func(txn *badger.Txn) error {
@@ -79,7 +79,7 @@ func GetPrefix(Badger *badger.DB, key string) (map[string]string, error) {
 }
 
 func Delete(Badger *badger.DB, key []byte) (bool, error) {
-	logger.Log.Info(fmt.Sprintf("removing from the key-value store %s", key))
+	logger.Log.Debug(fmt.Sprintf("removing from the key-value store %s", key))
 
 	err := Badger.DropPrefix(key)
 

@@ -68,4 +68,5 @@ func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
 	}
 
 	api.BadgerEncrypted = dbSecrets
+	api.Manager.BadgerEncrypted = api.BadgerEncrypted
 }

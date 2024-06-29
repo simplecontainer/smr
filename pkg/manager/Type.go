@@ -19,6 +19,7 @@ type Manager struct {
 	Reconciler         *reconciler.Reconciler
 	Keys               *keys.Keys
 	Badger             *badger.DB
+	BadgerEncrypted    *badger.DB
 	DnsCache           *dns.Records
 	RepositoryWatchers *gitops.RepositoryWatcher
 	DefinitionRegistry *objectdependency.DefinitionRegistry
