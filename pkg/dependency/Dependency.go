@@ -6,6 +6,7 @@ import (
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 	"time"
@@ -126,19 +127,18 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 			}
 		}
 
-		mgr.Registry.Containers[group][name].Status.DependsSolved = true
-
 		if !allDependenciesSolved {
-			mgr.Registry.Containers[group][name].Status.DependsSolved = false
+			mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_FAILED)
 			return false, errors.New("didn't solve all dependencies")
 		} else {
+			mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
 			logger.Log.Info("all dependencies solved", zap.String("group", group), zap.String("name", name))
 			return true, nil
 		}
 	}
 
 	logger.Log.Info("no dependencies defined", zap.String("group", group), zap.String("name", name))
-	mgr.Registry.Containers[group][name].Status.DependsSolved = true
+	mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
 
 	return true, nil
 }
@@ -151,7 +151,7 @@ func Depends(mgr *manager.Manager, depend *Dependency, ch chan State) {
 	if mgr.Registry.Containers[group] != nil {
 		if id == "*" {
 			for _, container := range mgr.Registry.Containers[group] {
-				if !container.Status.Ready {
+				if !container.Status.IfStateIs(status.STATUS_READY) {
 					ch <- State{
 						Success: false,
 						Depend:  depend,

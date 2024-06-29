@@ -17,16 +17,13 @@ import (
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/runtime"
 	"github.com/qdnqn/smr/pkg/static"
+	"github.com/qdnqn/smr/pkg/status"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 )
-
-func NewContainer() *Container {
-	return &Container{}
-}
 
 func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition v1.Container) *Container {
 	// Make deep copy of the definition, so we can preserve it for later usage
@@ -85,18 +82,13 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Owner:         Owner{},
 			Resources:     mapAnyToResources(definition.Spec.Container.Resources),
 		},
-		Status: Status{
-			Created:         false,
-			DependsSolved:   false,
-			BackOffRestart:  false,
-			Healthy:         false,
-			Ready:           false,
-			Running:         false,
-			Reconciling:     false,
-			DefinitionDrift: false,
-			PendingDelete:   false,
+		Status: status.Status{
+			State:      status.STATUS_CREATED,
+			LastUpdate: time.Now(),
 		},
 	}
+
+	container.Status.CreateGraph()
 
 	if container.Runtime.Configuration == nil {
 		container.Runtime.Configuration = make(map[string]any)
@@ -128,11 +120,7 @@ func Existing(name string) *Container {
 			Ready:         false,
 			Configuration: make(map[string]any),
 		},
-		Status: Status{
-			BackOffRestart: false,
-			Healthy:        true,
-			Ready:          true,
-		},
+		Status: status.Status{},
 	}
 
 	container.Static.Name = name
@@ -156,6 +144,7 @@ func Existing(name string) *Container {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
 		if c != nil && c.State == "running" {
+			container.Status.SetState(status.STATUS_RUNNING)
 			for _, netw := range container.Static.Networks {
 				if data.NetworkSettings.Networks[netw] != nil {
 					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
@@ -178,6 +167,15 @@ func Existing(name string) *Container {
 
 			container.Runtime.Id = data.ID
 			container.Runtime.State = data.State.Status
+		} else {
+			switch c.State {
+			case "exited":
+				container.Status.SetState(status.STATUS_DEAD)
+				break
+			case "created":
+				container.Status.SetState(status.STATUS_CREATED)
+				break
+			}
 		}
 
 		return container
@@ -356,7 +354,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 				}
 			}
 
-			container.UpdateStatus(static.STATUS_DRIFTED, false)
+			container.Status.TransitionState(status.STATUS_RUNNING)
 
 			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 			database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
@@ -369,7 +367,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		container.UpdateStatus(static.STATUS_DRIFTED, false)
+		container.Status.TransitionState(status.STATUS_RUNNING)
 
 		format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))

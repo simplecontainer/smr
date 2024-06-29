@@ -16,7 +16,7 @@ import (
 	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/replicas"
-	"github.com/qdnqn/smr/pkg/static"
+	"github.com/qdnqn/smr/pkg/status"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 )
@@ -107,7 +107,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 			var solved bool
 
 			for _, container := range order {
-				if container.Status.PendingDelete {
+				if container.Status.IfStateIs(status.STATUS_PENDING_DELETE) {
 					logger.Log.Info(fmt.Sprintf("container is pending to delete %s", container.Static.GeneratedName))
 
 					mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
@@ -116,10 +116,11 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 						Container: container,
 					}
 				} else {
+					container.Status.TransitionState(status.STATUS_DEPENDS_SOLVING)
 					solved, err = dependency.Ready(mgr, container.Static.Group, container.Static.GeneratedName, container.Static.Definition.Spec.Container.Dependencies)
 
 					if solved {
-						if container.Status.DefinitionDrift {
+						if container.Status.IfStateIs(status.STATUS_DRIFTED) {
 							// This the case when we know container already exists and definition was reapplied
 							// We should trigger the reconcile
 							logger.Log.Info("sending container to reconcile state", zap.String("container", container.Static.GeneratedName))
@@ -337,7 +338,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 			for _, container := range order {
 				logger.Log.Info("deleting container", zap.String("container", container.Static.GeneratedName))
 
-				container.UpdateStatus(static.STATUS_PENDING_DELETE, true)
+				container.Status.TransitionState(status.STATUS_PENDING_DELETE)
 				mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
 				mgr.Reconciler.QueueChan <- reconciler.Reconcile{

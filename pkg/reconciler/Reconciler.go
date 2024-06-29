@@ -12,7 +12,7 @@ import (
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/registry"
 	"github.com/qdnqn/smr/pkg/runtime"
-	"github.com/qdnqn/smr/pkg/static"
+	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 	"time"
@@ -160,14 +160,12 @@ func (reconciler *Reconciler) HandleDisconnect(registry *registry.Registry, dnsC
 
 func (reconciler *Reconciler) HandleStart(registry *registry.Registry, container *container.Container) {
 	// Container started it is running so update status accordingly
-	container.UpdateStatus(static.STATUS_RECONCILING, false)
-	container.UpdateStatus(static.STATUS_DRIFTED, false)
-	container.UpdateStatus(static.STATUS_RUNNING, true)
+	container.Status.TransitionState(status.STATUS_RUNNING)
 }
 
 func (reconciler *Reconciler) HandleKill(registry *registry.Registry, dnsCache *dns.Records, container *container.Container) {
 	// It can happen that kill signal occurs in the container even if it is not dying; eg killing thread, goroutine etc.
-	container.UpdateStatus(static.STATUS_RUNNING, true)
+	container.Status.TransitionState(status.STATUS_KILLED)
 
 	for _, n := range container.Runtime.Networks {
 		dnsCache.RemoveARecordQueue(container.GetDomain(), n.IP)
@@ -176,11 +174,11 @@ func (reconciler *Reconciler) HandleKill(registry *registry.Registry, dnsCache *
 
 func (reconciler *Reconciler) HandleStop(registry *registry.Registry, container *container.Container) {
 	// Stop will stop the container so update the status accordingly
-	container.UpdateStatus(static.STATUS_RUNNING, false)
+	container.Status.TransitionState(status.STATUS_DEAD)
 }
 
 func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *container.Container) {
-	container.UpdateStatus(static.STATUS_RUNNING, false)
+	container.Status.TransitionState(status.STATUS_DEAD)
 
 	reconcile := true
 
@@ -193,7 +191,7 @@ func (reconciler *Reconciler) HandleDie(registry *registry.Registry, container *
 		}
 	}
 
-	if !container.Status.Reconciling && reconcile {
+	if container.Status.IfStateIs(status.STATUS_DEAD) && reconcile {
 		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", container.Static.GeneratedName))
 		reconciler.QueueChan <- Reconcile{
 			Container: container,
@@ -213,7 +211,7 @@ func (reconciler *Reconciler) HandleChange(registry *registry.Registry, dnsCache
 		}
 	}
 
-	if !container.Status.Reconciling && reconcile {
+	if !container.Status.TransitionState(status.STATUS_RECONCILING) && reconcile {
 		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", container.Static.GeneratedName))
 		reconciler.QueueChan <- Reconcile{
 			Container: container,
@@ -226,7 +224,7 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 		select {
 		case queue := <-reconciler.QueueChan:
 			logger.Log.Info(fmt.Sprintf("detected the event for reconciling %s", queue.Container.Static.GeneratedName))
-			queue.Container.UpdateStatus(static.STATUS_RECONCILING, true)
+			queue.Container.Status.TransitionState(status.STATUS_RECONCILING)
 
 			container := queue.Container
 			registry.BackOffTracking(container.Static.Group, container.Static.GeneratedName)
@@ -237,8 +235,7 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 
 					registry.BackOffReset(container.Static.Group, container.Static.GeneratedName)
 
-					container.UpdateStatus(static.STATUS_BACKOFF, true)
-					container.UpdateStatus(static.STATUS_HEALTHY, false)
+					container.Status.TransitionState(status.STATUS_BACKOFF)
 
 					break
 				}
@@ -276,11 +273,11 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 
 				err := container.Delete()
 
-				if container.Status.BackOffRestart {
+				if container.Status.IfStateIs(status.STATUS_BACKOFF) {
 					logger.Log.Info("container is backoff restarting", zap.String("container", container.Static.GeneratedName))
 				} else {
 					if err == nil {
-						if !container.Status.PendingDelete {
+						if !container.Status.IfStateIs(status.STATUS_PENDING_DELETE) {
 							container.Prepare(db)
 							_, err = container.Run(runtime, db, dbEncrypted, dnsCache)
 						} else {
@@ -292,8 +289,6 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 					}
 				}
 			}
-
-			queue.Container.UpdateStatus(static.STATUS_RECONCILING, false)
 
 			break
 		}

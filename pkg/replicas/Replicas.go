@@ -7,7 +7,7 @@ import (
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/static"
+	"github.com/qdnqn/smr/pkg/status"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"strings"
@@ -25,12 +25,10 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 			name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
 			container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
 
-			container.UpdateStatus(static.STATUS_CREATED, true)
-
 			existingContainer := mgr.Registry.Find(container.Static.Group, name)
 
 			if existingContainer != nil {
-				existingContainer.Status.PendingDelete = true
+				existingContainer.Status.TransitionState(status.STATUS_PENDING_DELETE)
 			}
 
 			groups = append(groups, replicas.Group)
@@ -42,6 +40,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
 		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
 		container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
+		container.Status.SetState(status.STATUS_CREATED)
 
 		for i, v := range container.Runtime.Resources {
 			format := database.Format("resource", container.Static.Group, v.Identifier, v.Key)
@@ -66,7 +65,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 		if existingContainer != nil {
 			logger.Log.Info("container already existing on the server", zap.String("container", name))
 
-			if existingContainer.Status.Reconciling {
+			if existingContainer.Status.IfStateIs(status.STATUS_RECONCILING) {
 				return nil, nil, errors.New("container is in reconciliation process try again later")
 			}
 
@@ -89,7 +88,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 
 			// If container got to here without any failures we need to set it definitionDrift=true so that we do reconcile
 			// in the container implementation
-			container.Status.DefinitionDrift = true
+			container.Status.TransitionState(status.STATUS_DRIFTED)
 		}
 
 		mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)
