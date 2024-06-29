@@ -1,6 +1,7 @@
 package container
 
 import (
+	"context"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/network"
@@ -35,6 +36,7 @@ type Static struct {
 	Capabilities           []string
 	NetworkMode            string
 	Privileged             bool
+	Readiness              []Readiness
 	Definition             v1.Container
 }
 
@@ -42,6 +44,8 @@ type Runtime struct {
 	Auth               string
 	Id                 string
 	Networks           map[string]Network
+	NetworkWriteLock   bool
+	NetworkReadLock    bool
 	State              string
 	FoundRunning       bool
 	FirstObserved      bool
@@ -90,6 +94,33 @@ type ExecResult struct {
 	Stderr string
 	Exit   int
 }
+
+// Readiness related
+
+type Readiness struct {
+	Name     string
+	Operator string
+	Timeout  string
+	Body     map[string]string
+	Solved   bool
+	Ctx      context.Context
+}
+
+type ReadinessState struct {
+	Name       string
+	Success    bool
+	Missing    bool
+	Timeout    bool
+	Error      error
+	TryToSolve bool
+	Readiness  *Readiness
+}
+
+type ReadinessResult struct {
+	Data string
+}
+
+// Dependencies related
 
 type ByDepenendecies []*Container
 

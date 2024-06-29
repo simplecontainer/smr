@@ -1,18 +1,13 @@
 package dependency
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/template"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
-	"net/http"
 	"time"
 )
 
@@ -31,12 +26,9 @@ func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
 	}
 
 	return &Dependency{
-		Name:     depend.Name,
-		Operator: depend.Operator,
-		Timeout:  depend.Timeout,
-		Body:     depend.Body,
-		Solved:   depend.Solved,
-		Ctx:      ctx,
+		Name:    depend.Name,
+		Timeout: depend.Timeout,
+		Ctx:     ctx,
 	}
 }
 
@@ -56,7 +48,7 @@ func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
 
 		logger.Log.Info("trying to solve dependency", zap.String("name", depend.Name))
 
-		go Depends(mgr, "https://smr-agent:8080/operators", depend, ch)
+		go Depends(mgr, depend, ch)
 
 		for {
 			select {
@@ -151,89 +143,52 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 	return true, nil
 }
 
-func Depends(mgr *manager.Manager, host string, depend *Dependency, ch chan State) {
-	if depend.Operator != "" {
-		var err error
-		jsonData, _, err := template.ParseTemplate(mgr.Badger, depend.Body, nil)
+func Depends(mgr *manager.Manager, depend *Dependency, ch chan State) {
+	group, id := utils.ExtractGroupAndId(depend.Name)
 
-		group, _ := utils.ExtractGroupAndId(depend.Name)
-		URL := fmt.Sprintf("%s/%s/%s", host, group, depend.Operator)
+	logger.Log.Info("trying to check if depends solved", zap.String("group", group), zap.String("name", id))
 
-		jsonBytes, err := json.Marshal(jsonData)
+	if mgr.Registry.Containers[group] != nil {
+		if id == "*" {
+			for _, container := range mgr.Registry.Containers[group] {
+				if !container.Status.Ready {
+					ch <- State{
+						Success: false,
+						Depend:  depend,
+					}
 
-		var req *http.Request
+					return
+				}
+			}
 
-		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(jsonBytes))
-		req.Header.Set("Content-Type", "application/json")
-
-		logger.Log.Info(fmt.Sprintf("trying to call operator: %s", URL))
-		client, err := mgr.Keys.GenerateHttpClient()
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-
-		if resp.StatusCode == http.StatusOK {
 			ch <- State{
 				Success: true,
+				Missing: false,
 				Depend:  depend,
 			}
+
+			return
 		} else {
-			ch <- State{
-				Success: false,
-				Depend:  depend,
-			}
-		}
-	} else {
-		group, id := utils.ExtractGroupAndId(depend.Name)
-
-		logger.Log.Info("trying to check if depends solved", zap.String("group", group), zap.String("name", id))
-
-		if mgr.Registry.Containers[group] != nil {
-			if id == "*" {
-				for _, container := range mgr.Registry.Containers[group] {
-					if !container.Status.DependsSolved {
-						ch <- State{
-							Success: false,
-							Depend:  depend,
-						}
-
-						return
-					}
-				}
-
+			if mgr.Registry.Containers[group][id] != nil {
 				ch <- State{
 					Success: true,
 					Missing: false,
 					Depend:  depend,
 				}
-
-				return
 			} else {
-				if mgr.Registry.Containers[group][id] != nil {
-					ch <- State{
-						Success: true,
-						Missing: false,
-						Depend:  depend,
-					}
-				} else {
-					ch <- State{
-						Success: false,
-						Missing: true,
-						Depend:  depend,
-					}
+				ch <- State{
+					Success: false,
+					Missing: true,
+					Depend:  depend,
 				}
 			}
-		} else {
-			ch <- State{
-				Success: false,
-				Missing: true,
-				Depend:  depend,
-			}
+		}
+	} else {
+		ch <- State{
+			Success: false,
+			Missing: true,
+			Depend:  depend,
 		}
 	}
+
 }

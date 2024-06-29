@@ -220,7 +220,7 @@ func (reconciler *Reconciler) HandleChange(registry *registry.Registry, dnsCache
 	}
 }
 
-func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *runtime.Runtime, db *badger.DB, dnsCache *dns.Records) {
+func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *runtime.Runtime, db *badger.DB, dbEncrypted *badger.DB, dnsCache *dns.Records) {
 	for {
 		select {
 		case queue := <-reconciler.QueueChan:
@@ -274,18 +274,20 @@ func (reconciler *Reconciler) ListenQueue(registry *registry.Registry, runtime *
 
 				err := container.Delete()
 
-				if err == nil {
-					registry.BackOffReset(container.Static.Group, container.Static.GeneratedName)
-
-					if !container.Status.PendingDelete {
-						container.Prepare(db)
-						_, err = container.Run(runtime, db, dnsCache)
-					} else {
-						logger.Log.Info("container stopped and deleted", zap.String("container", container.Static.GeneratedName))
-					}
-					break
+				if container.Status.BackOffRestart {
+					logger.Log.Info("container is backoff restarting", zap.String("container", container.Static.GeneratedName))
 				} else {
-					logger.Log.Info("failed to delete container", zap.String("container", container.Static.GeneratedName))
+					if err == nil {
+						if !container.Status.PendingDelete {
+							container.Prepare(db, dbEncrypted)
+							_, err = container.Run(runtime, db, dnsCache)
+						} else {
+							logger.Log.Info("container stopped and deleted", zap.String("container", container.Static.GeneratedName))
+						}
+						break
+					} else {
+						logger.Log.Info("failed to delete container", zap.String("container", container.Static.GeneratedName))
+					}
 				}
 			}
 

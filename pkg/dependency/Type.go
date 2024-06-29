@@ -5,12 +5,9 @@ import (
 )
 
 type Dependency struct {
-	Name     string
-	Operator string
-	Timeout  string
-	Body     map[string]any
-	Solved   bool
-	Ctx      context.Context
+	Name    string
+	Timeout string
+	Ctx     context.Context
 }
 
 type State struct {

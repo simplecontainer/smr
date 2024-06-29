@@ -35,6 +35,7 @@ type ContainerInternal struct {
 	Entrypoint    []string               `json:"entrypoint"`
 	Command       []string               `json:"command"`
 	Dependencies  []DependsOn            `json:"dependencies"`
+	Readiness     []Readiness            `json:"readiness"`
 	Networks      []string               `validate:"required" json:"networks"`
 	Ports         []network.PortMappings `json:"ports"`
 	Volumes       []map[string]string    `json:"volumes"`
@@ -48,11 +49,15 @@ type ContainerInternal struct {
 }
 
 type DependsOn struct {
-	Name     string         `validate:"required" json:"name"`
-	Operator string         `json:"operator"`
-	Timeout  string         `validate:"required" json:"timeout"`
-	Body     map[string]any `json:"body"`
-	Solved   bool
+	Name    string `validate:"required" json:"name"`
+	Timeout string `validate:"required" json:"timeout"`
+}
+
+type Readiness struct {
+	Name     string            `validate:"required" json:"name"`
+	Operator string            `json:"operator"`
+	Timeout  string            `validate:"required" json:"timeout"`
+	Body     map[string]string `json:"body"`
 }
 
 func (definition *Container) ToJsonString() (string, error) {

@@ -11,22 +11,20 @@ import (
 
 // TODO: Needs refactoring
 
-func (container *Container) Prepare(db *badger.DB) bool {
+func (container *Container) Prepare(db *badger.DB, dbEncrypted *badger.DB) bool {
 	var err error
 	var dependencyMap []database.FormatStructure
 	format := database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
 
-	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(db, container.Runtime.Configuration, &format)
+	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(db, dbEncrypted, container.Runtime.Configuration, &format)
 	container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, dependencyMap...)
 
 	if err != nil {
 		return false
 	}
 
-	// TODO: implement saving configuration to key-value store after parsing
-
 	for keyOriginal, _ := range container.Runtime.Resources {
-		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(db, container.Runtime.Resources[keyOriginal].Data, nil)
+		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(db, dbEncrypted, container.Runtime.Resources[keyOriginal].Data, nil)
 		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, database.FormatStructure{
 			Kind:       "resource",
 			Group:      container.Static.Group,
@@ -68,6 +66,38 @@ func (container *Container) Prepare(db *badger.DB) bool {
 
 			if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != nil {
 				container.Static.Env[index] = strings.Replace(container.Static.Env[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex].(string), 1)
+			}
+		}
+	}
+
+	for index, value := range container.Static.Env {
+		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+
+		if len(matches) > 0 {
+			SplitByDot := strings.SplitN(matches[0][1], ".", 2)
+
+			trimmedIndex := strings.TrimSpace(SplitByDot[1])
+
+			if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != nil {
+				container.Static.Env[index] = strings.Replace(container.Static.Env[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex].(string), 1)
+			}
+		}
+	}
+
+	for indexReadiness, _ := range container.Static.Readiness {
+		for index, value := range container.Static.Readiness[indexReadiness].Body {
+			regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+			matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+
+			if len(matches) > 0 {
+				SplitByDot := strings.SplitN(matches[0][1], ".", 2)
+
+				trimmedIndex := strings.TrimSpace(SplitByDot[1])
+
+				if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != nil {
+					container.Static.Readiness[indexReadiness].Body[index] = strings.Replace(container.Static.Readiness[indexReadiness].Body[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex].(string), 1)
+				}
 			}
 		}
 	}

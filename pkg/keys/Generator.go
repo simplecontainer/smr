@@ -94,7 +94,7 @@ func generateCertPrivKeyPair(ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*
 			StreetAddress: []string{"BB"},
 			PostalCode:    []string{"75270"},
 		},
-		DNSNames:     []string{viper.GetString("daemon-domain")},
+		DNSNames:     []string{viper.GetString("daemon-domain"), "smr-agent"},
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
