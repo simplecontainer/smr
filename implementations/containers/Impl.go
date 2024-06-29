@@ -16,6 +16,7 @@ import (
 	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/replicas"
+	"github.com/qdnqn/smr/pkg/static"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 )
@@ -350,9 +351,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 			for _, container := range order {
 				logger.Log.Info("deleting container", zap.String("container", container.Static.GeneratedName))
 
-				fmt.Println(container.Runtime)
-
-				container.Status.PendingDelete = true
+				container.UpdateStatus(static.STATUS_PENDING_DELETE, true)
 				mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
 				mgr.Reconciler.QueueChan <- reconciler.Reconcile{

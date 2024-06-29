@@ -7,6 +7,7 @@ import (
 	"github.com/qdnqn/smr/pkg/network"
 	"github.com/qdnqn/smr/pkg/utils"
 	"strings"
+	"time"
 )
 
 type Container struct {
@@ -68,6 +69,9 @@ type Network struct {
 }
 
 type Status struct {
+	Created         bool
+	Readiness       bool
+	ReadinessFailed bool
 	DependsSolved   bool
 	BackOffRestart  bool
 	Healthy         bool
@@ -76,6 +80,8 @@ type Status struct {
 	Reconciling     bool
 	DefinitionDrift bool
 	PendingDelete   bool
+	LastUpdate      time.Time
+	CreatedTime     time.Time
 }
 
 type Resource struct {
