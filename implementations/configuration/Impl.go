@@ -33,23 +33,23 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 		panic(err)
 	}
 
-	mapstructure.Decode(data["configuration"], &config)
+	mapstructure.Decode(data["spec"], &config)
 
 	var format database.FormatStructure
 
 	format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = config.ToJsonString()
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+			err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+		err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -108,7 +108,7 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 
 	format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = config.ToJsonString()
@@ -168,7 +168,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 	format := database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	if obj.Exists() {
 		deleted, err := obj.Remove(mgr.Badger, format)

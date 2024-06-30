@@ -37,17 +37,17 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 
 	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+			err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+		err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -90,13 +90,13 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 		panic(err)
 	}
 
-	mapstructure.Decode(data["certkey"], &certkey)
+	mapstructure.Decode(data["spec"], &certkey)
 
 	var format database.FormatStructure
 
 	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
@@ -156,7 +156,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 	format := database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	if obj.Exists() {
 		deleted, err := obj.Remove(mgr.Badger, format)

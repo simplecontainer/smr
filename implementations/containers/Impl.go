@@ -36,10 +36,10 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 		var globalGroups []string
 		var globalNames []string
 
-		for _, definition := range definitionSent.Containers {
+		for _, definition := range definitionSent.Spec {
 			format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 			obj := objects.New()
-			err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+			err = obj.Find(mgr.Badger, format)
 
 			var jsonStringFromRequest string
 			jsonStringFromRequest, err = definition.ToJsonString()
@@ -50,7 +50,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 					// containers that are there already, otherwise recreate everything
 				}
 			} else {
-				err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+				err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
 			}
 
 			if obj.ChangeDetected() || !obj.Exists() {
@@ -59,7 +59,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 				name := definition.Meta.Name
 				logger.Log.Info(fmt.Sprintf("trying to generate container %s object", name))
 
-				_, ok := definitionSent.Containers[name]
+				_, ok := definitionSent.Spec[name]
 
 				if !ok {
 					return httpcontract.ResponseImplementation{
@@ -71,7 +71,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 					}, errors.New(fmt.Sprintf("container definintion with name %s not found", name))
 				}
 
-				groups, names, err := implementation.generateReplicaNamesAndGroups(mgr, definitionSent.Containers[name], obj.Changelog)
+				groups, names, err := implementation.generateReplicaNamesAndGroups(mgr, definitionSent.Spec[name], obj.Changelog)
 
 				if err == nil {
 					logger.Log.Info(fmt.Sprintf("generated container %s object", name))
@@ -79,7 +79,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 					globalGroups = append(globalGroups, groups...)
 					globalNames = append(globalNames, names...)
 
-					err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+					err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
 				} else {
 					logger.Log.Error("failed to generate names and groups")
 
@@ -148,7 +148,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 
 								// clear the object in the store since container failed to run
 								obj := objects.New()
-								obj.Update(mgr.Registry.Object, mgr.Badger, format, "")
+								obj.Update(mgr.Badger, format, "")
 
 								mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
@@ -209,10 +209,10 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 			Success:          false,
 		}, err
 	} else {
-		for _, definition := range definitionSent.Containers {
+		for _, definition := range definitionSent.Spec {
 			format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 			obj := objects.New()
-			err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+			err = obj.Find(mgr.Badger, format)
 
 			var jsonStringFromRequest string
 			jsonStringFromRequest, err = definition.ToJsonString()
@@ -273,10 +273,10 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 		var globalGroups []string
 		var globalNames []string
 
-		for _, definition := range definitionSent.Containers {
+		for _, definition := range definitionSent.Spec {
 			format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 			obj := objects.New()
-			err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+			err = obj.Find(mgr.Badger, format)
 
 			var jsonStringFromRequest string
 			jsonStringFromRequest, err = definition.ToJsonString()
@@ -300,7 +300,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 				name := definition.Meta.Name
 				logger.Log.Info(fmt.Sprintf("trying to generate container %s object", name))
 
-				_, ok := definitionSent.Containers[name]
+				_, ok := definitionSent.Spec[name]
 
 				if !ok {
 					return httpcontract.ResponseImplementation{
@@ -312,7 +312,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 					}, errors.New(fmt.Sprintf("container definintion with name %s not found", name))
 				}
 
-				groups, names, err := implementation.getReplicaNamesAndGroups(mgr, definitionSent.Containers[name], obj.Changelog)
+				groups, names, err := implementation.getReplicaNamesAndGroups(mgr, definitionSent.Spec[name], obj.Changelog)
 
 				if err == nil {
 					logger.Log.Info(fmt.Sprintf("generated container %s object", name))

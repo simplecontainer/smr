@@ -39,14 +39,14 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 			panic(err)
 		}
 
-		mapstructure.Decode(data["container"], &definition)
+		mapstructure.Decode(data["spec"], &definition)
 
 		var globalGroups []string
 		var globalNames []string
 
 		format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 		obj := objects.New()
-		err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+		err = obj.Find(mgr.Badger, format)
 
 		var jsonStringFromRequest string
 		jsonStringFromRequest, err = definition.ToJsonString()
@@ -57,7 +57,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 				// containers that are there already, otherwise recreate everything
 			}
 		} else {
-			err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+			err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
 		}
 
 		if obj.ChangeDetected() || !obj.Exists() {
@@ -74,7 +74,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 				globalGroups = append(globalGroups, groups...)
 				globalNames = append(globalNames, names...)
 
-				err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+				err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
 			} else {
 				logger.Log.Error("failed to generate names and groups")
 
@@ -142,7 +142,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 
 								// clear the object in the store since container failed to run
 								obj := objects.New()
-								obj.Update(mgr.Registry.Object, mgr.Badger, format, "")
+								obj.Update(mgr.Badger, format, "")
 
 								mgr.Registry.Remove(container.Static.Group, container.Static.GeneratedName)
 
@@ -213,7 +213,7 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 
 		format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 		obj := objects.New()
-		err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+		err = obj.Find(mgr.Badger, format)
 
 		var jsonStringFromRequest string
 		jsonStringFromRequest, err = definition.ToJsonString()
@@ -275,7 +275,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 
 		format := database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 		obj := objects.New()
-		err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+		err = obj.Find(mgr.Badger, format)
 
 		var jsonStringFromRequest string
 		jsonStringFromRequest, err = definition.ToJsonString()

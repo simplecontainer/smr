@@ -8,8 +8,9 @@ import (
 )
 
 type Containers struct {
-	Kind       string               `json:"kind"  validate:"required"`
-	Containers map[string]Container `json:"containers"  validate:"required"`
+	Kind string               `json:"kind"  validate:"required"`
+	Meta Meta                 `json:"meta"  validate:"required"`
+	Spec map[string]Container `json:"containers"  validate:"required"`
 }
 
 type Container struct {
