@@ -10,7 +10,7 @@ import (
 type Containers struct {
 	Kind string               `json:"kind"  validate:"required"`
 	Meta Meta                 `json:"meta"  validate:"required"`
-	Spec map[string]Container `json:"containers"  validate:"required"`
+	Spec map[string]Container `json:"spec"  validate:"required"`
 }
 
 type Container struct {
@@ -59,6 +59,11 @@ type Readiness struct {
 	Operator string            `json:"operator"`
 	Timeout  string            `validate:"required" json:"timeout"`
 	Body     map[string]string `json:"body"`
+}
+
+func (definition *Containers) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(definition)
+	return string(bytes), err
 }
 
 func (definition *Container) ToJsonString() (string, error) {

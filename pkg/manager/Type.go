@@ -22,5 +22,6 @@ type Manager struct {
 	BadgerEncrypted    *badger.DB
 	DnsCache           *dns.Records
 	RepositoryWatchers *gitops.RepositoryWatcher
+	ContainersWatchers *reconciler.ContainersWatcher
 	DefinitionRegistry *objectdependency.DefinitionRegistry
 }

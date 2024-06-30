@@ -9,7 +9,7 @@ import (
 )
 
 func (obj *Object) FindAndConvert(db *badger.DB, format database.FormatStructure, destination interface{}) {
-	obj.Find(nil, db, format)
+	obj.Find(db, format)
 
 	if obj.Exists() {
 		data := make(map[string]interface{})

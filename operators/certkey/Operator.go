@@ -112,7 +112,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 	format := database.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
 	obj := objects.New()
-	err := obj.Find(request.Manager.Registry.Object, request.Manager.Badger, format)
+	err := obj.Find(request.Manager.Badger, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -157,7 +157,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	format := database.FormatEmpty().FromString(GroupIdentifier)
 
 	obj := objects.New()
-	err := obj.Find(request.Manager.Registry.Object, request.Manager.Badger, format)
+	err := obj.Find(request.Manager.Badger, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
