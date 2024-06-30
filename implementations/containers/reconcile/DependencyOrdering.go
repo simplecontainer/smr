@@ -1,4 +1,4 @@
-package main
+package reconcile
 
 import (
 	"github.com/qdnqn/smr/pkg/container"
@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-func (implementation *Implementation) orderByDependencies(registry *registry.Registry, groups []string, names []string) []*container.Container {
+func orderByDependencies(registry *registry.Registry, groups []string, names []string) []*container.Container {
 	var order []*container.Container
 
 	for i, _ := range names {
