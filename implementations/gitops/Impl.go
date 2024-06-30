@@ -34,23 +34,23 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 		panic(err)
 	}
 
-	mapstructure.Decode(data["gitops"], &gitopsDefinition)
+	mapstructure.Decode(data["spec"], &gitopsDefinition)
 
 	var format database.FormatStructure
 
 	format = database.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+			err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+		err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -103,7 +103,7 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 
 	format = database.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
@@ -163,7 +163,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 	format := database.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	if obj.Exists() {
 		logger.Log.Info("removing gitops reconcile")

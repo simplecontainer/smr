@@ -33,23 +33,23 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 		}, err
 	}
 
-	mapstructure.Decode(data["resource"], &resource)
+	mapstructure.Decode(data["spec"], &resource)
 
 	var format database.FormatStructure
 
 	format = database.Format("resource", resource.Meta.Group, resource.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = resource.ToJsonString()
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+			err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(mgr.Registry.Object, mgr.Badger, format, jsonStringFromRequest)
+		err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -108,7 +108,7 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 
 	format = database.Format("resource", resource.Meta.Group, resource.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = resource.ToJsonString()
@@ -168,7 +168,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 	format := database.Format("resource", resource.Meta.Group, resource.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(mgr.Registry.Object, mgr.Badger, format)
+	err = obj.Find(mgr.Badger, format)
 
 	if obj.Exists() {
 		deleted, err := obj.Remove(mgr.Badger, format)

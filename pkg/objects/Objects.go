@@ -42,7 +42,7 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.definitionByte
 }
 
-func (obj *Object) Add(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure, data string) error {
+func (obj *Object) Add(db *badger.DB, format database.FormatStructure, data string) error {
 	err := database.Put(db, format.ToString(), string(data))
 
 	if err != nil {
@@ -72,7 +72,7 @@ func (obj *Object) Add(registryObjects map[string]Object, db *badger.DB, format 
 	return err
 }
 
-func (obj *Object) Update(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure, data string) error {
+func (obj *Object) Update(db *badger.DB, format database.FormatStructure, data string) error {
 	err := database.Put(db, format.ToString(), string(data))
 
 	if err != nil {
@@ -89,7 +89,7 @@ func (obj *Object) Update(registryObjects map[string]Object, db *badger.DB, form
 	return err
 }
 
-func (obj *Object) Find(registryObjects map[string]Object, db *badger.DB, format database.FormatStructure) error {
+func (obj *Object) Find(db *badger.DB, format database.FormatStructure) error {
 	val, err := database.Get(db, format.ToString())
 
 	if err == nil {
