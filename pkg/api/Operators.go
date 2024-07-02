@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/operators"
+	"github.com/simplecontainer/smr/pkg/plugins"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
@@ -36,7 +37,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 		}
 	}
 
-	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "operators", group)
+	plugin, err := plugins.GetPluginInstance(api.Config.Configuration.Environment.Root, "operators", group)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
@@ -140,7 +141,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 func (api *Api) ListSupported(c *gin.Context) {
 	group := cleanPath(c.Param("group"))
 
-	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "operators", group)
+	plugin, err := plugins.GetPluginInstance(api.Config.Configuration.Environment.Root, "operators", group)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{

@@ -11,4 +11,5 @@ type Implementation interface {
 	Apply([]byte) (httpcontract.ResponseImplementation, error)
 	Compare([]byte) (httpcontract.ResponseImplementation, error)
 	Delete([]byte) (httpcontract.ResponseImplementation, error)
+	GetShared() interface{}
 }
