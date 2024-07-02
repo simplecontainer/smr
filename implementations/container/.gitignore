@@ -1,0 +1,10 @@
+*.iml
+*.ipr
+*.iws
+*.so
+.idea/
+/build/
+/dist/
+/out/
+/ghostmgr
+smr

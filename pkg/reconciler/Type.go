@@ -1,6 +1,6 @@
 package reconciler
 
-import "github.com/simplecontainer/container"
+import "github.com/simplecontainer/container/container"
 
 type Reconciler struct {
 	QueueEvents chan Events
