@@ -11,7 +11,7 @@ LATEST_SMR_COMMIT="$(git rev-parse --short $BRANCH)"
 cd "$BASE_DIR"
 go build -ldflags "-s -w"
 
-for dir in ../implementations/*/
+for dir in implementations/*/
 do
     DIR=${dir%*/}
     DIRNAME="${DIR##*/}"
@@ -20,10 +20,7 @@ do
     echo "$BASE_DIR/../implementations/$DIRNAME"
     echo "***********************************************"
 
-    cd "$BASE_DIR/../implementations/$DIRNAME"
-    go get github.com/simplecontainer/smr@$LATEST_SMR_COMMIT
-    go mod tidy
-
+    cd "$BASE_DIR/implementations/$DIRNAME"
     go build -ldflags "-s -w" --buildmode=plugin
 done
 
@@ -38,8 +35,8 @@ cd "$BASE_DIR"
 #    go build -ldflags "-s -w" --buildmode=plugin
 #done
 
-cd "$BASE_DIR/../"
 docker stop $(docker ps -q)
 docker rm $(docker ps -aq)
-docker build . --file smr/docker/Dockerfile --tag smr:0.0.1
-docker run -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v /home/qdnqn/testing-smr:/home/smr-agent/.ssh -p 0.0.0.0:1443:1443 --name smr-agent --dns 127.0.0.1 smr:0.0.1
+docker image rm smr:$LATEST_SMR_COMMIT || echo "image not existing"
+docker build . --file docker/Dockerfile --tag smr:$LATEST_SMR_COMMIT --no-cache
+docker run -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v /home/qdnqn/testing-smr:/home/smr-agent/.ssh -p 0.0.0.0:1443:1443 --name smr-agent --dns 127.0.0.1 smr:$LATEST_SMR_COMMIT -it

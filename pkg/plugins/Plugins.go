@@ -62,7 +62,7 @@ func GetPlugin(implementationsRootDir string, pluginWanted string) implementatio
 			ImplementationInternal, err := plugin.Lookup(cases.Title(language.English).String(pluginName))
 
 			if err != nil {
-				panic(errors.New("plugin lookup failed"))
+				panic(err)
 			} else {
 				pl, ok := ImplementationInternal.(implementations.Implementation)
 
@@ -85,7 +85,7 @@ func GetPluginInstance(projectDir string, typ string, name string) (*plugin.Plug
 	var err error
 
 	if viper.GetBool("optmode") {
-		pluginInstance, err = plugin.Open(fmt.Sprintf("%s/%s/%s/%s.so", projectDir, typ, name, name))
+		pluginInstance, err = plugin.Open(fmt.Sprintf("%s/%s/%s.so", projectDir, typ, name))
 	} else {
 		pluginInstance, err = plugin.Open(fmt.Sprintf("%s/%s/%s.so", typ, name, name))
 	}
