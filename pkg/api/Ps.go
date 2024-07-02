@@ -1,16 +1,18 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/container/shared"
+	"github.com/simplecontainer/smr/pkg/plugins"
+	"net/http"
 )
 
 func (api *Api) Ps(c *gin.Context) {
-	/*pl := plugins.GetPlugin(api.Config.Configuration.Environment.Root, "container.so")
-	container := pl.
+	pl := plugins.GetPlugin(api.Config.Configuration.Environment.Root, "container.so")
+	containers := pl.GetShared().(shared.Shared).Registry.Containers
 
-	container.
-
-	data, err := json.Marshal(api.Registry.Containers)
+	data, err := json.Marshal(containers)
 
 	if err != nil {
 
@@ -20,5 +22,4 @@ func (api *Api) Ps(c *gin.Context) {
 	json.Unmarshal(data, &result)
 
 	c.JSON(http.StatusOK, result)
-	*/
 }
