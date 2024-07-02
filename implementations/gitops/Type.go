@@ -1,6 +1,11 @@
 package main
 
-type Implementation struct{}
+import "github.com/qdnqn/smr/implementations/gitops/shared"
+
+type Implementation struct {
+	Started bool
+	Shared  *shared.Shared
+}
 
 // Local contracts
 

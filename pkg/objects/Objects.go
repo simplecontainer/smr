@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/qdnqn/smr/pkg/database"
-	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/r3labs/diff/v3"
-	"go.uber.org/zap"
 	"reflect"
 	"strings"
 	"time"
@@ -179,7 +177,6 @@ func (obj *Object) Diff(definition string) bool {
 	err := json.Unmarshal([]byte(definition), &data)
 
 	if err != nil {
-		logger.Log.Error("failed to marshal json to map", zap.String("json", definition))
 		return true
 	}
 

@@ -85,7 +85,7 @@ func (api *Api) ImplementationWrapperCompare(kind string, jsonData []byte, c *gi
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Compare(api.Manager, jsonData, c)
+		response, err = pl.Compare(jsonData)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{

@@ -2,10 +2,10 @@ package container
 
 import (
 	"context"
+	"github.com/qdnqn/smr/implementations/container/network"
+	"github.com/qdnqn/smr/implementations/container/status"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
-	"github.com/qdnqn/smr/pkg/network"
-	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"strings"
 	"sync"

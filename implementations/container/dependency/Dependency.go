@@ -3,10 +3,10 @@ package dependency
 import (
 	"context"
 	"errors"
+	"github.com/qdnqn/smr/implementations/container/shared"
+	"github.com/qdnqn/smr/implementations/container/status"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
-	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 	"time"
@@ -33,7 +33,7 @@ func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
 	}
 }
 
-func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.DependsOn) (bool, error) {
+func Ready(shared *shared.Shared, group string, name string, dependsOn []v1.DependsOn) (bool, error) {
 	if len(dependsOn) > 0 {
 		var allDependenciesSolved = true
 		logger.Log.Info("trying to solve dependencies", zap.String("group", group), zap.String("name", name))
@@ -41,7 +41,7 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 		c := make(chan State)
 		for _, depend := range dependsOn {
 			dependency := NewDependencyFromDefinition(depend)
-			go SolveDepends(mgr, dependency, c)
+			go SolveDepends(shared, dependency, c)
 		}
 
 		for len(dependsOn) > 0 {
@@ -70,7 +70,7 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 
 					if deadline.After(time.Now()) {
 						time.Sleep(5 * time.Second)
-						go SolveDepends(mgr, d.Depend, c)
+						go SolveDepends(shared, d.Depend, c)
 					} else {
 						logger.Log.Info("deadline exceeded", zap.String("group", group), zap.String("name", name))
 						allDependenciesSolved = false
@@ -86,22 +86,22 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 		}
 
 		if !allDependenciesSolved {
-			mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_FAILED)
+			shared.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_FAILED)
 			return false, errors.New("didn't solve all dependencies")
 		} else {
-			mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
+			shared.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
 			logger.Log.Info("all dependencies solved", zap.String("group", group), zap.String("name", name))
 			return true, nil
 		}
 	}
 
 	logger.Log.Info("no dependencies defined", zap.String("group", group), zap.String("name", name))
-	mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
+	shared.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
 
 	return true, nil
 }
 
-func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
+func SolveDepends(shared *shared.Shared, depend *Dependency, c chan State) {
 	if depend.Timeout == "" {
 		depend.Timeout = "30s"
 	}
@@ -117,7 +117,7 @@ func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
 
 		logger.Log.Info("trying to solve dependency", zap.String("name", depend.Name))
 
-		go Depends(mgr, depend, ch)
+		go Depends(shared, depend, ch)
 
 		for {
 			select {
@@ -143,14 +143,14 @@ func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
 	}
 }
 
-func Depends(mgr *manager.Manager, depend *Dependency, ch chan State) {
+func Depends(shared *shared.Shared, depend *Dependency, ch chan State) {
 	group, id := utils.ExtractGroupAndId(depend.Name)
 
 	logger.Log.Info("trying to check if depends solved", zap.String("group", group), zap.String("name", id))
 
-	if mgr.Registry.Containers[group] != nil {
+	if shared.Registry.Containers[group] != nil {
 		if id == "*" {
-			for _, container := range mgr.Registry.Containers[group] {
+			for _, container := range shared.Registry.Containers[group] {
 				if !container.Status.IfStateIs(status.STATUS_READY) {
 					ch <- State{
 						Success: false,
@@ -169,7 +169,7 @@ func Depends(mgr *manager.Manager, depend *Dependency, ch chan State) {
 
 			return
 		} else {
-			if mgr.Registry.Containers[group][id] != nil {
+			if shared.Registry.Containers[group][id] != nil {
 				ch <- State{
 					Success: true,
 					Missing: false,

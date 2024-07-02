@@ -1,4 +1,4 @@
-package reconciler
+package watcher
 
 func (ContainerWatcher *ContainerWatcher) AddOrUpdate(groupidentifier string, container *Container) {
 	if ContainerWatcher.Container[groupidentifier] == nil {

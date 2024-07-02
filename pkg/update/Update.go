@@ -1,5 +1,0 @@
-package update
-
-func Update() {
-
-}

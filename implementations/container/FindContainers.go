@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/implementations/container/container"
 	"github.com/qdnqn/smr/pkg/registry"
 )
 

@@ -116,16 +116,8 @@ func (api *Api) RunOperators(c *gin.Context) {
 		}
 
 		request := operators.Request{
-			Config:             api.Config,
-			Runtime:            api.Runtime,
-			Registry:           api.Registry,
-			Reconciler:         api.Reconciler,
-			Keys:               api.Keys,
-			Manager:            api.Manager,
-			Badger:             api.Badger,
-			DnsCache:           api.DnsCache,
-			DefinitionRegistry: api.DefinitionRegistry,
-			Data:               body,
+			Manager: api.Manager,
+			Data:    body,
 		}
 
 		operatorResponse := pl.Run(operator, request)

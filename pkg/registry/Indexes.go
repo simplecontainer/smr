@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	_ "github.com/qdnqn/smr/implementations/container/container"
 	"github.com/qdnqn/smr/pkg/logger"
 	"sort"
 	"strconv"

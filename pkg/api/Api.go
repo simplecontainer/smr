@@ -2,15 +2,12 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
+	"github.com/qdnqn/smr/implementations/container/container"
 	"github.com/qdnqn/smr/pkg/config"
-	"github.com/qdnqn/smr/pkg/container"
-	"github.com/qdnqn/smr/pkg/dns"
-	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
 	"github.com/qdnqn/smr/pkg/objectdependency"
-	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/registry"
 	"github.com/qdnqn/smr/pkg/runtime"
 	"time"
@@ -18,18 +15,13 @@ import (
 
 func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api := &Api{
-		Config:              config,
-		Runtime:             &runtime.Runtime{},
-		Registry:            &registry.Registry{},
-		Reconciler:          reconciler.New(),
-		Keys:                &keys.Keys{},
-		RepostitoryWatchers: &gitops.RepositoryWatcher{},
-		ContainersWatchers:  &reconciler.ContainersWatcher{},
-		ContainerWatchers:   &reconciler.ContainerWatcher{},
-		DnsCache:            &dns.Records{},
-		Badger:              badger,
-		DefinitionRegistry:  objectdependency.NewDefinitionDependencyRegistry(),
-		Manager:             &manager.Manager{},
+		Config:             config,
+		Runtime:            &runtime.Runtime{},
+		Registry:           &registry.Registry{},
+		Keys:               &keys.Keys{},
+		Badger:             badger,
+		DefinitionRegistry: objectdependency.NewDefinitionDependencyRegistry(),
+		Manager:            &manager.Manager{},
 	}
 
 	api.Registry = &registry.Registry{
@@ -38,21 +30,11 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 		BackOffTracker: make(map[string]map[string]int),
 	}
 
-	api.RepostitoryWatchers.Repositories = make(map[string]*gitops.Gitops)
-	api.ContainersWatchers.Containers = make(map[string]*reconciler.Containers)
-	api.ContainerWatchers.Container = make(map[string]*reconciler.Container)
-
 	api.Runtime = runtime.GetRuntimeInfo()
 	api.Manager.Config = api.Config
 	api.Manager.Runtime = api.Runtime
-	api.Manager.Registry = api.Registry
-	api.Manager.Reconciler = api.Reconciler
 	api.Manager.Keys = api.Keys
 	api.Manager.Badger = badger
-	api.Manager.DnsCache = api.DnsCache
-	api.Manager.RepositoryWatchers = api.RepostitoryWatchers
-	api.Manager.ContainersWatchers = api.ContainersWatchers
-	api.Manager.ContainerWatchers = api.ContainerWatchers
 	api.Manager.DefinitionRegistry = api.DefinitionRegistry
 
 	api.DefinitionRegistry.Register("containers", []string{"resource", "configuration", "certkey"})

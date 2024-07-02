@@ -2,18 +2,19 @@ package replicas
 
 import (
 	"errors"
-	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/implementations/container/container"
+	"github.com/qdnqn/smr/implementations/container/status"
+	"github.com/qdnqn/smr/implementations/containers/shared"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/status"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	"strings"
 )
 
-func (replicas *Replicas) HandleContainer(mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
+func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
 
@@ -24,7 +25,7 @@ func (replicas *Replicas) HandleContainer(mgr *manager.Manager, containerDefinit
 			name := containerDefinition.Meta.Name
 			container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
 
-			existingContainer := mgr.Registry.Find(container.Static.Group, name)
+			existingContainer := shared.Registry.Find(container.Static.Group, name)
 
 			if existingContainer != nil {
 				existingContainer.Status.TransitionState(status.STATUS_PENDING_DELETE)
@@ -57,7 +58,7 @@ func (replicas *Replicas) HandleContainer(mgr *manager.Manager, containerDefinit
 		*/
 
 		logger.Log.Info("checking if pre-check conditions ready before add/update container in registry", zap.String("container", name))
-		existingContainer := mgr.Registry.Find(container.Static.Group, name)
+		existingContainer := shared.Registry.Find(container.Static.Group, name)
 
 		if existingContainer != nil {
 			logger.Log.Info("container already existing on the server", zap.String("container", name))
@@ -84,7 +85,7 @@ func (replicas *Replicas) HandleContainer(mgr *manager.Manager, containerDefinit
 			}
 		}
 
-		mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)
+		shared.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)
 		logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
 
 		groups = append(groups, replicas.Group)

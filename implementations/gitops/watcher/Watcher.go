@@ -1,4 +1,4 @@
-package gitops
+package watcher
 
 func (repositorywatcher *RepositoryWatcher) AddOrUpdate(groupidentifier string, gitops *Gitops) {
 	if repositorywatcher.Repositories[groupidentifier] == nil {

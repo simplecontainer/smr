@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/objects"

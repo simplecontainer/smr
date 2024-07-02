@@ -6,10 +6,11 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
-	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/implementations/container/container"
+	"github.com/qdnqn/smr/implementations/container/status"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/status"
+	"github.com/qdnqn/smr/pkg/reconciler"
 	"github.com/qdnqn/smr/pkg/utils"
 	"go.uber.org/zap"
 )
@@ -31,6 +32,64 @@ func ListenDockerEvents(mgr *manager.Manager) {
 		case msg := <-cEvents:
 			DockerEvent(mgr, msg)
 		}
+	}
+}
+
+func ListenEvents(mgr *manager.Manager, reconcilerObj reconciler.Reconciler) {
+	for {
+		select {
+		case event := <-reconcilerObj.QueueEvents:
+			Event(mgr, event)
+		}
+	}
+}
+
+func Event(mgr *manager.Manager, event reconciler.Events) {
+	var container *container.Container
+
+	// handle container events
+	if utils.Contains([]string{"change"}, event.Kind) {
+		container = mgr.Registry.Find(event.Container.Static.Group, event.Container.Static.GeneratedName)
+	}
+
+	if container == nil {
+		return
+	}
+
+	c := container.Get()
+	managed := false
+
+	// only manage smr created containers, others are left alone to live and die in peace
+	if c.Labels["managed"] == "smr" {
+		managed = true
+	}
+
+	switch event.Kind {
+	case "change":
+		if managed {
+			HandleChange(mgr, container)
+		}
+		break
+	default:
+	}
+}
+
+func HandleChange(mgr *manager.Manager, containerObj *container.Container) {
+	reconcile := true
+
+	// labels for ignoring events for specific container
+	val, exists := containerObj.Static.Labels["reconcile"]
+	if exists {
+		if val == "false" {
+			logger.Log.Info("reconcile label set to false for the container, skipping reconcile", zap.String("container", containerObj.Static.GeneratedName))
+			reconcile = false
+		}
+	}
+
+	if !containerObj.Status.TransitionState(status.STATUS_RECONCILING) && reconcile {
+		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", containerObj.Static.GeneratedName))
+		containerObj.Status.TransitionState("created")
+		mgr.ContainerWatchers.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
 	}
 }
 

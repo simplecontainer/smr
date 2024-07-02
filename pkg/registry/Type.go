@@ -1,7 +1,7 @@
 package registry
 
 import (
-	"github.com/qdnqn/smr/pkg/container"
+	"github.com/qdnqn/smr/implementations/container/container"
 	"github.com/qdnqn/smr/pkg/objects"
 )
 
