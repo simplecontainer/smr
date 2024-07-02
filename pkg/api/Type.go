@@ -7,14 +7,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objectdependency"
-	"github.com/simplecontainer/smr/pkg/registry"
 	"github.com/simplecontainer/smr/pkg/runtime"
 )
 
 type Api struct {
 	Config             *config.Config
 	Runtime            *runtime.Runtime
-	Registry           *registry.Registry
 	Keys               *keys.Keys
 	DnsCache           *dns.Records
 	Badger             *badger.DB

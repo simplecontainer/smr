@@ -2,13 +2,11 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/simplecontainer/container/container"
 	"github.com/simplecontainer/smr/pkg/config"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objectdependency"
-	"github.com/simplecontainer/smr/pkg/registry"
 	"github.com/simplecontainer/smr/pkg/runtime"
 	"time"
 )
@@ -17,17 +15,10 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api := &Api{
 		Config:             config,
 		Runtime:            &runtime.Runtime{},
-		Registry:           &registry.Registry{},
 		Keys:               &keys.Keys{},
 		Badger:             badger,
 		DefinitionRegistry: objectdependency.NewDefinitionDependencyRegistry(),
 		Manager:            &manager.Manager{},
-	}
-
-	api.Registry = &registry.Registry{
-		Containers:     make(map[string]map[string]*container.Container),
-		Indexes:        make(map[string][]int),
-		BackOffTracker: make(map[string]map[string]int),
 	}
 
 	api.Runtime = runtime.GetRuntimeInfo()
