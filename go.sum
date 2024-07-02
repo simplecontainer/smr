@@ -284,8 +284,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
 github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
-github.com/simplecontainer/container v0.0.0-20240702185727-f4a0ddf1a115 h1:6sP53c82ROanrhioKj72F7+Ri2lagLL/CjEoW5OuBQY=
-github.com/simplecontainer/container v0.0.0-20240702185727-f4a0ddf1a115/go.mod h1:DMA64o1GqJBbCXII1xn/xwGggCdToxfSt29KKKHzQZ4=
+github.com/simplecontainer/container v0.0.0-20240702205730-69c341216c86 h1:Cw+u8YaT1ecmYIAdA9yxz18XWafuAwwALlgxWCs3Jxk=
+github.com/simplecontainer/container v0.0.0-20240702205730-69c341216c86/go.mod h1:FMFRtsvzb/Bfa3EnDhtdJeetqBqYquM4FHP58y1n1ok=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/spf13/afero v1.9.2 h1:j49Hj62F0n+DaZ1dDCvhABaPNSGNkt32oRFxI33IEMw=
