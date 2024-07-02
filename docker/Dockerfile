@@ -9,8 +9,8 @@ RUN mkdir -p /home/smr-agent/smr/smr
 RUN mkdir -p /home/smr-agent/.ssh
 RUN mkdir -p /badger
 
-COPY smr /opt/smr-agent/smr
-COPY operators/ /home/smr-agent/smr/smr/operators
+COPY smr/smr /opt/smr-agent/smr
+COPY smr/operators/ /home/smr-agent/smr/smr/operators
 COPY implementations/ /home/smr-agent/smr/smr/implementations
 
 RUN chmod +x /opt/smr-agent/smr
