@@ -27,7 +27,10 @@ func StartPlugins(implementationsRootDir string, mgr *manager.Manager) {
 
 	for _, pluginName := range plugins {
 		pl := GetPlugin(implementationsRootDir, pluginName)
-		pl.Start(mgr)
+
+		if pl != nil {
+			pl.Start(mgr)
+		}
 	}
 }
 
@@ -73,6 +76,8 @@ func GetPlugin(implementationsRootDir string, pluginWanted string) implementatio
 			panic(errors.New("plugin is nil"))
 		}
 	}
+
+	return nil
 }
 
 func getPluginInstance(projectDir string, typ string, name string) (*plugin.Plugin, error) {
