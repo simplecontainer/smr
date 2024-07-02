@@ -2,7 +2,7 @@ package registry
 
 import (
 	"fmt"
-	"github.com/simple/container/container"
+	"github.com/simplecontainer/container/container"
 )
 
 func (registry *Registry) AddOrUpdate(group string, name string, project string, containerAddr *container.Container) {
