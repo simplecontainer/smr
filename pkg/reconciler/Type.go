@@ -1,6 +1,6 @@
 package reconciler
 
-import "github.com/qdnqn/smr/implementations/container/container"
+import "github.com/qdnqn/container"
 
 type Reconciler struct {
 	QueueEvents chan Events

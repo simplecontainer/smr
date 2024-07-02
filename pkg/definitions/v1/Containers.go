@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
-	"github.com/qdnqn/smr/implementations/container/network"
+	"github.com/qdnqn/container/network"
 )
 
 type Containers struct {
