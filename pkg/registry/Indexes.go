@@ -2,7 +2,6 @@ package registry
 
 import (
 	"fmt"
-	_ "github.com/simple/container/container"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"sort"
 	"strconv"
