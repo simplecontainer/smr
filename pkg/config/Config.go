@@ -3,7 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
-	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"os"
 
 	"github.com/spf13/pflag"

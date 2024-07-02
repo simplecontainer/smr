@@ -2,11 +2,11 @@ package manager
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/qdnqn/smr/pkg/keys"
-	"github.com/qdnqn/smr/pkg/objectdependency"
-	"github.com/qdnqn/smr/pkg/runtime"
+	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/objectdependency"
+	"github.com/simplecontainer/smr/pkg/runtime"
 )
-import "github.com/qdnqn/smr/pkg/config"
+import "github.com/simplecontainer/smr/pkg/config"
 
 type Manager struct {
 	Config             *config.Config

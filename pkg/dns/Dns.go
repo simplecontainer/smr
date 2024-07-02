@@ -3,7 +3,7 @@ package dns
 import (
 	"fmt"
 	"github.com/miekg/dns"
-	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"net"
 )

@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/utils"
+	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/utils"
 	"github.com/spf13/viper"
 )
 

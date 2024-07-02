@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/manager"
 	"os"
 )
 

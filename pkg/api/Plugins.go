@@ -3,7 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
-	"github.com/qdnqn/smr/pkg/implementations"
+	"github.com/simplecontainer/smr/pkg/implementations"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

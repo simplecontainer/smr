@@ -1,6 +1,6 @@
 package commands
 
-import "github.com/qdnqn/smr/pkg/manager"
+import "github.com/simplecontainer/smr/pkg/manager"
 
 type Command struct {
 	name       string

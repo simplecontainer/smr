@@ -2,9 +2,9 @@ package bootstrap
 
 import (
 	"fmt"
-	"github.com/qdnqn/smr/pkg/config"
-	"github.com/qdnqn/smr/pkg/logger"
-	"github.com/qdnqn/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/config"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"os"

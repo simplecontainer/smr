@@ -26,11 +26,11 @@ host: localhost:8080
 info:
   contact:
     name: API Support
-    url: https://github.com/qdnqn/smr
+    url: https://github.com/simplecontainer/smr
   description: This is a container orchestrator service.
   license:
     name: GNU General Public License v3.0
-    url: https://github.com/qdnqn/smr/blob/main/LICENSE
+    url: https://github.com/simplecontainer/smr/blob/main/LICENSE
   termsOfService: http://smr.qdnqn.com/terms
   title: Simple container manager API
   version: "1.0"

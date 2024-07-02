@@ -3,8 +3,8 @@ package template
 import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/qdnqn/smr/pkg/database"
-	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"regexp"
