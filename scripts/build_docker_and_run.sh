@@ -12,23 +12,23 @@ do
     DIRNAME="${DIR##*/}"
 
     cd "$BASE_DIR/implementations/$DIRNAME"
-    go build --buildmode=plugin
+    go build -ldflags "-s -w" --buildmode=plugin
 done
 
 cd "$BASE_DIR"
 
-for dir in operators/*/
-do
-    DIR=${dir%*/}
-    DIRNAME="${DIR##*/}"
-
-    cd "$BASE_DIR/operators/$DIRNAME"
-    go build --buildmode=plugin
-done
+#for dir in operators/*/
+#do
+#    DIR=${dir%*/}
+#    DIRNAME="${DIR##*/}"
+#
+#    cd "$BASE_DIR/operators/$DIRNAME"
+#    go build -ldflags "-s -w" --buildmode=plugin
+#done
 
 cd "$BASE_DIR"
 
-go build
+go build -ldflags "-s -w"
 
 docker stop $(docker ps -q)
 docker rm $(docker ps -aq)

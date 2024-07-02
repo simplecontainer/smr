@@ -4,7 +4,6 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/qdnqn/smr/pkg/database"
-	"github.com/qdnqn/smr/pkg/gitops"
 	"github.com/qdnqn/smr/pkg/httpcontract"
 	"github.com/qdnqn/smr/pkg/objects"
 	"github.com/qdnqn/smr/pkg/operators"
@@ -155,9 +154,9 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 			Data:             nil,
 		}
 	} else {
-		gitopsInstance.GitopsQueue <- gitops.Event{
+		/*gitopsInstance.GitopsQueue <- gitops.Event{
 			Event: gitops.KILL,
-		}
+		}*/
 
 		request.Manager.RepositoryWatchers.Remove(GroupIdentifier)
 	}
@@ -198,7 +197,7 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 			Data:             nil,
 		}
 	} else {
-		go gitopsInstance.ReconcileGitOps(request.DefinitionRegistry, request.Keys)
+		//go gitopsInstance.ReconcileGitOps(request.DefinitionRegistry, request.Keys)
 	}
 
 	return httpcontract.ResponseOperator{

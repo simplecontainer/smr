@@ -1,20 +1,12 @@
 package database
 
 import (
-	"errors"
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
-	"github.com/qdnqn/smr/pkg/logger"
 )
 
 func Put(Badger *badger.DB, key string, value string) error {
-	logger.Log.Debug(fmt.Sprintf("saving into the key-value store %s=%s", key, value))
 	err := Badger.Update(func(txn *badger.Txn) error {
 		err := txn.Set([]byte(key), []byte(value))
-
-		if err == nil {
-			logger.Log.Debug(fmt.Sprintf("saved into key-value store %s=%s", key, value))
-		}
 
 		return err
 	})
@@ -23,7 +15,6 @@ func Put(Badger *badger.DB, key string, value string) error {
 }
 
 func Get(Badger *badger.DB, key string) (string, error) {
-	logger.Log.Debug(fmt.Sprintf("getting from the key-value store %s", key))
 	var value []byte
 
 	err := Badger.View(func(txn *badger.Txn) error {
@@ -33,11 +24,7 @@ func Get(Badger *badger.DB, key string) (string, error) {
 		}
 
 		value, err = item.ValueCopy(nil)
-		if err != nil {
-			return errors.New(fmt.Sprintf("failed to get %s", err.Error()))
-		}
-
-		return nil
+		return err
 	})
 
 	if err != nil {
@@ -48,7 +35,6 @@ func Get(Badger *badger.DB, key string) (string, error) {
 }
 
 func GetPrefix(Badger *badger.DB, key string) (map[string]string, error) {
-	logger.Log.Debug(fmt.Sprintf("getting from the key-value store %s", key))
 	var value = make(map[string]string)
 
 	err := Badger.View(func(txn *badger.Txn) error {
@@ -79,8 +65,6 @@ func GetPrefix(Badger *badger.DB, key string) (map[string]string, error) {
 }
 
 func Delete(Badger *badger.DB, key []byte) (bool, error) {
-	logger.Log.Debug(fmt.Sprintf("removing from the key-value store %s", key))
-
 	err := Badger.DropPrefix(key)
 
 	if err != nil {

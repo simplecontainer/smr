@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/mitchellh/mapstructure"
+	"github.com/qdnqn/smr/implementations/certkey/shared"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
 	"github.com/qdnqn/smr/pkg/httpcontract"
@@ -12,7 +12,14 @@ import (
 	"github.com/qdnqn/smr/pkg/objects"
 )
 
-func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byte, c *gin.Context) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Start(mgr *manager.Manager) error {
+	implementation.Shared.Manager = mgr
+	implementation.Started = true
+
+	return nil
+}
+
+func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var certkey v1.CertKey
 
 	if err := json.Unmarshal(jsonData, &certkey); err != nil {
@@ -37,21 +44,21 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 
 	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Badger, format)
+	err = obj.Find(implementation.Shared.Manager.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(mgr.Badger, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(mgr.Badger, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		mgr.EmitChange(KIND, certkey.Meta.Group, certkey.Meta.Identifier)
+		implementation.Shared.Manager.EmitChange(KIND, certkey.Meta.Group, certkey.Meta.Identifier)
 	} else {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,
@@ -71,7 +78,7 @@ func (implementation *Implementation) Apply(mgr *manager.Manager, jsonData []byt
 	}, nil
 }
 
-func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []byte, c *gin.Context) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var certkey v1.CertKey
 
 	if err := json.Unmarshal(jsonData, &certkey); err != nil {
@@ -96,7 +103,7 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 
 	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(mgr.Badger, format)
+	err = obj.Find(implementation.Shared.Manager.Badger, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
@@ -132,7 +139,7 @@ func (implementation *Implementation) Compare(mgr *manager.Manager, jsonData []b
 	}
 }
 
-func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []byte, c *gin.Context) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var certkey v1.CertKey
 
 	if err := json.Unmarshal(jsonData, &certkey); err != nil {
@@ -156,14 +163,14 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 	format := database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(mgr.Badger, format)
+	err = obj.Find(implementation.Shared.Manager.Badger, format)
 
 	if obj.Exists() {
-		deleted, err := obj.Remove(mgr.Badger, format)
+		deleted, err := obj.Remove(implementation.Shared.Manager.Badger, format)
 
 		if deleted {
 			format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "")
-			deleted, err = obj.Remove(mgr.Badger, format)
+			deleted, err = obj.Remove(implementation.Shared.Manager.Badger, format)
 
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,
@@ -192,4 +199,7 @@ func (implementation *Implementation) Delete(mgr *manager.Manager, jsonData []by
 	}
 }
 
-var Certkey Implementation
+var Certkey Implementation = Implementation{
+	Started: false,
+	Shared:  &shared.Shared{},
+}

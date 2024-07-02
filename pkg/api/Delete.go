@@ -85,7 +85,7 @@ func (api *Api) ImplementationWrapperDelete(kind string, jsonData []byte, c *gin
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Delete(api.Manager, jsonData, c)
+		response, err = pl.Delete(jsonData)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{

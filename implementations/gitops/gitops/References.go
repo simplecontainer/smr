@@ -2,10 +2,10 @@ package gitops
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/qdnqn/smr/pkg/certkey"
+	"github.com/qdnqn/smr/implementations/gitops/certkey"
+	"github.com/qdnqn/smr/implementations/gitops/httpauth"
 	"github.com/qdnqn/smr/pkg/database"
 	"github.com/qdnqn/smr/pkg/definitions/v1"
-	"github.com/qdnqn/smr/pkg/httpauth"
 	"github.com/qdnqn/smr/pkg/objects"
 )
 

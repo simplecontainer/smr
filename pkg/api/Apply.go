@@ -85,7 +85,7 @@ func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Apply(api.Manager, jsonData, c)
+		response, err = pl.Apply(jsonData)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
