@@ -22,16 +22,32 @@ type Events struct {
 	Container *container.Container
 }
 
+type ContainerWatcher struct {
+	Container map[string]*Container
+}
+
+type Container struct {
+	Container      *container.Container
+	Syncing        bool
+	Tracking       bool
+	ContainerQueue chan *container.Container `json:"-"`
+	Ctx            context.Context           `json:"-" `
+	Cancel         context.CancelFunc
+	Ticker         *time.Ticker `json:"-"`
+}
+
 type ContainersWatcher struct {
 	Containers map[string]*Containers
 }
 
 type Containers struct {
-	Definition     *v1.Containers
-	InSync         bool
+	Definition     v1.Containers
+	Syncing        bool
+	Tracking       bool
 	ContainerQueue chan Event      `json:"-"`
 	Ctx            context.Context `json:"-"`
-	Ticker         *time.Ticker    `json:"-"`
+	Cancel         context.CancelFunc
+	Ticker         *time.Ticker `json:"-"`
 }
 
 type Event struct {

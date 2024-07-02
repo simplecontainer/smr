@@ -19,9 +19,7 @@ func (ContainersWatcher *ContainersWatcher) Remove(groupidentifier string) bool 
 
 func (ContainersWatcher *ContainersWatcher) Find(groupidentifier string) *Containers {
 	if ContainersWatcher.Containers[groupidentifier] != nil {
-
 		return ContainersWatcher.Containers[groupidentifier]
-
 	} else {
 		return nil
 	}

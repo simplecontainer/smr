@@ -8,6 +8,7 @@ import (
 type Status struct {
 	State        string
 	StateMachine gograph.Graph[string]
+	Reconciling  bool
 	LastUpdate   time.Time
 }
 

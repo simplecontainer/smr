@@ -8,6 +8,7 @@ import (
 	"github.com/qdnqn/smr/pkg/status"
 	"github.com/qdnqn/smr/pkg/utils"
 	"strings"
+	"sync"
 )
 
 type Container struct {
@@ -45,8 +46,7 @@ type Runtime struct {
 	Auth               string
 	Id                 string
 	Networks           map[string]Network
-	NetworkWriteLock   bool
-	NetworkReadLock    bool
+	NetworkLock        sync.RWMutex
 	State              string
 	FoundRunning       bool
 	FirstObserved      bool
