@@ -12,6 +12,7 @@ import (
 	"github.com/qdnqn/smr/pkg/commands"
 	_ "github.com/qdnqn/smr/pkg/commands"
 	"github.com/qdnqn/smr/pkg/config"
+	"github.com/qdnqn/smr/pkg/events"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/logger"
 	"github.com/spf13/viper"
@@ -76,8 +77,8 @@ func main() {
 		go server.ListenAndServe()
 		defer server.Shutdown()
 
-		api.Manager.Reconcile()
-		router := gin.Default()
+		go events.ListenDockerEvents(api.Manager)
+		router := gin.New()
 
 		v1 := router.Group("/api/v1")
 		{

@@ -82,10 +82,6 @@ func (replicas *Replicas) HandleContainer(mgr *manager.Manager, containerDefinit
 				logger.Log.Info("skipped recreating container since only scale up is triggered", zap.String("container", name), zap.String("group", replicas.Group))
 				continue
 			}
-
-			// If container got to here without any failures we need to set it definitionDrift=true so that we do reconcile
-			// in the container implementation
-			container.Status.TransitionState(status.STATUS_DRIFTED)
 		}
 
 		mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)

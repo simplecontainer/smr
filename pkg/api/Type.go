@@ -22,6 +22,7 @@ type Api struct {
 	DnsCache            *dns.Records
 	RepostitoryWatchers *gitops.RepositoryWatcher
 	ContainersWatchers  *reconciler.ContainersWatcher
+	ContainerWatchers   *reconciler.ContainerWatcher
 	Badger              *badger.DB
 	BadgerEncrypted     *badger.DB
 	DefinitionRegistry  *objectdependency.DefinitionRegistry

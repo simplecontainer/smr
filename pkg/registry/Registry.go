@@ -59,7 +59,7 @@ func (registry *Registry) BackOffTracking(group string, name string) {
 		registry.BackOffTracker[group] = tmp
 	}
 
-	registry.BackOffTracker[group][name] += 5
+	registry.BackOffTracker[group][name] += 1
 }
 
 func (registry *Registry) BackOffReset(group string, name string) {

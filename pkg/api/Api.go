@@ -25,6 +25,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 		Keys:                &keys.Keys{},
 		RepostitoryWatchers: &gitops.RepositoryWatcher{},
 		ContainersWatchers:  &reconciler.ContainersWatcher{},
+		ContainerWatchers:   &reconciler.ContainerWatcher{},
 		DnsCache:            &dns.Records{},
 		Badger:              badger,
 		DefinitionRegistry:  objectdependency.NewDefinitionDependencyRegistry(),
@@ -39,6 +40,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 
 	api.RepostitoryWatchers.Repositories = make(map[string]*gitops.Gitops)
 	api.ContainersWatchers.Containers = make(map[string]*reconciler.Containers)
+	api.ContainerWatchers.Container = make(map[string]*reconciler.Container)
 
 	api.Runtime = runtime.GetRuntimeInfo()
 	api.Manager.Config = api.Config
@@ -50,6 +52,7 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 	api.Manager.DnsCache = api.DnsCache
 	api.Manager.RepositoryWatchers = api.RepostitoryWatchers
 	api.Manager.ContainersWatchers = api.ContainersWatchers
+	api.Manager.ContainerWatchers = api.ContainerWatchers
 	api.Manager.DefinitionRegistry = api.DefinitionRegistry
 
 	api.DefinitionRegistry.Register("containers", []string{"resource", "configuration", "certkey"})

@@ -77,7 +77,6 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 						}
 					}
 				} else {
-					container.Status.TransitionState(status.STATUS_READINESS_FAILED)
 					return false, errors.New("container is not in running state")
 				}
 			}

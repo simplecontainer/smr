@@ -23,5 +23,6 @@ type Manager struct {
 	DnsCache           *dns.Records
 	RepositoryWatchers *gitops.RepositoryWatcher
 	ContainersWatchers *reconciler.ContainersWatcher
+	ContainerWatchers  *reconciler.ContainerWatcher
 	DefinitionRegistry *objectdependency.DefinitionRegistry
 }

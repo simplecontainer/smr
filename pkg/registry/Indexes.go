@@ -2,7 +2,6 @@ package registry
 
 import (
 	"fmt"
-	"github.com/qdnqn/smr/pkg/container"
 	"github.com/qdnqn/smr/pkg/logger"
 	"sort"
 	"strconv"
@@ -26,27 +25,21 @@ func (registry *Registry) GenerateIndex(name string, project string) int {
 }
 
 func (registry *Registry) GetIndexes(name string, project string) []int {
-	containers := container.GetContainers()
+	containers := registry.Containers[name]
 
 	var indexes = make([]int, 0)
 	name = fmt.Sprintf("%s-%s", project, name)
 
 	if len(containers) > 0 {
-		// If containers are existing grab the state from daemon
-		for _, container := range containers {
-			for _, n := range container.Names {
-				if strings.Contains(n, name) {
-					fmt.Sprintf("%s contains %s", n, name)
-					split := strings.Split(container.Names[0], "-")
-					index, err := strconv.Atoi(split[len(split)-1])
+		for _, containerObj := range containers {
+			split := strings.Split(containerObj.Static.GeneratedName, "-")
+			index, err := strconv.Atoi(split[len(split)-1])
 
-					if err != nil {
-						logger.Log.Fatal("Failed to convert string to int for index calculation")
-					}
-
-					indexes = append(indexes, index)
-				}
+			if err != nil {
+				logger.Log.Fatal("Failed to convert string to int for index calculation")
 			}
+
+			indexes = append(indexes, index)
 		}
 	}
 

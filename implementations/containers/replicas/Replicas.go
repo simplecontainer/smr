@@ -23,9 +23,7 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
 			name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
-			container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
-
-			existingContainer := mgr.Registry.Find(container.Static.Group, name)
+			existingContainer := mgr.Registry.Find(containerDefinition.Meta.Group, name)
 
 			if existingContainer != nil {
 				existingContainer.Status.TransitionState(status.STATUS_PENDING_DELETE)
@@ -39,32 +37,9 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 	// Create from the start to the end
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
 		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
-		container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
-		container.Status.SetState(status.STATUS_CREATED)
-
-		for i, v := range container.Runtime.Resources {
-			format := database.Format("resource", container.Static.Group, v.Identifier, v.Key)
-			val, err := database.Get(mgr.Badger, format.ToString())
-
-			if err != nil {
-				logger.Log.Error("failed to get resources for the container")
-			}
-
-			container.Runtime.Resources[i].Data[v.Key] = val
-		}
-
-		logger.Log.Info("retrieved resources for container", zap.String("container", name))
-
-		/*
-			Do all pre-checks here before rewriting container in the registry
-		*/
-
-		logger.Log.Info("checking if pre-check conditions ready before add/update container in registry", zap.String("container", name))
-		existingContainer := mgr.Registry.Find(container.Static.Group, name)
+		existingContainer := mgr.Registry.Find(containerDefinition.Meta.Group, name)
 
 		if existingContainer != nil {
-			logger.Log.Info("container already existing on the server", zap.String("container", name))
-
 			if existingContainer.Status.IfStateIs(status.STATUS_RECONCILING) {
 				return nil, nil, errors.New("container is in reconciliation process try again later")
 			}
@@ -85,14 +60,32 @@ func (replicas *Replicas) HandleReplica(mgr *manager.Manager, containerDefinitio
 				logger.Log.Info("skipped recreating container since only scale up is triggered", zap.String("container", name), zap.String("group", replicas.Group))
 				continue
 			}
-
-			// If container got to here without any failures we need to set it definitionDrift=true so that we do reconcile
-			// in the container implementation
-			container.Status.TransitionState(status.STATUS_DRIFTED)
 		}
 
-		mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)
-		logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
+		containerObj := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
+
+		for i, v := range containerObj.Runtime.Resources {
+			format := database.Format("resource", containerObj.Static.Group, v.Identifier, v.Key)
+			val, err := database.Get(mgr.Badger, format.ToString())
+
+			if err != nil {
+				logger.Log.Error("failed to get resources for the container")
+			}
+
+			containerObj.Runtime.Resources[i].Data[v.Key] = val
+		}
+
+		logger.Log.Info("retrieved resources for container", zap.String("container", name))
+
+		if existingContainer == nil {
+			mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, containerObj)
+			logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
+		} else {
+			if replicas.Changed {
+				mgr.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, containerObj)
+				logger.Log.Info("update container since replica changed in registry", zap.String("container", name), zap.String("group", replicas.Group))
+			}
+		}
 
 		groups = append(groups, replicas.Group)
 		names = append(names, name)
@@ -109,11 +102,9 @@ func (replicas *Replicas) GetReplica(mgr *manager.Manager, containerDefinition v
 
 	for i := existingNumberOfReplicas; i > 0; i -= 1 {
 		name, _ := mgr.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, mgr.Runtime.PROJECT, i)
-		container := mgr.Registry.Find(containerDefinition.Meta.Group, name)
+		containerObj := mgr.Registry.Find(containerDefinition.Meta.Group, name)
 
-		if container == nil {
-			logger.Log.Info("container doesn't exist on the server", zap.String("container", name))
-		} else {
+		if containerObj != nil {
 			groups = append(groups, replicas.Group)
 			names = append(names, name)
 		}

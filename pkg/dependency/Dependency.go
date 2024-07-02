@@ -33,48 +33,6 @@ func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
 	}
 }
 
-func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
-	if depend.Timeout == "" {
-		depend.Timeout = "30s"
-	}
-
-	timeout, err := time.ParseDuration(depend.Timeout)
-
-	if err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-
-		ch := make(chan State)
-		defer close(ch)
-
-		logger.Log.Info("trying to solve dependency", zap.String("name", depend.Name))
-
-		go Depends(mgr, depend, ch)
-
-		for {
-			select {
-			case d := <-ch:
-				c <- d
-			case <-ctx.Done():
-				c <- State{
-					Success: false,
-					Missing: false,
-					Timeout: true,
-					Depend:  depend,
-				}
-			}
-		}
-	} else {
-		c <- State{
-			Success: false,
-			Missing: false,
-			Timeout: false,
-			Error:   err,
-			Depend:  depend,
-		}
-	}
-}
-
 func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.DependsOn) (bool, error) {
 	if len(dependsOn) > 0 {
 		var allDependenciesSolved = true
@@ -141,6 +99,48 @@ func Ready(mgr *manager.Manager, group string, name string, dependsOn []v1.Depen
 	mgr.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
 
 	return true, nil
+}
+
+func SolveDepends(mgr *manager.Manager, depend *Dependency, c chan State) {
+	if depend.Timeout == "" {
+		depend.Timeout = "30s"
+	}
+
+	timeout, err := time.ParseDuration(depend.Timeout)
+
+	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		ch := make(chan State)
+		defer close(ch)
+
+		logger.Log.Info("trying to solve dependency", zap.String("name", depend.Name))
+
+		go Depends(mgr, depend, ch)
+
+		for {
+			select {
+			case d := <-ch:
+				c <- d
+			case <-ctx.Done():
+				c <- State{
+					Success: false,
+					Missing: false,
+					Timeout: true,
+					Depend:  depend,
+				}
+			}
+		}
+	} else {
+		c <- State{
+			Success: false,
+			Missing: false,
+			Timeout: false,
+			Error:   err,
+			Depend:  depend,
+		}
+	}
 }
 
 func Depends(mgr *manager.Manager, depend *Dependency, ch chan State) {

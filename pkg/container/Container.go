@@ -47,8 +47,6 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 		definition.Spec.Container.Tag = "latest"
 	}
 
-	fmt.Println(definition.Meta.Labels)
-
 	container := &Container{
 		Static: Static{
 			Name:                   definition.Meta.Name,
@@ -83,7 +81,7 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 			Resources:     mapAnyToResources(definition.Spec.Container.Resources),
 		},
 		Status: status.Status{
-			State:      status.STATUS_CREATED,
+			State:      "",
 			LastUpdate: time.Now(),
 		},
 	}
@@ -144,7 +142,6 @@ func Existing(name string) *Container {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
 		if c != nil && c.State == "running" {
-			container.Status.SetState(status.STATUS_RUNNING)
 			for _, netw := range container.Static.Networks {
 				if data.NetworkSettings.Networks[netw] != nil {
 					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
@@ -167,15 +164,6 @@ func Existing(name string) *Container {
 
 			container.Runtime.Id = data.ID
 			container.Runtime.State = data.State.Status
-		} else {
-			switch c.State {
-			case "exited":
-				container.Status.SetState(status.STATUS_DEAD)
-				break
-			case "created":
-				container.Status.SetState(status.STATUS_CREATED)
-				break
-			}
 		}
 
 		return container
@@ -354,8 +342,6 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 				}
 			}
 
-			container.Status.TransitionState(status.STATUS_RUNNING)
-
 			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 			database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
 
@@ -367,8 +353,6 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		container.Status.TransitionState(status.STATUS_RUNNING)
-
 		format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
 
