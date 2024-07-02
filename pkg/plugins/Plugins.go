@@ -1,9 +1,10 @@
-package api
+package plugins
 
 import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/implementations"
+	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -13,23 +14,42 @@ import (
 	"strings"
 )
 
-func (api *Api) StartPlugins() {
+func StartPlugins(implementationsRootDir string, mgr *manager.Manager) {
 	plugins := make([]string, 0)
 
-	implementationsDir := fmt.Sprintf("%s/%s", api.Config.Configuration.Environment.Root, "implementations")
+	implementationsDir := fmt.Sprintf("%s/%s", implementationsRootDir, "implementations")
+
+	files, _ := os.ReadDir(implementationsDir)
+
+	for _, file := range files {
+		plugins = append(plugins, file.Name())
+	}
+
+	for _, pluginName := range plugins {
+		pl := GetPlugin(implementationsRootDir, pluginName)
+		pl.Start(mgr)
+	}
+}
+
+func GetPlugin(implementationsRootDir string, pluginWanted string) implementations.Implementation {
+	plugins := make([]string, 0)
+
+	implementationsDir := fmt.Sprintf("%s/%s", implementationsRootDir, "implementations")
 
 	files, _ := os.ReadDir(implementationsDir)
 	path, _ := filepath.Abs(implementationsDir)
 
 	for _, file := range files {
-		plugins = append(plugins, filepath.Join(path, file.Name()))
+		if file.Name() == pluginWanted {
+			plugins = append(plugins, filepath.Join(path, file.Name()))
+		}
 	}
 
 	for _, pluginPath := range plugins {
 		pluginName := filepath.Base(pluginPath)
 		pluginName = strings.TrimSuffix(pluginName, ".so")
 
-		plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "implementations", pluginName)
+		plugin, err := getPluginInstance(implementationsRootDir, "implementations", pluginName)
 
 		if err != nil {
 			panic(err)
@@ -46,11 +66,7 @@ func (api *Api) StartPlugins() {
 				if !ok {
 					panic(errors.New("casting plugin to implementation failed"))
 				} else {
-					err = pl.Start(api.Manager)
-
-					if err != nil {
-						panic(err)
-					}
+					return pl
 				}
 			}
 		} else {

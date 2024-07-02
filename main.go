@@ -14,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/config"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/plugins"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
@@ -76,7 +77,7 @@ func main() {
 		go server.ListenAndServe()
 		defer server.Shutdown()
 
-		api.StartPlugins()
+		plugins.StartPlugins(api.Config.Configuration.Environment.Root, api.Manager)
 		//go events.ListenDockerEvents(api.Manager)
 		router := gin.New()
 
