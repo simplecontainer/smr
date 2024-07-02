@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
-	"github.com/simplecontainer/container/network"
 )
 
 type Containers struct {
@@ -30,23 +29,23 @@ type Spec struct {
 }
 
 type ContainerInternal struct {
-	Image         string                 `validate:"required" json:"image"`
-	Tag           string                 `validate:"required" json:"tag"`
-	Envs          []string               `json:"envs"`
-	Entrypoint    []string               `json:"entrypoint"`
-	Command       []string               `json:"command"`
-	Dependencies  []DependsOn            `json:"dependencies"`
-	Readiness     []Readiness            `json:"readiness"`
-	Networks      []string               `validate:"required" json:"networks"`
-	Ports         []network.PortMappings `json:"ports"`
-	Volumes       []map[string]string    `json:"volumes"`
-	Operators     []map[string]any       `json:"operators"`
-	Configuration map[string]any         `json:"configuration"`
-	Resources     []map[string]any       `json:"resources"`
-	Replicas      int                    `validate:"required" json:"replicas"`
-	Capabilities  []string               `json:"capabilities"`
-	Privileged    bool                   `json:"privileged"`
-	NetworkMode   string                 `json:"network_mode"`
+	Image         string              `validate:"required" json:"image"`
+	Tag           string              `validate:"required" json:"tag"`
+	Envs          []string            `json:"envs"`
+	Entrypoint    []string            `json:"entrypoint"`
+	Command       []string            `json:"command"`
+	Dependencies  []DependsOn         `json:"dependencies"`
+	Readiness     []Readiness         `json:"readiness"`
+	Networks      []string            `validate:"required" json:"networks"`
+	Ports         []map[string]string `json:"ports"`
+	Volumes       []map[string]string `json:"volumes"`
+	Operators     []map[string]any    `json:"operators"`
+	Configuration map[string]any      `json:"configuration"`
+	Resources     []map[string]any    `json:"resources"`
+	Replicas      int                 `validate:"required" json:"replicas"`
+	Capabilities  []string            `json:"capabilities"`
+	Privileged    bool                `json:"privileged"`
+	NetworkMode   string              `json:"network_mode"`
 }
 
 type DependsOn struct {
