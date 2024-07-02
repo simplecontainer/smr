@@ -1,4 +1,4 @@
-module github.com/qdnqn/smr
+module github.com/simplecontainer/smr
 
 go 1.22
 

@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/qdnqn/smr/implementations/container/container"
+	"github.com/qdnqn/container"
 	"github.com/qdnqn/smr/pkg/config"
 	"github.com/qdnqn/smr/pkg/keys"
 	"github.com/qdnqn/smr/pkg/logger"
