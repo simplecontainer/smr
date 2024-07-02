@@ -2,8 +2,8 @@ package runtime
 
 import (
 	"fmt"
-	"github.com/qdnqn/smr/pkg/static"
-	"github.com/qdnqn/smr/pkg/utils"
+	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/utils"
 	"github.com/spf13/viper"
 	"log"
 	"net"

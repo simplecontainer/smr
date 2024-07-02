@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/qdnqn/smr/pkg/database"
-	"github.com/qdnqn/smr/pkg/httpcontract"
-	"github.com/qdnqn/smr/pkg/objects"
-	"github.com/qdnqn/smr/pkg/operators"
+	"github.com/simplecontainer/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/operators"
 	"reflect"
 )
 

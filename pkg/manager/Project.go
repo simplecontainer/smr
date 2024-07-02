@@ -2,9 +2,9 @@ package manager
 
 import (
 	"fmt"
-	"github.com/qdnqn/smr/pkg/bootstrap"
-	"github.com/qdnqn/smr/pkg/logger"
-	"github.com/qdnqn/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/bootstrap"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 func (mgr *Manager) CreateProject(projectName string) {

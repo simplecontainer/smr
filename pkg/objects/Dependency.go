@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/mitchellh/mapstructure"
-	"github.com/qdnqn/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/database"
 )
 
 func (obj *Object) FindAndConvert(db *badger.DB, format database.FormatStructure, destination interface{}) {

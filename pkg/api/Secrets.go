@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
-	"github.com/qdnqn/smr/pkg/database"
-	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"net/http"
 )

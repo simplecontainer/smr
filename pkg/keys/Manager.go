@@ -3,7 +3,7 @@ package keys
 import (
 	"bytes"
 	"fmt"
-	"github.com/qdnqn/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"os"
 )
 

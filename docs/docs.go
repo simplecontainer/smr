@@ -12,11 +12,11 @@ const docTemplate = `{
         "termsOfService": "http://smr.qdnqn.com/terms",
         "contact": {
             "name": "API Support",
-            "url": "https://github.com/qdnqn/smr"
+            "url": "https://github.com/simplecontainer/smr"
         },
         "license": {
             "name": "GNU General Public License v3.0",
-            "url": "https://github.com/qdnqn/smr/blob/main/LICENSE"
+            "url": "https://github.com/simplecontainer/smr/blob/main/LICENSE"
         },
         "version": "{{.Version}}"
     },

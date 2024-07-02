@@ -21,7 +21,7 @@ GitHub is used as the Git repository for the project. Currently, no release is m
 
 To build smr just run these commands:
 
-    git clone https://github.com/qdnqn/smr
+    git clone https://github.com/simplecontainer/smr
     cd smr
     ./scripts/build_docker.sh
     ./scripts/run_docker_daemon.sh
@@ -48,7 +48,7 @@ Installation of the client
 
 The client also can be cloned from GitHub and needs to be built and copied to the directory that is already in the $PATH variable.
 
-    git clone https://github.com/qdnqn/smr-client
+    git clone https://github.com/simplecontainer/smr-client
     cd smr-client
     go build
     sudo cp smr /usr/local/bin/smr
@@ -266,16 +266,16 @@ Features included in the smr:
 *   Dependencies between containers - [Read more here](https://smr.qdnqn.com/container-dependencies/)
 *   Operators - [Read more here](https://smr.qdnqn.com/operators/)
 *   Reconciliation - [Read more here](https://smr.qdnqn.com/reconciliation/)
-*   [Smr agent](https://smr.qdnqn.com/reconciliation/) and [smr client](https://github.com/qdnqn/smr-client?ref=smr.qdnqn.com)
+*   [Smr agent](https://smr.qdnqn.com/reconciliation/) and [smr client](https://github.com/simplecontainer/smr-client?ref=smr.qdnqn.com)
 
 You can also check official repositories.
 
-https://github.com/qdnqn/smr?ref=smr.qdnqn.com)
-https://github.com/qdnqn/smr-client?ref=smr.qdnqn.com)
+https://github.com/simplecontainer/smr?ref=smr.qdnqn.com)
+https://github.com/simplecontainer/smr-client?ref=smr.qdnqn.com)
 
 Or if you want more examples hit the examples repository.
 
-https://github.com/qdnqn/smr-examples?ref=smr.qdnqn.com
+https://github.com/simplecontainer/smr-examples?ref=smr.qdnqn.com
 
 # License
 This project is licensed under the GNU General Public License v3.0. See more in LICENSE file.

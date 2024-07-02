@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/qdnqn/smr/pkg/httpcontract"
-	"github.com/qdnqn/smr/pkg/operators"
+	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/operators"
 	"reflect"
 )
 

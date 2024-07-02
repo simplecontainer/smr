@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/qdnqn/smr/pkg/httpcontract"
-	"github.com/qdnqn/smr/pkg/operators"
+	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/operators"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"

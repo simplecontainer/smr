@@ -1,8 +1,8 @@
 package commands
 
 import (
-	"github.com/qdnqn/smr/pkg/logger"
-	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/manager"
 	"os"
 )
 

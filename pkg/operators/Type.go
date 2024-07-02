@@ -1,8 +1,8 @@
 package operators
 
 import (
-	"github.com/qdnqn/smr/pkg/httpcontract"
-	"github.com/qdnqn/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/manager"
 )
 
 // Plugin contracts

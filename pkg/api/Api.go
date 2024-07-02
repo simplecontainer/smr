@@ -2,14 +2,14 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/qdnqn/container"
-	"github.com/qdnqn/smr/pkg/config"
-	"github.com/qdnqn/smr/pkg/keys"
-	"github.com/qdnqn/smr/pkg/logger"
-	"github.com/qdnqn/smr/pkg/manager"
-	"github.com/qdnqn/smr/pkg/objectdependency"
-	"github.com/qdnqn/smr/pkg/registry"
-	"github.com/qdnqn/smr/pkg/runtime"
+	"github.com/simplecontainer/container"
+	"github.com/simplecontainer/smr/pkg/config"
+	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/objectdependency"
+	"github.com/simplecontainer/smr/pkg/registry"
+	"github.com/simplecontainer/smr/pkg/runtime"
 	"time"
 )
 

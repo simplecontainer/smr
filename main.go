@@ -7,13 +7,13 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
-	_ "github.com/qdnqn/smr/docs"
-	"github.com/qdnqn/smr/pkg/api"
-	"github.com/qdnqn/smr/pkg/commands"
-	_ "github.com/qdnqn/smr/pkg/commands"
-	"github.com/qdnqn/smr/pkg/config"
-	"github.com/qdnqn/smr/pkg/keys"
-	"github.com/qdnqn/smr/pkg/logger"
+	_ "github.com/simplecontainer/smr/docs"
+	"github.com/simplecontainer/smr/pkg/api"
+	"github.com/simplecontainer/smr/pkg/commands"
+	_ "github.com/simplecontainer/smr/pkg/commands"
+	"github.com/simplecontainer/smr/pkg/config"
+	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
@@ -29,10 +29,10 @@ import (
 //	@termsOfService	http://smr.qdnqn.com/terms
 
 //	@contact.name	API Support
-//	@contact.url	https://github.com/qdnqn/smr
+//	@contact.url	https://github.com/simplecontainer/smr
 
 //	@license.name	GNU General Public License v3.0
-//	@license.url	https://github.com/qdnqn/smr/blob/main/LICENSE
+//	@license.url	https://github.com/simplecontainer/smr/blob/main/LICENSE
 
 //	@host		localhost:8080
 //	@BasePath	/api/v1
