@@ -52,7 +52,7 @@ func GetPlugin(implementationsRootDir string, pluginWanted string) implementatio
 		pluginName := filepath.Base(pluginPath)
 		pluginName = strings.TrimSuffix(pluginName, ".so")
 
-		plugin, err := getPluginInstance(implementationsRootDir, "implementations", pluginName)
+		plugin, err := GetPluginInstance(implementationsRootDir, "implementations", pluginName)
 
 		if err != nil {
 			panic(err)
@@ -80,7 +80,7 @@ func GetPlugin(implementationsRootDir string, pluginWanted string) implementatio
 	return nil
 }
 
-func getPluginInstance(projectDir string, typ string, name string) (*plugin.Plugin, error) {
+func GetPluginInstance(projectDir string, typ string, name string) (*plugin.Plugin, error) {
 	var pluginInstance *plugin.Plugin
 	var err error
 

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/implementations"
+	"github.com/simplecontainer/smr/pkg/plugins"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
@@ -42,7 +43,7 @@ func (api *Api) Delete(c *gin.Context) {
 }
 
 func (api *Api) ImplementationWrapperDelete(kind string, jsonData []byte, c *gin.Context) {
-	plugin, err := getPluginInstance(api.Config.Configuration.Environment.Root, "implementations", kind)
+	plugin, err := plugins.GetPluginInstance(api.Config.Configuration.Environment.Root, "implementations", kind)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
