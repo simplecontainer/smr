@@ -22,10 +22,10 @@ func (format *FormatStructure) FromString(f string) FormatStructure {
 	elems := strings.Split(f, ".")
 
 	if len(elems) > 3 {
-		format.Kind = elems[0]
-		format.Group = elems[1]
-		format.Identifier = elems[2]
-		format.Key = elems[3]
+		format.Kind = strings.TrimSpace(elems[0])
+		format.Group = strings.TrimSpace(elems[1])
+		format.Identifier = strings.TrimSpace(elems[2])
+		format.Key = strings.TrimSpace(elems[3])
 	}
 
 	return *format

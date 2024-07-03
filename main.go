@@ -77,8 +77,6 @@ func main() {
 		go server.ListenAndServe()
 		defer server.Shutdown()
 
-		plugins.StartPlugins(api.Config.Configuration.Environment.Root, api.Manager)
-		//go events.ListenDockerEvents(api.Manager)
 		router := gin.New()
 
 		v1 := router.Group("/api/v1")
@@ -170,6 +168,8 @@ func main() {
 				Handler:   router,
 				TLSConfig: tlsConfig,
 			}
+
+			plugins.StartPlugins(api.Config.Configuration.Environment.Root, api.Manager)
 
 			defer server.Close()
 			server.ListenAndServeTLS("", "")

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/simplecontainer/smr/implementations/httpauth/shared"
+import "github.com/simplecontainer/smr/implementations/resource/shared"
 
 type Implementation struct {
 	Started bool
@@ -10,4 +10,4 @@ type Implementation struct {
 
 // Local contracts
 
-const KIND string = "httpauth"
+const KIND string = "resource"

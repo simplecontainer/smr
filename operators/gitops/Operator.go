@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/simplecontainer/smr/implementations/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
+	"github.com/simplecontainer/smr/pkg/plugins"
 	"reflect"
 )
 
@@ -70,7 +72,11 @@ OUTER:
 
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
-	for key, gitopsInstance := range request.Manager.RepositoryWatchers.Repositories {
+
+	pl := plugins.GetPlugin(request.Manager.Config.Configuration.Environment.Root, "container.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	for key, gitopsInstance := range sharedObj.Watcher.Repositories {
 		data[key] = gitopsInstance
 	}
 
@@ -142,7 +148,10 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 
-	gitopsInstance := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
+	pl := plugins.GetPlugin(request.Manager.Config.Configuration.Environment.Root, "container.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)
 
 	if gitopsInstance == nil {
 		return httpcontract.ResponseOperator{
@@ -154,11 +163,8 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 			Data:             nil,
 		}
 	} else {
-		/*gitopsInstance.GitopsQueue <- gitops.Event{
-			Event: gitops.KILL,
-		}*/
-
-		request.Manager.RepositoryWatchers.Remove(GroupIdentifier)
+		sharedObj.Watcher.Find(GroupIdentifier).Cancel()
+		sharedObj.Watcher.Remove(GroupIdentifier)
 	}
 
 	return httpcontract.ResponseOperator{
@@ -185,7 +191,10 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 
-	gitopsInstance := request.Manager.RepositoryWatchers.Find(GroupIdentifier)
+	pl := plugins.GetPlugin(request.Manager.Config.Configuration.Environment.Root, "container.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)
 
 	if gitopsInstance == nil {
 		return httpcontract.ResponseOperator{

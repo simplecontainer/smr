@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
+	"github.com/simplecontainer/smr/pkg/plugins"
 	"reflect"
 )
 
@@ -155,7 +157,10 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 		}
 	}
 
-	container := request.Manager.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+	pl := plugins.GetPlugin(request.Manager.Config.Configuration.Environment.Root, "container.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	container := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
 
 	if container == nil {
 		return httpcontract.ResponseOperator{

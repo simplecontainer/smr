@@ -21,19 +21,27 @@ do
     echo "***********************************************"
 
     cd "$BASE_DIR/implementations/$DIRNAME"
+    rm -rf *.so
     go build -ldflags "-s -w" --buildmode=plugin
 done
 
 cd "$BASE_DIR"
 
-#for dir in operators/*/
-#do
-#    DIR=${dir%*/}
-#    DIRNAME="${DIR##*/}"
-#
-#    cd "$BASE_DIR/operators/$DIRNAME"
-#    go build -ldflags "-s -w" --buildmode=plugin
-#done
+for dir in operators/*/
+do
+    DIR=${dir%*/}
+    DIRNAME="${DIR##*/}"
+
+    echo "***********************************************"
+    echo "$BASE_DIR/../operators/$DIRNAME"
+    echo "***********************************************"
+
+    cd "$BASE_DIR/operators/$DIRNAME"
+    rm -rf *.so
+    go build -ldflags "-s -w" --buildmode=plugin
+done
+
+cd "$BASE_DIR"
 
 docker stop $(docker ps -q)
 docker rm $(docker ps -aq)

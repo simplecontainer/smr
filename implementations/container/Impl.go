@@ -13,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
+	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
 	"github.com/simplecontainer/smr/pkg/database"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
@@ -20,6 +21,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/plugins"
+	"go.uber.org/zap"
 	"strconv"
 )
 
@@ -39,6 +42,11 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.DnsCache = &dns.Records{}
 
 	go events.ListenDockerEvents(implementation.Shared)
+
+	pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Configuration.Environment.Root, "hub.so")
+	sharedContainer := pl.GetShared().(*hubShared.Shared)
+
+	go events.ListenEvents(implementation.Shared, sharedContainer.Event)
 
 	return nil
 }
@@ -74,6 +82,8 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = containersDefinition.ToJsonString()
+
+	logger.Log.Debug("server received container object", zap.String("definition", jsonStringFromRequest))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
