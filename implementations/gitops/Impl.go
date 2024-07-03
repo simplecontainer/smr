@@ -11,8 +11,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"go.uber.org/zap"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
@@ -58,6 +60,8 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
+
+	logger.Log.Debug("server received gitops object", zap.String("definition", jsonStringFromRequest))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {

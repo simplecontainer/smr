@@ -5,11 +5,16 @@ import (
 	"errors"
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/implementations/httpauth/shared"
+	"github.com/simplecontainer/smr/implementations/hub/hub"
+	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
 	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/plugins"
+	"go.uber.org/zap"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
@@ -53,6 +58,8 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = httpauth.ToJsonString()
 
+	logger.Log.Debug("server received httpauth object", zap.String("definition", jsonStringFromRequest))
+
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
 			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
@@ -62,7 +69,15 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		implementation.Shared.Manager.EmitChange(KIND, httpauth.Meta.Group, httpauth.Meta.Identifier)
+		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Configuration.Environment.Root, "hub.so")
+		sharedHub := pl.GetShared().(*hubShared.Shared)
+
+		sharedHub.Event <- &hub.Event{
+			Kind:       KIND,
+			Group:      httpauth.Meta.Group,
+			Identifier: httpauth.Meta.Identifier,
+			Data:       nil,
+		}
 	} else {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,

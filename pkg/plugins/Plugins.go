@@ -16,13 +16,16 @@ import (
 
 func StartPlugins(implementationsRootDir string, mgr *manager.Manager) {
 	plugins := make([]string, 0)
+	plugins = append(plugins, "hub.so")
 
 	implementationsDir := fmt.Sprintf("%s/%s", implementationsRootDir, "implementations")
 
 	files, _ := os.ReadDir(implementationsDir)
 
 	for _, file := range files {
-		plugins = append(plugins, file.Name())
+		if file.Name() != plugins[0] {
+			plugins = append(plugins, file.Name())
+		}
 	}
 
 	for _, pluginName := range plugins {

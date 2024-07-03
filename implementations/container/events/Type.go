@@ -1,10 +1,6 @@
-package reconciler
+package events
 
 import "github.com/simplecontainer/container/container"
-
-type Reconciler struct {
-	QueueEvents chan Events
-}
 
 type Reconcile struct {
 	Container *container.Container
