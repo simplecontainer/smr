@@ -46,6 +46,8 @@ func HandleDockerEvent(shared *shared.Shared, event events.Message) {
 	// fetch container info from network events
 	if utils.Contains([]string{"connect", "disconnect"}, event.Action) {
 		c := container.GetFromId(event.Actor.Attributes["container"])
+		fmt.Println(c)
+
 		container = shared.Registry.Find(c.Labels["group"], c.Labels["name"])
 	}
 

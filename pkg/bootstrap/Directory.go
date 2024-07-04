@@ -39,7 +39,7 @@ func ClearDirectoryTree(projectDir string) {
 
 func GenerateConfigProject(projectDir string) configuration.Configuration {
 	return configuration.Configuration{
-		Target: "development",
+		Target: "config",
 		Root:   projectDir,
 		Environment: &configuration.Environment{
 			HOMEDIR:    "",

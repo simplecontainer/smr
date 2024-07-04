@@ -6,21 +6,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -208,17 +206,17 @@ func (container *Container) SetOwner(owner string) {
 	}
 }
 
-func (container *Container) Run(environment *configuration.Environment, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) Run(environment *configuration.Environment, client *http.Client, dnsCache *dns.Records) (*types.Container, error) {
 	c := container.Get()
 
 	if c == nil {
-		return container.run(c, environment, Badger, BadgerEncrypted, dnsCache)
+		return container.run(c, environment, client, dnsCache)
 	}
 
 	return c, nil
 }
 
-func (container *Container) run(c *types.Container, environment *configuration.Environment, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) run(c *types.Container, environment *configuration.Environment, httpClient *http.Client, dnsCache *dns.Records) (*types.Container, error) {
 	err := container.CreateNetwork()
 
 	if err != nil {
@@ -246,7 +244,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		Hostname:     container.Static.GeneratedName,
 		Labels:       container.GenerateLabels(),
 		Image:        container.Static.Image + ":" + container.Static.Tag,
-		Env:          container.UnpackSecretsEnvs(BadgerEncrypted, container.Static.Env),
+		Env:          container.UnpackSecretsEnvs(httpClient, container.Static.Env),
 		Entrypoint:   container.Static.Entrypoint,
 		Cmd:          container.Static.Command,
 		Tty:          false,
@@ -255,7 +253,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		DNS: []string{
 			environment.AGENTIP,
 		},
-		Mounts:       container.mappingToMounts(BadgerEncrypted, environment),
+		Mounts:       container.mappingToMounts(httpClient, environment),
 		PortBindings: container.portMappings(),
 		NetworkMode:  dockerContainer.NetworkMode(container.Static.NetworkMode),
 		Privileged:   container.Static.Privileged,
@@ -316,12 +314,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 					}
 				}
 
-				format := objects.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
-				database.Put(Badger, format.ToString(), networks[nid.NetworkId].IP)
-
-				// Add ip to the dnsCache so that in cluster resolve works correctly
 				dnsCache.AddARecord(container.GetDomain(), networks[nid.NetworkId].IP)
-				// Generate headless service alike response to target multiple containers in the cluster
 				dnsCache.AddARecord(container.GetHeadlessDomain(), networks[nid.NetworkId].IP)
 			}
 
@@ -342,9 +335,6 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 				}
 			}
 
-			format := objects.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
-			database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
-
 			return container.Get(), nil
 		} else {
 			logger.Log.Error(fmt.Sprintf("smr-agent not found"))
@@ -353,9 +343,6 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		format := objects.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
-		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
-
 		return container.Get(), nil
 	}
 }

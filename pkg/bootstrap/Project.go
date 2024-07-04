@@ -17,7 +17,7 @@ func CreateProject(projectName string, configObj *configuration.Configuration) {
 	CreateDirectoryTree(projectDir)
 	config := GenerateConfigProject(projectDir)
 
-	if !WriteConfiguration(config, projectDir, projectName) {
+	if !WriteConfiguration(config, projectDir, "config") {
 		logger.Log.Fatal("failed to create new project")
 	}
 }

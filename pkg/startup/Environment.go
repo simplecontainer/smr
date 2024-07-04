@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/static"
-	"log"
 	"net"
 	"os"
 )
@@ -35,7 +34,7 @@ func GetEnvironmentInfo() *configuration.Environment {
 func GetOutboundIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer conn.Close()
 

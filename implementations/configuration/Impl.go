@@ -27,7 +27,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 		panic(err)
 	}
 
-	implementation.Client = client
+	implementation.Shared.Client = client
 
 	return nil
 }
@@ -61,7 +61,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = config.ToJsonString()
@@ -70,21 +70,19 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Client, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Client, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		for key, value := range config.Spec.Data {
+		for key, _ := range config.Spec.Data {
 			format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, key)
 
 			if format.Identifier != "*" {
 				format.Identifier = fmt.Sprintf("%s-%s", implementation.Shared.Manager.Config.Environment.PROJECT, config.Meta.Identifier)
 			}
-
-			obj.Update(implementation.Client, format, value)
 		}
 
 		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
@@ -140,7 +138,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = config.ToJsonString()
@@ -200,14 +198,14 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 	format := objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	if obj.Exists() {
-		deleted, err := obj.Remove(implementation.Client, format)
+		deleted, err := obj.Remove(implementation.Shared.Client, format)
 
 		if deleted {
 			format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "")
-			deleted, err = obj.Remove(implementation.Client, format)
+			deleted, err = obj.Remove(implementation.Shared.Client, format)
 
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,

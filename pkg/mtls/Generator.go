@@ -95,7 +95,7 @@ func generateCertPrivKeyPair(config *configuration.Configuration, ca *x509.Certi
 			StreetAddress: []string{"BB"},
 			PostalCode:    []string{"75270"},
 		},
-		DNSNames:     []string{config.Flags.DaemonDomain, "smr-agent"},
+		DNSNames:     []string{config.Flags.DaemonDomain, "localhost", "smr-agent.docker.private"},
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),

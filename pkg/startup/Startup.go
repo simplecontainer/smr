@@ -34,6 +34,8 @@ func Load(configObj *configuration.Configuration, projectDir string) {
 	if err != nil {
 		panic(fmt.Errorf("fatal unable to unmarshal config file: %w", err))
 	}
+
+	configObj.Environment.AGENTIP = GetOutboundIP().String()
 }
 
 func Save(configObj *configuration.Configuration, projectDir string) {

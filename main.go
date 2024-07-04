@@ -113,6 +113,7 @@ func main() {
 
 		if viper.GetBool("daemon-secured") {
 			api.Keys = mtls.NewKeys("/home/smr-agent/.ssh")
+			api.Manager.Keys = api.Keys
 
 			found, err := mtls.GenerateIfNoKeysFound(api.Keys, api.Config)
 
@@ -157,6 +158,8 @@ func main() {
 				Handler:   router,
 				TLSConfig: tlsConfig,
 			}
+
+			api.DnsCache.AddARecord("smr-agent.docker.private.", api.Config.Environment.AGENTIP)
 
 			plugins.StartPlugins(api.Config.Root, api.Manager)
 

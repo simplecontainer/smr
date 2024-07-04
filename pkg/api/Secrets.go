@@ -26,7 +26,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		var value []byte
 
-		item, err := txn.Get([]byte(c.Param("key")))
+		item, err := txn.Get([]byte(c.Param("secret")))
 		if err != nil {
 			c.JSON(http.StatusNotFound, database.Response{
 				Explanation:      "secret not found",
