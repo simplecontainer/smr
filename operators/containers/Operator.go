@@ -4,7 +4,6 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/implementations/container/shared"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
@@ -73,8 +72,8 @@ OUTER:
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
-	format := database.Format(KIND, "", "", "")
-	objs, err := objects.FindMany(request.Manager.Badger, format)
+	format := objects.Format(KIND, "", "", "")
+	objs, err := objects.FindMany(request.Client, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -113,10 +112,10 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 		}
 	}
 
-	format := database.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
+	format := objects.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
 	obj := objects.New()
-	err := obj.Find(request.Manager.Badger, format)
+	err := obj.Find(request.Client, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -157,7 +156,7 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 		}
 	}
 
-	pl := plugins.GetPlugin(request.Manager.Config.Configuration.Environment.Root, "container.so")
+	pl := plugins.GetPlugin(request.Manager.Config.Root, "container.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
 	container := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))

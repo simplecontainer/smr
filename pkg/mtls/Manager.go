@@ -1,13 +1,15 @@
-package keys
+package mtls
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"os"
 )
 
-func NewKeys(directory string) *Keys {
+func NewKeys(directory string) *keys.Keys {
 	dirCAPrivateKey := fmt.Sprintf("%s/caprivate.key", directory)
 	dirCACertpem := fmt.Sprintf("%s/cacert.pem", directory)
 
@@ -47,7 +49,7 @@ func NewKeys(directory string) *Keys {
 		clientCertPem = nil
 	}
 
-	return &Keys{
+	return &keys.Keys{
 		CAPrivateKey:         bytes.NewBuffer(caPrivateKey),
 		CAPem:                bytes.NewBuffer(caCertPem),
 		CAPrivateKeyPath:     dirCAPrivateKey,
@@ -63,10 +65,10 @@ func NewKeys(directory string) *Keys {
 	}
 }
 
-func (keys *Keys) GenerateIfNoKeysFound() (bool, error) {
+func GenerateIfNoKeysFound(keys *keys.Keys, config *configuration.Configuration) (bool, error) {
 	if keys.ClientPrivateKey.Len() == 0 {
 		logger.Log.Info("generating mtls ca, server certificate pem and client certificate pem")
-		err := keys.GenerateKeys()
+		err := GenerateKeys(keys, config)
 
 		if err != nil {
 			return true, err
@@ -79,7 +81,7 @@ func (keys *Keys) GenerateIfNoKeysFound() (bool, error) {
 	return true, nil
 }
 
-func (keys *Keys) SaveToDirectory() error {
+func SaveToDirectory(keys *keys.Keys) error {
 	err := os.WriteFile(keys.CAPrivateKeyPath, keys.CAPrivateKey.Bytes(), 0644)
 	if err != nil {
 		return err

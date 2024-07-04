@@ -58,7 +58,7 @@ func ReconcileContainer(shared *shared.Shared, containers *watcher.Containers) {
 	for _, definition := range containers.Definition.Spec {
 		definitionString, _ := definition.ToJsonString()
 
-		pl := plugins.GetPlugin(shared.Manager.Config.Configuration.Environment.Root, "container.so")
+		pl := plugins.GetPlugin(shared.Manager.Config.Root, "container.so")
 		pl.Apply([]byte(definitionString))
 	}
 

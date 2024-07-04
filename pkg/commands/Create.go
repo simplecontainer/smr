@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"os"
@@ -24,7 +25,7 @@ func Create() {
 		},
 		depends_on: []func(*manager.Manager, []string){
 			func(mgr *manager.Manager, args []string) {
-				mgr.CreateProject(args[2])
+				bootstrap.CreateProject(args[2], mgr.Config)
 			},
 		},
 	})

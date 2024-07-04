@@ -33,6 +33,19 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 		for _, readinessElem := range container.Static.Readiness {
 			readiness = append(readiness, readinessElem)
 			readinessElem.Body = container.UnpackSecretsReadiness(BadgerEncrypted, readinessElem.Body)
+
+			var timeout time.Duration
+			timeout, err = time.ParseDuration(readinessElem.Timeout)
+
+			if err != nil {
+				timeout, err = time.ParseDuration("15s")
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+			readinessElem.Ctx = ctx
+			readinessElem.Cancel = cancel
+
 			go container.SolveReadiness(client, &readinessElem, c)
 		}
 
@@ -99,11 +112,7 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 }
 
 func (container *Container) SolveReadiness(client *http.Client, readiness *Readiness, c chan ReadinessState) {
-	if readiness.Timeout == "" {
-		readiness.Timeout = "30s"
-	}
-
-	timeout, err := time.ParseDuration(readiness.Timeout)
+	timeout, err := time.ParseDuration("1s")
 
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)

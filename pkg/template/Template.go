@@ -5,15 +5,17 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"net/http"
 	"regexp"
 	"strings"
 )
 
-func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.FormatStructure) (map[string]any, []database.FormatStructure, error) {
+func ParseTemplate(client *http.Client, values map[string]any, baseFormat *objects.FormatStructure) (map[string]any, []objects.FormatStructure, error) {
 	var parsedMap = make(map[string]any)
-	var dependencyMap = make([]database.FormatStructure, 0)
+	var dependencyMap = make([]objects.FormatStructure, 0)
 	parsedMap = values
 
 	for keyOriginal, value := range values {
@@ -28,25 +30,22 @@ func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.Fo
 				GroupAndIdExtractor := regexExtractGroupAndId.FindAllStringSubmatch(SplitByDot[1], -1)
 
 				if len(GroupAndIdExtractor) > 1 {
-					format := database.Format(SplitByDot[0], GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0], SplitByDot[2])
+					format := objects.Format(SplitByDot[0], GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0], SplitByDot[2])
 
 					if format.Identifier != "*" {
 						format.Identifier = fmt.Sprintf("%s-%s-%s", viper.GetString("project"), GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0])
 					}
 
-					var val string
-					var err error
+					obj := objects.New()
+					err := obj.Find(client, format)
 
-					val, err = database.Get(db, format.ToString())
-
-					if err != nil {
-						logger.Log.Error(err.Error(), zap.String("key", format.ToString()))
+					if !obj.Exists() {
 						return nil, nil, err
 					}
 
 					dependencyMap = append(dependencyMap, format)
 
-					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
+					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), obj.GetDefinitionString(), 1)
 				}
 			}
 		} else {
@@ -54,7 +53,9 @@ func ParseTemplate(db *badger.DB, values map[string]any, baseFormat *database.Fo
 			if baseFormat != nil {
 				baseFormat.Key = keyOriginal
 				logger.Log.Info("saving into key-value store", zap.String("key", baseFormat.ToString()))
-				database.Put(db, baseFormat.ToString(), value.(string))
+
+				obj := objects.New()
+				obj.Add(client, *baseFormat, value.(string))
 			}
 		}
 	}
@@ -68,7 +69,7 @@ func ParseSecretTemplate(dbEncrypted *badger.DB, value string) (string, error) {
 
 	if len(matches) > 0 {
 		for index, _ := range matches {
-			format := database.FormatEmpty().FromString(matches[index][1])
+			format := objects.FormatEmpty().FromString(matches[index][1])
 
 			var val string
 			var err error

@@ -8,7 +8,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/configuration/shared"
 	"github.com/simplecontainer/smr/implementations/hub/hub"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -21,6 +20,14 @@ import (
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
+
+	client, err := manager.GenerateHttpClient(mgr.Keys)
+
+	if err != nil {
+		panic(err)
+	}
+
+	implementation.Client = client
 
 	return nil
 }
@@ -50,11 +57,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	mapstructure.Decode(data["spec"], &config)
 
-	var format database.FormatStructure
+	var format objects.FormatStructure
 
-	format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
+	format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = config.ToJsonString()
@@ -63,24 +70,24 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
 		for key, value := range config.Spec.Data {
-			format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, key)
+			format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, key)
 
 			if format.Identifier != "*" {
-				format.Identifier = fmt.Sprintf("%s-%s", implementation.Shared.Manager.Runtime.PROJECT, config.Meta.Identifier)
+				format.Identifier = fmt.Sprintf("%s-%s", implementation.Shared.Manager.Config.Environment.PROJECT, config.Meta.Identifier)
 			}
 
-			database.Put(implementation.Shared.Manager.Badger, format.ToString(), value)
+			obj.Update(implementation.Client, format, value)
 		}
 
-		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Configuration.Environment.Root, "hub.so")
+		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
 		sharedHub := pl.GetShared().(*hubShared.Shared)
 
 		sharedHub.Event <- &hub.Event{
@@ -129,11 +136,11 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	mapstructure.Decode(data["configuration"], &config)
 
-	var format database.FormatStructure
+	var format objects.FormatStructure
 
-	format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
+	format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = config.ToJsonString()
@@ -190,17 +197,17 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 	mapstructure.Decode(data["configuration"], &config)
 
-	format := database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
+	format := objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	if obj.Exists() {
-		deleted, err := obj.Remove(implementation.Shared.Manager.Badger, format)
+		deleted, err := obj.Remove(implementation.Client, format)
 
 		if deleted {
-			format = database.Format("configuration", config.Meta.Group, config.Meta.Identifier, "")
-			deleted, err = obj.Remove(implementation.Shared.Manager.Badger, format)
+			format = objects.Format("configuration", config.Meta.Group, config.Meta.Identifier, "")
+			deleted, err = obj.Remove(implementation.Client, format)
 
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,

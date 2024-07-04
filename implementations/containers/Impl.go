@@ -8,7 +8,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/containers/reconcile"
 	"github.com/simplecontainer/smr/implementations/containers/shared"
 	"github.com/simplecontainer/smr/implementations/containers/watcher"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -21,6 +20,14 @@ import (
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
+
+	client, err := manager.GenerateHttpClient(mgr.Keys)
+
+	if err != nil {
+		panic(err)
+	}
+
+	implementation.Client = client
 
 	implementation.Shared.Watcher = &watcher.ContainersWatcher{}
 	implementation.Shared.Watcher.Containers = make(map[string]*watcher.Containers)
@@ -51,11 +58,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		panic(err)
 	}
 
-	var format database.FormatStructure
-	format = database.Format("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	var format objects.FormatStructure
+	format = objects.Format("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = containersDefinition.ToJsonString()
@@ -64,10 +71,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -116,11 +123,11 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 		panic(err)
 	}
 
-	var format database.FormatStructure
-	format = database.Format("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	var format objects.FormatStructure
+	format = objects.Format("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = containersDefinition.ToJsonString()
@@ -175,11 +182,11 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 		panic(err)
 	}
 
-	var format database.FormatStructure
-	format = database.Format("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	var format objects.FormatStructure
+	format = objects.Format("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	if !obj.Exists() {
 		return httpcontract.ResponseImplementation{
@@ -191,19 +198,19 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 		}, nil
 	}
 
-	obj.Remove(implementation.Shared.Manager.Badger, format)
+	obj.Remove(implementation.Shared.Client, format)
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", containersDefinition.Meta.Group, containersDefinition.Meta.Name)
 	implementation.Shared.Watcher.Find(GroupIdentifier).Cancel()
 	implementation.Shared.Watcher.Remove(GroupIdentifier)
 
 	for _, definition := range containersDefinition.Spec {
-		format = database.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
+		format = objects.Format("container", definition.Meta.Group, definition.Meta.Name, "object")
 		obj = objects.New()
-		obj.Find(implementation.Shared.Manager.Badger, format)
+		obj.Find(implementation.Shared.Client, format)
 
 		if obj.Exists() {
-			pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Configuration.Environment.Root, "container.so")
+			pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "container.so")
 			pl.Delete(obj.GetDefinitionByte())
 		}
 	}

@@ -12,11 +12,12 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/simplecontainer/smr/implementations/container/status"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/runtime"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -25,7 +26,7 @@ import (
 	"time"
 )
 
-func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definition v1.Container) *Container {
+func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.Container) *Container {
 	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -49,29 +50,28 @@ func NewContainerFromDefinition(runtime *runtime.Runtime, name string, definitio
 
 	container := &Container{
 		Static: Static{
-			Name:                   definition.Meta.Name,
-			GeneratedName:          name,
-			GeneratedNameNoProject: strings.Replace(name, fmt.Sprintf("%s-", runtime.PROJECT), "", 1),
-			Labels:                 definition.Meta.Labels,
-			Group:                  definition.Meta.Group,
-			Image:                  definition.Spec.Container.Image,
-			Tag:                    definition.Spec.Container.Tag,
-			Replicas:               definition.Spec.Container.Replicas,
-			Networks:               definition.Spec.Container.Networks,
-			Env:                    definition.Spec.Container.Envs,
-			Entrypoint:             definition.Spec.Container.Entrypoint,
-			Command:                definition.Spec.Container.Command,
-			MappingFiles:           definition.Spec.Container.Volumes,
-			MappingPorts:           convertMapToPortMapping(definition.Spec.Container.Ports),
-			ExposedPorts:           convertPortMappingsToExposedPorts(convertMapToPortMapping(definition.Spec.Container.Ports)),
-			Capabilities:           definition.Spec.Container.Capabilities,
-			NetworkMode:            definition.Spec.Container.NetworkMode,
-			Privileged:             definition.Spec.Container.Privileged,
-			Readiness:              convertReadinessDefinitionToReadiness(definition.Spec.Container.Readiness),
-			Definition:             definitionCopy,
+			Name:          definition.Meta.Name,
+			GeneratedName: name,
+			Labels:        definition.Meta.Labels,
+			Group:         definition.Meta.Group,
+			Image:         definition.Spec.Container.Image,
+			Tag:           definition.Spec.Container.Tag,
+			Replicas:      definition.Spec.Container.Replicas,
+			Networks:      definition.Spec.Container.Networks,
+			Env:           definition.Spec.Container.Envs,
+			Entrypoint:    definition.Spec.Container.Entrypoint,
+			Command:       definition.Spec.Container.Command,
+			MappingFiles:  definition.Spec.Container.Volumes,
+			MappingPorts:  convertMapToPortMapping(definition.Spec.Container.Ports),
+			ExposedPorts:  convertPortMappingsToExposedPorts(convertMapToPortMapping(definition.Spec.Container.Ports)),
+			Capabilities:  definition.Spec.Container.Capabilities,
+			NetworkMode:   definition.Spec.Container.NetworkMode,
+			Privileged:    definition.Spec.Container.Privileged,
+			Readiness:     convertReadinessDefinitionToReadiness(definition.Spec.Container.Readiness),
+			Definition:    definitionCopy,
 		},
 		Runtime: Runtime{
-			Auth:          GetAuth(definition.Spec.Container.Image, runtime),
+			Auth:          GetAuth(definition.Spec.Container.Image, environment),
 			Id:            "",
 			Networks:      map[string]Network{},
 			State:         "",
@@ -208,17 +208,17 @@ func (container *Container) SetOwner(owner string) {
 	}
 }
 
-func (container *Container) Run(runtime *runtime.Runtime, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) Run(environment *configuration.Environment, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
 	c := container.Get()
 
 	if c == nil {
-		return container.run(c, runtime, Badger, BadgerEncrypted, dnsCache)
+		return container.run(c, environment, Badger, BadgerEncrypted, dnsCache)
 	}
 
 	return c, nil
 }
 
-func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) run(c *types.Container, environment *configuration.Environment, Badger *badger.DB, BadgerEncrypted *badger.DB, dnsCache *dns.Records) (*types.Container, error) {
 	err := container.CreateNetwork()
 
 	if err != nil {
@@ -253,9 +253,9 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 		ExposedPorts: container.exposedPorts(),
 	}, &dockerContainer.HostConfig{
 		DNS: []string{
-			runtime.AGENTIP.String(),
+			environment.AGENTIP,
 		},
-		Mounts:       container.mappingToMounts(BadgerEncrypted, runtime),
+		Mounts:       container.mappingToMounts(BadgerEncrypted, environment),
 		PortBindings: container.portMappings(),
 		NetworkMode:  dockerContainer.NetworkMode(container.Static.NetworkMode),
 		Privileged:   container.Static.Privileged,
@@ -316,7 +316,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 					}
 				}
 
-				format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
+				format := objects.Format("runtime", container.Static.Group, container.Static.GeneratedName, "ip")
 				database.Put(Badger, format.ToString(), networks[nid.NetworkId].IP)
 
 				// Add ip to the dnsCache so that in cluster resolve works correctly
@@ -328,7 +328,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 			agentNetworks := agent.GetNetworkInfoTS()
 
 			for _, nid := range agentNetworks {
-				if nid.IP == runtime.AGENTIP.String() {
+				if nid.IP == environment.AGENTIP {
 					err = container.ConnectToTheSameNetwork(resp.ID, nid.NetworkId)
 					if err != nil {
 						container.Stop()
@@ -342,7 +342,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 				}
 			}
 
-			format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
+			format := objects.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 			database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
 
 			return container.Get(), nil
@@ -353,7 +353,7 @@ func (container *Container) run(c *types.Container, runtime *runtime.Runtime, Ba
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		format := database.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
+		format := objects.Format("runtime", container.Static.Group, container.Static.GeneratedName, "foundrunning")
 		database.Put(Badger, format.ToString(), strconv.FormatBool(container.Runtime.FoundRunning))
 
 		return container.Get(), nil
@@ -496,6 +496,7 @@ func (container *Container) Restart() bool {
 		return false
 	}
 }
+
 func (container *Container) Delete() error {
 	if c := container.Get(); c != nil && c.State != "running" {
 		ctx := context.Background()

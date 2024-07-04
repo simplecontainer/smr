@@ -97,9 +97,14 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		logger.Log.Info("Solving readiness for the container", zap.String("container", containerObj.Static.GeneratedName))
 		break
 	case status.STATUS_READINESS_FAILED:
-		containerObj.Status.TransitionState(status.STATUS_DEAD)
+		containerObj.Stop()
+		WaitForStop(containerObj)
+
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
 
+		break
+	case status.STATUS_KILLED:
+		// NOOP: wait for dead
 		break
 	case status.STATUS_READY:
 		containerObj.Status.TransitionState(status.STATUS_RUNNING)
@@ -137,34 +142,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		shared.Registry.Remove(containerObj.Static.Group, containerObj.Static.GeneratedName)
 		containerObj.Stop()
 
-		timeout := false
-		waitForStop := make(chan string, 1)
-		go func() {
-			for {
-				c := containerObj.Get()
-
-				if timeout {
-					return
-				}
-
-				if c != nil && c.State != "exited" {
-					logger.Log.Info(fmt.Sprintf("waiting for container to exit %s", containerObj.Static.GeneratedName))
-					time.Sleep(1 * time.Second)
-				} else {
-					break
-				}
-			}
-
-			waitForStop <- "container exited proceed with delete for reconciliation"
-		}()
-
-		select {
-		case res := <-waitForStop:
-			logger.Log.Info(fmt.Sprintf("%s %s", res, containerObj.Static.GeneratedName))
-		case <-time.After(30 * time.Second):
-			logger.Log.Info("timed out waiting for the container to exit", zap.String("container", containerObj.Static.GeneratedName))
-			timeout = true
-		}
+		WaitForStop(containerObj)
 
 		err := containerObj.Delete()
 

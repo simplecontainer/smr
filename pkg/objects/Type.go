@@ -6,11 +6,19 @@ import (
 )
 
 type Object struct {
-	Changelog      diff.Changelog
-	definition     map[string]any
-	definitionByte []byte
-	changed        bool
-	exists         bool
-	created        time.Time
-	updated        time.Time
+	Changelog        diff.Changelog
+	definition       map[string]any
+	definitionString string
+	definitionByte   []byte
+	changed          bool
+	exists           bool
+	created          time.Time
+	updated          time.Time
+}
+
+type FormatStructure struct {
+	Kind       string
+	Group      string
+	Identifier string
+	Key        string
 }

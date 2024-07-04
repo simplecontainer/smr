@@ -8,6 +8,6 @@ import (
 func (api *Api) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"healthy": "true",
-		"project": api.Runtime.PROJECT,
+		"project": api.Config.Environment.PROJECT,
 	})
 }

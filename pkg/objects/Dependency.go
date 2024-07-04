@@ -3,13 +3,12 @@ package objects
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/mitchellh/mapstructure"
-	"github.com/simplecontainer/smr/pkg/database"
+	"net/http"
 )
 
-func (obj *Object) FindAndConvert(db *badger.DB, format database.FormatStructure, destination interface{}) {
-	obj.Find(db, format)
+func (obj *Object) FindAndConvert(client *http.Client, format FormatStructure, destination interface{}) {
+	obj.Find(client, format)
 
 	if obj.Exists() {
 		data := make(map[string]interface{})

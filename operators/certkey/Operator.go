@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
@@ -70,8 +69,8 @@ OUTER:
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
-	format := database.Format(KIND, "", "", "")
-	objs, err := objects.FindMany(request.Manager.Badger, format)
+	format := objects.Format(KIND, "", "", "")
+	objs, err := objects.FindMany(request.Client, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -108,10 +107,10 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 		}
 	}
 
-	format := database.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
+	format := objects.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
 	obj := objects.New()
-	err := obj.Find(request.Manager.Badger, format)
+	err := obj.Find(request.Client, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -153,10 +152,10 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	}
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
-	format := database.FormatEmpty().FromString(GroupIdentifier)
+	format := objects.FormatEmpty().FromString(GroupIdentifier)
 
 	obj := objects.New()
-	err := obj.Find(request.Manager.Badger, format)
+	err := obj.Find(request.Client, format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -169,7 +168,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 
-	removed, err := obj.Remove(request.Manager.Badger, format)
+	removed, err := obj.Remove(request.Client, format)
 
 	if !removed {
 		return httpcontract.ResponseOperator{

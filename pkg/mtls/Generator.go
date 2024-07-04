@@ -1,4 +1,4 @@
-package keys
+package mtls
 
 import (
 	"bytes"
@@ -7,7 +7,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/spf13/viper"
+	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/keys"
 	"math/big"
 	"net"
 	"time"
@@ -17,7 +18,7 @@ import (
 Taken and modified from the: https://gist.github.com/shaneutt/5e1995295cff6721c89a71d13a71c251
 */
 
-func (keys *Keys) GenerateKeys() error {
+func GenerateKeys(keys *keys.Keys, config *configuration.Configuration) error {
 	// set up our CA certificate
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
@@ -68,13 +69,13 @@ func (keys *Keys) GenerateKeys() error {
 
 	keys.CAPrivateKey = caPrivKeyPEM
 
-	keys.ServerPrivateKey, keys.ServerCertPem, err = generateCertPrivKeyPair(ca, caPrivKey)
+	keys.ServerPrivateKey, keys.ServerCertPem, err = generateCertPrivKeyPair(config, ca, caPrivKey)
 
 	if err != nil {
 		return err
 	}
 
-	keys.ClientPrivateKey, keys.ClientCertPem, err = generateCertPrivKeyPair(ca, caPrivKey)
+	keys.ClientPrivateKey, keys.ClientCertPem, err = generateCertPrivKeyPair(config, ca, caPrivKey)
 
 	if err != nil {
 		return err
@@ -83,7 +84,7 @@ func (keys *Keys) GenerateKeys() error {
 	return nil
 }
 
-func generateCertPrivKeyPair(ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*bytes.Buffer, *bytes.Buffer, error) {
+func generateCertPrivKeyPair(config *configuration.Configuration, ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*bytes.Buffer, *bytes.Buffer, error) {
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -94,7 +95,7 @@ func generateCertPrivKeyPair(ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*
 			StreetAddress: []string{"BB"},
 			PostalCode:    []string{"75270"},
 		},
-		DNSNames:     []string{viper.GetString("daemon-domain"), "smr-agent"},
+		DNSNames:     []string{config.Flags.DaemonDomain, "smr-agent"},
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),

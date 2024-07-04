@@ -2,12 +2,13 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"net/http"
 )
 
 func (api *Api) Init(c *gin.Context) {
-	api.Manager.DeleteProject("test")
-	api.Manager.CreateProject("test")
+	bootstrap.DeleteProject("test", api.Config)
+	bootstrap.CreateProject("test", api.Config)
 
 	c.JSON(http.StatusOK, gin.H{
 		"Starting project": "started",

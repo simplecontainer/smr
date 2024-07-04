@@ -11,10 +11,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/commands"
 	_ "github.com/simplecontainer/smr/pkg/commands"
-	"github.com/simplecontainer/smr/pkg/config"
-	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/mtls"
 	"github.com/simplecontainer/smr/pkg/plugins"
+	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
@@ -46,28 +47,17 @@ import (
 func main() {
 	logger.Log = logger.NewLogger()
 
-	conf := config.NewConfig()
-	conf.ReadFlags()
+	conf := configuration.NewConfig()
+	startup.ReadFlags(conf)
 
 	var db *badger.DB
-	var err error
-
-	if viper.GetBool("optmode") {
-		// Instance of the key value store if the optmode enabled
-		db, err = badger.Open(badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger"))
-		if err != nil {
-			logger.Log.Fatal(err.Error())
-		}
-		defer db.Close()
-	}
-
 	api := api.NewApi(conf, db)
 
 	commands.PreloadCommands()
 	commands.Run(api.Manager)
 
 	if viper.GetBool("daemon") {
-		conf.Load(api.Runtime.PROJECTDIR)
+		startup.Load(conf, api.Config.Environment.PROJECTDIR)
 
 		mdns.HandleFunc(".", api.HandleDns)
 
@@ -122,17 +112,16 @@ func main() {
 		router.GET("/healthz", api.Health)
 
 		if viper.GetBool("daemon-secured") {
-			api.Keys = keys.NewKeys("/home/smr-agent/.ssh")
-			api.Manager.Keys = api.Keys
+			api.Keys = mtls.NewKeys("/home/smr-agent/.ssh")
 
-			found, err := api.Keys.GenerateIfNoKeysFound()
+			found, err := mtls.GenerateIfNoKeysFound(api.Keys, api.Config)
 
 			if err != nil {
 				panic("failed to generate or read mtls keys")
 			}
 
 			if !found {
-				err := api.Keys.SaveToDirectory()
+				err = mtls.SaveToDirectory(api.Keys)
 
 				if err != nil {
 					logger.Log.Error("failed to save keys to directory", zap.String("error", err.Error()))
@@ -141,7 +130,7 @@ func main() {
 
 				fmt.Println("Certificate is generated for the use by the smr client!")
 				fmt.Println("Copy-paste it to safe location for further use - it will not be printed anymore in the logs")
-				fmt.Println(api.Keys.GeneratePemBundle())
+				fmt.Println(mtls.GeneratePemBundle(api.Keys))
 			}
 
 			api.SetupEncryptedDatabase(api.Keys.ServerPrivateKey.Bytes()[:32])
@@ -169,7 +158,7 @@ func main() {
 				TLSConfig: tlsConfig,
 			}
 
-			plugins.StartPlugins(api.Config.Configuration.Environment.Root, api.Manager)
+			plugins.StartPlugins(api.Config.Root, api.Manager)
 
 			defer server.Close()
 			server.ListenAndServeTLS("", "")

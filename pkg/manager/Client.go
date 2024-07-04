@@ -1,14 +1,13 @@
-package keys
+package manager
 
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
+	"github.com/simplecontainer/smr/pkg/keys"
 	"net/http"
-	"strings"
 )
 
-func (keys *Keys) GenerateHttpClient() (*http.Client, error) {
+func GenerateHttpClient(keys *keys.Keys) (*http.Client, error) {
 	cert, err := tls.X509KeyPair(keys.ClientCertPem.Bytes(), keys.ClientPrivateKey.Bytes())
 	if err != nil {
 		return nil, err
@@ -25,8 +24,4 @@ func (keys *Keys) GenerateHttpClient() (*http.Client, error) {
 			},
 		},
 	}, nil
-}
-
-func (keys *Keys) GeneratePemBundle() string {
-	return fmt.Sprintf("%s\n%s\n%s\n", strings.TrimSpace(keys.ClientPrivateKey.String()), strings.TrimSpace(keys.ClientCertPem.String()), strings.TrimSpace(keys.CAPem.String()))
 }

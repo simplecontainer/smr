@@ -23,7 +23,7 @@ import (
 //	@Failure		500	{object}	database.Response
 //	@Router			/database/{key} [get]
 func (api *Api) SecretsGet(c *gin.Context) {
-	err := api.BadgerEncrypted.View(func(txn *badger.Txn) error {
+	err := api.Badger.View(func(txn *badger.Txn) error {
 		var value []byte
 
 		item, err := txn.Get([]byte(c.Param("key")))
@@ -110,7 +110,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 			return
 		}
 
-		err = api.BadgerEncrypted.Update(func(txn *badger.Txn) error {
+		err = api.Badger.Update(func(txn *badger.Txn) error {
 			err = txn.Set([]byte(c.Param("secret")), []byte(valueSent.Value))
 			return err
 		})
@@ -159,7 +159,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 func (api *Api) SecretsGetKeys(c *gin.Context) {
 	var keys []string
 
-	err := api.BadgerEncrypted.View(func(txn *badger.Txn) error {
+	err := api.Badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
