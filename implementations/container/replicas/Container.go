@@ -6,10 +6,10 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"go.uber.org/zap"
 	"strings"
 )
@@ -23,7 +23,7 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
 			name := containerDefinition.Meta.Name
-			container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
+			container := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
 
 			existingContainer := shared.Registry.Find(container.Static.Group, name)
 
@@ -38,17 +38,19 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
 		name := containerDefinition.Meta.Name
-		container := container.NewContainerFromDefinition(mgr.Runtime, name, containerDefinition)
+		container := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
 
 		for i, v := range container.Runtime.Resources {
-			format := database.Format("resource", container.Static.Group, v.Identifier, v.Key)
-			val, err := database.Get(mgr.Badger, format.ToString())
+			format := objects.Format("resource", container.Static.Group, v.Identifier, v.Key)
+
+			obj := objects.New()
+			err := obj.Find(shared.Client, format)
 
 			if err != nil {
 				logger.Log.Error("failed to get resources for the container")
 			}
 
-			container.Runtime.Resources[i].Data[v.Key] = val
+			container.Runtime.Resources[i].Data[v.Key] = obj.GetDefinitionString()
 		}
 
 		logger.Log.Info("retrieved resources for container", zap.String("container", name))
@@ -85,7 +87,7 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 			}
 		}
 
-		shared.Registry.AddOrUpdate(replicas.Group, name, mgr.Runtime.PROJECT, container)
+		shared.Registry.AddOrUpdate(replicas.Group, name, mgr.Config.Environment.PROJECT, container)
 		logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
 
 		groups = append(groups, replicas.Group)

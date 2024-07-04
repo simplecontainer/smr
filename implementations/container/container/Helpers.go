@@ -1,20 +1,18 @@
 package container
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/runtime"
 	"log"
 	"os"
-	"time"
 )
 
-func (container *Container) mappingToMounts(BadgerEncrypted *badger.DB, runtime *runtime.Runtime) []mount.Mount {
+func (container *Container) mappingToMounts(BadgerEncrypted *badger.DB, environment *configuration.Environment) []mount.Mount {
 	var mounts []mount.Mount
 
 	for _, v := range container.Runtime.Resources {
@@ -117,26 +115,14 @@ func convertReadinessDefinitionToReadiness(readinessDefinition []v1.Readiness) [
 	var readiness = make([]Readiness, 0)
 
 	for _, val := range readinessDefinition {
-		if val.Timeout == "" {
-			val.Timeout = "30s"
-		}
-
-		timeout, err := time.ParseDuration(val.Timeout)
-
-		var ctx context.Context
-		if err == nil {
-			ctx, _ = context.WithTimeout(context.Background(), timeout)
-		} else {
-			return nil
-		}
-
 		readinessTmp := Readiness{
 			Name:     val.Name,
 			Operator: val.Operator,
 			Timeout:  val.Timeout,
 			Body:     val.Body,
 			Solved:   false,
-			Ctx:      ctx,
+			Ctx:      nil,
+			Cancel:   nil,
 		}
 
 		readiness = append(readiness, readinessTmp)

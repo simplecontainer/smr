@@ -1,10 +1,12 @@
 package objects
 
 import (
+	"encoding/base64"
 	"encoding/json"
-	"github.com/dgraph-io/badger/v4"
+	"errors"
+	"fmt"
 	"github.com/r3labs/diff/v3"
-	"github.com/simplecontainer/smr/pkg/database"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -12,13 +14,14 @@ import (
 
 func New() *Object {
 	return &Object{
-		Changelog:      diff.Changelog{},
-		definition:     map[string]any{},
-		definitionByte: make([]byte, 0),
-		exists:         false,
-		changed:        false,
-		created:        time.Now(),
-		updated:        time.Now(),
+		Changelog:        diff.Changelog{},
+		definition:       map[string]any{},
+		definitionString: "",
+		definitionByte:   make([]byte, 0),
+		exists:           false,
+		changed:          false,
+		created:          time.Now(),
+		updated:          time.Now(),
 	}
 }
 
@@ -33,103 +36,66 @@ func ConvertToMap(jsonData []byte) (map[string]any, error) {
 	return data, nil
 }
 
+func (obj *Object) GetDefinitionString() string {
+	return obj.definitionString
+}
+
 func (obj *Object) GetDefinition() map[string]any {
 	return obj.definition
 }
+
 func (obj *Object) GetDefinitionByte() []byte {
 	return obj.definitionByte
 }
 
-func (obj *Object) Add(db *badger.DB, format database.FormatStructure, data string) error {
-	err := database.Put(db, format.ToString(), string(data))
+func (obj *Object) Add(client *http.Client, format FormatStructure, data string) error {
+	URL := fmt.Sprintf("https://smr-agent/api/v1/database/create/%s", format.ToString())
+	response := SendRequest(client, URL, "POST", data)
 
-	if err != nil {
-		return err
-	}
-
-	format.Key = "updated"
-	err = database.Put(db, format.ToString(), time.Now().Format(time.RFC3339))
-
-	timeNow := time.Now()
-
-	if err == nil {
-		obj.updated = timeNow
+	if response.Success {
+		return nil
 	} else {
-		return err
+		return errors.New(response.ErrorExplanation)
 	}
-
-	format.Key = "created"
-	err = database.Put(db, format.ToString(), time.Now().Format(time.RFC3339))
-
-	if err == nil {
-		obj.created = timeNow
-	} else {
-		return err
-	}
-
-	return err
 }
 
-func (obj *Object) Update(db *badger.DB, format database.FormatStructure, data string) error {
-	err := database.Put(db, format.ToString(), string(data))
+func (obj *Object) Update(client *http.Client, format FormatStructure, data string) error {
+	URL := fmt.Sprintf("https://smr-agent/api/v1/database/update/%s", format.ToString())
+	response := SendRequest(client, URL, "PUT", data)
 
-	if err != nil {
-		return err
+	if response.Success {
+		return nil
+	} else {
+		return errors.New(response.ErrorExplanation)
 	}
-
-	format.Key = "updated"
-	err = database.Put(db, format.ToString(), time.Now().Format(time.RFC3339))
-
-	if err == nil {
-		obj.updated = time.Now()
-	}
-
-	return err
 }
 
-func (obj *Object) Find(db *badger.DB, format database.FormatStructure) error {
-	val, err := database.Get(db, format.ToString())
+func (obj *Object) Find(client *http.Client, format FormatStructure) error {
+	URL := fmt.Sprintf("https://smr-agent/api/v1/database/get/%s", format.ToString())
+	response := SendRequest(client, URL, "GET", "")
 
-	if err == nil {
-		data := make(map[string]any)
-		err = json.Unmarshal([]byte(val), &data)
+	if response.Success {
+		for key, value := range response.Data {
+			if strings.Contains(key, "object") {
+				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
 
-		if err != nil {
-			return err
+				data := make(map[string]any)
+				err = json.Unmarshal(b64decoded, &data)
+
+				if err != nil {
+					return err
+				}
+
+				obj.definition = data
+				obj.definitionByte = b64decoded
+			} else {
+				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
+				obj.definitionString = string(b64decoded)
+			}
 		}
 
-		obj.definition = data
-		obj.definitionByte = []byte(val)
 	} else {
-		return err
-	}
-
-	format.Key = "created"
-
-	val, err = database.Get(db, format.ToString())
-
-	if err == nil {
-		obj.created, err = time.Parse(time.RFC3339, val)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		return err
-	}
-
-	format.Key = "updated"
-
-	val, err = database.Get(db, format.ToString())
-
-	if err == nil {
-		obj.created, err = time.Parse(time.RFC3339, val)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		return err
+		return errors.New(response.ErrorExplanation)
 	}
 
 	obj.changed = false
@@ -138,38 +104,59 @@ func (obj *Object) Find(db *badger.DB, format database.FormatStructure) error {
 	return nil
 }
 
-func FindMany(db *badger.DB, format database.FormatStructure) (map[string]*Object, error) {
+func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, error) {
 	var objects = make(map[string]*Object)
-	objectStrings, err := database.GetPrefix(db, format.ToString())
 
-	if err != nil {
-		return nil, err
-	}
+	URL := fmt.Sprintf("https://smr-agent/api/v1/database/keys/perfix/%s", format.ToString())
+	response := SendRequest(client, URL, "GET", "")
 
-	var data = make(map[string]any)
+	if response.Success {
+		for key, value := range response.Data {
+			if strings.Contains(key, "object") {
+				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
 
-	for key, value := range objectStrings {
-		if strings.Contains(key, "object") {
-			data = map[string]any{}
-			err = json.Unmarshal([]byte(value), &data)
+				if err != nil {
+					return nil, err
+				}
 
-			if err != nil {
-				return nil, err
+				data := make(map[string]any)
+				err = json.Unmarshal(b64decoded, &data)
+
+				if err != nil {
+					return nil, err
+				}
+
+				obj := New()
+				obj.definition = data
+				obj.definitionByte = b64decoded
+
+				objects[key] = obj
+			} else {
+				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
+
+				obj := New()
+				obj.definitionString = string(b64decoded)
+				obj.definitionByte = b64decoded
+
+				objects[key] = obj
 			}
-
-			obj := New()
-			obj.definition = data
-			obj.definitionByte = []byte(value)
-
-			objects[key] = obj
 		}
+	} else {
+		return nil, errors.New(response.ErrorExplanation)
 	}
 
 	return objects, nil
 }
 
-func (obj *Object) Remove(db *badger.DB, format database.FormatStructure) (bool, error) {
-	return database.Delete(db, format.ToBytes())
+func (obj *Object) Remove(client *http.Client, format FormatStructure) (bool, error) {
+	URL := fmt.Sprintf("https://smr-agent/api/v1/database/keys/%s", format.ToString())
+	response := SendRequest(client, URL, "DELETE", "")
+
+	if response.Success {
+		return true, nil
+	} else {
+		return false, errors.New(response.ErrorExplanation)
+	}
 }
 
 func (obj *Object) Diff(definition string) bool {

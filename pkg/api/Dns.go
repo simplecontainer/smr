@@ -14,7 +14,7 @@ func (api *Api) HandleDns(w mdns.ResponseWriter, r *mdns.Msg) {
 
 	switch r.Opcode {
 	case mdns.OpcodeQuery:
-		pl := plugins.GetPlugin(api.Manager.Config.Configuration.Environment.Root, "container.so")
+		pl := plugins.GetPlugin(api.Manager.Config.Root, "container.so")
 		sharedObj := pl.GetShared().(*shared.Shared)
 
 		dns.ParseQuery(sharedObj.DnsCache, m)

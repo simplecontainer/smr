@@ -6,9 +6,9 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"go.uber.org/zap"
 	"strings"
 )
@@ -22,7 +22,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 	// Destroy from the end to start
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
-			name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Runtime.PROJECT, i)
+			name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT, i)
 			existingContainer := shared.Registry.Find(containerDefinition.Meta.Group, name)
 
 			if existingContainer != nil {
@@ -36,7 +36,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 
 	// Create from the start to the end
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
-		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Runtime.PROJECT, i)
+		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT, i)
 		existingContainer := shared.Registry.Find(containerDefinition.Meta.Group, name)
 
 		if existingContainer != nil {
@@ -57,33 +57,35 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 			}
 
 			if onlyReplicaChange {
-				logger.Log.Info("skipped recreating container since only scale up is triggered", zap.String("container", name), zap.String("group", replicas.Group))
+				logger.Log.Debug("skipped recreating container since only scale up is triggered", zap.String("container", name), zap.String("group", replicas.Group))
 				continue
 			}
 		}
 
-		containerObj := container.NewContainerFromDefinition(shared.Manager.Runtime, name, containerDefinition)
+		containerObj := container.NewContainerFromDefinition(shared.Manager.Config.Environment, name, containerDefinition)
 
 		for i, v := range containerObj.Runtime.Resources {
-			format := database.Format("resource", containerObj.Static.Group, v.Identifier, v.Key)
-			val, err := database.Get(shared.Manager.Badger, format.ToString())
+			format := objects.Format("resource", containerObj.Static.Group, v.Identifier, v.Key)
+
+			obj := objects.New()
+			err := obj.Find(shared.Client, format)
 
 			if err != nil {
 				logger.Log.Error("failed to get resources for the container")
 			}
 
-			containerObj.Runtime.Resources[i].Data[v.Key] = val
+			containerObj.Runtime.Resources[i].Data[v.Key] = obj.GetDefinitionString()
 		}
 
-		logger.Log.Info("retrieved resources for container", zap.String("container", name))
+		logger.Log.Debug("retrieved resources for container", zap.String("container", name))
 
 		if existingContainer == nil {
-			shared.Registry.AddOrUpdate(replicas.Group, name, shared.Manager.Runtime.PROJECT, containerObj)
-			logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
+			shared.Registry.AddOrUpdate(replicas.Group, name, shared.Manager.Config.Environment.PROJECT, containerObj)
+			logger.Log.Debug("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
 		} else {
 			if replicas.Changed {
-				shared.Registry.AddOrUpdate(replicas.Group, name, shared.Manager.Runtime.PROJECT, containerObj)
-				logger.Log.Info("update container since replica changed in registry", zap.String("container", name), zap.String("group", replicas.Group))
+				shared.Registry.AddOrUpdate(replicas.Group, name, shared.Manager.Config.Environment.PROJECT, containerObj)
+				logger.Log.Debug("update container since replica changed in registry", zap.String("container", name), zap.String("group", replicas.Group))
 			}
 		}
 
@@ -101,7 +103,7 @@ func (replicas *Replicas) GetReplica(shared *shared.Shared, containerDefinition 
 	_, _, existingNumberOfReplicas := replicas.GetReplicaNumbers(replicas.Replicas, replicas.GeneratedIndex)
 
 	for i := existingNumberOfReplicas; i > 0; i -= 1 {
-		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Runtime.PROJECT, i)
+		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT, i)
 		containerObj := shared.Registry.Find(containerDefinition.Meta.Group, name)
 
 		if containerObj != nil {

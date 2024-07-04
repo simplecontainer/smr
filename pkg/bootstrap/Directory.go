@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/config"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
@@ -37,16 +37,22 @@ func ClearDirectoryTree(projectDir string) {
 	}
 }
 
-func GenerateConfigProject(projectDir string) config.Configuration {
-	return config.Configuration{
-		config.Environment{
-			Target: "development",
-			Root:   projectDir,
+func GenerateConfigProject(projectDir string) configuration.Configuration {
+	return configuration.Configuration{
+		Target: "development",
+		Root:   projectDir,
+		Environment: &configuration.Environment{
+			HOMEDIR:    "",
+			OPTDIR:     "",
+			PROJECTDIR: "",
+			PROJECT:    "",
+			AGENTIP:    "",
 		},
+		Flags: configuration.Flags{},
 	}
 }
 
-func WriteConfiguration(config config.Configuration, projectDir string, configName string) bool {
+func WriteConfiguration(config configuration.Configuration, projectDir string, configName string) bool {
 	dump, err := yaml.Marshal(config)
 
 	if err != nil {

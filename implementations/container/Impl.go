@@ -14,7 +14,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
-	"github.com/simplecontainer/smr/pkg/database"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -23,12 +22,19 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
-	"strconv"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
+
+	client, err := manager.GenerateHttpClient(mgr.Keys)
+
+	if err != nil {
+		panic(err)
+	}
+
+	implementation.Client = client
 
 	implementation.Shared.Watcher = &watcher.ContainerWatcher{}
 	implementation.Shared.Watcher.Container = make(map[string]*watcher.Container)
@@ -43,7 +49,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 
 	go events.ListenDockerEvents(implementation.Shared)
 
-	pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Configuration.Environment.Root, "hub.so")
+	pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
 	sharedContainer := pl.GetShared().(*hubShared.Shared)
 
 	go events.ListenEvents(implementation.Shared, sharedContainer.Event)
@@ -74,11 +80,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		panic(err)
 	}
 
-	var format database.FormatStructure
-	format = database.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	var format objects.FormatStructure
+	format = objects.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = containersDefinition.ToJsonString()
@@ -87,14 +93,14 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+		err = obj.Update(implementation.Client, format, jsonStringFromRequest)
 	}
 
 	groups, names, err := generateReplicaNamesAndGroups(implementation.Shared, obj.ChangeDetected(), *containersDefinition, obj.Changelog)
@@ -124,7 +130,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 					reconcile.ReconcileContainer(implementation.Shared, containerFromDefinition)
 				} else {
-					logger.Log.Info("no change detected in the containers definition")
+					logger.Log.Debug("no change detected in the containers definition")
 				}
 			}
 		}
@@ -142,7 +148,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
-		Explanation:      strconv.Itoa(implementation.State),
+		Explanation:      "everything went well: good job!",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
@@ -178,11 +184,11 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 		panic(err)
 	}
 
-	var format database.FormatStructure
-	format = database.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	var format objects.FormatStructure
+	format = objects.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	if obj.Exists() {
 		groups, names, err := GetReplicaNamesAndGroups(implementation.Shared, *containersDefinition)
@@ -196,11 +202,11 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 					containerObj.Status.TransitionState(status.STATUS_PENDING_DELETE)
 
-					format = database.Format("runtime", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
-					obj.Remove(implementation.Shared.Manager.Badger, format)
+					format = objects.Format("runtime", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
+					obj.Remove(implementation.Client, format)
 
-					format = database.Format("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
-					obj.Remove(implementation.Shared.Manager.Badger, format)
+					format = objects.Format("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
+					obj.Remove(implementation.Client, format)
 
 					reconcile.ReconcileContainer(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
 				}
@@ -244,7 +250,7 @@ func FetchContainersFromRegistry(registry *registry.Registry, groups []string, n
 }
 
 func generateReplicaNamesAndGroups(shared *shared.Shared, changed bool, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
-	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Runtime.PROJECT)
+	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT)
 
 	r := replicas.Replicas{
 		Group:          containerDefinition.Meta.Group,
@@ -259,7 +265,7 @@ func generateReplicaNamesAndGroups(shared *shared.Shared, changed bool, containe
 }
 
 func GetReplicaNamesAndGroups(shared *shared.Shared, containerDefinition v1.Container) ([]string, []string, error) {
-	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Runtime.PROJECT)
+	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT)
 
 	r := replicas.Replicas{
 		Group:          containerDefinition.Meta.Group,

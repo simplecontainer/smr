@@ -3,8 +3,8 @@ package container
 import (
 	"context"
 	"github.com/simplecontainer/smr/implementations/container/status"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/utils"
 	"strings"
 	"sync"
@@ -53,7 +53,7 @@ type Runtime struct {
 	Configuration      map[string]any
 	Resources          []Resource
 	Owner              Owner
-	ObjectDependencies []database.FormatStructure
+	ObjectDependencies []objects.FormatStructure
 }
 
 type Owner struct {
@@ -97,7 +97,8 @@ type Readiness struct {
 	Timeout  string
 	Body     map[string]string
 	Solved   bool
-	Ctx      context.Context
+	Ctx      context.Context    `json:"-"`
+	Cancel   context.CancelFunc `json:"-"`
 }
 
 type ReadinessState struct {

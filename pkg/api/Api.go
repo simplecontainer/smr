@@ -2,30 +2,27 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/simplecontainer/smr/pkg/config"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objectdependency"
-	"github.com/simplecontainer/smr/pkg/runtime"
+	"github.com/simplecontainer/smr/pkg/startup"
 	"time"
 )
 
-func NewApi(config *config.Config, badger *badger.DB) *Api {
+func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api := &Api{
 		Config:             config,
-		Runtime:            &runtime.Runtime{},
 		Keys:               &keys.Keys{},
 		Badger:             badger,
 		DefinitionRegistry: objectdependency.NewDefinitionDependencyRegistry(),
 		Manager:            &manager.Manager{},
 	}
 
-	api.Runtime = runtime.GetRuntimeInfo()
+	api.Config.Environment = startup.GetEnvironmentInfo()
+
 	api.Manager.Config = api.Config
-	api.Manager.Runtime = api.Runtime
-	api.Manager.Keys = api.Keys
-	api.Manager.Badger = badger
 	api.Manager.DefinitionRegistry = api.DefinitionRegistry
 
 	api.DefinitionRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
@@ -41,11 +38,10 @@ func NewApi(config *config.Config, badger *badger.DB) *Api {
 func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
 	dataKeyRotationDuration := time.Duration(3600)
 
-	dbSecrets, err := badger.Open(badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger-secrets").WithEncryptionKey(masterKey).WithEncryptionKeyRotationDuration(dataKeyRotationDuration))
+	dbSecrets, err := badger.Open(badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger").WithEncryptionKey(masterKey).WithEncryptionKeyRotationDuration(dataKeyRotationDuration))
 	if err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
-	api.BadgerEncrypted = dbSecrets
-	api.Manager.BadgerEncrypted = api.BadgerEncrypted
+	api.Badger = dbSecrets
 }

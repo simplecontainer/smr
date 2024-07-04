@@ -7,7 +7,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/certkey/shared"
 	"github.com/simplecontainer/smr/implementations/hub/hub"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -20,6 +19,14 @@ import (
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
+
+	client, err := manager.GenerateHttpClient(mgr.Keys)
+
+	if err != nil {
+		panic(err)
+	}
+
+	implementation.Client = client
 
 	return nil
 }
@@ -49,11 +56,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	mapstructure.Decode(data["certkey"], &certkey)
 
-	var format database.FormatStructure
+	var format objects.FormatStructure
+	format = objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 
-	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
@@ -62,14 +69,14 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Configuration.Environment.Root, "hub.so")
+		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
 		sharedHub := pl.GetShared().(*hubShared.Shared)
 
 		sharedHub.Event <- &hub.Event{
@@ -118,11 +125,11 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	mapstructure.Decode(data["spec"], &certkey)
 
-	var format database.FormatStructure
+	var format objects.FormatStructure
 
-	format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
+	format = objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
@@ -179,17 +186,17 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 	mapstructure.Decode(data["certkey"], &certkey)
 
-	format := database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
+	format := objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Client, format)
 
 	if obj.Exists() {
-		deleted, err := obj.Remove(implementation.Shared.Manager.Badger, format)
+		deleted, err := obj.Remove(implementation.Client, format)
 
 		if deleted {
-			format = database.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "")
-			deleted, err = obj.Remove(implementation.Shared.Manager.Badger, format)
+			format = objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "")
+			deleted, err = obj.Remove(implementation.Client, format)
 
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,

@@ -9,7 +9,7 @@ import (
 )
 
 func (api *Api) Ps(c *gin.Context) {
-	pl := plugins.GetPlugin(api.Config.Configuration.Environment.Root, "container.so")
+	pl := plugins.GetPlugin(api.Config.Root, "container.so")
 	containers := pl.GetShared().(*shared.Shared).Registry.Containers
 
 	data, err := json.Marshal(containers)

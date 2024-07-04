@@ -2,21 +2,21 @@ package container
 
 import (
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/simplecontainer/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/template"
+	"net/http"
 	"regexp"
 	"strings"
 )
 
 // TODO: Needs refactoring
 
-func (container *Container) Prepare(db *badger.DB) bool {
+func (container *Container) Prepare(client *http.Client) bool {
 	var err error
-	var dependencyMap []database.FormatStructure
-	format := database.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
+	var dependencyMap []objects.FormatStructure
+	format := objects.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
 
-	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(db, container.Runtime.Configuration, &format)
+	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(client, container.Runtime.Configuration, &format)
 	container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, dependencyMap...)
 
 	if err != nil {
@@ -24,8 +24,8 @@ func (container *Container) Prepare(db *badger.DB) bool {
 	}
 
 	for keyOriginal, _ := range container.Runtime.Resources {
-		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(db, container.Runtime.Resources[keyOriginal].Data, nil)
-		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, database.FormatStructure{
+		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(client, container.Runtime.Resources[keyOriginal].Data, nil)
+		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, objects.FormatStructure{
 			Kind:       "resource",
 			Group:      container.Static.Group,
 			Identifier: container.Runtime.Resources[keyOriginal].Identifier,

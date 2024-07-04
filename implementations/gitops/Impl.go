@@ -8,7 +8,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/gitops/reconcile"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
 	"github.com/simplecontainer/smr/implementations/gitops/watcher"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -20,6 +19,14 @@ import (
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
+
+	client, err := manager.GenerateHttpClient(mgr.Keys)
+
+	if err != nil {
+		panic(err)
+	}
+
+	implementation.Client = client
 
 	implementation.Shared.Watcher = &watcher.RepositoryWatcher{}
 	implementation.Shared.Watcher.Repositories = make(map[string]*watcher.Gitops)
@@ -52,11 +59,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	mapstructure.Decode(data["spec"], &gitopsDefinition)
 
-	var format database.FormatStructure
+	var format objects.FormatStructure
 
-	format = database.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
+	format = objects.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
@@ -65,10 +72,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Manager.Badger, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -117,11 +124,11 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	mapstructure.Decode(data["gitops"], &gitopsDefinition)
 
-	var format database.FormatStructure
+	var format objects.FormatStructure
 
-	format = database.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
+	format = objects.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Shared.Manager.Badger, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()

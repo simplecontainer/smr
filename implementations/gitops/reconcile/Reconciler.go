@@ -18,7 +18,6 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"go.uber.org/zap"
 	"io"
 	"log"
@@ -174,13 +173,11 @@ func ReconcileGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 				log.Fatalf("unable to read file: %v", err)
 			}
 
-			client, err := shared.Manager.Keys.GenerateHttpClient()
-
 			if err != nil {
 				logger.Log.Error("gitops reconciler failed to generate http client for the mtls")
 			}
 
-			response := sendRequest(client, "https://localhost:1443/api/v1/apply", definition, gitopsObj)
+			response := sendRequest(shared.Client, "https://localhost:1443/api/v1/apply", definition, gitopsObj)
 
 			if response.Success {
 				logger.Log.Debug("gitops response collected", zap.String("response", response.Explanation))
@@ -195,7 +192,7 @@ func ReconcileGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	}
 }
 
-func CheckInSync(mgr *manager.Manager, gitopsWatcher *watcher.Gitops) {
+func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	gitopsObj := gitopsWatcher.Gitops
 	var auth transport.AuthMethod = nil
 
@@ -259,7 +256,7 @@ func CheckInSync(mgr *manager.Manager, gitopsWatcher *watcher.Gitops) {
 		position := -1
 
 		for index, orderedEntry := range orderedByDependencies {
-			deps := mgr.DefinitionRegistry.GetDependencies(orderedEntry["kind"])
+			deps := shared.Manager.DefinitionRegistry.GetDependencies(orderedEntry["kind"])
 
 			for _, dp := range deps {
 				if data["kind"].(string) == dp {
@@ -288,13 +285,7 @@ func CheckInSync(mgr *manager.Manager, gitopsWatcher *watcher.Gitops) {
 			log.Fatalf("unable to read file: %v", err)
 		}
 
-		client, err := mgr.Keys.GenerateHttpClient()
-
-		if err != nil {
-			logger.Log.Error("gitops reconciler failed to generate http client for the mtls")
-		}
-
-		response := sendRequest(client, "https://localhost:1443/api/v1/compare", definition, gitopsObj)
+		response := sendRequest(shared.Client, "https://localhost:1443/api/v1/compare", definition, gitopsObj)
 
 		switch response.HttpStatus {
 		case http.StatusOK:

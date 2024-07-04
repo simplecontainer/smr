@@ -13,7 +13,7 @@ func New() *Records {
 }
 
 func (r *Records) AddARecord(domain string, ip string) {
-	logger.Log.Info("adding ip to dns", zap.String("ip", ip), zap.String("domain", domain))
+	logger.Log.Debug("adding ip to dns", zap.String("ip", ip), zap.String("domain", domain))
 
 	if len(r.ARecords) > 0 {
 		_, ARecordexists := r.ARecords[domain]
@@ -43,11 +43,11 @@ func (r *Records) AddARecord(domain string, ip string) {
 			}
 
 			if !contains {
-				logger.Log.Info("appending dns A record", zap.String("domain", domain), zap.String("ip", ip))
+				logger.Log.Debug("appending dns A record", zap.String("domain", domain), zap.String("ip", ip))
 				r.ARecords[domain].Domain[domain] = append(r.ARecords[domain].Domain[domain], ip)
 			}
 		} else {
-			logger.Log.Info("adding dns A record", zap.String("domain", domain), zap.String("ip", ip))
+			logger.Log.Debug("adding dns A record", zap.String("domain", domain), zap.String("ip", ip))
 
 			tmp := ARecord{
 				map[string][]string{
@@ -80,7 +80,7 @@ func (r *Records) RemoveARecord(domain string, ip string) bool {
 
 	for i, v := range ips {
 		if v == ip {
-			logger.Log.Info(fmt.Sprintf("removing %s ip address from %s domain", v, domain))
+			logger.Log.Debug(fmt.Sprintf("removing %s ip address from %s domain", v, domain))
 			ips = append(ips[:i], ips[i+1:]...)
 		}
 	}
@@ -95,7 +95,7 @@ func (r *Records) RemoveARecordQueue(domain string, ip string) bool {
 
 	for _, v := range ips {
 		if v == ip {
-			logger.Log.Info(fmt.Sprintf("added %s address for %s domain to delete queue", v, domain))
+			logger.Log.Debug(fmt.Sprintf("added %s address for %s domain to delete queue", v, domain))
 			r.ARecords[domain].DomainDelete[domain] = append(r.ARecords[domain].DomainDelete[domain], v)
 		}
 	}
@@ -136,8 +136,7 @@ func ParseQuery(cache *Records, m *dns.Msg) {
 	for _, q := range m.Question {
 		switch q.Qtype {
 		case dns.TypeA:
-			//TODO:Bug when doing apply without internet resolution fails because no internet connection to hit 8.8.8.8
-			logger.Log.Info("Querying dns server", zap.String("fqdn", q.Name))
+			logger.Log.Debug("Querying dns server", zap.String("fqdn", q.Name))
 			ips := cache.Find(q.Name)
 
 			if len(ips) > 0 {

@@ -1,30 +1,16 @@
-package config
+package startup
 
 import (
 	"flag"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/logger"
-	"os"
-
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
+	"os"
 )
 
-type Config struct {
-	Configuration *Configuration
-}
-
-func NewConfig() *Config {
-	config := Configuration{}
-
-	return &Config{
-		Configuration: &config,
-	}
-}
-
-func (c *Config) Load(projectDir string) {
+func Load(configObj *configuration.Configuration, projectDir string) {
 	configArg := viper.GetString("config")
 
 	if os.Getenv("CONFIG_ARGUMENT") != "" {
@@ -37,20 +23,20 @@ func (c *Config) Load(projectDir string) {
 
 	viper.SetConfigName(configArg)
 	viper.AddConfigPath(fmt.Sprintf("%s/%s", projectDir, "config"))
-	c.Configuration.Environment.Target = configArg
+	configObj.Target = configArg
 
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	err = viper.Unmarshal(c.Configuration)
+	err = viper.Unmarshal(configObj)
 	if err != nil {
 		panic(fmt.Errorf("fatal unable to unmarshal config file: %w", err))
 	}
 }
 
-func (c *Config) Save(projectDir string) {
+func Save(configObj *configuration.Configuration, projectDir string) {
 	configArg := viper.GetString("config")
 
 	if os.Getenv("CONFIG_ARGUMENT") != "" {
@@ -61,12 +47,12 @@ func (c *Config) Save(projectDir string) {
 		}
 	}
 
-	replica := *c.Configuration
+	replica := *configObj
 
 	yaml, err := yaml.Marshal(replica)
 
 	if err != nil {
-		logger.Log.Fatal("Error while Marshaling. %v", zap.Error(err))
+		panic(err)
 	}
 
 	d1 := []byte(yaml)
@@ -77,7 +63,7 @@ func (c *Config) Save(projectDir string) {
 	}
 }
 
-func (c *Config) ReadFlags() {
+func ReadFlags(configObj *configuration.Configuration) {
 	/* Operation mode */
 	flag.Bool("daemon", false, "Run daemon as HTTP API")
 	flag.Bool("daemon-secured", false, "Run daemon as HTTPS mTLS API")
@@ -97,4 +83,10 @@ func (c *Config) ReadFlags() {
 	pflag.Parse()
 
 	viper.BindPFlags(pflag.CommandLine)
+
+	configObj.Flags.Daemon = viper.GetBool("daemon")
+	configObj.Flags.DaemonSecured = viper.GetBool("daemon-secured")
+	configObj.Flags.DaemonDomain = viper.GetString("daemon-domain")
+	configObj.Flags.OptMode = viper.GetBool("optmode")
+	configObj.Flags.Verbose = viper.GetBool("verbose")
 }

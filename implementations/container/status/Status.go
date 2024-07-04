@@ -47,6 +47,8 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(dead, backoff)
 	status.StateMachine.AddEdge(dead, reconciling)
 
+	status.StateMachine.AddEdge(killed, dead)
+
 	status.StateMachine.AddEdge(reconciling, running)
 	status.StateMachine.AddEdge(reconciling, backoff)
 

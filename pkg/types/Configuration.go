@@ -1,4 +1,8 @@
-package config
+package types
+
+type Config struct {
+	Configuration *Configuration
+}
 
 type Configuration struct {
 	Environment Environment `json:"environment"`

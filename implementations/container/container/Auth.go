@@ -3,13 +3,13 @@ package container
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/runtime"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"os"
 	"strings"
 )
 
-func GetAuth(image string, runtime *runtime.Runtime) string {
-	dockerConfig := fmt.Sprintf("%s/%s", runtime.HOMEDIR, ".docker/config.json")
+func GetAuth(image string, environment *configuration.Environment) string {
+	dockerConfig := fmt.Sprintf("%s/%s", environment.HOMEDIR, ".docker/config.json")
 	if _, err := os.Stat(dockerConfig); err == nil {
 		body, err := os.ReadFile(dockerConfig)
 		if err != nil {
