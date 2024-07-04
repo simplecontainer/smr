@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -15,6 +16,7 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api := &Api{
 		Config:             config,
 		Keys:               &keys.Keys{},
+		DnsCache:           &dns.Records{},
 		Badger:             badger,
 		DefinitionRegistry: objectdependency.NewDefinitionDependencyRegistry(),
 		Manager:            &manager.Manager{},
@@ -24,6 +26,8 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 
 	api.Manager.Config = api.Config
 	api.Manager.DefinitionRegistry = api.DefinitionRegistry
+	api.Manager.Keys = api.Keys
+	api.Manager.DnsCache = api.DnsCache
 
 	api.DefinitionRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
 	api.DefinitionRegistry.Register("gitops", []string{"certkey", "httpauth"})

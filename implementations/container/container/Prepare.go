@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-// TODO: Needs refactoring
-
 func (container *Container) Prepare(client *http.Client) bool {
 	var err error
 	var dependencyMap []objects.FormatStructure

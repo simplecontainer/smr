@@ -25,7 +25,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 		panic(err)
 	}
 
-	implementation.Client = client
+	implementation.Shared.Client = client
 
 	return nil
 }

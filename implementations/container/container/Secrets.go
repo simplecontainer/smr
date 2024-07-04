@@ -1,16 +1,16 @@
 package container
 
 import (
-	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/template"
+	"net/http"
 )
 
-func (container *Container) UnpackSecretsEnvs(dbEncrypted *badger.DB, envs []string) []string {
+func (container *Container) UnpackSecretsEnvs(client *http.Client, envs []string) []string {
 	envsParsed := make([]string, 0)
 
 	for _, v := range envs {
-		parsed, err := template.ParseSecretTemplate(dbEncrypted, v)
+		parsed, err := template.ParseSecretTemplate(client, v)
 
 		if err != nil {
 			logger.Log.Error(err.Error())
@@ -22,8 +22,8 @@ func (container *Container) UnpackSecretsEnvs(dbEncrypted *badger.DB, envs []str
 	return envsParsed
 }
 
-func (container *Container) UnpackSecretsResources(dbEncrypted *badger.DB, resource string) string {
-	resourceParsed, err := template.ParseSecretTemplate(dbEncrypted, resource)
+func (container *Container) UnpackSecretsResources(client *http.Client, resource string) string {
+	resourceParsed, err := template.ParseSecretTemplate(client, resource)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
@@ -32,11 +32,11 @@ func (container *Container) UnpackSecretsResources(dbEncrypted *badger.DB, resou
 	return resourceParsed
 }
 
-func (container *Container) UnpackSecretsReadiness(dbEncrypted *badger.DB, body map[string]string) map[string]string {
+func (container *Container) UnpackSecretsReadiness(client *http.Client, body map[string]string) map[string]string {
 	bodyParsed := make(map[string]string, 0)
 
 	for k, v := range body {
-		parsed, err := template.ParseSecretTemplate(dbEncrypted, v)
+		parsed, err := template.ParseSecretTemplate(client, v)
 
 		if err != nil {
 			logger.Log.Error(err.Error())

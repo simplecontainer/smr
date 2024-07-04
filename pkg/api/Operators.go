@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/operators"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"golang.org/x/text/cases"
@@ -116,9 +117,23 @@ func (api *Api) RunOperators(c *gin.Context) {
 			}
 		}
 
+		client, err := manager.GenerateHttpClient(api.Keys)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
+				HttpStatus:       http.StatusInternalServerError,
+				Explanation:      "failed to generate mtls http client",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+		}
+
 		request := operators.Request{
 			Manager: api.Manager,
 			Data:    body,
+			Client:  client,
 		}
 
 		operatorResponse := pl.Run(operator, request)

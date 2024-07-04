@@ -15,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/watcher"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -34,8 +33,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 		panic(err)
 	}
 
-	implementation.Client = client
-
+	implementation.Shared.Client = client
 	implementation.Shared.Watcher = &watcher.ContainerWatcher{}
 	implementation.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
@@ -45,7 +43,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 		BackOffTracker: make(map[string]map[string]int),
 	}
 
-	implementation.Shared.DnsCache = &dns.Records{}
+	implementation.Shared.DnsCache = mgr.DnsCache
 
 	go events.ListenDockerEvents(implementation.Shared)
 
@@ -84,7 +82,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	format = objects.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = containersDefinition.ToJsonString()
@@ -93,14 +91,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Client, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Client, format, jsonStringFromRequest)
-	}
-
-	if obj.ChangeDetected() || !obj.Exists() {
-		err = obj.Update(implementation.Client, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
 	}
 
 	groups, names, err := generateReplicaNamesAndGroups(implementation.Shared, obj.ChangeDetected(), *containersDefinition, obj.Changelog)
@@ -188,7 +182,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 	format = objects.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	if obj.Exists() {
 		groups, names, err := GetReplicaNamesAndGroups(implementation.Shared, *containersDefinition)
@@ -203,10 +197,10 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 					containerObj.Status.TransitionState(status.STATUS_PENDING_DELETE)
 
 					format = objects.Format("runtime", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
-					obj.Remove(implementation.Client, format)
+					obj.Remove(implementation.Shared.Client, format)
 
 					format = objects.Format("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
-					obj.Remove(implementation.Client, format)
+					obj.Remove(implementation.Shared.Client, format)
 
 					reconcile.ReconcileContainer(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
 				}

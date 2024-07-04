@@ -26,7 +26,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 		panic(err)
 	}
 
-	implementation.Client = client
+	implementation.Shared.Client = client
 
 	return nil
 }
@@ -60,7 +60,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	format = objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
@@ -69,10 +69,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Client, format, jsonStringFromRequest)
+			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Client, format, jsonStringFromRequest)
+		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -129,7 +129,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	format = objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = certkey.ToJsonString()
@@ -189,14 +189,14 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 	format := objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "object")
 
 	obj := objects.New()
-	err = obj.Find(implementation.Client, format)
+	err = obj.Find(implementation.Shared.Client, format)
 
 	if obj.Exists() {
-		deleted, err := obj.Remove(implementation.Client, format)
+		deleted, err := obj.Remove(implementation.Shared.Client, format)
 
 		if deleted {
 			format = objects.Format("certkey", certkey.Meta.Group, certkey.Meta.Identifier, "")
-			deleted, err = obj.Remove(implementation.Client, format)
+			deleted, err = obj.Remove(implementation.Shared.Client, format)
 
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,

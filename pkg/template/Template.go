@@ -2,8 +2,6 @@ package template
 
 import (
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/simplecontainer/smr/pkg/database"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/spf13/viper"
@@ -63,27 +61,29 @@ func ParseTemplate(client *http.Client, values map[string]any, baseFormat *objec
 	return parsedMap, dependencyMap, nil
 }
 
-func ParseSecretTemplate(dbEncrypted *badger.DB, value string) (string, error) {
+func ParseSecretTemplate(client *http.Client, value string) (string, error) {
 	regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
 	matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
 	if len(matches) > 0 {
+		obj := objects.New()
+
 		for index, _ := range matches {
 			format := objects.FormatEmpty().FromString(matches[index][1])
 
-			var val string
-			var err error
-
 			if format.Kind == "secret" {
-				val, err = database.Get(dbEncrypted, format.ToString())
+				err := obj.Find(client, format)
 
-				if err != nil {
-					logger.Log.Error(err.Error(), zap.String("key", format.ToString()))
+				if !obj.Exists() {
 					return value, err
 				}
 			}
 
-			value = strings.Replace(value, fmt.Sprintf("{{%s}}", matches[index][1]), val, 1)
+			fmt.Println("SECRET")
+			fmt.Println(obj)
+			fmt.Println(obj.GetDefinitionString())
+
+			value = strings.Replace(value, fmt.Sprintf("{{%s}}", matches[index][1]), obj.GetDefinitionString(), 1)
 		}
 	}
 

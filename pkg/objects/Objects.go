@@ -25,17 +25,6 @@ func New() *Object {
 	}
 }
 
-func ConvertToMap(jsonData []byte) (map[string]any, error) {
-	data := map[string]any{}
-	err := json.Unmarshal(jsonData, &data)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
 func (obj *Object) GetDefinitionString() string {
 	return obj.definitionString
 }
@@ -49,8 +38,8 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Add(client *http.Client, format FormatStructure, data string) error {
-	URL := fmt.Sprintf("https://smr-agent/api/v1/database/create/%s", format.ToString())
-	response := SendRequest(client, URL, "POST", data)
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/create/%s", format.ToString())
+	response := SendRequest(client, URL, "POST", map[string]string{"value": data})
 
 	if response.Success {
 		return nil
@@ -60,8 +49,8 @@ func (obj *Object) Add(client *http.Client, format FormatStructure, data string)
 }
 
 func (obj *Object) Update(client *http.Client, format FormatStructure, data string) error {
-	URL := fmt.Sprintf("https://smr-agent/api/v1/database/update/%s", format.ToString())
-	response := SendRequest(client, URL, "PUT", data)
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/update/%s", format.ToString())
+	response := SendRequest(client, URL, "PUT", map[string]string{"value": data})
 
 	if response.Success {
 		return nil
@@ -71,12 +60,17 @@ func (obj *Object) Update(client *http.Client, format FormatStructure, data stri
 }
 
 func (obj *Object) Find(client *http.Client, format FormatStructure) error {
-	URL := fmt.Sprintf("https://smr-agent/api/v1/database/get/%s", format.ToString())
-	response := SendRequest(client, URL, "GET", "")
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/get/%s", format.ToString())
+	response := SendRequest(client, URL, "GET", nil)
 
 	if response.Success {
 		for key, value := range response.Data {
+			if value == nil {
+				continue
+			}
+
 			if strings.Contains(key, "object") {
+				fmt.Println(value.(string))
 				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
 
 				data := make(map[string]any)
@@ -107,8 +101,8 @@ func (obj *Object) Find(client *http.Client, format FormatStructure) error {
 func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, error) {
 	var objects = make(map[string]*Object)
 
-	URL := fmt.Sprintf("https://smr-agent/api/v1/database/keys/perfix/%s", format.ToString())
-	response := SendRequest(client, URL, "GET", "")
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/perfix/%s", format.ToString())
+	response := SendRequest(client, URL, "GET", nil)
 
 	if response.Success {
 		for key, value := range response.Data {
@@ -149,8 +143,8 @@ func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, 
 }
 
 func (obj *Object) Remove(client *http.Client, format FormatStructure) (bool, error) {
-	URL := fmt.Sprintf("https://smr-agent/api/v1/database/keys/%s", format.ToString())
-	response := SendRequest(client, URL, "DELETE", "")
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/%s", format.ToString())
+	response := SendRequest(client, URL, "DELETE", nil)
 
 	if response.Success {
 		return true, nil

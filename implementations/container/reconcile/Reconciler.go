@@ -75,14 +75,13 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 
 		// Fix GitOps reconcile!!!!!!!!
 		//container.SetOwner(c.Request.Header.Get("Owner"))
-		containerObj.Prepare(shared.Manager.Badger)
-		_, err := containerObj.Run(shared.Manager.Runtime, shared.Manager.Badger, shared.Manager.BadgerEncrypted, shared.DnsCache)
+		containerObj.Prepare(shared.Client)
+		_, err := containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
 
 		if err == nil {
 			containerObj.Status.TransitionState(status.STATUS_RUNNING)
 
-			client, err := shared.Manager.Keys.GenerateHttpClient()
-			go containerObj.Ready(shared.Manager.BadgerEncrypted, client, err)
+			go containerObj.Ready(shared.Client, err)
 		} else {
 			containerObj.Status.TransitionState(status.STATUS_DEAD)
 		}

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/utils"
@@ -15,7 +14,7 @@ import (
 	"time"
 )
 
-func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Client, err error) (bool, error) {
+func (container *Container) Ready(client *http.Client, err error) (bool, error) {
 	if err != nil {
 		logger.Log.Error("failed to generate mtls https client")
 		return false, nil
@@ -32,7 +31,7 @@ func (container *Container) Ready(BadgerEncrypted *badger.DB, client *http.Clien
 		c := make(chan ReadinessState)
 		for _, readinessElem := range container.Static.Readiness {
 			readiness = append(readiness, readinessElem)
-			readinessElem.Body = container.UnpackSecretsReadiness(BadgerEncrypted, readinessElem.Body)
+			readinessElem.Body = container.UnpackSecretsReadiness(client, readinessElem.Body)
 
 			var timeout time.Duration
 			timeout, err = time.ParseDuration(readinessElem.Timeout)

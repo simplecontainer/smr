@@ -1,6 +1,6 @@
 package events
 
-import "github.com/simplecontainer/container/container"
+import "github.com/simplecontainer/smr/implementations/container/container"
 
 type Reconcile struct {
 	Container *container.Container
