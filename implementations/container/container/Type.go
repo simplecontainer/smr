@@ -92,13 +92,14 @@ type ExecResult struct {
 // Readiness related
 
 type Readiness struct {
-	Name     string
-	Operator string
-	Timeout  string
-	Body     map[string]string
-	Solved   bool
-	Ctx      context.Context    `json:"-"`
-	Cancel   context.CancelFunc `json:"-"`
+	Name       string
+	Operator   string
+	Timeout    string
+	Body       map[string]string
+	Solved     bool
+	BodyUnpack map[string]string  `json:"-"`
+	Ctx        context.Context    `json:"-"`
+	Cancel     context.CancelFunc `json:"-"`
 }
 
 type ReadinessState struct {

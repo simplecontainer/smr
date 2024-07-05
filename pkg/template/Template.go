@@ -1,10 +1,12 @@
 package template
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"net/http"
 	"regexp"
@@ -31,8 +33,11 @@ func ParseTemplate(client *http.Client, values map[string]any, baseFormat *objec
 					format := objects.Format(SplitByDot[0], GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0], SplitByDot[2])
 
 					if format.Identifier != "*" {
-						format.Identifier = fmt.Sprintf("%s-%s-%s", viper.GetString("project"), GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0])
+						format.Identifier = fmt.Sprintf("%s-%s", GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0])
 					}
+
+					entry := format.Key
+					format.Key = "object"
 
 					obj := objects.New()
 					err := obj.Find(client, format)
@@ -43,7 +48,25 @@ func ParseTemplate(client *http.Client, values map[string]any, baseFormat *objec
 
 					dependencyMap = append(dependencyMap, format)
 
-					parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{%s}}", matches[index][1]), obj.GetDefinitionString(), 1)
+					switch format.Kind {
+					case "configuration":
+						configuration := v1.Configuration{}
+						err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
+
+						if err != nil {
+							return nil, nil, err
+						}
+
+						_, ok := configuration.Spec.Data[entry]
+
+						if !ok {
+							return nil, nil, errors.New("missing field in the configuration resource")
+						}
+
+						parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{ %s }}", strings.TrimSpace(matches[index][1])), configuration.Spec.Data[entry], 1)
+
+						break
+					}
 				}
 			}
 		} else {
@@ -78,10 +101,6 @@ func ParseSecretTemplate(client *http.Client, value string) (string, error) {
 					return value, err
 				}
 			}
-
-			fmt.Println("SECRET")
-			fmt.Println(obj)
-			fmt.Println(obj.GetDefinitionString())
 
 			value = strings.Replace(value, fmt.Sprintf("{{%s}}", matches[index][1]), obj.GetDefinitionString(), 1)
 		}

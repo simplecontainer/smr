@@ -3,6 +3,8 @@ package status
 import (
 	"fmt"
 	"github.com/hmdsefi/gograph"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func NewStatus() *Status {
@@ -19,6 +21,7 @@ func (status *Status) CreateGraph() {
 	backoff := gograph.NewVertex(STATUS_BACKOFF)
 	drifted := gograph.NewVertex(STATUS_DRIFTED)
 	reconciling := gograph.NewVertex(STATUS_RECONCILING)
+	invalid_configuration := gograph.NewVertex(STATUS_INVALID_CONFIGURATION)
 
 	pendingDelete := gograph.NewVertex(STATUS_PENDING_DELETE)
 
@@ -30,13 +33,16 @@ func (status *Status) CreateGraph() {
 	readinessFailed := gograph.NewVertex(STATUS_READINESS_FAILED)
 
 	status.StateMachine.AddEdge(created, dependsSolving)
+	status.StateMachine.AddEdge(created, invalid_configuration)
 
 	status.StateMachine.AddEdge(drifted, created)
 
 	status.StateMachine.AddEdge(dependsSolving, dependsSolved)
 	status.StateMachine.AddEdge(dependsSolving, dependsFailed)
+	status.StateMachine.AddEdge(dependsSolving, invalid_configuration)
 
 	status.StateMachine.AddEdge(dependsSolved, running)
+	status.StateMachine.AddEdge(dependsSolved, invalid_configuration)
 	status.StateMachine.AddEdge(dependsFailed, dead)
 
 	status.StateMachine.AddEdge(running, dead)
@@ -96,7 +102,7 @@ func (status *Status) SetState(state string) {
 	status.State = state
 }
 
-func (status *Status) TransitionState(destination string) bool {
+func (status *Status) TransitionState(container string, destination string) bool {
 	currentVertex := status.StateMachine.GetAllVerticesByID(status.State)
 
 	if len(currentVertex) > 0 {
@@ -104,13 +110,23 @@ func (status *Status) TransitionState(destination string) bool {
 
 		for _, edge := range edges {
 			if edge.Destination().Label() == destination {
-				fmt.Println(fmt.Sprintf("State transitioned from %s to %s", status.State, destination))
+				logger.Log.Info("container transitioned state",
+					zap.String("old-state", status.State),
+					zap.String("new-state", destination),
+					zap.String("container", container),
+				)
+
 				status.State = destination
 			}
 		}
 
 		if status.State != destination {
-			fmt.Println(fmt.Sprintf("Failed to transition from %s to %s", status.State, destination))
+			logger.Log.Info("container failed to transition state",
+				zap.String("old-state", status.State),
+				zap.String("new-state", destination),
+				zap.String("container", container),
+			)
+
 			return false
 		}
 

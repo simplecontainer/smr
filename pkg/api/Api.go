@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objectdependency"
 	"github.com/simplecontainer/smr/pkg/startup"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 		Keys:               &keys.Keys{},
 		DnsCache:           &dns.Records{},
 		Badger:             badger,
+		BadgerSync:         &sync.RWMutex{},
 		DefinitionRegistry: objectdependency.NewDefinitionDependencyRegistry(),
 		Manager:            &manager.Manager{},
 	}

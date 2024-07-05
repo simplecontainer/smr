@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/r3labs/diff/v3"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"go.uber.org/zap"
 	"net/http"
 	"reflect"
 	"strings"
@@ -41,6 +43,8 @@ func (obj *Object) Add(client *http.Client, format FormatStructure, data string)
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/create/%s", format.ToString())
 	response := SendRequest(client, URL, "POST", map[string]string{"value": data})
 
+	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
+
 	if response.Success {
 		return nil
 	} else {
@@ -51,6 +55,8 @@ func (obj *Object) Add(client *http.Client, format FormatStructure, data string)
 func (obj *Object) Update(client *http.Client, format FormatStructure, data string) error {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/update/%s", format.ToString())
 	response := SendRequest(client, URL, "PUT", map[string]string{"value": data})
+
+	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", data))
 
 	if response.Success {
 		return nil
@@ -63,6 +69,8 @@ func (obj *Object) Find(client *http.Client, format FormatStructure) error {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/get/%s", format.ToString())
 	response := SendRequest(client, URL, "GET", nil)
 
+	logger.Log.Debug("object find", zap.String("URL", URL))
+
 	if response.Success {
 		for key, value := range response.Data {
 			if value == nil {
@@ -70,7 +78,6 @@ func (obj *Object) Find(client *http.Client, format FormatStructure) error {
 			}
 
 			if strings.Contains(key, "object") {
-				fmt.Println(value.(string))
 				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
 
 				data := make(map[string]any)
@@ -103,6 +110,8 @@ func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, 
 
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/perfix/%s", format.ToString())
 	response := SendRequest(client, URL, "GET", nil)
+
+	logger.Log.Debug("object find many", zap.String("URL", URL))
 
 	if response.Success {
 		for key, value := range response.Data {
@@ -145,6 +154,8 @@ func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, 
 func (obj *Object) Remove(client *http.Client, format FormatStructure) (bool, error) {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/%s", format.ToString())
 	response := SendRequest(client, URL, "DELETE", nil)
+
+	logger.Log.Debug("object remove", zap.String("URL", URL))
 
 	if response.Success {
 		return true, nil

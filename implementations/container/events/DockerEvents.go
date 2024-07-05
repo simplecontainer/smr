@@ -8,9 +8,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/shared"
-	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"go.uber.org/zap"
 )
 
@@ -38,27 +36,23 @@ func ListenDockerEvents(shared *shared.Shared) {
 func HandleDockerEvent(shared *shared.Shared, event events.Message) {
 	var container *container.Container
 
-	// fetch container info from container events
-	if utils.Contains([]string{"start", "kill", "stop", "die"}, event.Action) {
-		container = shared.Registry.Find(event.Actor.Attributes["group"], event.Actor.Attributes["name"])
-	}
+	c := container.GetFromId(event.Actor.Attributes["container"])
 
-	// fetch container info from network events
-	if utils.Contains([]string{"connect", "disconnect"}, event.Action) {
-		c := container.GetFromId(event.Actor.Attributes["container"])
-		fmt.Println(c)
+	if c == nil {
+		logger.Log.Debug("container is not found in the docker daemon",
+			zap.String("container", event.Actor.Attributes["container"]),
+		)
 
-		container = shared.Registry.Find(c.Labels["group"], c.Labels["name"])
-	}
-
-	if container == nil {
-		fmt.Println("container not found in registry")
 		return
 	}
 
-	c := container.Get()
+	container = shared.Registry.Find(c.Labels["group"], c.Labels["name"])
 
-	if c == nil {
+	if container == nil {
+		logger.Log.Debug("container is not found in the registry, ignore it",
+			zap.String("container", c.Names[0]),
+		)
+
 		return
 	}
 
@@ -124,7 +118,7 @@ func HandleStart(shared *shared.Shared, containerObj *container.Container, event
 
 func HandleKill(shared *shared.Shared, containerObj *container.Container, event events.Message) {
 	// It can happen that kill signal occurs in the container even if it is not dying; eg killing thread, goroutine etc.
-	containerObj.Status.TransitionState(status.STATUS_KILLED)
+	//containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_KILLED)
 
 	for _, n := range containerObj.Runtime.Networks {
 		shared.DnsCache.RemoveARecordQueue(containerObj.GetDomain(), n.IP)
@@ -139,7 +133,7 @@ func HandleStop(shared *shared.Shared, containerObj *container.Container, event 
 func HandleDie(shared *shared.Shared, containerObj *container.Container, event events.Message) {
 	fmt.Println("Container died")
 	fmt.Println(containerObj.Status.GetState())
-	containerObj.Status.TransitionState(status.STATUS_DEAD)
+	//containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
 
 	reconcile := true
 

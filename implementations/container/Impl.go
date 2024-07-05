@@ -194,14 +194,13 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 				for _, containerObj := range containerObjs {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)
 
-					containerObj.Status.TransitionState(status.STATUS_PENDING_DELETE)
-
-					format = objects.Format("runtime", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
+					format = objects.Format("container", containerObj.Static.Group, containerObj.Static.Name, "")
 					obj.Remove(implementation.Shared.Client, format)
 
 					format = objects.Format("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
 					obj.Remove(implementation.Shared.Client, format)
 
+					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PENDING_DELETE)
 					reconcile.ReconcileContainer(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
 				}
 			}

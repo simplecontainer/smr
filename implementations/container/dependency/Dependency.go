@@ -86,17 +86,17 @@ func Ready(shared *shared.Shared, group string, name string, dependsOn []v1.Depe
 		}
 
 		if !allDependenciesSolved {
-			shared.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_FAILED)
+			shared.Registry.Containers[group][name].Status.TransitionState(name, status.STATUS_DEPENDS_FAILED)
 			return false, errors.New("didn't solve all dependencies")
 		} else {
-			shared.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
+			shared.Registry.Containers[group][name].Status.TransitionState(name, status.STATUS_DEPENDS_SOLVED)
 			logger.Log.Info("all dependencies solved", zap.String("group", group), zap.String("name", name))
 			return true, nil
 		}
 	}
 
 	logger.Log.Info("no dependencies defined", zap.String("group", group), zap.String("name", name))
-	shared.Registry.Containers[group][name].Status.TransitionState(status.STATUS_DEPENDS_SOLVED)
+	shared.Registry.Containers[group][name].Status.TransitionState(name, status.STATUS_DEPENDS_SOLVED)
 
 	return true, nil
 }

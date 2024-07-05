@@ -62,9 +62,9 @@ func HandleChange(shared *shared.Shared, containerObj *container.Container) {
 		}
 	}
 
-	if !containerObj.Status.TransitionState(status.STATUS_RECONCILING) && reconcile {
+	if !containerObj.Status.IfStateIs(status.STATUS_RECONCILING) && reconcile {
 		logger.Log.Info(fmt.Sprintf("sending event to queue for solving for container %s", containerObj.Static.GeneratedName))
-		containerObj.Status.TransitionState("created")
+		containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_CREATED)
 		shared.Watcher.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
 	}
 }
