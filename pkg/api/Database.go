@@ -23,6 +23,7 @@ import (
 //	@Failure		500	{object}	database.Response
 //	@Router			/database/{key} [get]
 func (api *Api) DatabaseGet(c *gin.Context) {
+	api.BadgerSync.RLock()
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		var value []byte
 
@@ -65,6 +66,8 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 		return nil
 	})
 
+	api.BadgerSync.RUnlock()
+
 	if err != nil {
 		logger.Log.Error(err.Error())
 
@@ -93,6 +96,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 //	@Failure		500		{object}	database.Response
 //	@Router			/database/{key} [post]
 func (api *Api) DatabaseSet(c *gin.Context) {
+	api.BadgerSync.Lock()
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err == nil {
@@ -114,6 +118,8 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			err = txn.Set([]byte(c.Param("key")), []byte(valueSent.Value))
 			return err
 		})
+
+		api.BadgerSync.Unlock()
 
 		if err != nil {
 			c.JSON(http.StatusNotFound, database.Response{
@@ -159,6 +165,8 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	var keys []string
 
+	api.BadgerSync.RLock()
+
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -171,6 +179,8 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 
 		return nil
 	})
+
+	api.BadgerSync.RUnlock()
 
 	if err == nil {
 		c.JSON(http.StatusNotFound, database.Response{
@@ -207,6 +217,8 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 func (api *Api) DatabaseGetKeys(c *gin.Context) {
 	var keys []string
 
+	api.BadgerSync.RLock()
+
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
@@ -220,6 +232,8 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 
 		return nil
 	})
+
+	api.BadgerSync.RUnlock()
 
 	if err == nil {
 		c.JSON(http.StatusOK, database.Response{
@@ -238,6 +252,69 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 			Error:            true,
 			Success:          false,
 			Data:             nil,
+		})
+	}
+}
+
+// DatabaseRemoveKeys godoc
+//
+//	@Summary		Remove keys by prefix in the key-value store
+//	@Description	remove all keys by prefix in the key-value store
+//	@Tags			database
+//	@Produce		json
+//	@Success		200	{object}	database.Response
+//	@Failure		400	{object}	database.Response
+//	@Failure		404	{object}	database.Response
+//	@Failure		500	{object}	database.Response
+//	@Router			/database/keys [delete]
+func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
+	var keys []string
+
+	api.BadgerSync.Lock()
+
+	err := api.Badger.Update(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		var err error
+
+		prefix := []byte(c.Param("prefix"))
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			err = txn.Delete(it.Item().KeyCopy(nil))
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+				return err
+			}
+		}
+
+		return err
+	})
+
+	api.BadgerSync.Unlock()
+
+	if err == nil {
+		c.JSON(http.StatusOK, database.Response{
+			Explanation:      "succesfully removed keys from the key-value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data: map[string]any{
+				"keys": keys,
+			},
+		})
+	} else {
+		c.JSON(http.StatusNotFound, database.Response{
+			Explanation:      "failed to remove keys from the key-value store",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data: map[string]any{
+				"keys": keys,
+			},
 		})
 	}
 }

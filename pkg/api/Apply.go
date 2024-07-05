@@ -92,7 +92,7 @@ func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "internal implementation malfunctioned on the server",
-				ErrorExplanation: "",
+				ErrorExplanation: err.Error(),
 				Error:            true,
 				Success:          false,
 			})

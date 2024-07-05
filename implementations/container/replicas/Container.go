@@ -28,7 +28,7 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 			existingContainer := shared.Registry.Find(container.Static.Group, name)
 
 			if existingContainer != nil {
-				existingContainer.Status.TransitionState(status.STATUS_PENDING_DELETE)
+				existingContainer.Status.TransitionState(existingContainer.Static.GeneratedName, status.STATUS_PENDING_DELETE)
 			}
 
 			groups = append(groups, replicas.Group)

@@ -22,16 +22,16 @@ func (container *Container) Ready(client *http.Client, err error) (bool, error) 
 
 	readiness := make([]Readiness, 0)
 
-	container.Status.TransitionState(status.STATUS_READINESS)
+	container.Status.TransitionState(container.Static.GeneratedName, status.STATUS_READINESS)
 
 	if len(container.Static.Definition.Spec.Container.Readiness) > 0 {
 		var allReadinessSolved = true
 		logger.Log.Info("trying to solve readiness", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 
 		c := make(chan ReadinessState)
-		for _, readinessElem := range container.Static.Readiness {
+		for k, readinessElem := range container.Static.Readiness {
 			readiness = append(readiness, readinessElem)
-			readinessElem.Body = container.UnpackSecretsReadiness(client, readinessElem.Body)
+			container.Static.Readiness[k].BodyUnpack = container.UnpackSecretsReadiness(client, readinessElem.Body)
 
 			var timeout time.Duration
 			timeout, err = time.ParseDuration(readinessElem.Timeout)
@@ -42,16 +42,16 @@ func (container *Container) Ready(client *http.Client, err error) (bool, error) 
 
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
-			readinessElem.Ctx = ctx
-			readinessElem.Cancel = cancel
+			container.Static.Readiness[k].Ctx = ctx
+			container.Static.Readiness[k].Cancel = cancel
 
-			go container.SolveReadiness(client, &readinessElem, c)
+			go container.SolveReadiness(client, &container.Static.Readiness[k], c)
 		}
 
 		for len(readiness) > 0 {
 			select {
 			case d := <-c:
-				if container.Runtime.State == "running" {
+				if container.Runtime.State == "running" && container.Status.IfStateIs(status.STATUS_READINESS) {
 					if d.Missing {
 						allReadinessSolved = false
 
@@ -77,7 +77,7 @@ func (container *Container) Ready(client *http.Client, err error) (bool, error) 
 							time.Sleep(5 * time.Second)
 							go container.SolveReadiness(client, d.Readiness, c)
 						} else {
-							container.Status.TransitionState(status.STATUS_READINESS_FAILED)
+							container.Status.TransitionState(container.Static.GeneratedName, status.STATUS_READINESS_FAILED)
 							logger.Log.Info("readiness deadline exceeded", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 							allReadinessSolved = false
 
@@ -89,61 +89,48 @@ func (container *Container) Ready(client *http.Client, err error) (bool, error) 
 						}
 					}
 				} else {
-					return false, errors.New("container is not in running state")
+					return false, errors.New("container is not in running and readiness state")
 				}
 			}
 		}
 
 		if !allReadinessSolved {
-			container.Status.TransitionState(status.STATUS_READINESS_FAILED)
+			container.Status.TransitionState(container.Static.GeneratedName, status.STATUS_READINESS_FAILED)
 			return false, errors.New("didn't solve all readiness probes")
 		} else {
-			container.Status.TransitionState(status.STATUS_READY)
+			container.Status.TransitionState(container.Static.GeneratedName, status.STATUS_READY)
 			logger.Log.Info("all readiness probes solved", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
 			return true, nil
 		}
 	}
 
 	logger.Log.Info("no readiness defined - state is ready", zap.String("group", container.Static.Group), zap.String("name", container.Static.GeneratedName))
-	container.Status.TransitionState(status.STATUS_READY)
+	container.Status.TransitionState(container.Static.GeneratedName, status.STATUS_READY)
 
 	return true, nil
 }
 
 func (container *Container) SolveReadiness(client *http.Client, readiness *Readiness, c chan ReadinessState) {
-	timeout, err := time.ParseDuration("1s")
+	defer readiness.Cancel()
 
-	if err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+	ch := make(chan ReadinessState)
+	defer close(ch)
 
-		ch := make(chan ReadinessState)
-		defer close(ch)
+	logger.Log.Info("trying to solve readiness", zap.String("name", readiness.Name))
 
-		logger.Log.Info("trying to solve readiness", zap.String("name", readiness.Name))
+	go container.IsReady(client, "https://smr-agent:1443/api/v1/operators", readiness, ch)
 
-		go container.IsReady(client, "https://smr-agent:1443/api/v1/operators", readiness, ch)
-
-		for {
-			select {
-			case d := <-ch:
-				c <- d
-			case <-ctx.Done():
-				c <- ReadinessState{
-					Success:   false,
-					Missing:   false,
-					Timeout:   true,
-					Readiness: readiness,
-				}
+	for {
+		select {
+		case d := <-ch:
+			c <- d
+		case <-readiness.Ctx.Done():
+			c <- ReadinessState{
+				Success:   false,
+				Missing:   false,
+				Timeout:   true,
+				Readiness: readiness,
 			}
-		}
-	} else {
-		c <- ReadinessState{
-			Success:   false,
-			Missing:   false,
-			Timeout:   false,
-			Error:     err,
-			Readiness: readiness,
 		}
 	}
 }
@@ -154,7 +141,7 @@ func (container *Container) IsReady(client *http.Client, host string, readiness 
 	group, _ := utils.ExtractGroupAndId(readiness.Name)
 	URL := fmt.Sprintf("%s/%s/%s", host, group, readiness.Operator)
 
-	jsonBytes, err := json.Marshal(readiness.Body)
+	jsonBytes, err := json.Marshal(readiness.BodyUnpack)
 
 	var req *http.Request
 

@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objectdependency"
+	"sync"
 )
 
 type Api struct {
@@ -14,6 +15,7 @@ type Api struct {
 	Keys               *keys.Keys
 	DnsCache           *dns.Records
 	Badger             *badger.DB
+	BadgerSync         *sync.RWMutex
 	DefinitionRegistry *objectdependency.DefinitionRegistry
 	Manager            *manager.Manager
 }

@@ -95,6 +95,7 @@ func main() {
 				database.GET("get/:key", api.DatabaseGet)
 				database.GET("keys", api.DatabaseGetKeys)
 				database.GET("keys/:prefix", api.DatabaseGetKeysPrefix)
+				database.DELETE("keys/:prefix", api.DatabaseRemoveKeys)
 				database.POST("create/:key", api.DatabaseSet)
 				database.PUT("update/:key", api.DatabaseSet)
 			}
