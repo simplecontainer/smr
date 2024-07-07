@@ -51,8 +51,20 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		}, err
 	}
 
+	valid, err := gitopsDefinition.Validate()
+
+	if !valid {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       400,
+			Explanation:      "invalid definition sent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
+	}
+
 	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
+	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
 		panic(err)
 	}
@@ -79,8 +91,12 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		gitopsFromDefinition := reconcile.NewWatcher(&gitopsDefinition)
-		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsFromDefinition.Definition.Meta.Group, gitopsFromDefinition.Definition.Meta.Identifier)
+		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier)
+		gitopsFromDefinition := reconcile.NewWatcher(&gitopsDefinition, implementation.Shared.Manager)
+
+		gitopsFromDefinition.Logger.Info("new gitops object created",
+			zap.String("repository", gitopsFromDefinition.Gitops.RepoURL),
+		)
 
 		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
 		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)

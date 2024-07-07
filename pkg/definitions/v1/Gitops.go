@@ -1,6 +1,10 @@
 package v1
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+	"github.com/go-playground/validator/v10"
+)
 
 type Gitops struct {
 	Meta GitopsMeta `json:"meta"`
@@ -35,4 +39,20 @@ type HttpauthRef struct {
 func (gitops *Gitops) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(gitops)
 	return string(bytes), err
+}
+
+func (gitops *Gitops) Validate() (bool, error) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err := validate.Struct(gitops)
+	if err != nil {
+		var invalidValidationError *validator.InvalidValidationError
+		if errors.As(err, &invalidValidationError) {
+			return false, err
+		}
+		// from here you can create your own error messages in whatever language you wish
+		return false, err
+	}
+
+	return true, nil
 }

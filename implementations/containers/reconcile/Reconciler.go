@@ -6,14 +6,23 @@ import (
 	"github.com/simplecontainer/smr/implementations/containers/shared"
 	"github.com/simplecontainer/smr/implementations/containers/watcher"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/plugins"
+	"go.uber.org/zap"
 	"time"
 )
 
-func NewWatcher(containers v1.Containers) *watcher.Containers {
+func NewWatcher(containers v1.Containers, mgr *manager.Manager) *watcher.Containers {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
+
+	cfg := zap.NewProductionConfig()
+	cfg.OutputPaths = []string{fmt.Sprintf("/tmp/containers.%s.%s.log", containers.Meta.Group, containers.Meta.Name)}
+
+	loggerObj, err := cfg.Build()
+	if err != nil {
+		panic(err)
+	}
 
 	return &watcher.Containers{
 		Definition:      containers,
@@ -23,6 +32,7 @@ func NewWatcher(containers v1.Containers) *watcher.Containers {
 		Ctx:             ctx,
 		Cancel:          fn,
 		Ticker:          time.NewTicker(interval),
+		Logger:          loggerObj,
 	}
 }
 
@@ -49,7 +59,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containers *watcher.Containers
 
 func ReconcileContainer(shared *shared.Shared, containers *watcher.Containers) {
 	if containers.Syncing {
-		logger.Log.Info("containers already reconciling, waiting for the free slot")
+		containers.Logger.Info("containers already reconciling, waiting for the free slot")
 		return
 	}
 

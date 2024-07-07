@@ -12,7 +12,7 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 	var req *http.Request
 	var err error
 
-	if len(data) > 0 {
+	if data != nil {
 		marshaled, err := json.Marshal(data)
 
 		if err != nil {

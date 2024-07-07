@@ -85,3 +85,19 @@ func (definition *Container) Validate() (bool, error) {
 
 	return true, nil
 }
+
+func (definition *Containers) Validate() (bool, error) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err := validate.Struct(definition)
+	if err != nil {
+		var invalidValidationError *validator.InvalidValidationError
+		if errors.As(err, &invalidValidationError) {
+			return false, err
+		}
+		// from here you can create your own error messages in whatever language you wish
+		return false, err
+	}
+
+	return true, nil
+}

@@ -38,7 +38,17 @@ func (api *Api) Apply(c *gin.Context) {
 			})
 		}
 
-		api.ImplementationWrapperApply(data["kind"].(string), jsonData, c)
+		if data != nil {
+			api.ImplementationWrapperApply(data["kind"].(string), jsonData, c)
+		} else {
+			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
+				HttpStatus:       http.StatusBadRequest,
+				Explanation:      "invalid definition sent",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+			})
+		}
 	}
 }
 

@@ -1,6 +1,10 @@
 package v1
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+	"github.com/go-playground/validator/v10"
+)
 
 type HttpAuth struct {
 	Meta HttpAuthMeta `json:"meta"`
@@ -20,4 +24,20 @@ type HttpAuthSpec struct {
 func (httpauth *HttpAuth) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(httpauth)
 	return string(bytes), err
+}
+
+func (httpauth *HttpAuth) Validate() (bool, error) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err := validate.Struct(httpauth)
+	if err != nil {
+		var invalidValidationError *validator.InvalidValidationError
+		if errors.As(err, &invalidValidationError) {
+			return false, err
+		}
+		// from here you can create your own error messages in whatever language you wish
+		return false, err
+	}
+
+	return true, nil
 }

@@ -52,8 +52,20 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		}, err
 	}
 
+	valid, err := containersDefinition.Validate()
+
+	if !valid {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       400,
+			Explanation:      "invalid definition sent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
+	}
+
 	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
+	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
 		panic(err)
 	}
@@ -78,8 +90,13 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		containersFromDefinition := reconcile.NewWatcher(*containersDefinition)
+		containersFromDefinition := reconcile.NewWatcher(*containersDefinition, implementation.Shared.Manager)
 		GroupIdentifier := fmt.Sprintf("%s.%s", containersDefinition.Meta.Group, containersDefinition.Meta.Name)
+
+		containersFromDefinition.Logger.Info("new containers object created",
+			zap.String("group", containersFromDefinition.Definition.Meta.Group),
+			zap.String("identifier", containersFromDefinition.Definition.Meta.Name),
+		)
 
 		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
 		go reconcile.HandleTickerAndEvents(implementation.Shared, containersFromDefinition)
