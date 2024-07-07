@@ -108,7 +108,7 @@ func (obj *Object) Find(client *http.Client, format FormatStructure) error {
 func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, error) {
 	var objects = make(map[string]*Object)
 
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/perfix/%s", format.ToString())
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/prefix/%s", format.ToString())
 	response := SendRequest(client, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
@@ -116,11 +116,15 @@ func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, 
 	if response.Success {
 		for key, value := range response.Data {
 			if strings.Contains(key, "object") {
+				fmt.Println(value.(string))
+
 				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
 
 				if err != nil {
 					return nil, err
 				}
+
+				fmt.Println(string(b64decoded))
 
 				data := make(map[string]any)
 				err = json.Unmarshal(b64decoded, &data)

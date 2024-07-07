@@ -16,6 +16,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/mtls"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"github.com/simplecontainer/smr/pkg/startup"
+	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/utils"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
@@ -47,11 +49,19 @@ import (
 func main() {
 	logger.Log = logger.NewLogger()
 
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = static.DEFAULT_LOG_LEVEL
+	}
+
+	logger.Log.Info(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
+
 	conf := configuration.NewConfig()
 	startup.ReadFlags(conf)
 
 	var db *badger.DB
 	api := api.NewApi(conf, db)
+	api.Manager.LogLevel = utils.GetLogLevel(logLevel)
 
 	commands.PreloadCommands()
 	commands.Run(api.Manager)
@@ -71,6 +81,11 @@ func main() {
 
 		v1 := router.Group("/api/v1")
 		{
+			logs := v1.Group("/logs")
+			{
+				logs.GET(":kind/:group/:identifier", api.Logs)
+			}
+
 			operators := v1.Group("/operators")
 			{
 				operators.GET(":group", api.ListSupported)

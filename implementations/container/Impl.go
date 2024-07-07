@@ -60,9 +60,21 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	containersDefinition := &v1.Container{}
+	containerDefinition := &v1.Container{}
 
-	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
+	if err := json.Unmarshal(jsonData, &containerDefinition); err != nil {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       400,
+			Explanation:      "invalid definition sent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
+	}
+
+	valid, err := containerDefinition.Validate()
+
+	if !valid {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
@@ -73,19 +85,19 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
+	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
 		panic(err)
 	}
 
 	var format objects.FormatStructure
-	format = objects.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	format = objects.Format("container", containerDefinition.Meta.Group, containerDefinition.Meta.Name, "object")
 
 	obj := objects.New()
 	err = obj.Find(implementation.Shared.Client, format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = containersDefinition.ToJsonString()
+	jsonStringFromRequest, err = containerDefinition.ToJsonString()
 
 	logger.Log.Debug("server received container object", zap.String("definition", jsonStringFromRequest))
 
@@ -97,7 +109,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
 	}
 
-	groups, names, err := generateReplicaNamesAndGroups(implementation.Shared, obj.ChangeDetected(), *containersDefinition, obj.Changelog)
+	groups, names, err := generateReplicaNamesAndGroups(implementation.Shared, obj.ChangeDetected(), *containerDefinition, obj.Changelog)
 
 	if err == nil {
 		if len(groups) > 0 {
@@ -105,8 +117,13 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 			for k, containerObj := range containerObjs {
 				if obj.ChangeDetected() || !obj.Exists() {
-					containerFromDefinition := reconcile.NewWatcher(containerObjs[k])
+					containerFromDefinition := reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager)
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)
+
+					containerFromDefinition.Logger.Info("new container object created",
+						zap.String("group", containerFromDefinition.Container.Static.Definition.Meta.Group),
+						zap.String("identifier", containerFromDefinition.Container.Static.Definition.Meta.Name),
+					)
 
 					ContainerTracker := implementation.Shared.Watcher.Find(GroupIdentifier)
 

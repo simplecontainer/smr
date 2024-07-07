@@ -11,6 +11,8 @@ const SMR_LOCAL_DOMAIN string = "docker.private"
 
 const SMR string = "smr"
 
+const DEFAULT_LOG_LEVEL = "info"
+
 var STRUCTURE = []string{
 	"config",
 	"persistent",

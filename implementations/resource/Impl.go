@@ -48,8 +48,20 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		}, err
 	}
 
+	valid, err := resource.Validate()
+
+	if !valid {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       400,
+			Explanation:      "invalid definition sent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
+	}
+
 	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
+	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
 		panic(err)
 	}

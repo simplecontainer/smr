@@ -8,14 +8,22 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
-	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/manager"
 	"go.uber.org/zap"
 	"time"
 )
 
-func NewWatcher(containerObj *container.Container) *watcher.Container {
+func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watcher.Container {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
+
+	cfg := zap.NewProductionConfig()
+	cfg.OutputPaths = []string{fmt.Sprintf("/tmp/container.%s.%s.log", containerObj.Static.Group, containerObj.Static.GeneratedName)}
+
+	loggerObj, err := cfg.Build()
+	if err != nil {
+		panic(err)
+	}
 
 	return &watcher.Container{
 		Container:      containerObj,
@@ -25,6 +33,7 @@ func NewWatcher(containerObj *container.Container) *watcher.Container {
 		Ctx:            ctx,
 		Cancel:         fn,
 		Ticker:         time.NewTicker(interval),
+		Logger:         loggerObj,
 	}
 }
 
@@ -53,7 +62,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 	containerObj := containerWatcher.Container
 
 	if containerObj.Status.Reconciling {
-		logger.Log.Info("container already reconciling, waiting for the free slot")
+		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
 		return
 	}
 
@@ -68,12 +77,12 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 
 		break
 	case status.STATUS_DEPENDS_SOLVING:
-		logger.Log.Info("Solving dependencies for the container", zap.String("container", containerObj.Static.GeneratedName))
+		containerWatcher.Logger.Info("Solving dependencies for the container", zap.String("container", containerObj.Static.GeneratedName))
 
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
 		break
 	case status.STATUS_DEPENDS_SOLVED:
-		logger.Log.Info("trying to run container", zap.String("group", containerObj.Static.Group), zap.String("name", containerObj.Static.Name))
+		containerWatcher.Logger.Info("trying to run container", zap.String("group", containerObj.Static.Group), zap.String("name", containerObj.Static.Name))
 
 		// Fix GitOps reconcile!!!!!!!!
 		//container.SetOwner(c.Request.Header.Get("Owner"))
@@ -94,7 +103,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
 		break
 	case status.STATUS_DEPENDS_FAILED:
-		logger.Log.Info("Status is depends failed 4eva")
+		containerWatcher.Logger.Info("Status is depends failed 4eva")
 		break
 	case status.STATUS_READINESS:
 		c := containerObj.Get()
@@ -102,12 +111,12 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
 		}
 
-		logger.Log.Info("Solving readiness for the container", zap.String("container", containerObj.Static.GeneratedName))
+		containerWatcher.Logger.Info("Solving readiness for the container", zap.String("container", containerObj.Static.GeneratedName))
 		break
 	case status.STATUS_READINESS_FAILED:
 		c := containerObj.Get()
 		if c.State == "running" {
-			logger.Log.Info("stopping container", zap.String("container", containerObj.Static.GeneratedName))
+			containerWatcher.Logger.Info("stopping container", zap.String("container", containerObj.Static.GeneratedName))
 
 			containerObj.Stop()
 			WaitForStop(containerObj)
@@ -131,7 +140,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 
 		break
 	case status.STATUS_DRIFTED:
-		logger.Log.Info("sending container to reconcile state", zap.String("container", containerObj.Static.GeneratedName))
+		containerWatcher.Logger.Info("sending container to reconcile state", zap.String("container", containerObj.Static.GeneratedName))
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
 		break
 	case status.STATUS_DEAD:
@@ -140,7 +149,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 			shared.Registry.BackOffTracking(containerObj.Static.Group, containerObj.Static.GeneratedName)
 
 			if shared.Registry.BackOffTracker[containerObj.Static.Group][containerObj.Static.GeneratedName] > 5 {
-				logger.Log.Error(fmt.Sprintf("%s container is backoff restarting", containerObj.Static.GeneratedName))
+				containerWatcher.Logger.Error(fmt.Sprintf("%s container is backoff restarting", containerObj.Static.GeneratedName))
 
 				shared.Registry.BackOffReset(containerObj.Static.Group, containerObj.Static.GeneratedName)
 
@@ -150,7 +159,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_CREATED)
 			}
 		} else {
-			logger.Log.Info("waiting to die",
+			containerWatcher.Logger.Info("waiting to die",
 				zap.String("container", containerObj.Static.GeneratedName),
 				zap.String("current-state", c.State),
 			)
@@ -160,7 +169,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 
 		break
 	case status.STATUS_BACKOFF:
-		logger.Log.Info(fmt.Sprintf("%s container is in backoff state", containerObj.Static.GeneratedName))
+		containerWatcher.Logger.Info(fmt.Sprintf("%s container is in backoff state", containerObj.Static.GeneratedName))
 		break
 	case status.STATUS_RUNNING:
 		// NOOP
@@ -179,7 +188,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		err := containerObj.Delete()
 
 		if err != nil {
-			logger.Log.Info("failed to delete container from docker daemon",
+			containerWatcher.Logger.Info("failed to delete container from docker daemon",
 				zap.String("container", containerObj.Static.GeneratedName),
 			)
 		} else {

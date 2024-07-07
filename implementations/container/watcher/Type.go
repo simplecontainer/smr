@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/implementations/container/container"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -18,4 +19,5 @@ type Container struct {
 	Ctx            context.Context           `json:"-" `
 	Cancel         context.CancelFunc        `json:"-"`
 	Ticker         *time.Ticker              `json:"-"`
+	Logger         *zap.Logger
 }
