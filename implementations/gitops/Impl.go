@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
 	"github.com/simplecontainer/smr/implementations/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -71,11 +72,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	mapstructure.Decode(data["spec"], &gitopsDefinition)
 
-	var format objects.FormatStructure
+	var format *f.Format
 
-	format = objects.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
@@ -84,10 +85,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
+			err = obj.Update(format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
+		err = obj.Add(format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -140,11 +141,11 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	mapstructure.Decode(data["gitops"], &gitopsDefinition)
 
-	var format objects.FormatStructure
+	var format *f.Format
 
-	format = objects.Format("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()

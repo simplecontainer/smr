@@ -5,106 +5,106 @@ import (
 	"errors"
 	"fmt"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"go.uber.org/zap"
-	"net/http"
 	"regexp"
 	"strings"
 )
 
-func ParseTemplate(client *http.Client, values map[string]any, baseFormat *objects.FormatStructure) (map[string]any, []objects.FormatStructure, error) {
-	var parsedMap = make(map[string]any)
-	var dependencyMap = make([]objects.FormatStructure, 0)
-	parsedMap = values
+func ParseTemplate(obj objects.ObjectInterface, retrieve map[string]string, rootFormat *f.Format) (map[string]string, []*f.Format, error) {
+	var dependencyMap = make([]*f.Format, 0)
+	RetrieveFromKVStore, SaveToKVStore := GetTemplatePlaceholders(retrieve, rootFormat)
 
-	for keyOriginal, value := range values {
-		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
-		matches := regexDetectBigBrackets.FindAllStringSubmatch(value.(string), -1)
+	for key, placeholder := range RetrieveFromKVStore {
+		formatFind := f.NewFromString(placeholder)
+		keyToRetrieve := formatFind.Key
 
-		if len(matches) > 0 {
-			for index, _ := range matches {
-				SplitByDot := strings.SplitN(matches[index][1], ".", 3)
+		formatFind.Key = "object"
+		err := obj.Find(formatFind)
 
-				regexExtractGroupAndId := regexp.MustCompile(`([^\[\n\]]*)`)
-				GroupAndIdExtractor := regexExtractGroupAndId.FindAllStringSubmatch(SplitByDot[1], -1)
+		if !obj.Exists() {
+			return nil, nil, err
+		}
 
-				if len(GroupAndIdExtractor) > 1 {
-					format := objects.Format(SplitByDot[0], GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0], SplitByDot[2])
+		dependencyMap = append(dependencyMap, formatFind)
 
-					if format.Identifier != "*" {
-						format.Identifier = fmt.Sprintf("%s-%s", GroupAndIdExtractor[0][0], GroupAndIdExtractor[1][0])
-					}
+		switch formatFind.Kind {
+		case "configuration":
+			configuration := v1.Configuration{}
 
-					entry := format.Key
-					format.Key = "object"
+			err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
 
-					obj := objects.New()
-					err := obj.Find(client, format)
-
-					if !obj.Exists() {
-						return nil, nil, err
-					}
-
-					dependencyMap = append(dependencyMap, format)
-
-					switch format.Kind {
-					case "configuration":
-						configuration := v1.Configuration{}
-						err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
-
-						if err != nil {
-							return nil, nil, err
-						}
-
-						_, ok := configuration.Spec.Data[entry]
-
-						if !ok {
-							return nil, nil, errors.New("missing field in the configuration resource")
-						}
-
-						parsedMap[keyOriginal] = strings.Replace(values[keyOriginal].(string), fmt.Sprintf("{{ %s }}", strings.TrimSpace(matches[index][1])), configuration.Spec.Data[entry], 1)
-
-						break
-					}
-				}
+			if err != nil {
+				return nil, nil, err
 			}
-		} else {
-			// This is case when there is no referencing any external configuration from the container so save it in database
-			if baseFormat != nil {
-				baseFormat.Key = keyOriginal
-				logger.Log.Info("saving into key-value store", zap.String("key", baseFormat.ToString()))
 
-				obj := objects.New()
-				obj.Add(client, *baseFormat, value.(string))
+			_, ok := configuration.Spec.Data[keyToRetrieve]
+
+			if !ok {
+				return nil, nil, errors.New(
+					fmt.Sprintf("missing field in the configuration resource: %s", keyToRetrieve),
+				)
 			}
+
+			RetrieveFromKVStore[key] = configuration.Spec.Data[keyToRetrieve]
+
+			break
 		}
 	}
 
-	return parsedMap, dependencyMap, nil
+	for format, value := range SaveToKVStore {
+		err := obj.Add(f.NewFromString(format), value)
+
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return RetrieveFromKVStore, dependencyMap, nil
 }
 
-func ParseSecretTemplate(client *http.Client, value string) (string, error) {
-	regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
-	matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+func ParseSecretTemplate(obj objects.ObjectInterface, value string) (string, error) {
+	RetrieveFromKVStore, _ := GetTemplatePlaceholders(map[string]string{
+		"secret": value,
+	}, nil)
 
-	if len(matches) > 0 {
-		obj := objects.New()
+	for _, placeholder := range RetrieveFromKVStore {
+		format := f.NewFromString(placeholder)
 
-		for index, _ := range matches {
-			format := objects.FormatEmpty().FromString(matches[index][1])
+		if format.Kind == "secret" {
+			err := obj.Find(format)
 
-			if format.Kind == "secret" {
-				err := obj.Find(client, format)
-
-				if !obj.Exists() {
-					return value, err
-				}
+			if !obj.Exists() {
+				return value, err
 			}
 
-			value = strings.Replace(value, fmt.Sprintf("{{%s}}", matches[index][1]), obj.GetDefinitionString(), 1)
+			value = strings.Replace(value, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), 1)
 		}
 	}
 
 	return value, nil
+}
+
+func GetTemplatePlaceholders(values map[string]string, rootFormat *f.Format) (map[string]string, map[string]string) {
+	var RetrieveFromKVStore = make(map[string]string, 0)
+	var SaveToKVStore = make(map[string]string, 0)
+
+	for keyOriginal, value := range values {
+		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+
+		if len(matches) > 0 {
+			for index, _ := range matches {
+				format := f.NewFromString(matches[index][1])
+				RetrieveFromKVStore[keyOriginal] = format.ToString()
+			}
+		} else {
+			if rootFormat != nil {
+				rootFormat.Key = keyOriginal
+				SaveToKVStore[rootFormat.ToString()] = value
+			}
+		}
+	}
+
+	return RetrieveFromKVStore, SaveToKVStore
 }

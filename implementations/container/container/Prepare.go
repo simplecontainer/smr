@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/template"
@@ -13,10 +14,11 @@ import (
 
 func (container *Container) Prepare(client *http.Client) bool {
 	var err error
-	var dependencyMap []objects.FormatStructure
-	format := objects.Format("configuration", container.Static.Group, container.Static.GeneratedName, "")
+	var dependencyMap []*f.Format
+	format := f.New("configuration", container.Static.Group, container.Static.GeneratedName, "")
 
-	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(client, container.Runtime.Configuration, &format)
+	obj := objects.New(client)
+	container.Runtime.Configuration, dependencyMap, err = template.ParseTemplate(obj, container.Runtime.Configuration, format)
 
 	if err != nil {
 		logger.Log.Info("container configuration parsing failed",
@@ -30,7 +32,7 @@ func (container *Container) Prepare(client *http.Client) bool {
 	container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, dependencyMap...)
 
 	for keyOriginal, _ := range container.Runtime.Resources {
-		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(client, container.Runtime.Resources[keyOriginal].Data, nil)
+		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(obj, container.Runtime.Resources[keyOriginal].Data, nil)
 
 		if err != nil {
 			logger.Log.Info("container configuration parsing failed",
@@ -41,7 +43,7 @@ func (container *Container) Prepare(client *http.Client) bool {
 			return false
 		}
 
-		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, objects.FormatStructure{
+		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, &f.Format{
 			Kind:       "resource",
 			Group:      container.Static.Group,
 			Identifier: container.Runtime.Resources[keyOriginal].Identifier,
@@ -59,8 +61,8 @@ func (container *Container) Prepare(client *http.Client) bool {
 			trimmedMatch := strings.TrimSpace(matches[0][1])
 			SplitByDot := strings.SplitN(trimmedMatch, ".", 2)
 
-			if len(SplitByDot) > 1 && container.Runtime.Configuration[SplitByDot[1]] != nil {
-				newIndex := strings.Replace(index, fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[SplitByDot[1]].(string), 1)
+			if len(SplitByDot) > 1 && container.Runtime.Configuration[SplitByDot[1]] != "" {
+				newIndex := strings.Replace(index, fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[SplitByDot[1]], 1)
 				container.Static.Labels[newIndex] = container.Static.Labels[index]
 
 				delete(container.Static.Labels, index)
@@ -79,8 +81,8 @@ func (container *Container) Prepare(client *http.Client) bool {
 
 			trimmedIndex := strings.TrimSpace(SplitByDot[1])
 
-			if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != nil {
-				container.Static.Env[index] = strings.Replace(container.Static.Env[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex].(string), 1)
+			if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != "" {
+				container.Static.Env[index] = strings.Replace(container.Static.Env[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex], 1)
 			}
 		}
 	}
@@ -97,8 +99,8 @@ func (container *Container) Prepare(client *http.Client) bool {
 
 				trimmedIndex := strings.TrimSpace(SplitByDot[1])
 
-				if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != nil {
-					container.Static.Readiness[indexReadiness].Body[index] = strings.Replace(container.Static.Readiness[indexReadiness].Body[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex].(string), 1)
+				if len(SplitByDot) > 1 && container.Runtime.Configuration[trimmedIndex] != "" {
+					container.Static.Readiness[indexReadiness].Body[index] = strings.Replace(container.Static.Readiness[indexReadiness].Body[index], fmt.Sprintf("{{%s}}", matches[0][1]), container.Runtime.Configuration[trimmedIndex], 1)
 				}
 			}
 		}

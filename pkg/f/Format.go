@@ -1,12 +1,12 @@
-package objects
+package f
 
 import (
 	"fmt"
 	"strings"
 )
 
-func Format(kind string, group string, identifier string, key string) FormatStructure {
-	return FormatStructure{
+func New(kind string, group string, identifier string, key string) *Format {
+	return &Format{
 		Kind:       strings.TrimSpace(kind),
 		Group:      strings.TrimSpace(group),
 		Identifier: strings.TrimSpace(identifier),
@@ -14,24 +14,52 @@ func Format(kind string, group string, identifier string, key string) FormatStru
 	}
 }
 
-func FormatEmpty() *FormatStructure {
-	return &FormatStructure{}
-}
-
-func (format *FormatStructure) FromString(f string) FormatStructure {
+func NewFromString(f string) *Format {
 	elems := strings.Split(f, ".")
+	format := &Format{}
+
+	if len(elems) > 0 {
+		format.Kind = strings.TrimSpace(elems[0])
+	}
+
+	if len(elems) > 1 {
+		format.Group = strings.TrimSpace(elems[1])
+	}
+
+	if len(elems) > 2 {
+		format.Identifier = strings.TrimSpace(elems[2])
+	}
 
 	if len(elems) > 3 {
-		format.Kind = strings.TrimSpace(elems[0])
-		format.Group = strings.TrimSpace(elems[1])
-		format.Identifier = strings.TrimSpace(elems[2])
 		format.Key = strings.TrimSpace(elems[3])
 	}
 
-	return *format
+	return format
 }
 
-func (format *FormatStructure) ToString() string {
+func (format *Format) FromString(f string) *Format {
+	elems := strings.Split(f, ".")
+
+	if len(elems) > 0 {
+		format.Kind = strings.TrimSpace(elems[0])
+	}
+
+	if len(elems) > 1 {
+		format.Group = strings.TrimSpace(elems[1])
+	}
+
+	if len(elems) > 2 {
+		format.Identifier = strings.TrimSpace(elems[2])
+	}
+
+	if len(elems) > 3 {
+		format.Key = strings.TrimSpace(elems[3])
+	}
+
+	return format
+}
+
+func (format *Format) ToString() string {
 	output := ""
 
 	if format.Kind != "" {
@@ -53,7 +81,7 @@ func (format *FormatStructure) ToString() string {
 	return output
 }
 
-func (format *FormatStructure) ToBytes() []byte {
+func (format *Format) ToBytes() []byte {
 	output := ""
 
 	if format.Kind != "" {

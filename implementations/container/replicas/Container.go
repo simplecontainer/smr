@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -41,10 +42,10 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 		container := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
 
 		for i, v := range container.Runtime.Resources {
-			format := objects.Format("resource", container.Static.Group, v.Identifier, v.Key)
+			format := f.New("resource", container.Static.Group, v.Identifier, v.Key)
 
-			obj := objects.New()
-			err := obj.Find(shared.Client, format)
+			obj := objects.New(shared.Client)
+			err := obj.Find(format)
 
 			if err != nil {
 				logger.Log.Error("failed to get resources for the container")

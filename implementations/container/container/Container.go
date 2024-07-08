@@ -87,7 +87,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 	container.Status.CreateGraph()
 
 	if container.Runtime.Configuration == nil {
-		container.Runtime.Configuration = make(map[string]any)
+		container.Runtime.Configuration = make(map[string]string)
 	}
 
 	container.Runtime.Configuration["name"] = name
@@ -114,7 +114,7 @@ func Existing(name string) *Container {
 			FoundRunning:  false,
 			Networks:      map[string]Network{},
 			Ready:         false,
-			Configuration: make(map[string]any),
+			Configuration: make(map[string]string),
 		},
 		Status: status.Status{},
 	}

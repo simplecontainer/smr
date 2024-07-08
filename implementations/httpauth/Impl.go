@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/hub/hub"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -67,11 +68,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	mapstructure.Decode(data["spec"], &httpauth)
 
-	var format objects.FormatStructure
+	var format *f.Format
 
-	format = objects.Format("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = httpauth.ToJsonString()
@@ -80,10 +81,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
+			err = obj.Update(format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
+		err = obj.Add(format, jsonStringFromRequest)
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -136,11 +137,11 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	mapstructure.Decode(data["httpauth"], &httpauth)
 
-	var format objects.FormatStructure
+	var format *f.Format
 
-	format = objects.Format("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = httpauth.ToJsonString()
@@ -197,17 +198,17 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 	mapstructure.Decode(data["httpauth"], &httpauth)
 
-	format := objects.Format("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
+	format := f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
 
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	if obj.Exists() {
-		deleted, err := obj.Remove(implementation.Shared.Client, format)
+		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = objects.Format("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "")
-			deleted, err = obj.Remove(implementation.Shared.Client, format)
+			format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "")
+			deleted, err = obj.Remove(format)
 
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       200,

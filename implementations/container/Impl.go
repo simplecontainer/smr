@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/watcher"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -92,11 +93,11 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		panic(err)
 	}
 
-	var format objects.FormatStructure
-	format = objects.Format("container", containerDefinition.Meta.Group, containerDefinition.Meta.Name, "object")
+	var format *f.Format
+	format = f.New("container", containerDefinition.Meta.Group, containerDefinition.Meta.Name, "object")
 
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	var jsonStringFromRequest string
 	jsonStringFromRequest, err = containerDefinition.ToJsonString()
@@ -105,10 +106,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(implementation.Shared.Client, format, jsonStringFromRequest)
+			err = obj.Update(format, jsonStringFromRequest)
 		}
 	} else {
-		err = obj.Add(implementation.Shared.Client, format, jsonStringFromRequest)
+		err = obj.Add(format, jsonStringFromRequest)
 	}
 
 	groups, names, err := generateReplicaNamesAndGroups(implementation.Shared, obj.ChangeDetected(), *containerDefinition, obj.Changelog)
@@ -197,11 +198,11 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 		panic(err)
 	}
 
-	var format objects.FormatStructure
-	format = objects.Format("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+	var format *f.Format
+	format = f.New("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
-	obj := objects.New()
-	err = obj.Find(implementation.Shared.Client, format)
+	obj := objects.New(implementation.Shared.Client)
+	err = obj.Find(format)
 
 	if obj.Exists() {
 		groups, names, err := GetReplicaNamesAndGroups(implementation.Shared, *containersDefinition)
@@ -213,11 +214,11 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 				for _, containerObj := range containerObjs {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)
 
-					format = objects.Format("container", containerObj.Static.Group, containerObj.Static.Name, "")
-					obj.Remove(implementation.Shared.Client, format)
+					format = f.New("container", containerObj.Static.Group, containerObj.Static.Name, "")
+					obj.Remove(format)
 
-					format = objects.Format("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
-					obj.Remove(implementation.Shared.Client, format)
+					format = f.New("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
+					obj.Remove(format)
 
 					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PENDING_DELETE)
 					reconcile.ReconcileContainer(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
