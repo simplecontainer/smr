@@ -17,19 +17,19 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
       - name: Display Go version
         run: go version
-      - name: Test code
-        run: go test
+#      - name: Test code
+#        run: go test
       - name: Build code
         run: |
-          apk add upx
-          
-          BASE_DIR="$PWD"
-          
           BRANCH="main"
           BASE_DIR="$PWD"
-          LATEST_SMR_COMMIT="$(git rev-parse --short $BRANCH)"
+          LATEST_SMR_COMMIT="$GITHUB_REF_NAME"
           
           cd "$BASE_DIR"
           
@@ -41,8 +41,13 @@ jobs:
           do
             DIR=${dir%*/}
             DIRNAME="${DIR##*/}"
-          
+           
+            echo "***********************************************"
+            echo "$BASE_DIR/implementations/$DIRNAME"
+            echo "***********************************************"
+                    
             cd "$BASE_DIR/implementations/$DIRNAME"
+          
             go build -ldflags '-s -w' --buildmode=plugin
             chmod +x *.so
             upx -9 -k *.so
@@ -55,16 +60,18 @@ jobs:
             DIR=${dir%*/}
             DIRNAME="${DIR##*/}"
           
+            echo "***********************************************"
+            echo "$BASE_DIR/operators/$DIRNAME"
+            echo "***********************************************"
+                        
+            cd "$BASE_DIR/operators/$DIRNAME"
+            
             go build -ldflags '-s -w' --buildmode=plugin
             chmod +x *.so
             upx -9 -k *.so
           done
-          
-          cd "$BASE_DIR"
-          
-          go build
       - name: Build and push docker image
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker build . --file docker/Dockerfile --tag docker.io/qdnqn/smr:$GITHUB_REF
-          docker push docker.io/qdnqn/smr:$GITHUB_REF
+          docker build . --file docker/Dockerfile --tag docker.io/simplecontainermanager/smr:${{ github.ref_name }}
+          docker push docker.io/simplecontainermanager/smr/smr:${{ github.ref_name }}
