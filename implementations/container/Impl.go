@@ -27,6 +27,8 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
 
+	container.IsDockerRunning()
+
 	client, err := manager.GenerateHttpClient(mgr.Keys)
 
 	if err != nil {
