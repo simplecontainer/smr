@@ -9,7 +9,9 @@ BASE_DIR="$PWD"
 LATEST_SMR_COMMIT="$(git rev-parse --short $BRANCH)"
 
 cd "$BASE_DIR"
-go build -ldflags "-s -w"
+go build -ldflags '-s -w'
+chmod +x smr
+upx -9 -k smr
 
 for dir in implementations/*/
 do
@@ -23,9 +25,9 @@ do
     cd "$BASE_DIR/implementations/$DIRNAME"
     rm -rf *.so
 
-    go build -ldflags "-s -w" --buildmode=plugin
-    #chmod +x *.so
-    #upx -9 *.so
+    go build -ldflags '-s -w' --buildmode=plugin
+    chmod +x *.so
+    upx -9 -k *.so
 done
 
 cd "$BASE_DIR"
@@ -42,9 +44,10 @@ do
     cd "$BASE_DIR/operators/$DIRNAME"
     rm -rf *.so
 
-    go build -ldflags "-s -w" --buildmode=plugin
-    #chmod +x *.so
-    #upx -9 *.so
+
+    go build -ldflags '-s -w' --buildmode=plugin
+    chmod +x *.so
+    upx -9 -k *.so
 done
 
 cd "$BASE_DIR"

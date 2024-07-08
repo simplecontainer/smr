@@ -132,7 +132,9 @@ func GetPluginInstance(projectDir string, typ string, name string) (*plugin.Plug
 	var pluginInstance *plugin.Plugin
 	var err error
 
-	pluginInstance, err = plugin.Open(fmt.Sprintf("%s/%s/%s.so", projectDir, typ, name))
+	pluginPath := fmt.Sprintf("%s/%s/%s.so", projectDir, typ, name)
+
+	pluginInstance, err = plugin.Open(pluginPath)
 
 	return pluginInstance, err
 }
