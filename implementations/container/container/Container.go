@@ -240,11 +240,17 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 
 	resp := dockerContainer.ContainerCreateCreatedBody{}
 
+	unpackedEnvs, err := container.UnpackSecretsEnvs(httpClient, container.Static.Env)
+
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err = cli.ContainerCreate(ctx, &dockerContainer.Config{
 		Hostname:     container.Static.GeneratedName,
 		Labels:       container.GenerateLabels(),
 		Image:        container.Static.Image + ":" + container.Static.Tag,
-		Env:          container.UnpackSecretsEnvs(httpClient, container.Static.Env),
+		Env:          unpackedEnvs,
 		Entrypoint:   container.Static.Entrypoint,
 		Cmd:          container.Static.Command,
 		Tty:          false,

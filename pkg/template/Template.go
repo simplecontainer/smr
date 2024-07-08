@@ -23,7 +23,7 @@ func ParseTemplate(obj objects.ObjectInterface, retrieve map[string]string, root
 		err := obj.Find(formatFind)
 
 		if !obj.Exists() {
-			return nil, nil, err
+			return nil, nil, errors.New(fmt.Sprintf("object doesn't exists: %s", formatFind.ToString()))
 		}
 
 		dependencyMap = append(dependencyMap, formatFind)
