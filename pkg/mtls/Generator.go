@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/keys"
+	"log"
 	"math/big"
 	"net"
 	"time"
@@ -21,7 +23,7 @@ Taken and modified from the: https://gist.github.com/shaneutt/5e1995295cff6721c8
 func GenerateKeys(keys *keys.Keys, config *configuration.Configuration) error {
 	// set up our CA certificate
 	ca := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
+		SerialNumber: generateSerialNumber(keys),
 		Subject: pkix.Name{
 			Organization:  []string{"Simple container manager."},
 			Country:       []string{"BA"},
@@ -34,7 +36,7 @@ func GenerateKeys(keys *keys.Keys, config *configuration.Configuration) error {
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
 
@@ -69,13 +71,13 @@ func GenerateKeys(keys *keys.Keys, config *configuration.Configuration) error {
 
 	keys.CAPrivateKey = caPrivKeyPEM
 
-	keys.ServerPrivateKey, keys.ServerCertPem, err = generateCertPrivKeyPair(config, ca, caPrivKey)
+	keys.ServerPrivateKey, keys.ServerCertPem, err = generateCertPrivKeyPair(keys, config, ca, caPrivKey)
 
 	if err != nil {
 		return err
 	}
 
-	keys.ClientPrivateKey, keys.ClientCertPem, err = generateCertPrivKeyPair(config, ca, caPrivKey)
+	keys.ClientPrivateKey, keys.ClientCertPem, err = generateCertPrivKeyPair(keys, config, ca, caPrivKey)
 
 	if err != nil {
 		return err
@@ -84,9 +86,21 @@ func GenerateKeys(keys *keys.Keys, config *configuration.Configuration) error {
 	return nil
 }
 
-func generateCertPrivKeyPair(config *configuration.Configuration, ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*bytes.Buffer, *bytes.Buffer, error) {
+func generateCertPrivKeyPair(keys *keys.Keys, config *configuration.Configuration, ca *x509.Certificate, caPrivKey *rsa.PrivateKey) (*bytes.Buffer, *bytes.Buffer, error) {
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&certPrivKey.PublicKey)
+	if err != nil {
+		log.Fatalf("failed to marshal public key: %s", err)
+	}
+
+	SubjectKeyIdentifier := sha1.Sum(pubKeyBytes)
+
 	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
+		SerialNumber: generateSerialNumber(keys),
 		Subject: pkix.Name{
 			Organization:  []string{"Simple container manager."},
 			Country:       []string{"BA"},
@@ -99,14 +113,9 @@ func generateCertPrivKeyPair(config *configuration.Configuration, ca *x509.Certi
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
-		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		SubjectKeyId: SubjectKeyIdentifier[:],
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-	}
-
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return nil, nil, err
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
@@ -129,4 +138,9 @@ func generateCertPrivKeyPair(config *configuration.Configuration, ca *x509.Certi
 	})
 
 	return certPrivKeyPEM, certPEM, nil
+}
+
+func generateSerialNumber(keys *keys.Keys) *big.Int {
+	keys.SerialNumber += 1
+	return big.NewInt(keys.SerialNumber)
 }

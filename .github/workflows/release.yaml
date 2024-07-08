@@ -1,4 +1,4 @@
-name: Go
+name: Simplecontainer release
 
 on:
   push:
@@ -23,8 +23,8 @@ jobs:
           install-only: true
       - name: Display Go version
         run: go version
-#      - name: Test code
-#        run: go test
+      - name: Test code
+        run: go test
       - name: Build code
         run: |
           BRANCH="main"
@@ -75,3 +75,9 @@ jobs:
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
           docker build . --file docker/Dockerfile --tag docker.io/simplecontainermanager/smr:${{ github.ref_name }}
           docker push docker.io/simplecontainermanager/smr:${{ github.ref_name }}
+      - uses: ncipollo/release-action@v1
+        with:
+          body: "Automatically created - fill in accordingly"
+          allowUpdates: true
+          draft: true
+          tag: ${{ github.ref_name }}
