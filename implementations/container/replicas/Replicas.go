@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"go.uber.org/zap"
@@ -65,10 +66,10 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 		containerObj := container.NewContainerFromDefinition(shared.Manager.Config.Environment, name, containerDefinition)
 
 		for i, v := range containerObj.Runtime.Resources {
-			format := objects.Format("resource", containerObj.Static.Group, v.Identifier, v.Key)
+			format := f.New("resource", containerObj.Static.Group, v.Identifier, v.Key)
 
-			obj := objects.New()
-			err := obj.Find(shared.Client, format)
+			obj := objects.New(shared.Client)
+			err := obj.Find(format)
 
 			if err != nil {
 				logger.Log.Error("failed to get resources for the container")

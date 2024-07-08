@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/r3labs/diff/v3"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"net/http"
@@ -14,9 +15,12 @@ import (
 	"time"
 )
 
-func New() *Object {
+//go:generate mockgen -source=Interface.go -destination=mock/Interface.go
+
+func New(client *http.Client) *Object {
 	return &Object{
 		Changelog:        diff.Changelog{},
+		client:           client,
 		definition:       map[string]any{},
 		definitionString: "",
 		definitionByte:   make([]byte, 0),
@@ -39,9 +43,9 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.definitionByte
 }
 
-func (obj *Object) Add(client *http.Client, format FormatStructure, data string) error {
+func (obj *Object) Add(format *f.Format, data string) error {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/create/%s", format.ToString())
-	response := SendRequest(client, URL, "POST", map[string]string{"value": data})
+	response := SendRequest(obj.client, URL, "POST", map[string]string{"value": data})
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
 
@@ -52,9 +56,9 @@ func (obj *Object) Add(client *http.Client, format FormatStructure, data string)
 	}
 }
 
-func (obj *Object) Update(client *http.Client, format FormatStructure, data string) error {
+func (obj *Object) Update(format *f.Format, data string) error {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/update/%s", format.ToString())
-	response := SendRequest(client, URL, "PUT", map[string]string{"value": data})
+	response := SendRequest(obj.client, URL, "PUT", map[string]string{"value": data})
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", data))
 
@@ -65,9 +69,9 @@ func (obj *Object) Update(client *http.Client, format FormatStructure, data stri
 	}
 }
 
-func (obj *Object) Find(client *http.Client, format FormatStructure) error {
+func (obj *Object) Find(format *f.Format) error {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/get/%s", format.ToString())
-	response := SendRequest(client, URL, "GET", nil)
+	response := SendRequest(obj.client, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
@@ -105,11 +109,11 @@ func (obj *Object) Find(client *http.Client, format FormatStructure) error {
 	return nil
 }
 
-func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, error) {
+func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 	var objects = make(map[string]*Object)
 
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/prefix/%s", format.ToString())
-	response := SendRequest(client, URL, "GET", nil)
+	response := SendRequest(obj.client, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
 
@@ -133,19 +137,19 @@ func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, 
 					return nil, err
 				}
 
-				obj := New()
-				obj.definition = data
-				obj.definitionByte = b64decoded
+				objMany := New(obj.client)
+				objMany.definition = data
+				objMany.definitionByte = b64decoded
 
-				objects[key] = obj
+				objects[key] = objMany
 			} else {
 				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
 
-				obj := New()
-				obj.definitionString = string(b64decoded)
-				obj.definitionByte = b64decoded
+				objMany := New(obj.client)
+				objMany.definitionString = string(b64decoded)
+				objMany.definitionByte = b64decoded
 
-				objects[key] = obj
+				objects[key] = objMany
 			}
 		}
 	} else {
@@ -155,9 +159,9 @@ func FindMany(client *http.Client, format FormatStructure) (map[string]*Object, 
 	return objects, nil
 }
 
-func (obj *Object) Remove(client *http.Client, format FormatStructure) (bool, error) {
+func (obj *Object) Remove(format *f.Format) (bool, error) {
 	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/%s", format.ToString())
-	response := SendRequest(client, URL, "DELETE", nil)
+	response := SendRequest(obj.client, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/utils"
 	"strings"
 	"sync"
@@ -50,10 +50,10 @@ type Runtime struct {
 	FoundRunning       bool
 	FirstObserved      bool
 	Ready              bool
-	Configuration      map[string]any
+	Configuration      map[string]string
 	Resources          []Resource
 	Owner              Owner
-	ObjectDependencies []objects.FormatStructure
+	ObjectDependencies []*f.Format
 }
 
 type Owner struct {
@@ -75,7 +75,7 @@ type PortMappings struct {
 type Resource struct {
 	Identifier string
 	Key        string
-	Data       map[string]any
+	Data       map[string]string
 	MountPoint string
 }
 

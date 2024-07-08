@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/implementations/container/shared"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
@@ -72,8 +73,10 @@ OUTER:
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
-	format := objects.Format(KIND, "", "", "")
-	objs, err := objects.FindMany(request.Client, format)
+	format := f.New(KIND, "", "", "")
+
+	obj := objects.New(request.Client)
+	objs, err := obj.FindMany(format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
@@ -112,10 +115,10 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 		}
 	}
 
-	format := objects.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
+	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
-	obj := objects.New()
-	err := obj.Find(request.Client, format)
+	obj := objects.New(request.Client)
+	err := obj.Find(format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{
