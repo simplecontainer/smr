@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"os"
 )
 
@@ -22,7 +22,7 @@ func Delete() {
 		},
 		functions: []func(*manager.Manager, []string){
 			func(mgr *manager.Manager, args []string) {
-				if utils.Confirm(fmt.Sprintf("Are you sure? Delete project %s is irreversible?", mgr.Config.Environment.PROJECT)) {
+				if helpers.Confirm(fmt.Sprintf("Are you sure? Delete project %s is irreversible?", mgr.Config.Environment.PROJECT)) {
 					bootstrap.DeleteProject(os.Args[2], mgr.Config)
 				}
 
