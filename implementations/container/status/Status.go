@@ -1,10 +1,10 @@
 package status
 
 import (
-	"fmt"
 	"github.com/hmdsefi/gograph"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
+	"time"
 )
 
 func NewStatus() *Status {
@@ -98,7 +98,6 @@ func (status *Status) CreateGraph() {
 }
 
 func (status *Status) SetState(state string) {
-	fmt.Println(fmt.Sprintf("Setting state to the %s", state))
 	status.State = state
 }
 
@@ -117,6 +116,7 @@ func (status *Status) TransitionState(container string, destination string) bool
 				)
 
 				status.State = destination
+				status.LastUpdate = time.Now()
 			}
 		}
 
