@@ -6,8 +6,8 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"go.uber.org/zap"
 	"time"
 )
@@ -144,7 +144,10 @@ func SolveDepends(shared *shared.Shared, depend *Dependency, c chan State) {
 }
 
 func Depends(shared *shared.Shared, depend *Dependency, ch chan State) {
-	group, id := utils.ExtractGroupAndId(depend.Name)
+	format := f.NewFromString(depend.Name)
+
+	group := format.Kind
+	id := format.Group
 
 	logger.Log.Info("trying to check if depends solved", zap.String("group", group), zap.String("name", id))
 

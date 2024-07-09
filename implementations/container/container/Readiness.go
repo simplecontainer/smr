@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/implementations/container/status"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -138,8 +138,8 @@ func (container *Container) SolveReadiness(client *http.Client, readiness *Readi
 func (container *Container) IsReady(client *http.Client, host string, readiness *Readiness, ch chan ReadinessState) {
 	var err error
 
-	group, _ := utils.ExtractGroupAndId(readiness.Name)
-	URL := fmt.Sprintf("%s/%s/%s", host, group, readiness.Operator)
+	format := f.NewFromString(readiness.Name)
+	URL := fmt.Sprintf("%s/%s/%s", host, format.Kind, readiness.Operator)
 
 	jsonBytes, err := json.Marshal(readiness.BodyUnpack)
 

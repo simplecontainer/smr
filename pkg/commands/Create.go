@@ -31,11 +31,21 @@ func Create() {
 				}
 
 				var out io.Writer
-				out, err = os.Open(fmt.Sprintf("%s/%s/%s", mgr.Config.Environment.HOMEDIR, static.SMR, os.Args[2]))
+				out, err = os.OpenFile(fmt.Sprintf("%s/%s/%s/%s/config.yaml", mgr.Config.Environment.HOMEDIR, static.SMR, os.Args[2], static.CONFIGDIR), (os.O_WRONLY | os.O_CREATE), 0644)
 
 				if err != nil {
 					panic(err)
 				}
+
+				target := ""
+				if os.Getenv("ENVIRONMENT") != "" {
+					target = os.Getenv("ENVIRONMENT")
+				} else {
+					target = "development"
+				}
+
+				mgr.Config.Target = target
+				mgr.Config.Root = mgr.Config.Environment.PROJECTDIR
 
 				err = startup.Save(mgr.Config, out)
 

@@ -5,7 +5,6 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"strings"
 	"sync"
 )
@@ -123,7 +122,10 @@ type ByDepenendecies []*Container
 func (d ByDepenendecies) Len() int { return len(d) }
 func (d ByDepenendecies) Less(i, j int) bool {
 	for _, deps := range d[i].Static.Definition.Spec.Container.Dependencies {
-		group, id := utils.ExtractGroupAndId(deps.Name)
+		format := f.NewFromString(deps.Name)
+
+		group := format.Kind
+		id := format.Group
 
 		if id == "*" {
 			if strings.Contains(d[j].Static.GeneratedNameNoProject, group) {
