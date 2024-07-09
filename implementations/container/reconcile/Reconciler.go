@@ -3,17 +3,17 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"github.com/simplecontainer/smr/implementations/common/interfaces"
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/dependency"
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"go.uber.org/zap"
 	"time"
 )
 
-func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watcher.Container {
+func NewWatcher(containerObj *container.Container, mgr interfaces.ManagerInterface) *watcher.Container {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
@@ -87,7 +87,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		// Fix GitOps reconcile!!!!!!!!
 		//container.SetOwner(c.Request.Header.Get("Owner"))
 		if containerObj.Prepare(shared.Client) {
-			_, err := containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
+			_, err := containerObj.Run(shared.Manager.GetConfig().Environment, shared.Client, shared.DnsCache)
 
 			if err == nil {
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_RUNNING)

@@ -54,9 +54,10 @@ func main() {
 		logLevel = static.DEFAULT_LOG_LEVEL
 	}
 
-	logger.Log.Info(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
+	fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
 
 	conf := configuration.NewConfig()
+	conf.Environment = startup.GetEnvironmentInfo()
 	startup.ReadFlags(conf)
 
 	var db *badger.DB
@@ -66,14 +67,25 @@ func main() {
 	commands.PreloadCommands()
 	commands.Run(api.Manager)
 
-	if viper.GetBool("daemon") {
-		startup.Load(conf, api.Config.Environment.PROJECTDIR)
+	configFile, err := os.Open(fmt.Sprintf("%s/%s/config.yaml", conf.Environment.PROJECTDIR, static.CONFIGDIR))
 
+	if err != nil {
+		panic(err)
+	}
+
+	// Owerwritte configuration from the YAML
+	conf, err = startup.Load(configFile)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if viper.GetBool("daemon") {
 		mdns.HandleFunc(".", api.HandleDns)
 
-		// start dns server in go routine to detach from main
 		port := 53
 		server := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
+
 		go server.ListenAndServe()
 		defer server.Shutdown()
 
