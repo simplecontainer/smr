@@ -69,8 +69,6 @@ jobs:
             cd "$BASE_DIR/operators/$DIRNAME"
 
             go build -ldflags '-s -w' --buildmode=plugin
-            chmod +x *.so
-            upx -9 -k *.so
           done
 
 
