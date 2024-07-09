@@ -24,7 +24,7 @@ jobs:
       - name: Display Go version
         run: go version
       - name: Test code
-        run: go test
+        run: go test ./...
       - name: Build code
         run: |
           BRANCH="main"
