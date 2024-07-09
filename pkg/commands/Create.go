@@ -1,9 +1,13 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/startup"
+	"github.com/simplecontainer/smr/pkg/static"
+	"io"
 	"os"
 )
 
@@ -20,13 +24,28 @@ func Create() {
 		},
 		functions: []func(*manager.Manager, []string){
 			func(mgr *manager.Manager, args []string) {
-				logger.Log.Info("created new project")
+				_, err := bootstrap.CreateProject(os.Args[2], mgr.Config)
+
+				if err != nil {
+					panic(err)
+				}
+
+				var out io.Writer
+				out, err = os.Open(fmt.Sprintf("%s/%s/%s", mgr.Config.Environment.HOMEDIR, static.SMR, os.Args[2]))
+
+				if err != nil {
+					panic(err)
+				}
+
+				err = startup.Save(mgr.Config, out)
+
+				if err != nil {
+					panic(err)
+				}
 			},
 		},
 		depends_on: []func(*manager.Manager, []string){
-			func(mgr *manager.Manager, args []string) {
-				bootstrap.CreateProject(args[2], mgr.Config)
-			},
+			func(mgr *manager.Manager, args []string) {},
 		},
 	})
 }

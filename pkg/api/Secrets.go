@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"net/http"
@@ -17,10 +17,10 @@ import (
 //	@Tags			database
 //	@Produce		json
 //	@Param			key	path		string	true	"RandomKey"
-//	@Success		200	{object}	database.Response
-//	@Failure		400	{object}	database.Response
-//	@Failure		404	{object}	database.Response
-//	@Failure		500	{object}	database.Response
+//	@Success		200	{object}	httpcontract.ResponseOperator
+//	@Failure		400	{object}	httpcontract.ResponseOperator
+//	@Failure		404	{object}	httpcontract.ResponseOperator
+//	@Failure		500	{object}	httpcontract.ResponseOperator
 //	@Router			/database/{key} [get]
 func (api *Api) SecretsGet(c *gin.Context) {
 	err := api.Badger.View(func(txn *badger.Txn) error {
@@ -28,7 +28,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 
 		item, err := txn.Get([]byte(c.Param("secret")))
 		if err != nil {
-			c.JSON(http.StatusNotFound, database.Response{
+			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 				Explanation:      "secret not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -41,7 +41,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 
 		value, err = item.ValueCopy(nil)
 		if err != nil {
-			c.JSON(http.StatusNotFound, database.Response{
+			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 				Explanation:      "secret not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -52,7 +52,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 			return nil
 		}
 
-		c.JSON(http.StatusOK, database.Response{
+		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
 			Explanation:      "found secret in the secret store",
 			ErrorExplanation: "",
 			Error:            false,
@@ -68,7 +68,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 	if err != nil {
 		logger.Log.Error(err.Error())
 
-		c.JSON(http.StatusNotFound, database.Response{
+		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 			Explanation:      "failed to read from the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -87,10 +87,10 @@ func (api *Api) SecretsGet(c *gin.Context) {
 //	@Produce		json
 //	@Param			key		path		string	true	"RandomKey"
 //	@Param			value	body		Kv		true	"value"
-//	@Success		200		{object}	database.Response
-//	@Failure		400		{object}	database.Response
-//	@Failure		404		{object}	database.Response
-//	@Failure		500		{object}	database.Response
+//	@Success		200		{object}	httpcontract.ResponseOperator
+//	@Failure		400		{object}	httpcontract.ResponseOperator
+//	@Failure		404		{object}	httpcontract.ResponseOperator
+//	@Failure		500		{object}	httpcontract.ResponseOperator
 //	@Router			/database/{key} [post]
 func (api *Api) SecretsSet(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
@@ -99,7 +99,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 		valueSent := Kv{}
 
 		if err = json.Unmarshal(jsonData, &valueSent); err != nil {
-			c.JSON(http.StatusNotFound, database.Response{
+			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 				Explanation:      "failed to store secret in the secret store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -116,7 +116,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 		})
 
 		if err != nil {
-			c.JSON(http.StatusNotFound, database.Response{
+			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 				Explanation:      "failed to store secret in the secret store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -124,7 +124,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 				Data:             nil,
 			})
 		} else {
-			c.JSON(http.StatusOK, database.Response{
+			c.JSON(http.StatusOK, httpcontract.ResponseOperator{
 				Explanation:      "secret stored in the secret store",
 				ErrorExplanation: "",
 				Error:            false,
@@ -135,7 +135,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 			})
 		}
 	} else {
-		c.JSON(http.StatusNotFound, database.Response{
+		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 			Explanation:      "failed to store secret in the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -151,10 +151,10 @@ func (api *Api) SecretsSet(c *gin.Context) {
 //	@Description	get all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	database.Response
-//	@Failure		400	{object}	database.Response
-//	@Failure		404	{object}	database.Response
-//	@Failure		500	{object}	database.Response
+//	@Success		200	{object}	httpcontract.ResponseOperator
+//	@Failure		400	{object}	httpcontract.ResponseOperator
+//	@Failure		404	{object}	httpcontract.ResponseOperator
+//	@Failure		500	{object}	httpcontract.ResponseOperator
 //	@Router			/database/keys [get]
 func (api *Api) SecretsGetKeys(c *gin.Context) {
 	var keys []string
@@ -174,7 +174,7 @@ func (api *Api) SecretsGetKeys(c *gin.Context) {
 	})
 
 	if err == nil {
-		c.JSON(http.StatusOK, database.Response{
+		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
 			Explanation:      "succesfully retrieved secrets from the secret store",
 			ErrorExplanation: "",
 			Error:            false,
@@ -184,7 +184,7 @@ func (api *Api) SecretsGetKeys(c *gin.Context) {
 			},
 		})
 	} else {
-		c.JSON(http.StatusNotFound, database.Response{
+		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
 			Explanation:      "failed to retrieve secrets from the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
