@@ -36,8 +36,6 @@ jobs:
           cd "$BASE_DIR"
 
           go build -ldflags '-s -w'
-          chmod +x smr
-          upx -9 -k smr
 
           for dir in implementations/*/
           do
@@ -51,8 +49,6 @@ jobs:
             cd "$BASE_DIR/implementations/$DIRNAME"
 
             go build -ldflags '-s -w' --buildmode=plugin
-            chmod +x *.so
-            upx -9 -k *.so
           done
 
           cd "$BASE_DIR"
