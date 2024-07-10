@@ -559,7 +559,7 @@ func (container *Container) Exec(command []string) ExecResult {
 		}()
 
 		select {
-		case err := <-outputDone:
+		case err = <-outputDone:
 			if err != nil {
 				return execResult
 			}
@@ -573,6 +573,7 @@ func (container *Container) Exec(command []string) ExecResult {
 		if err != nil {
 			return execResult
 		}
+
 		stderr, err := ioutil.ReadAll(&stderrBuffer)
 		if err != nil {
 			return execResult

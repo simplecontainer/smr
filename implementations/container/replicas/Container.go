@@ -24,9 +24,13 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
 			name := containerDefinition.Meta.Name
-			container := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
+			containerObj, err := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
 
-			existingContainer := shared.Registry.Find(container.Static.Group, name)
+			if err != nil {
+				return []string{}, []string{}, err
+			}
+
+			existingContainer := shared.Registry.Find(containerObj.Static.Group, name)
 
 			if existingContainer != nil {
 				existingContainer.Status.TransitionState(existingContainer.Static.GeneratedName, status.STATUS_PENDING_DELETE)
@@ -39,19 +43,23 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
 		name := containerDefinition.Meta.Name
-		container := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
+		containerObj, err := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
 
-		for i, v := range container.Runtime.Resources {
-			format := f.New("resource", container.Static.Group, v.Identifier, v.Key)
+		if err != nil {
+			return []string{}, []string{}, err
+		}
+
+		for i, v := range containerObj.Runtime.Resources {
+			format := f.New("resource", containerObj.Static.Group, v.Identifier, v.Key)
 
 			obj := objects.New(shared.Client)
-			err := obj.Find(format)
+			err = obj.Find(format)
 
 			if err != nil {
 				logger.Log.Error("failed to get resources for the container")
 			}
 
-			container.Runtime.Resources[i].Data[v.Key] = obj.GetDefinitionString()
+			containerObj.Runtime.Resources[i].Data[v.Key] = obj.GetDefinitionString()
 		}
 
 		logger.Log.Info("retrieved resources for container", zap.String("container", name))
@@ -61,7 +69,7 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 		*/
 
 		logger.Log.Info("checking if pre-check conditions ready before add/update container in registry", zap.String("container", name))
-		existingContainer := shared.Registry.Find(container.Static.Group, name)
+		existingContainer := shared.Registry.Find(containerObj.Static.Group, name)
 
 		if existingContainer != nil {
 			logger.Log.Info("container already existing on the server", zap.String("container", name))
@@ -83,12 +91,11 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 			}
 
 			if onlyReplicaChange {
-				logger.Log.Info("skipped recreating container since only scale up is triggered", zap.String("container", name), zap.String("group", replicas.Group))
 				continue
 			}
 		}
 
-		shared.Registry.AddOrUpdate(replicas.Group, name, mgr.Config.Environment.PROJECT, container)
+		shared.Registry.AddOrUpdate(replicas.Group, name, mgr.Config.Environment.PROJECT, containerObj)
 		logger.Log.Info("added container to registry", zap.String("container", name), zap.String("group", replicas.Group))
 
 		groups = append(groups, replicas.Group)

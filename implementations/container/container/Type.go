@@ -102,16 +102,6 @@ type Readiness struct {
 	Cancel     context.CancelFunc `json:"-"`
 }
 
-type ReadinessState struct {
-	Name       string
-	Success    bool
-	Missing    bool
-	Timeout    bool
-	Error      error
-	TryToSolve bool
-	Readiness  *Readiness
-}
-
 type ReadinessResult struct {
 	Data string
 }

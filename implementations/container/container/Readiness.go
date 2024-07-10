@@ -48,7 +48,7 @@ func NewReadinessFromDefinition(client *http.Client, readiness v1.Readiness) (*R
 func (container *Container) Ready(client *http.Client) (bool, error) {
 	container.Status.TransitionState(container.Static.GeneratedName, status.STATUS_READINESS)
 
-	for k, ready := range container.Static.Definition.Spec.Container.Readiness {
+	for _, ready := range container.Static.Definition.Spec.Container.Readiness {
 		readiness, err := NewReadinessFromDefinition(client, ready)
 
 		if err != nil {
@@ -56,7 +56,7 @@ func (container *Container) Ready(client *http.Client) (bool, error) {
 		}
 
 		readiness.Function = func() error {
-			return SolveReadiness(client, &container.Static.Readiness[k])
+			return SolveReadiness(client, container, readiness)
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), readiness.Ctx)
@@ -76,7 +76,11 @@ func (container *Container) Ready(client *http.Client) (bool, error) {
 	return true, nil
 }
 
-func SolveReadiness(client *http.Client, readiness *Readiness) error {
+func SolveReadiness(client *http.Client, container *Container, readiness *Readiness) error {
+	if _, err := container.Get(); err != nil {
+		readiness.Cancel()
+	}
+
 	format := f.NewFromString(readiness.Name)
 	URL := fmt.Sprintf("%s/%s/%s", "https://smr-agent:1443/api/v1/operators", format.Kind, readiness.Operator)
 
