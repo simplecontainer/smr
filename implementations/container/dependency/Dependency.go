@@ -36,7 +36,7 @@ func Ready(shared *shared.Shared, group string, name string, dependsOn []v1.Depe
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
-			return SolveDepends(shared, dependency)
+			return SolveDepends(shared, group, name, dependency)
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), dependency.Ctx)
@@ -70,13 +70,19 @@ func Ready(shared *shared.Shared, group string, name string, dependsOn []v1.Depe
 	return true, nil
 }
 
-func SolveDepends(shared *shared.Shared, depend *Dependency) error {
+func SolveDepends(shared *shared.Shared, myGroup string, myName string, depend *Dependency) error {
 	format := f.NewFromString(depend.Name)
 
-	group := format.Kind
-	id := format.Group
+	myContainer := shared.Registry.Find(myGroup, myName)
 
-	container := shared.Registry.Find(group, id)
+	if myContainer == nil {
+		depend.Cancel()
+	}
+
+	otherGroup := format.Kind
+	otherName := format.Group
+
+	container := shared.Registry.Find(otherGroup, otherName)
 
 	if container == nil {
 		return errors.New("container not found")

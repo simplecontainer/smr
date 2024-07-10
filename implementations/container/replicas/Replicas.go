@@ -61,7 +61,11 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 			}
 		}
 
-		containerObj := container.NewContainerFromDefinition(shared.Manager.Config.Environment, name, containerDefinition)
+		containerObj, err := container.NewContainerFromDefinition(shared.Manager.Config.Environment, name, containerDefinition)
+
+		if err != nil {
+			return []string{}, []string{}, err
+		}
 
 		if existingContainer == nil {
 			shared.Registry.AddOrUpdate(replicas.Group, name, shared.Manager.Config.Environment.PROJECT, containerObj)
