@@ -3,7 +3,6 @@ package dependency
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
@@ -74,7 +73,11 @@ func Ready(shared *shared.Shared, group string, name string, dependsOn []v1.Depe
 func SolveDepends(shared *shared.Shared, myGroup string, myName string, depend *Dependency) error {
 	format := f.NewFromString(depend.Name)
 
-	fmt.Println("check deps")
+	myContainer := shared.Registry.Find(myGroup, myName)
+
+	if myContainer == nil {
+		depend.Cancel()
+	}
 
 	otherGroup := format.Kind
 	otherName := format.Group
@@ -82,7 +85,6 @@ func SolveDepends(shared *shared.Shared, myGroup string, myName string, depend *
 	container := shared.Registry.Find(otherGroup, otherName)
 
 	if container == nil {
-		depend.Cancel()
 		return errors.New("container not found")
 	} else {
 		if container.Status.LastReadiness {
