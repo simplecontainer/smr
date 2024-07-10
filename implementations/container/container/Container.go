@@ -244,7 +244,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 
 	resp := dockerContainer.ContainerCreateCreatedBody{}
 
-	unpackedEnvs, err := container.UnpackSecretsEnvs(httpClient, container.Static.Env)
+	unpackedEnvs, err := UnpackSecretsEnvs(httpClient, container.Static.Env)
 
 	if err != nil {
 		return nil, err
