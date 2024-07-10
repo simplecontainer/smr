@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -14,9 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -24,13 +21,12 @@ import (
 	"time"
 )
 
-func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.Container) *Container {
+func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.Container) (*Container, error) {
 	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	var definitionCopy v1.Container
@@ -38,8 +34,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 	err = json.Unmarshal(definitionEncoded, &definitionCopy)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	if definition.Spec.Container.Tag == "" {
@@ -95,7 +90,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 	container.Runtime.Configuration["image"] = container.Static.Image
 	container.Runtime.Configuration["tag"] = container.Static.Tag
 
-	return container
+	return container, nil
 }
 
 func Existing(name string) *Container {
@@ -274,11 +269,9 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		return nil, err
 	}
 
-	logger.Log.Info("starting container", zap.String("container", container.Static.GeneratedName))
 	if err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
-	logger.Log.Info("started container", zap.String("container", container.Static.GeneratedName))
 
 	data, err := cli.ContainerInspect(ctx, resp.ID)
 
@@ -311,13 +304,9 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		if agent != nil {
 			networks := container.GetNetworkInfoTS()
 			for _, nid := range networks {
-				logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
-
 				if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
 					err = container.ConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId)
-					if err == nil {
-						logger.Log.Info(fmt.Sprintf("smr-agent attached to the network %s", nid.NetworkId))
-					} else {
+					if err != nil {
 						container.Stop()
 						container.Delete()
 						return c, err
@@ -337,8 +326,6 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 						container.Stop()
 						container.Delete()
 						return c, err
-					} else {
-						logger.Log.Info(fmt.Sprintf("container %s attached to the network of the agent %s", container.Static.GeneratedName, nid.NetworkId))
 					}
 
 					break
@@ -347,7 +334,6 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 
 			return container.Get()
 		} else {
-			logger.Log.Error(fmt.Sprintf("smr-agent not found"))
 			container.Stop()
 			container.Delete()
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
@@ -376,7 +362,7 @@ func (container *Container) Get() (*types.Container, error) {
 	if c := container.self(containers); c != nil {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
-		if c != nil && c.State == "running" {
+		if c.State == "running" {
 			for _, dnetw := range data.NetworkSettings.Networks {
 				netwInspect, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
 					Scope:   "",
