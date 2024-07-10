@@ -160,7 +160,14 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 }
 
 func (obj *Object) Remove(format *f.Format) (bool, error) {
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/%s", format.ToString())
+	prefix := format.ToString()
+
+	if !format.Full() {
+		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
+		prefix += "."
+	}
+
+	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/%s", prefix)
 	response := SendRequest(obj.client, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))

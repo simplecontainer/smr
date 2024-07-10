@@ -9,7 +9,7 @@ import (
 )
 
 func (container *Container) ConnectToTheSameNetwork(containerId string, networkId string) error {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {

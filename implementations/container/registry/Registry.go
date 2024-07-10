@@ -6,6 +6,7 @@ import (
 )
 
 func (registry *Registry) AddOrUpdate(group string, name string, project string, containerAddr *container.Container) {
+	registry.ContainersLock.Lock()
 	if registry.Containers[group] == nil {
 		tmp := make(map[string]*container.Container)
 		tmp[name] = containerAddr
@@ -14,10 +15,14 @@ func (registry *Registry) AddOrUpdate(group string, name string, project string,
 	} else {
 		registry.Containers[group][name] = containerAddr
 	}
+
+	registry.ContainersLock.Unlock()
 }
 
 func (registry *Registry) Remove(group string, name string) bool {
+	registry.ContainersLock.Lock()
 	if registry.Containers[group] == nil {
+		registry.ContainersLock.Unlock()
 		return true
 	} else {
 		delete(registry.Containers[group], name)
@@ -26,18 +31,23 @@ func (registry *Registry) Remove(group string, name string) bool {
 			delete(registry.Containers, group)
 		}
 
+		registry.ContainersLock.Unlock()
 		return true
 	}
 }
 
 func (registry *Registry) Find(group string, name string) *container.Container {
+	registry.ContainersLock.RLock()
 	if registry.Containers[group] != nil {
 		if registry.Containers[group][name] != nil {
+			registry.ContainersLock.RUnlock()
 			return registry.Containers[group][name]
 		} else {
+			registry.ContainersLock.RUnlock()
 			return nil
 		}
 	} else {
+		registry.ContainersLock.RUnlock()
 		return nil
 	}
 }

@@ -19,10 +19,10 @@ func (api *Api) Ps(c *gin.Context) {
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, result)
+			return
 		}
 
 		json.Unmarshal(data, &result)
-
 		c.JSON(http.StatusOK, result)
 	} else {
 		result := make(map[string]interface{})
