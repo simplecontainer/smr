@@ -20,10 +20,10 @@ func New(elements ...string) *Format {
 func NewFromString(f string) *Format {
 	elements, nonEmptyCount := BuildElements(strings.Split(f, "."))
 	format := &Format{
-		Kind:       elements[0],
-		Group:      elements[1],
-		Identifier: elements[2],
-		Key:        elements[3],
+		Kind:       strings.TrimSpace(elements[0]),
+		Group:      strings.TrimSpace(elements[1]),
+		Identifier: strings.TrimSpace(elements[2]),
+		Key:        strings.TrimSpace(elements[3]),
 		Elems:      nonEmptyCount,
 	}
 
