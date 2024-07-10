@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func (container *Container) UnpackSecretsEnvs(client *http.Client, envs []string) ([]string, error) {
+func UnpackSecretsEnvs(client *http.Client, envs []string) ([]string, error) {
 	envsParsed := make([]string, 0)
 	obj := objects.New(client)
 
@@ -25,7 +25,7 @@ func (container *Container) UnpackSecretsEnvs(client *http.Client, envs []string
 	return envsParsed, nil
 }
 
-func (container *Container) UnpackSecretsResources(client *http.Client, resource string) string {
+func UnpackSecretsResources(client *http.Client, resource string) string {
 	obj := objects.New(client)
 	resourceParsed, err := template.ParseSecretTemplate(obj, resource)
 

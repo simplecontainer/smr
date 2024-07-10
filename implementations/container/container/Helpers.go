@@ -21,7 +21,7 @@ func (container *Container) mappingToMounts(client *http.Client, environment *co
 			log.Fatal(err)
 		}
 
-		if _, err := tmpFile.WriteString(container.UnpackSecretsResources(client, v.Data[v.Key])); err != nil {
+		if _, err := tmpFile.WriteString(UnpackSecretsResources(client, v.Data[v.Key])); err != nil {
 			log.Fatal(err)
 		}
 
