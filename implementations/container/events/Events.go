@@ -32,7 +32,12 @@ func Event(shared *shared.Shared, event *hub.Event) {
 		return
 	}
 
-	c := container.Get()
+	c, err := container.Get()
+
+	if err != nil {
+		return
+	}
+
 	managed := false
 
 	// only manage smr created containers, others are left alone to live and die in peace

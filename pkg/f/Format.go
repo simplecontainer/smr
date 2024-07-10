@@ -5,12 +5,26 @@ import (
 	"strings"
 )
 
-func New(kind string, group string, identifier string, key string) *Format {
+func New(elements ...string) *Format {
+	builder := ""
+
+	for _, member := range elements {
+		builder += member
+		builder += "."
+	}
+
+	builder = strings.TrimSuffix(builder, ".")
+	return NewFromString(builder)
+}
+
+func NewFromString(f string) *Format {
+	elements, nonEmptyCount := BuildElements(strings.Split(f, "."))
 	format := &Format{
-		Kind:       strings.TrimSpace(kind),
-		Group:      strings.TrimSpace(group),
-		Identifier: strings.TrimSpace(identifier),
-		Key:        strings.TrimSpace(key),
+		Kind:       elements[0],
+		Group:      elements[1],
+		Identifier: elements[2],
+		Key:        elements[3],
+		Elems:      nonEmptyCount,
 	}
 
 	if format.IsValid() {
@@ -20,31 +34,25 @@ func New(kind string, group string, identifier string, key string) *Format {
 	}
 }
 
-func NewFromString(f string) *Format {
-	elems := strings.Split(f, ".")
-	format := &Format{}
+func BuildElements(splitted []string) ([]string, int) {
+	elements := make([]string, 4)
 
-	if len(elems) > 0 {
-		format.Kind = strings.TrimSpace(elems[0])
+	lengthSplitted := len(splitted)
+	nonEmptyCount := 0
+
+	for k, _ := range elements {
+		if k < lengthSplitted {
+			elements[k] = splitted[k]
+
+			if splitted[k] != "" {
+				nonEmptyCount += 1
+			}
+		} else {
+			elements[k] = ""
+		}
 	}
 
-	if len(elems) > 1 {
-		format.Group = strings.TrimSpace(elems[1])
-	}
-
-	if len(elems) > 2 {
-		format.Identifier = strings.TrimSpace(elems[2])
-	}
-
-	if len(elems) > 3 {
-		format.Key = strings.TrimSpace(elems[3])
-	}
-
-	if format.IsValid() {
-		return format
-	} else {
-		return &Format{}
-	}
+	return elements, nonEmptyCount
 }
 
 func (format *Format) IsValid() bool {
@@ -57,6 +65,10 @@ func (format *Format) IsValid() bool {
 	}
 
 	return true
+}
+
+func (format *Format) Full() bool {
+	return format.Elems == 4
 }
 
 func (format *Format) ToString() string {

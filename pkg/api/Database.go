@@ -184,8 +184,8 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 
 	if err == nil {
 		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
-			Explanation:      "failed to get value from the key-value store",
-			ErrorExplanation: err.Error(),
+			Explanation:      "keys found",
+			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
 			Data: map[string]any{

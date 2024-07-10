@@ -205,7 +205,10 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 	err = obj.Find(format)
 
 	if obj.Exists() {
-		groups, names, err := GetReplicaNamesAndGroups(implementation.Shared, *containersDefinition)
+		var groups []string
+		var names []string
+
+		groups, names, err = GetReplicaNamesAndGroups(implementation.Shared, *containersDefinition)
 
 		if err == nil {
 			if len(groups) > 0 {
@@ -256,7 +259,9 @@ func FetchContainersFromRegistry(registry *registry.Registry, groups []string, n
 	var order []*container.Container
 
 	for i, _ := range names {
-		order = append(order, registry.Containers[groups[i]][names[i]])
+		if registry.Containers[groups[i]][names[i]] != nil {
+			order = append(order, registry.Containers[groups[i]][names[i]])
+		}
 	}
 
 	return order

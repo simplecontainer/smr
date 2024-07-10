@@ -36,7 +36,7 @@ func (container *Container) UnpackSecretsResources(client *http.Client, resource
 	return resourceParsed
 }
 
-func (container *Container) UnpackSecretsReadiness(client *http.Client, body map[string]string) map[string]string {
+func UnpackSecretsReadiness(client *http.Client, body map[string]string) (map[string]string, error) {
 	bodyParsed := make(map[string]string, 0)
 	obj := objects.New(client)
 
@@ -44,11 +44,11 @@ func (container *Container) UnpackSecretsReadiness(client *http.Client, body map
 		parsed, err := template.ParseSecretTemplate(obj, v)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			return nil, err
 		}
 
 		bodyParsed[k] = parsed
 	}
 
-	return bodyParsed
+	return bodyParsed, nil
 }

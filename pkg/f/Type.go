@@ -5,4 +5,5 @@ type Format struct {
 	Group      string
 	Identifier string
 	Key        string
+	Elems      int
 }

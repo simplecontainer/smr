@@ -95,6 +95,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(readinessReady, pendingDelete)
 	status.StateMachine.AddEdge(readinesSolving, pendingDelete)
 	status.StateMachine.AddEdge(running, pendingDelete)
+	status.StateMachine.AddEdge(invalid_configuration, pendingDelete)
 }
 
 func (status *Status) SetState(state string) {

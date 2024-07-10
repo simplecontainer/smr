@@ -97,6 +97,7 @@ type Readiness struct {
 	Body       map[string]string
 	Solved     bool
 	BodyUnpack map[string]string  `json:"-"`
+	Function   func() error       `json:"-"`
 	Ctx        context.Context    `json:"-"`
 	Cancel     context.CancelFunc `json:"-"`
 }

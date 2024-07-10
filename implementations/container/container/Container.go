@@ -207,7 +207,11 @@ func (container *Container) SetOwner(owner string) {
 }
 
 func (container *Container) Run(environment *configuration.Environment, client *http.Client, dnsCache *dns.Records) (*types.Container, error) {
-	c := container.Get()
+	c, err := container.Get()
+
+	if err != nil {
+		return nil, err
+	}
 
 	if c == nil {
 		return container.run(c, environment, client, dnsCache)
@@ -341,7 +345,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 				}
 			}
 
-			return container.Get(), nil
+			return container.Get()
 		} else {
 			logger.Log.Error(fmt.Sprintf("smr-agent not found"))
 			container.Stop()
@@ -349,11 +353,11 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		return container.Get(), nil
+		return container.Get()
 	}
 }
 
-func (container *Container) Get() *types.Container {
+func (container *Container) Get() (*types.Container, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -395,9 +399,9 @@ func (container *Container) Get() *types.Container {
 			container.Runtime.State = data.State.Status
 		}
 
-		return c
+		return c, nil
 	} else {
-		return nil
+		return nil, errors.New("container not found")
 	}
 }
 
@@ -425,7 +429,7 @@ func (container *Container) GetFromId(runtimeId string) *types.Container {
 }
 
 func (container *Container) Start() bool {
-	if c := container.Get(); c != nil && c.State == "exited" {
+	if c, _ := container.Get(); c != nil && c.State == "exited" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -445,7 +449,7 @@ func (container *Container) Start() bool {
 	}
 }
 func (container *Container) Stop() bool {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -469,7 +473,7 @@ func (container *Container) Stop() bool {
 }
 
 func (container *Container) Restart() bool {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -491,7 +495,7 @@ func (container *Container) Restart() bool {
 }
 
 func (container *Container) Delete() error {
-	if c := container.Get(); c != nil && c.State != "running" {
+	if c, _ := container.Get(); c != nil && c.State != "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -534,7 +538,7 @@ func (container *Container) Rename(newName string) error {
 }
 
 func (container *Container) Exec(command []string) ExecResult {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		var execResult ExecResult
 
 		ctx := context.Background()

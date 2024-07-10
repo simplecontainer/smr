@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func (container *Container) Prepare(client *http.Client) bool {
+func (container *Container) Prepare(client *http.Client) error {
 	var err error
 	var dependencyMap []*f.Format
 	format := f.New("configuration", container.Static.Group, container.Static.GeneratedName, "")
@@ -26,10 +26,23 @@ func (container *Container) Prepare(client *http.Client) bool {
 			zap.String("error", err.Error()),
 		)
 
-		return false
+		return err
 	}
 
 	container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, dependencyMap...)
+
+	for i, v := range container.Runtime.Resources {
+		format = f.New("resource", container.Static.Group, v.Identifier, v.Key)
+
+		obj = objects.New(client)
+		err = obj.Find(format)
+
+		if err != nil {
+			return err
+		}
+
+		container.Runtime.Resources[i].Data[v.Key] = obj.GetDefinitionString()
+	}
 
 	for keyOriginal, _ := range container.Runtime.Resources {
 		container.Runtime.Resources[keyOriginal].Data, _, err = template.ParseTemplate(obj, container.Runtime.Resources[keyOriginal].Data, nil)
@@ -40,7 +53,7 @@ func (container *Container) Prepare(client *http.Client) bool {
 				zap.String("error", err.Error()),
 			)
 
-			return false
+			return err
 		}
 
 		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, &f.Format{
@@ -106,5 +119,5 @@ func (container *Container) Prepare(client *http.Client) bool {
 		}
 	}
 
-	return true
+	return nil
 }
