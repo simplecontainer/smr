@@ -4,8 +4,7 @@ import (
 	"context"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/utils"
+	"github.com/simplecontainer/smr/pkg/f"
 	"strings"
 	"sync"
 )
@@ -50,10 +49,10 @@ type Runtime struct {
 	FoundRunning       bool
 	FirstObserved      bool
 	Ready              bool
-	Configuration      map[string]any
+	Configuration      map[string]string
 	Resources          []Resource
 	Owner              Owner
-	ObjectDependencies []objects.FormatStructure
+	ObjectDependencies []*f.Format
 }
 
 type Owner struct {
@@ -75,7 +74,7 @@ type PortMappings struct {
 type Resource struct {
 	Identifier string
 	Key        string
-	Data       map[string]any
+	Data       map[string]string
 	MountPoint string
 }
 
@@ -98,18 +97,9 @@ type Readiness struct {
 	Body       map[string]string
 	Solved     bool
 	BodyUnpack map[string]string  `json:"-"`
+	Function   func() error       `json:"-"`
 	Ctx        context.Context    `json:"-"`
 	Cancel     context.CancelFunc `json:"-"`
-}
-
-type ReadinessState struct {
-	Name       string
-	Success    bool
-	Missing    bool
-	Timeout    bool
-	Error      error
-	TryToSolve bool
-	Readiness  *Readiness
 }
 
 type ReadinessResult struct {
@@ -123,7 +113,10 @@ type ByDepenendecies []*Container
 func (d ByDepenendecies) Len() int { return len(d) }
 func (d ByDepenendecies) Less(i, j int) bool {
 	for _, deps := range d[i].Static.Definition.Spec.Container.Dependencies {
-		group, id := utils.ExtractGroupAndId(deps.Name)
+		format := f.NewFromString(deps.Name)
+
+		group := format.Kind
+		id := format.Group
 
 		if id == "*" {
 			if strings.Contains(d[j].Static.GeneratedNameNoProject, group) {

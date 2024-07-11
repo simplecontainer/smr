@@ -5,9 +5,11 @@ import (
 )
 
 type Dependency struct {
-	Name    string
-	Timeout string
-	Ctx     context.Context
+	Name     string
+	Timeout  string
+	Ctx      context.Context
+	Function func() error
+	Cancel   context.CancelFunc
 }
 
 type State struct {
@@ -17,6 +19,7 @@ type State struct {
 	Timeout    bool
 	Error      error
 	TryToSolve bool
+	NotRunning bool
 	Depend     *Dependency
 }
 

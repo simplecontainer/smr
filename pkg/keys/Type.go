@@ -22,4 +22,6 @@ type Keys struct {
 
 	ClientPrivateKeyPath string
 	ClientCertPemPath    string
+
+	SerialNumber int64
 }

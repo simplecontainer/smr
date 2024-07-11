@@ -1,10 +1,9 @@
 package dns
 
 import (
+	"errors"
 	"fmt"
 	"github.com/miekg/dns"
-	"github.com/simplecontainer/smr/pkg/logger"
-	"go.uber.org/zap"
 	"net"
 )
 
@@ -13,8 +12,6 @@ func New() *Records {
 }
 
 func (r *Records) AddARecord(domain string, ip string) {
-	logger.Log.Debug("adding ip to dns", zap.String("ip", ip), zap.String("domain", domain))
-
 	if len(r.ARecords) > 0 {
 		_, ARecordexists := r.ARecords[domain]
 
@@ -43,12 +40,9 @@ func (r *Records) AddARecord(domain string, ip string) {
 			}
 
 			if !contains {
-				logger.Log.Debug("appending dns A record", zap.String("domain", domain), zap.String("ip", ip))
 				r.ARecords[domain].Domain[domain] = append(r.ARecords[domain].Domain[domain], ip)
 			}
 		} else {
-			logger.Log.Debug("adding dns A record", zap.String("domain", domain), zap.String("ip", ip))
-
 			tmp := ARecord{
 				map[string][]string{
 					domain: {ip},
@@ -75,32 +69,38 @@ func (r *Records) AddARecord(domain string, ip string) {
 		r.ARecords = tmp
 	}
 }
-func (r *Records) RemoveARecord(domain string, ip string) bool {
+func (r *Records) RemoveARecord(domain string, ip string) error {
 	ips := r.Find(domain)
 
-	for i, v := range ips {
-		if v == ip {
-			logger.Log.Debug(fmt.Sprintf("removing %s ip address from %s domain", v, domain))
-			ips = append(ips[:i], ips[i+1:]...)
+	if len(ips) > 0 {
+		for i, v := range ips {
+			if v == ip {
+				ips = append(ips[:i], ips[i+1:]...)
+			}
 		}
+
+		r.ARecords[domain].Domain[domain] = ips
+
+		return nil
+	} else {
+		return errors.New(fmt.Sprintf("ip %s not found for specifed domain %s", ip, domain))
 	}
-
-	r.ARecords[domain].Domain[domain] = ips
-
-	return true
 }
 
-func (r *Records) RemoveARecordQueue(domain string, ip string) bool {
+func (r *Records) RemoveARecordQueue(domain string, ip string) error {
 	ips := r.Find(domain)
 
-	for _, v := range ips {
-		if v == ip {
-			logger.Log.Debug(fmt.Sprintf("added %s address for %s domain to delete queue", v, domain))
-			r.ARecords[domain].DomainDelete[domain] = append(r.ARecords[domain].DomainDelete[domain], v)
+	if len(ips) > 0 {
+		for _, v := range ips {
+			if v == ip {
+				r.ARecords[domain].DomainDelete[domain] = append(r.ARecords[domain].DomainDelete[domain], v)
+			}
 		}
-	}
 
-	return true
+		return nil
+	} else {
+		return errors.New(fmt.Sprintf("ip %s not found for specifed domain %s", ip, domain))
+	}
 }
 
 func (r *Records) Find(domain string) []string {
@@ -124,19 +124,17 @@ func (r *Records) FindDeleteQueue(domain string) []string {
 }
 
 func (r *Records) ResetDeleteQueue(domain string) {
-	arecords, exists := r.ARecords[domain]
+	Arecords, exists := r.ARecords[domain]
 
 	if exists {
-		logger.Log.Info(fmt.Sprintf("cleared delete queue from domain %s", domain))
-		arecords.DomainDelete[domain] = nil
+		Arecords.DomainDelete[domain] = nil
 	}
 }
 
-func ParseQuery(cache *Records, m *dns.Msg) {
+func ParseQuery(cache *Records, m *dns.Msg) error {
 	for _, q := range m.Question {
 		switch q.Qtype {
 		case dns.TypeA:
-			logger.Log.Debug("Querying dns server", zap.String("fqdn", q.Name))
 			ips := cache.Find(q.Name)
 
 			if len(ips) > 0 {
@@ -166,14 +164,17 @@ func ParseQuery(cache *Records, m *dns.Msg) {
 				ms.RecursionDesired = true
 
 				r, _, err := c.Exchange(ms, net.JoinHostPort(config.Servers[0], config.Port))
+
+				if err != nil {
+					return err
+				}
+
 				if r == nil {
-					logger.Log.Warn("dns resolution error", zap.String("error", err.Error()))
-					return
+					return errors.New("response empty")
 				}
 
 				if r.Rcode != dns.RcodeSuccess {
-					logger.Log.Warn("dns invalid answer name after A query", zap.String("domain", q.Name))
-					return
+					return errors.New("request failed")
 				}
 
 				for _, a := range r.Answer {
@@ -182,4 +183,6 @@ func ParseQuery(cache *Records, m *dns.Msg) {
 			}
 		}
 	}
+
+	return nil
 }

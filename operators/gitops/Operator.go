@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
@@ -101,10 +102,10 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 		}
 	}
 
-	format := objects.FormatEmpty().FromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
+	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
-	obj := objects.New()
-	err := obj.Find(request.Client, format)
+	obj := objects.New(request.Client)
+	err := obj.Find(format)
 
 	if err != nil {
 		return httpcontract.ResponseOperator{

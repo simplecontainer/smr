@@ -13,7 +13,11 @@ func WaitForStop(containerObj *container.Container) {
 	waitForStop := make(chan string, 1)
 	go func() {
 		for {
-			c := containerObj.Get()
+			c, err := containerObj.Get()
+
+			if err != nil {
+				return
+			}
 
 			if timeout {
 				return

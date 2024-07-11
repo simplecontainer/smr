@@ -6,8 +6,8 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/hub/hub"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +24,7 @@ func Event(shared *shared.Shared, event *hub.Event) {
 	var container *container.Container
 
 	// handle container events
-	if utils.Contains([]string{"Container"}, event.Kind) {
+	if helpers.Contains([]string{"Container"}, event.Kind) {
 		container = shared.Registry.Find(event.Group, event.Identifier)
 	}
 
@@ -32,7 +32,12 @@ func Event(shared *shared.Shared, event *hub.Event) {
 		return
 	}
 
-	c := container.Get()
+	c, err := container.Get()
+
+	if err != nil {
+		return
+	}
+
 	managed := false
 
 	// only manage smr created containers, others are left alone to live and die in peace

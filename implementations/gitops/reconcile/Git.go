@@ -67,7 +67,7 @@ func SortFiles(gitopsObj *gitops.Gitops, localPath string, shared *shared.Shared
 		position := -1
 
 		for index, orderedEntry := range orderedByDependencies {
-			deps := shared.Manager.DefinitionRegistry.GetDependencies(orderedEntry["kind"])
+			deps := shared.Manager.RelationRegistry.GetDependencies(orderedEntry["kind"])
 
 			for _, dp := range deps {
 				if data["kind"].(string) == dp {

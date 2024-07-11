@@ -40,8 +40,8 @@ type ContainerInternal struct {
 	Ports         []map[string]string `json:"ports"`
 	Volumes       []map[string]string `json:"volumes"`
 	Operators     []map[string]any    `json:"operators"`
-	Configuration map[string]any      `json:"configuration"`
-	Resources     []map[string]any    `json:"resources"`
+	Configuration map[string]string   `json:"configuration"`
+	Resources     []map[string]string `json:"resources"`
 	Replicas      int                 `validate:"required" json:"replicas"`
 	Capabilities  []string            `json:"capabilities"`
 	Privileged    bool                `json:"privileged"`

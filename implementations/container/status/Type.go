@@ -6,10 +6,12 @@ import (
 )
 
 type Status struct {
-	State        string
-	StateMachine gograph.Graph[string]
-	Reconciling  bool
-	LastUpdate   time.Time
+	State                  string
+	LastReadiness          bool
+	LastReadinessTimestamp time.Time
+	StateMachine           gograph.Graph[string] `json:"-"`
+	Reconciling            bool
+	LastUpdate             time.Time
 }
 
 type Statuses struct {

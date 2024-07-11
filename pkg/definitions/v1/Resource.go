@@ -17,7 +17,7 @@ type ResourceMeta struct {
 }
 
 type ResourceSpec struct {
-	Data map[string]any `json:"data"`
+	Data map[string]string `json:"data"`
 }
 
 func (resource *Resource) ToJsonString() (string, error) {

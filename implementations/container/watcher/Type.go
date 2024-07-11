@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/implementations/container/container"
+	"github.com/simplecontainer/smr/implementations/hub/hub"
 	"go.uber.org/zap"
 	"time"
 )
@@ -20,4 +21,5 @@ type Container struct {
 	Cancel         context.CancelFunc        `json:"-"`
 	Ticker         *time.Ticker              `json:"-"`
 	Logger         *zap.Logger
+	EventChannel   chan *hub.Event
 }

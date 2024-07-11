@@ -7,7 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
-	"github.com/simplecontainer/smr/pkg/objectdependency"
+	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"sync"
 	"time"
@@ -15,28 +15,28 @@ import (
 
 func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api := &Api{
-		Config:             config,
-		Keys:               &keys.Keys{},
-		DnsCache:           &dns.Records{},
-		Badger:             badger,
-		BadgerSync:         &sync.RWMutex{},
-		DefinitionRegistry: objectdependency.NewDefinitionDependencyRegistry(),
-		Manager:            &manager.Manager{},
+		Config:           config,
+		Keys:             &keys.Keys{},
+		DnsCache:         &dns.Records{},
+		Badger:           badger,
+		BadgerSync:       &sync.RWMutex{},
+		RelationRegistry: relations.NewDefinitionRelationRegistry(),
+		Manager:          &manager.Manager{},
 	}
 
 	api.Config.Environment = startup.GetEnvironmentInfo()
 
 	api.Manager.Config = api.Config
-	api.Manager.DefinitionRegistry = api.DefinitionRegistry
+	api.Manager.RelationRegistry = api.RelationRegistry
 	api.Manager.Keys = api.Keys
 	api.Manager.DnsCache = api.DnsCache
 
-	api.DefinitionRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
-	api.DefinitionRegistry.Register("gitops", []string{"certkey", "httpauth"})
-	api.DefinitionRegistry.Register("configuration", []string{})
-	api.DefinitionRegistry.Register("resource", []string{"configuration"})
-	api.DefinitionRegistry.Register("certkey", []string{})
-	api.DefinitionRegistry.Register("httpauth", []string{})
+	api.RelationRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
+	api.RelationRegistry.Register("gitops", []string{"certkey", "httpauth"})
+	api.RelationRegistry.Register("configuration", []string{})
+	api.RelationRegistry.Register("resource", []string{"configuration"})
+	api.RelationRegistry.Register("certkey", []string{})
+	api.RelationRegistry.Register("httpauth", []string{})
 
 	return api
 }

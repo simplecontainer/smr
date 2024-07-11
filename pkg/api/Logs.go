@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hpcloud/tail"
-	"github.com/simplecontainer/smr/pkg/database"
+	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"net/http"
 )
 
@@ -26,7 +26,7 @@ func (api *Api) Logs(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, database.Response{
+		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 			Explanation:      "",
 			ErrorExplanation: err.Error(),
 			Error:            true,

@@ -21,7 +21,7 @@ func (container *Container) mappingToMounts(client *http.Client, environment *co
 			log.Fatal(err)
 		}
 
-		if _, err := tmpFile.WriteString(container.UnpackSecretsResources(client, v.Data[v.Key].(string))); err != nil {
+		if _, err := tmpFile.WriteString(UnpackSecretsResources(client, v.Data[v.Key])); err != nil {
 			log.Fatal(err)
 		}
 
@@ -68,7 +68,7 @@ func (container *Container) exposedPorts() map[nat.Port]struct{} {
 	return exposedPorts
 }
 
-func mapAnyToResources(definition []map[string]any) []Resource {
+func mapAnyToResources(definition []map[string]string) []Resource {
 	mapToJson, err := json.Marshal(definition)
 	if err != nil {
 		logger.Log.Error(err.Error())
@@ -82,7 +82,7 @@ func mapAnyToResources(definition []map[string]any) []Resource {
 	}
 
 	for i, _ := range resources {
-		resources[i].Data = make(map[string]any)
+		resources[i].Data = make(map[string]string)
 	}
 
 	return resources

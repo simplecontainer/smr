@@ -1,10 +1,10 @@
 package configuration
 
 type Configuration struct {
-	Target      string `default:"development" json:"target"`
-	Root        string `json:"root"`
-	Environment *Environment
-	Flags       Flags
+	Target      string       `default:"development" yaml:"target"`
+	Root        string       `yaml:"root"`
+	Environment *Environment `yaml:"-"`
+	Flags       Flags        `yaml:"-"`
 }
 
 type Flags struct {

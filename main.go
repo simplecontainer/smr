@@ -12,12 +12,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/commands"
 	_ "github.com/simplecontainer/smr/pkg/commands"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/mtls"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
-	"github.com/simplecontainer/smr/pkg/utils"
 	"github.com/spf13/viper"
 	"github.com/swaggo/files"
 	"github.com/swaggo/gin-swagger"
@@ -54,26 +54,37 @@ func main() {
 		logLevel = static.DEFAULT_LOG_LEVEL
 	}
 
-	logger.Log.Info(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
+	fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
 
 	conf := configuration.NewConfig()
+	conf.Environment = startup.GetEnvironmentInfo()
 	startup.ReadFlags(conf)
 
 	var db *badger.DB
 	api := api.NewApi(conf, db)
-	api.Manager.LogLevel = utils.GetLogLevel(logLevel)
+	api.Manager.LogLevel = helpers.GetLogLevel(logLevel)
 
 	commands.PreloadCommands()
 	commands.Run(api.Manager)
 
-	if viper.GetBool("daemon") {
-		startup.Load(conf, api.Config.Environment.PROJECTDIR)
+	configFile, err := os.Open(fmt.Sprintf("%s/%s/config.yaml", conf.Environment.PROJECTDIR, static.CONFIGDIR))
 
+	if err != nil {
+		panic(err)
+	}
+
+	conf, err = startup.Load(configFile)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if viper.GetBool("daemon") {
 		mdns.HandleFunc(".", api.HandleDns)
 
-		// start dns server in go routine to detach from main
 		port := 53
 		server := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
+
 		go server.ListenAndServe()
 		defer server.Shutdown()
 

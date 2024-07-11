@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -14,9 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -24,13 +21,12 @@ import (
 	"time"
 )
 
-func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.Container) *Container {
+func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.Container) (*Container, error) {
 	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	var definitionCopy v1.Container
@@ -38,8 +34,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 	err = json.Unmarshal(definitionEncoded, &definitionCopy)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	if definition.Spec.Container.Tag == "" {
@@ -87,7 +82,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 	container.Status.CreateGraph()
 
 	if container.Runtime.Configuration == nil {
-		container.Runtime.Configuration = make(map[string]any)
+		container.Runtime.Configuration = make(map[string]string)
 	}
 
 	container.Runtime.Configuration["name"] = name
@@ -95,7 +90,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 	container.Runtime.Configuration["image"] = container.Static.Image
 	container.Runtime.Configuration["tag"] = container.Static.Tag
 
-	return container
+	return container, nil
 }
 
 func Existing(name string) *Container {
@@ -114,7 +109,7 @@ func Existing(name string) *Container {
 			FoundRunning:  false,
 			Networks:      map[string]Network{},
 			Ready:         false,
-			Configuration: make(map[string]any),
+			Configuration: make(map[string]string),
 		},
 		Status: status.Status{},
 	}
@@ -207,7 +202,11 @@ func (container *Container) SetOwner(owner string) {
 }
 
 func (container *Container) Run(environment *configuration.Environment, client *http.Client, dnsCache *dns.Records) (*types.Container, error) {
-	c := container.Get()
+	c, err := container.Get()
+
+	if err != nil {
+		return nil, err
+	}
 
 	if c == nil {
 		return container.run(c, environment, client, dnsCache)
@@ -240,11 +239,17 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 
 	resp := dockerContainer.ContainerCreateCreatedBody{}
 
+	unpackedEnvs, err := UnpackSecretsEnvs(httpClient, container.Static.Env)
+
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err = cli.ContainerCreate(ctx, &dockerContainer.Config{
 		Hostname:     container.Static.GeneratedName,
 		Labels:       container.GenerateLabels(),
 		Image:        container.Static.Image + ":" + container.Static.Tag,
-		Env:          container.UnpackSecretsEnvs(httpClient, container.Static.Env),
+		Env:          unpackedEnvs,
 		Entrypoint:   container.Static.Entrypoint,
 		Cmd:          container.Static.Command,
 		Tty:          false,
@@ -264,11 +269,9 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		return nil, err
 	}
 
-	logger.Log.Info("starting container", zap.String("container", container.Static.GeneratedName))
 	if err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
-	logger.Log.Info("started container", zap.String("container", container.Static.GeneratedName))
 
 	data, err := cli.ContainerInspect(ctx, resp.ID)
 
@@ -301,13 +304,9 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		if agent != nil {
 			networks := container.GetNetworkInfoTS()
 			for _, nid := range networks {
-				logger.Log.Info(fmt.Sprintf("trying to attach smr-agent to the network %s", nid.NetworkId))
-
 				if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
 					err = container.ConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId)
-					if err == nil {
-						logger.Log.Info(fmt.Sprintf("smr-agent attached to the network %s", nid.NetworkId))
-					} else {
+					if err != nil {
 						container.Stop()
 						container.Delete()
 						return c, err
@@ -327,27 +326,24 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 						container.Stop()
 						container.Delete()
 						return c, err
-					} else {
-						logger.Log.Info(fmt.Sprintf("container %s attached to the network of the agent %s", container.Static.GeneratedName, nid.NetworkId))
 					}
 
 					break
 				}
 			}
 
-			return container.Get(), nil
+			return container.Get()
 		} else {
-			logger.Log.Error(fmt.Sprintf("smr-agent not found"))
 			container.Stop()
 			container.Delete()
 			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
 	} else {
-		return container.Get(), nil
+		return container.Get()
 	}
 }
 
-func (container *Container) Get() *types.Container {
+func (container *Container) Get() (*types.Container, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -366,7 +362,7 @@ func (container *Container) Get() *types.Container {
 	if c := container.self(containers); c != nil {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
-		if c != nil && c.State == "running" {
+		if c.State == "running" {
 			for _, dnetw := range data.NetworkSettings.Networks {
 				netwInspect, err := cli.NetworkInspect(ctx, dnetw.NetworkID, types.NetworkInspectOptions{
 					Scope:   "",
@@ -389,9 +385,9 @@ func (container *Container) Get() *types.Container {
 			container.Runtime.State = data.State.Status
 		}
 
-		return c
+		return c, nil
 	} else {
-		return nil
+		return nil, errors.New("container not found")
 	}
 }
 
@@ -419,7 +415,7 @@ func (container *Container) GetFromId(runtimeId string) *types.Container {
 }
 
 func (container *Container) Start() bool {
-	if c := container.Get(); c != nil && c.State == "exited" {
+	if c, _ := container.Get(); c != nil && c.State == "exited" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -439,7 +435,7 @@ func (container *Container) Start() bool {
 	}
 }
 func (container *Container) Stop() bool {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -463,7 +459,7 @@ func (container *Container) Stop() bool {
 }
 
 func (container *Container) Restart() bool {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -485,7 +481,7 @@ func (container *Container) Restart() bool {
 }
 
 func (container *Container) Delete() error {
-	if c := container.Get(); c != nil && c.State != "running" {
+	if c, _ := container.Get(); c != nil && c.State != "running" {
 		ctx := context.Background()
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 		if err != nil {
@@ -528,7 +524,7 @@ func (container *Container) Rename(newName string) error {
 }
 
 func (container *Container) Exec(command []string) ExecResult {
-	if c := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
 		var execResult ExecResult
 
 		ctx := context.Background()
@@ -563,7 +559,7 @@ func (container *Container) Exec(command []string) ExecResult {
 		}()
 
 		select {
-		case err := <-outputDone:
+		case err = <-outputDone:
 			if err != nil {
 				return execResult
 			}
@@ -577,6 +573,7 @@ func (container *Container) Exec(command []string) ExecResult {
 		if err != nil {
 			return execResult
 		}
+
 		stderr, err := ioutil.ReadAll(&stderrBuffer)
 		if err != nil {
 			return execResult

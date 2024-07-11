@@ -4,65 +4,47 @@ import (
 	"flag"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+	"io"
+	"net"
 	"os"
 )
 
-func Load(configObj *configuration.Configuration, projectDir string) {
-	configArg := viper.GetString("config")
+func Load(in io.Reader) (*configuration.Configuration, error) {
+	configObj := configuration.NewConfig()
+	viper.SetConfigType("yaml")
+	err := viper.ReadConfig(in)
 
-	if os.Getenv("CONFIG_ARGUMENT") != "" {
-		configArg = os.Getenv("CONFIG_ARGUMENT")
-	} else {
-		if configArg == "" {
-			configArg = viper.GetString("project")
-		}
-	}
-
-	viper.SetConfigName(configArg)
-	viper.AddConfigPath(fmt.Sprintf("%s/%s", projectDir, "config"))
-	configObj.Target = configArg
-
-	err := viper.ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %w", err))
+		return nil, err
 	}
 
 	err = viper.Unmarshal(configObj)
+
 	if err != nil {
-		panic(fmt.Errorf("fatal unable to unmarshal config file: %w", err))
+		return nil, err
 	}
 
-	configObj.Environment.AGENTIP = GetOutboundIP().String()
+	return configObj, err
 }
 
-func Save(configObj *configuration.Configuration, projectDir string) {
-	configArg := viper.GetString("config")
-
-	if os.Getenv("CONFIG_ARGUMENT") != "" {
-		configArg = os.Getenv("CONFIG_ARGUMENT")
-	} else {
-		if configArg == "" {
-			configArg = fmt.Sprintf("%s.conf", viper.GetString("project"))
-		}
-	}
-
-	replica := *configObj
-
-	yaml, err := yaml.Marshal(replica)
+func Save(configObj *configuration.Configuration, out io.Writer) error {
+	yamlObj, err := yaml.Marshal(*configObj)
 
 	if err != nil {
 		panic(err)
 	}
 
-	d1 := []byte(yaml)
-	err = os.WriteFile(fmt.Sprintf("%s/%s/%s.yaml", projectDir, "config", configArg), d1, 0644)
+	_, err = out.Write(yamlObj)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func ReadFlags(configObj *configuration.Configuration) {
@@ -91,4 +73,39 @@ func ReadFlags(configObj *configuration.Configuration) {
 	configObj.Flags.DaemonDomain = viper.GetString("daemon-domain")
 	configObj.Flags.OptMode = viper.GetBool("optmode")
 	configObj.Flags.Verbose = viper.GetBool("verbose")
+}
+
+func GetEnvironmentInfo() *configuration.Environment {
+	HOMEDIR, err := os.UserHomeDir()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	OPTDIR := "/opt/smr"
+
+	if _, err := os.Stat(OPTDIR); err != nil {
+		if err = os.Mkdir(OPTDIR, os.FileMode(0750)); err != nil {
+			panic(err.Error())
+		}
+	}
+
+	return &configuration.Environment{
+		HOMEDIR:    HOMEDIR,
+		OPTDIR:     OPTDIR,
+		PROJECT:    static.PROJECT,
+		PROJECTDIR: fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, static.PROJECT),
+		AGENTIP:    GetOutboundIP().String(),
+	}
+}
+
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
 }

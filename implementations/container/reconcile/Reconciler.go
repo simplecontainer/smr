@@ -8,7 +8,10 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/shared"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
+	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
 	"time"
 )
@@ -25,6 +28,9 @@ func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watche
 		panic(err)
 	}
 
+	pl := plugins.GetPlugin(mgr.Config.Root, "hub.so")
+	sharedContainer := pl.GetShared().(*hubShared.Shared)
+
 	return &watcher.Container{
 		Container:      containerObj,
 		Syncing:        false,
@@ -34,6 +40,7 @@ func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watche
 		Cancel:         fn,
 		Ticker:         time.NewTicker(interval),
 		Logger:         loggerObj,
+		EventChannel:   sharedContainer.Event,
 	}
 }
 
@@ -73,78 +80,112 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEPENDS_SOLVING)
 		go dependency.Ready(shared, containerObj.Static.Group, containerObj.Static.GeneratedName, containerObj.Static.Definition.Spec.Container.Dependencies)
 
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+		containerWatcher.ContainerQueue <- containerObj
 
 		break
 	case status.STATUS_DEPENDS_SOLVING:
-		containerWatcher.Logger.Info("Solving dependencies for the container", zap.String("container", containerObj.Static.GeneratedName))
-
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+		containerWatcher.Logger.Info("solving dependencies for the container")
+		containerWatcher.ContainerQueue <- containerObj
 		break
 	case status.STATUS_DEPENDS_SOLVED:
-		containerWatcher.Logger.Info("trying to run container", zap.String("group", containerObj.Static.Group), zap.String("name", containerObj.Static.Name))
+		containerWatcher.Logger.Info("prepare container attempt")
 
 		// Fix GitOps reconcile!!!!!!!!
 		//container.SetOwner(c.Request.Header.Get("Owner"))
-		if containerObj.Prepare(shared.Client) {
-			_, err := containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
+		err := containerObj.Prepare(shared.Client)
+
+		if err == nil {
+			containerWatcher.Logger.Info("container prepared")
+			containerWatcher.Logger.Info("container run attempt")
+
+			_, err = containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
 
 			if err == nil {
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_RUNNING)
+				containerWatcher.Logger.Info("container running")
 
-				go containerObj.Ready(shared.Client, err)
+				go containerObj.Ready(shared.Client)
 			} else {
+				containerWatcher.Logger.Info("container running failed", zap.Error(err))
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
 			}
 		} else {
+			containerWatcher.Logger.Info("container prepare failed", zap.Error(err))
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_INVALID_CONFIGURATION)
 		}
 
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+		containerWatcher.ContainerQueue <- containerObj
 		break
 	case status.STATUS_DEPENDS_FAILED:
-		containerWatcher.Logger.Info("Status is depends failed 4eva")
+		containerWatcher.Logger.Info("dependency check failed")
 		break
 	case status.STATUS_READINESS:
-		c := containerObj.Get()
+		c, err := containerObj.Get()
+
+		if err != nil {
+			logger.Log.Info(err.Error())
+			break
+		}
+
 		if c.State != "running" {
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
 		}
 
-		containerWatcher.Logger.Info("Solving readiness for the container", zap.String("container", containerObj.Static.GeneratedName))
+		containerWatcher.Logger.Info("solving readiness checks")
 		break
 	case status.STATUS_READINESS_FAILED:
-		c := containerObj.Get()
+		c, err := containerObj.Get()
+
+		if err != nil {
+			logger.Log.Info(err.Error())
+			break
+		}
+
 		if c.State == "running" {
-			containerWatcher.Logger.Info("stopping container", zap.String("container", containerObj.Static.GeneratedName))
+			containerWatcher.Logger.Info("stopping container")
 
 			containerObj.Stop()
 			WaitForStop(containerObj)
 		}
 
 		containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+		containerWatcher.ContainerQueue <- containerObj
 
 		break
 	case status.STATUS_KILLED:
 		// NOOP: wait for dead
 		break
 	case status.STATUS_READY:
-		c := containerObj.Get()
+		c, err := containerObj.Get()
+
+		if err != nil {
+			logger.Log.Info(err.Error())
+			break
+		}
+
 		if c.State != "running" {
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
 		} else {
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_RUNNING)
 		}
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+
+		containerWatcher.ContainerQueue <- containerObj
 
 		break
 	case status.STATUS_DRIFTED:
 		containerWatcher.Logger.Info("sending container to reconcile state", zap.String("container", containerObj.Static.GeneratedName))
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+		containerWatcher.ContainerQueue <- containerObj
 		break
 	case status.STATUS_DEAD:
-		c := containerObj.Get()
+		c, err := containerObj.Get()
+
+		if err != nil {
+			containerWatcher.Logger.Info(err.Error())
+			break
+		}
+
+		containerWatcher.Logger.Info("container is dead")
+
 		if c.State == "exited" {
 			shared.Registry.BackOffTracking(containerObj.Static.Group, containerObj.Static.GeneratedName)
 
@@ -159,41 +200,48 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_CREATED)
 			}
 		} else {
-			containerWatcher.Logger.Info("waiting to die",
-				zap.String("container", containerObj.Static.GeneratedName),
-				zap.String("current-state", c.State),
-			)
+			containerWatcher.Logger.Info("waiting to die", zap.String("current-state", c.State))
 		}
 
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+		containerWatcher.ContainerQueue <- containerObj
 
 		break
 	case status.STATUS_BACKOFF:
-		containerWatcher.Logger.Info(fmt.Sprintf("%s container is in backoff state", containerObj.Static.GeneratedName))
+		containerWatcher.Logger.Info("container is in backoff state")
+		break
+	case status.STATUS_INVALID_CONFIGURATION:
 		break
 	case status.STATUS_RUNNING:
 		// NOOP
 		break
 	case status.STATUS_PENDING_DELETE:
-		c := containerObj.Get()
-		if c.State == "running" {
-			for _, readinessElem := range containerObj.Static.Readiness {
-				readinessElem.Cancel()
-			}
+		c, err := containerObj.Get()
 
-			containerObj.Stop()
-			WaitForStop(containerObj)
-		}
-
-		err := containerObj.Delete()
+		containerWatcher.Logger.Info("container is pending delete")
 
 		if err != nil {
-			containerWatcher.Logger.Info("failed to delete container from docker daemon",
-				zap.String("container", containerObj.Static.GeneratedName),
-			)
-		} else {
 			shared.Registry.Remove(containerObj.Static.Group, containerObj.Static.GeneratedName)
 			containerWatcher.Cancel()
+		} else {
+			if c.State == "running" {
+				containerWatcher.Logger.Info("starting graceful termination, timeout 30s")
+
+				containerObj.Stop()
+				WaitForStop(containerObj)
+			}
+
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from docker daemon",
+					zap.String("container", containerObj.Static.GeneratedName),
+				)
+			} else {
+				containerWatcher.Logger.Info("container is deleted")
+
+				shared.Registry.Remove(containerObj.Static.Group, containerObj.Static.GeneratedName)
+				containerWatcher.Cancel()
+			}
 		}
 		break
 	}
