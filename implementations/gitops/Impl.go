@@ -93,14 +93,20 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	if obj.ChangeDetected() || !obj.Exists() {
 		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier)
-		gitopsFromDefinition := reconcile.NewWatcher(&gitopsDefinition, implementation.Shared.Manager)
 
-		gitopsFromDefinition.Logger.Info("new gitops object created",
-			zap.String("repository", gitopsFromDefinition.Gitops.RepoURL),
-		)
+		gitopsFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
+
+		if gitopsFromDefinition == nil {
+			gitopsFromDefinition = reconcile.NewWatcher(&gitopsDefinition, implementation.Shared.Manager)
+			go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
+
+			gitopsFromDefinition.Logger.Info("new gitops object created")
+		} else {
+			gitopsFromDefinition.Definition = gitopsDefinition
+			gitopsFromDefinition.Logger.Info("gitops object modified")
+		}
 
 		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
-		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
 	} else {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       200,

@@ -15,7 +15,6 @@ type ContainerWatcher struct {
 type Container struct {
 	Container      *container.Container
 	Syncing        bool
-	Tracking       bool
 	ContainerQueue chan *container.Container `json:"-"`
 	Ctx            context.Context           `json:"-" `
 	Cancel         context.CancelFunc        `json:"-"`

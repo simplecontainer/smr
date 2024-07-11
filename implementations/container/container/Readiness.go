@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/status"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
 	"time"
 )
@@ -82,7 +83,7 @@ func SolveReadiness(client *http.Client, container *Container, readiness *Readin
 	}
 
 	format := f.NewFromString(readiness.Name)
-	URL := fmt.Sprintf("%s/%s/%s", "https://smr-agent:1443/api/v1/operators", format.Kind, readiness.Operator)
+	URL := fmt.Sprintf("%s/%s/%s", "https://%s/api/v1/operators", static.SMR_AGENT_URL, format.Kind, readiness.Operator)
 
 	jsonBytes, err := json.Marshal(readiness.BodyUnpack)
 

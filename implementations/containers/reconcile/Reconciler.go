@@ -40,6 +40,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containers *watcher.Containers
 	for {
 		select {
 		case <-containers.Ctx.Done():
+			fmt.Println("CALLED")
 			containers.Ticker.Stop()
 			close(containers.ContainersQueue)
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", containers.Definition.Meta.Group, containers.Definition.Meta.Name))
@@ -66,10 +67,14 @@ func ReconcileContainer(shared *shared.Shared, containers *watcher.Containers) {
 	containers.Syncing = true
 
 	for _, definition := range containers.Definition.Spec {
-		definitionString, _ := definition.ToJsonString()
+		definitionString, err := definition.ToJsonString()
 
-		pl := plugins.GetPlugin(shared.Manager.Config.Root, "container.so")
-		pl.Apply([]byte(definitionString))
+		if err != nil {
+			containers.Logger.Info(err.Error())
+		} else {
+			pl := plugins.GetPlugin(shared.Manager.Config.Root, "container.so")
+			pl.Apply([]byte(definitionString))
+		}
 	}
 
 	containers.Syncing = false

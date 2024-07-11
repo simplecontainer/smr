@@ -2,8 +2,6 @@ package status
 
 import (
 	"github.com/hmdsefi/gograph"
-	"github.com/simplecontainer/smr/pkg/logger"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -110,11 +108,11 @@ func (status *Status) TransitionState(container string, destination string) bool
 
 		for _, edge := range edges {
 			if edge.Destination().Label() == destination {
-				logger.Log.Info("container transitioned state",
-					zap.String("old-state", status.State),
-					zap.String("new-state", destination),
-					zap.String("container", container),
-				)
+				//logger.Log.Info("container transitioned state",
+				//	zap.String("old-state", status.State),
+				//	zap.String("new-state", destination),
+				//	zap.String("container", container),
+				//)
 
 				status.State = destination
 				status.LastUpdate = time.Now()
@@ -122,11 +120,11 @@ func (status *Status) TransitionState(container string, destination string) bool
 		}
 
 		if status.State != destination {
-			logger.Log.Info("container failed to transition state",
-				zap.String("old-state", status.State),
-				zap.String("new-state", destination),
-				zap.String("container", container),
-			)
+			//logger.Log.Info("container failed to transition state",
+			//	zap.String("old-state", status.State),
+			//	zap.String("new-state", destination),
+			//	zap.String("container", container),
+			//)
 
 			return false
 		}

@@ -19,6 +19,11 @@ func ParseTemplate(obj objects.ObjectInterface, retrieve map[string]string, root
 		formatFind := f.NewFromString(placeholder)
 		keyToRetrieve := formatFind.Key
 
+		// Ignore secrets because they are handled on the container unpack level
+		if formatFind.Kind == "secret" {
+			continue
+		}
+
 		formatFind.Key = "object"
 		err := obj.Find(formatFind)
 

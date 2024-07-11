@@ -202,11 +202,7 @@ func (container *Container) SetOwner(owner string) {
 }
 
 func (container *Container) Run(environment *configuration.Environment, client *http.Client, dnsCache *dns.Records) (*types.Container, error) {
-	c, err := container.Get()
-
-	if err != nil {
-		return nil, err
-	}
+	c, _ := container.Get()
 
 	if c == nil {
 		return container.run(c, environment, client, dnsCache)

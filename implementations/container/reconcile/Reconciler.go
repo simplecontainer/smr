@@ -34,7 +34,6 @@ func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watche
 	return &watcher.Container{
 		Container:      containerObj,
 		Syncing:        false,
-		Tracking:       false,
 		ContainerQueue: make(chan *container.Container),
 		Ctx:            ctx,
 		Cancel:         fn,
@@ -49,8 +48,9 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 		select {
 		case <-containerWatcher.Ctx.Done():
 			containerWatcher.Ticker.Stop()
+
 			close(containerWatcher.ContainerQueue)
-			shared.Watcher.Remove(fmt.Sprintf("%s.%s", containerWatcher.Container.Static.Group, containerWatcher.Container.Static.Name))
+			shared.Watcher.Remove(containerWatcher.Container.GetGroupIdentifier())
 
 			return
 		case <-containerWatcher.ContainerQueue:
@@ -233,9 +233,8 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 			err = containerObj.Delete()
 
 			if err != nil {
-				containerWatcher.Logger.Info("failed to delete container from docker daemon",
-					zap.String("container", containerObj.Static.GeneratedName),
-				)
+				containerWatcher.Logger.Info("failed to delete container from docker daemon")
+
 			} else {
 				containerWatcher.Logger.Info("container is deleted")
 
@@ -243,6 +242,11 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 				containerWatcher.Cancel()
 			}
 		}
+
+		// Never allow reconciling to false after pending delete
+		// this prevents multiple pending_delete removals
+		return
+
 		break
 	}
 
