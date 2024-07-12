@@ -40,7 +40,6 @@ func HandleTickerAndEvents(shared *shared.Shared, containers *watcher.Containers
 	for {
 		select {
 		case <-containers.Ctx.Done():
-			fmt.Println("CALLED")
 			containers.Ticker.Stop()
 			close(containers.ContainersQueue)
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", containers.Definition.Meta.Group, containers.Definition.Meta.Name))

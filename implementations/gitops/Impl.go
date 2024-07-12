@@ -74,7 +74,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	var format *f.Format
 
-	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
+	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name, "object")
 	obj := objects.New(implementation.Shared.Client)
 	err = obj.Find(format)
 
@@ -92,7 +92,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier)
+		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name)
 
 		gitopsFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
 
@@ -149,7 +149,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	var format *f.Format
 
-	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Identifier, "object")
+	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name, "object")
 	obj := objects.New(implementation.Shared.Client)
 	err = obj.Find(format)
 

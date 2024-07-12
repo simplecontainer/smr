@@ -198,7 +198,7 @@ func main() {
 				TLSConfig: tlsConfig,
 			}
 
-			api.DnsCache.AddARecord(fmt.Sprintf("%s.", static.SMR_AGENT_DOMAIN), api.Config.Environment.AGENTIP)
+			api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
 
 			plugins.StartPlugins(api.Config.Root, api.Manager)
 
