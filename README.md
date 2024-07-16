@@ -1,9 +1,7 @@
 Quick start
 ===========
 
-**Note: The project is in stable yet.**
-
-Last updated on Jul 11, 2024
+**Note: The project is not stable.**
 
 This is a quick start tutorial for getting a simple container up and running.
 
@@ -76,7 +74,8 @@ docker run \
 Installation of the client
 --------------------------
 
-Client CLI is needed for speaking to the simplecontainer over network using mTLS. It is secured by verification and encryption.
+Client CLI is used for communication to the simplecontainer over network using mTLS. 
+It is secured by mutual verification and encryption.
 
 To install client just download it from releases:
 
@@ -156,13 +155,39 @@ smr ps
 
 ## GitOps
 
+It is possible to hold definition YAML files in the repository and let the simplecontainer apply it from the repository.
+
+```yaml
+kind: gitops
+spec:
+  meta:
+    group: test
+    identifier: testApp
+  spec:
+    repoURL: "https://github.com/simplecontainer/examples"
+    revision: "main"
+    directoryPath: "/gitops/bundle"
+```
+
+Applying this definition will create GitOps object on the simplecontainer.
+
+```bash
+smr gitops list                               
+GROUP  NAME     REPOSITORY                                   REVISION  SYNCED        AUTO   STATE    
+test   testApp  https://github.com/simplecontainer/examples  main      Never synced  false  Drifted  
+
+smr gitops test testApp sync 
+```
+
+In this example auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
+all the definitions in the `/gitops/bundle` directory from the `https://github.com/simplecontainer/examples` repository.
+
 Important links
 ---------------------------
 - https://github.com/simplecontainer/smr
 - https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
 - https://smr.qdnqn.com
-- https://qdnqn.com
 
 # License
 This project is licensed under the GNU General Public License v3.0. See more in LICENSE file.
