@@ -98,77 +98,22 @@ GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
 Afterward access to control plane of the simple container is configured.
 
 ## Running containers (Plain way)
-Define containers.yaml file:
-```yaml
-kind: containers
-meta:
-  name: application-bundle
-  group: app
-spec:
-  mysql:
-    meta:
-      name: mysql
-      group: mysql
-    spec:
-      options:
-        enabled: false
-      container:
-        image: "mysql"
-        tag: "8.0"
-        replicas: 1
-        envs:
-          - "MYSQL_ROOT_PASSWORD={{ configuration.password }}"
-        networks:
-          - "ghost"
-        ports:
-          - container: "3306"
-        readiness:
-          - name: "mysql.*"
-            operator: DatabaseReady
-            timeout: "20s"
-            body:
-              ip: "mysql.mysql-mysql-1.cluster.private"
-              username: "{{ configuration.username }}"
-              password: "{{ configuration.password }}"
-              port: "3306"
-        configuration:
-          username: "root"
-          password: "{{ configuration.mysql.*.password }}"
-```
-Define configuration-mysql.yaml file:
-```yaml
-kind: configuration
-spec:
-  meta:
-    group: mysql
-    identifier: "*"
-  spec:
-    data:
-      password: "{{ secret.mysql.mysql.password }}"
-```
+
 Run the next commands:
 ```bash
 smr secret create secret.mysql.mysql.password 123456789
-smr apply configuration-mysql.yaml
-smr apply containers.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/working/mysql-envs.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/working/mysql-config.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/working/containers.yaml
 smr ps
-
 ```
 
 ## Running containers (GitOps way)
 
 It is possible to hold definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
-```yaml
-kind: gitops
-spec:
-  meta:
-    group: test
-    identifier: testApp
-  spec:
-    repoURL: "https://github.com/simplecontainer/examples"
-    revision: "main"
-    directoryPath: "/gitops/bundle"
+```bash
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/gitops/gitops-plain.yaml 
 ```
 
 Applying this definition will create GitOps object on the simplecontainer.
