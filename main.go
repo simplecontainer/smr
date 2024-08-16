@@ -90,8 +90,6 @@ func main() {
 	api.Keys = mtls.NewKeys("/home/smr-agent/.ssh")
 	api.Manager.Keys = api.Keys
 
-	fmt.Println(api.Config)
-
 	var found bool
 	found, err = mtls.GenerateIfNoKeysFound(api.Keys, api.Config)
 

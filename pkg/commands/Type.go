@@ -1,11 +1,13 @@
 package commands
 
-import "github.com/simplecontainer/smr/pkg/manager"
+import (
+	"github.com/simplecontainer/smr/pkg/api"
+)
 
 type Command struct {
 	name       string
 	flag       string
-	condition  func(*manager.Manager) bool
-	functions  []func(*manager.Manager, []string)
-	depends_on []func(*manager.Manager, []string)
+	condition  func(*api.Api) bool
+	functions  []func(*api.Api, []string)
+	depends_on []func(*api.Api, []string)
 }

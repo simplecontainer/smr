@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	"io"
@@ -14,7 +14,7 @@ import (
 func Create() {
 	Commands = append(Commands, Command{
 		name: "create",
-		condition: func(*manager.Manager) bool {
+		condition: func(*api.Api) bool {
 			if os.Args[2] == "" {
 				logger.Log.Warn("please specify project name")
 				return false
@@ -22,16 +22,16 @@ func Create() {
 				return true
 			}
 		},
-		functions: []func(*manager.Manager, []string){
-			func(mgr *manager.Manager, args []string) {
-				_, err := bootstrap.CreateProject(os.Args[2], mgr.Config)
+		functions: []func(*api.Api, []string){
+			func(api *api.Api, args []string) {
+				_, err := bootstrap.CreateProject(os.Args[2], api.Config)
 
 				if err != nil {
 					panic(err)
 				}
 
 				var out io.Writer
-				out, err = os.OpenFile(fmt.Sprintf("%s/%s/%s/%s/config.yaml", mgr.Config.Environment.HOMEDIR, static.SMR, os.Args[2], static.CONFIGDIR), (os.O_WRONLY | os.O_CREATE), 0644)
+				out, err = os.OpenFile(fmt.Sprintf("%s/%s/%s/%s/config.yaml", api.Config.Environment.HOMEDIR, static.SMR, os.Args[2], static.CONFIGDIR), (os.O_WRONLY | os.O_CREATE), 0644)
 
 				if err != nil {
 					panic(err)
@@ -52,20 +52,20 @@ func Create() {
 					externalIP = os.Getenv("EXTERNALIP")
 				}
 
-				mgr.Config.Target = target
-				mgr.Config.Root = mgr.Config.Environment.PROJECTDIR
-				mgr.Config.Domain = domain
-				mgr.Config.ExternalIP = externalIP
+				api.Config.Target = target
+				api.Config.Root = api.Config.Environment.PROJECTDIR
+				api.Config.Domain = domain
+				api.Config.ExternalIP = externalIP
 
-				err = startup.Save(mgr.Config, out)
+				err = startup.Save(api.Config, out)
 
 				if err != nil {
 					panic(err)
 				}
 			},
 		},
-		depends_on: []func(*manager.Manager, []string){
-			func(mgr *manager.Manager, args []string) {},
+		depends_on: []func(*api.Api, []string){
+			func(api *api.Api, args []string) {},
 		},
 	})
 }

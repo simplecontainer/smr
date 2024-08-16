@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/api"
 	"os"
 )
 
@@ -10,19 +10,20 @@ var Commands []Command
 func PreloadCommands() {
 	Create()
 	Delete()
+	Start()
 }
 
-func Run(mgr *manager.Manager) {
+func Run(api *api.Api) {
 	for _, comm := range Commands {
 		for _, arg := range os.Args {
 			if comm.name == arg {
-				if comm.condition(mgr) {
+				if comm.condition(api) {
 					for _, fn := range comm.depends_on {
-						fn(mgr, os.Args)
+						fn(api, os.Args)
 					}
 
 					for _, fn := range comm.functions {
-						fn(mgr, os.Args)
+						fn(api, os.Args)
 					}
 				}
 			}
