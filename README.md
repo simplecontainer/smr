@@ -34,42 +34,44 @@ These objects let you manage Docker containers with configure features:
 
 Installation of the agent
 -------------------------
-To start using simple container first run it to generate cert.pem for client authentication.
+To start using simple container first run it to generate smr project and build configuration file.
 
 Note: This is example for the localhost. If domain is example.com running on the virtual machine with IP 1.2.3.4,
 just replace the DOMAIN and EXTERNALIP values.
 
 ```bash
+LATEST_VERSION=v0.0.1
+
+mkdir $HOME/.smr
+docker pull simplecontainermanager/smr:$LATEST_VERSION
 docker run \
+       -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost \
        -e EXTERNALIP=127.0.0.1 \
-       -v $HOME/smr:/home/smr-agent/.ssh \
-       -it smr:latest create
+       smr:$LATEST_VERSION create smr
 ```
 
-This will generate certs, keys and will print out cert.pem. Save it to some file.
+This will generate project and create configuration file.
 
-```azure
-{"level":"info","ts":1720689117.5965548,"caller":"mtls/Mtls.go:70","msg":"generating mtls ca, server certificate pem and client certificate pem"}
-Certificate is generated for the use by the smr client!
-Copy-paste it to safe location for further use - it will not be printed anymore in the logs
------BEGIN PRIVATE KEY-----
-MIIJQgIBADANBgkqhkiG9w0BAQEFAASCCSwwggkoAgEAAoICAQDygLkfhjuISYKe
-... 
-TRUNCATED OUTPUT FOR READABILITY
-```
-Afterward running will start simplecontainer as docker container and it will be able
+Afterward running will start simplecontainer as docker container, and it will be able
 to manage containers on top of docker.
 
 ```bash
+LATEST_VERSION=v0.0.1
+
 docker run \
-       -v $HOME/smr:/home/smr-agent/.ssh \
+       -v /var/run/docker.sock:/var/run/docker.sock \
+       -v $HOME/.smr:/home/smr-agent/smr \
+       -v $HOME/.ssh:/home/smr-agent/.ssh \
        -v /tmp:/tmp \
        -p 0.0.0.0:1443:1443 \
        --dns 127.0.0.1 \
        --name smr-agent \
-       -it smr:latest
+       -d smr:$LATEST_VERSION start
 ```
+
+This will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate 
+with the simplecontainer agent in a secured manner.
 
 Installation of the client
 --------------------------
@@ -88,14 +90,14 @@ VERSION=v0.0.1
 PLATFORM=linux-amd64
 curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
 sudo mv client /usr/bin/smr
-smr context connect https://localhost:1443 cert.pem --context localhost
+smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/client.pem --context localhost
 {"level":"info","ts":1720694421.2032707,"caller":"context/Connect.go:40","msg":"authenticated against the smr-agent"}
 smr ps
 GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
 ```
 Afterward access to control plane of the simple container is configured.
 
-## Running containers
+## Running containers (Plain way)
 Define containers.yaml file:
 ```yaml
 kind: containers
@@ -153,7 +155,7 @@ smr ps
 
 ```
 
-## GitOps
+## Running containers (GitOps way)
 
 It is possible to hold definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
