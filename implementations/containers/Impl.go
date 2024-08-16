@@ -263,7 +263,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 		obj.Find(format)
 
 		if obj.Exists() {
-			pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "container.so")
+			pl := plugins.GetPlugin(implementation.Shared.Manager.Config.OptRoot, "container.so")
 			pl.Delete(obj.GetDefinitionByte())
 		}
 	}

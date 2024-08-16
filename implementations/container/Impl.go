@@ -50,7 +50,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 
 	go events.ListenDockerEvents(implementation.Shared)
 
-	pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
+	pl := plugins.GetPlugin(implementation.Shared.Manager.Config.OptRoot, "hub.so")
 	sharedContainer := pl.GetShared().(*hubShared.Shared)
 
 	go events.ListenEvents(implementation.Shared, sharedContainer.Event)

@@ -73,7 +73,7 @@ OUTER:
 func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
-	pl := plugins.GetPlugin(request.Manager.Config.Root, "gitops.so")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
 	for key, gitopsInstance := range sharedObj.Watcher.Repositories {
@@ -148,7 +148,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 
-	pl := plugins.GetPlugin(request.Manager.Config.Root, "container.so")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
 	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)
@@ -191,7 +191,7 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 
-	pl := plugins.GetPlugin(request.Manager.Config.Root, "gitops.so")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
 	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)

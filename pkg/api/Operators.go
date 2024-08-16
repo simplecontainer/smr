@@ -38,7 +38,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 		}
 	}
 
-	plugin, err := plugins.GetPluginInstance(api.Config.Root, "operators", group)
+	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "operators", group)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
@@ -156,7 +156,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 func (api *Api) ListSupported(c *gin.Context) {
 	group := cleanPath(c.Param("group"))
 
-	plugin, err := plugins.GetPluginInstance(api.Config.Root, "operators", group)
+	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "operators", group)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{

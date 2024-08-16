@@ -159,7 +159,7 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 		}
 	}
 
-	pl := plugins.GetPlugin(request.Manager.Config.Root, "container.so")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
 	container := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))

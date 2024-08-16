@@ -71,7 +71,7 @@ func ReconcileContainer(shared *shared.Shared, containers *watcher.Containers) {
 		if err != nil {
 			containers.Logger.Info(err.Error())
 		} else {
-			pl := plugins.GetPlugin(shared.Manager.Config.Root, "container.so")
+			pl := plugins.GetPlugin(shared.Manager.Config.OptRoot, "container.so")
 			pl.Apply([]byte(definitionString))
 		}
 	}

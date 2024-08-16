@@ -25,6 +25,8 @@ func Load(in io.Reader) (*configuration.Configuration, error) {
 
 	err = viper.Unmarshal(configObj)
 
+	fmt.Println(configObj)
+
 	if err != nil {
 		return nil, err
 	}
@@ -51,9 +53,6 @@ func Save(configObj *configuration.Configuration, out io.Writer) error {
 }
 
 func SetFlags() {
-	flag.Bool("daemon", false, "Run daemon as HTTP API")
-	flag.Bool("daemon-secured", false, "Run daemon as HTTPS mTLS API")
-	flag.Bool("optmode", false, "Simplecontainer is in /opt/smr directory act accordingly")
 	flag.String("project", "", "Project name")
 	flag.Bool("verbose", false, "Verbose output")
 
@@ -64,9 +63,6 @@ func SetFlags() {
 }
 
 func ReadFlags(configObj *configuration.Configuration) {
-	configObj.Flags.Daemon = viper.GetBool("daemon")
-	configObj.Flags.DaemonSecured = viper.GetBool("daemon-secured")
-	configObj.Flags.OptMode = viper.GetBool("optmode")
 	configObj.Flags.Verbose = viper.GetBool("verbose")
 }
 
@@ -78,7 +74,7 @@ func GetEnvironmentInfo() *configuration.Environment {
 
 	OPTDIR := "/opt/smr"
 
-	if _, err := os.Stat(OPTDIR); err != nil {
+	if _, err = os.Stat(OPTDIR); err != nil {
 		if err = os.Mkdir(OPTDIR, os.FileMode(0750)); err != nil {
 			panic(err.Error())
 		}

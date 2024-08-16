@@ -9,21 +9,24 @@ import (
 )
 
 func (api *Api) Ps(c *gin.Context) {
-	pl := plugins.GetPlugin(api.Config.Root, "container.so")
+	pl := plugins.GetPlugin(api.Config.OptRoot, "container.so")
 	registry := pl.GetShared().(*shared.Shared).Registry
 
 	if registry != nil {
-		data, err := json.Marshal(registry.Containers)
+		if len(registry.Containers) > 0 {
+			data, err := json.Marshal(registry.Containers)
+			result := make(map[string]interface{})
 
-		result := make(map[string]interface{})
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, result)
+				return
+			}
 
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, result)
-			return
+			json.Unmarshal(data, &result)
+			c.JSON(http.StatusOK, result)
+		} else {
+			c.JSON(http.StatusOK, "{}")
 		}
-
-		json.Unmarshal(data, &result)
-		c.JSON(http.StatusOK, result)
 	} else {
 		result := make(map[string]interface{})
 		c.JSON(http.StatusOK, result)

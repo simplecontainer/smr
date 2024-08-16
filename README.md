@@ -44,7 +44,7 @@ docker run \
        -e DOMAIN=localhost \
        -e EXTERNALIP=127.0.0.1 \
        -v $HOME/smr:/home/smr-agent/.ssh \
-       -it smr:latest
+       -it smr:latest create
 ```
 
 This will generate certs, keys and will print out cert.pem. Save it to some file.

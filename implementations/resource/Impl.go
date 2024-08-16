@@ -89,7 +89,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
+		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.OptRoot, "hub.so")
 		sharedHub := pl.GetShared().(*hubShared.Shared)
 
 		sharedHub.Event <- &hub.Event{

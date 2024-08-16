@@ -29,7 +29,7 @@ func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watche
 		panic(err)
 	}
 
-	pl := plugins.GetPlugin(mgr.Config.Root, "hub.so")
+	pl := plugins.GetPlugin(mgr.Config.OptRoot, "hub.so")
 	sharedContainer := pl.GetShared().(*hubShared.Shared)
 
 	return &watcher.Container{
