@@ -112,9 +112,9 @@ func (status *Status) TransitionState(container string, destination string) bool
 		edges := status.StateMachine.EdgesOf(currentVertex[0])
 
 		for _, edge := range edges {
-			if edge.Destination().Label().state == destination {
+			if edge.Destination().Label().State == destination {
 				logger.Log.Info("container transitioned state",
-					zap.String("old-state", status.State.state),
+					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
 					zap.String("container", container),
 				)
@@ -127,9 +127,9 @@ func (status *Status) TransitionState(container string, destination string) bool
 			}
 		}
 
-		if status.State.state != destination {
+		if status.State.State != destination {
 			logger.Log.Info("container failed to transition state",
-				zap.String("old-state", status.State.state),
+				zap.String("old-state", status.State.State),
 				zap.String("new-state", destination),
 				zap.String("container", container),
 			)
@@ -147,7 +147,7 @@ func (status *Status) TypeFromString(state string) (StatusState, error) {
 	vertexes := status.StateMachine.GetAllVertices()
 
 	for _, v := range vertexes {
-		if v.Label().state == state {
+		if v.Label().State == state {
 			return v.Label(), nil
 		}
 	}
@@ -156,7 +156,7 @@ func (status *Status) TypeFromString(state string) (StatusState, error) {
 }
 
 func (status *Status) GetState() string {
-	return status.State.state
+	return status.State.State
 }
 
 func (status *Status) GetCategory() int8 {
@@ -164,5 +164,5 @@ func (status *Status) GetCategory() int8 {
 }
 
 func (status *Status) IfStateIs(state string) bool {
-	return status.State.state == state
+	return status.State.State == state
 }

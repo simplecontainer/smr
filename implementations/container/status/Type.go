@@ -17,9 +17,8 @@ type Status struct {
 }
 
 type StatusState struct {
-	state         string
-	ReadOnlyState string
-	category      int8
+	State    string
+	category int8
 }
 
 func (s StatusState) MarshalJSON() ([]byte, error) {
