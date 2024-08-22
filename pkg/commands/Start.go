@@ -40,15 +40,11 @@ func Start() {
 					panic(err)
 				}
 
-				// Prepare configuration for the daeamon
 				api.Config = conf
 				api.Config.Environment = startup.GetEnvironmentInfo()
 				startup.ReadFlags(api.Config)
 
 				api.Manager.Config = api.Config
-
-				fmt.Println(api.Manager.Config)
-				fmt.Println(api.Config)
 
 				api.Keys = mtls.NewKeys("/home/smr-agent/.ssh/simplecontainer")
 				api.Manager.Keys = api.Keys
@@ -134,6 +130,7 @@ func Start() {
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 				router.GET("/healthz", api.Health)
+				router.GET("/restore", api.Restore)
 
 				api.SetupEncryptedDatabase(api.Keys.ServerPrivateKey.Bytes()[:32])
 

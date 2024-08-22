@@ -183,7 +183,7 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err == nil {
-		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
 			Explanation:      "keys found",
 			ErrorExplanation: "",
 			Error:            false,

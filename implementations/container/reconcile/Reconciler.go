@@ -105,6 +105,26 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 
 		ReconcileLoop(containerWatcher)
 		break
+	case status.STATUS_RECREATED:
+		dockerState := GetState(containerWatcher)
+
+		switch dockerState {
+		case "running":
+			containerWatcher.Logger.Info("container recreated but already running")
+			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
+
+			break
+		case "exited":
+			containerWatcher.Logger.Info("container recreated but already exited")
+			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
+			break
+		default:
+			containerWatcher.Logger.Info("container recreated")
+			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
+		}
+
+		ReconcileLoop(containerWatcher)
+		break
 	case status.STATUS_PREPARE:
 		err := containerObj.Prepare(shared.Client)
 
@@ -158,16 +178,26 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_START:
-		containerWatcher.Logger.Info("container attempt to start")
-		_, err := containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
+		dockerState := GetState(containerWatcher)
+		var err error = nil
 
-		if err == nil {
-			containerWatcher.Logger.Info("container started")
+		if dockerState != "running" {
+			containerWatcher.Logger.Info("container attempt to start")
+			_, err = containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
+
+			if err == nil {
+				containerWatcher.Logger.Info("container started")
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
+				go containerObj.Ready(shared.Client, containerWatcher.ReadinessChan, containerWatcher.Logger)
+			} else {
+				containerWatcher.Logger.Info("container start failed", zap.Error(err))
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
+			}
+		} else {
+			containerWatcher.Logger.Info("container is already running")
+
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
 			go containerObj.Ready(shared.Client, containerWatcher.ReadinessChan, containerWatcher.Logger)
-		} else {
-			containerWatcher.Logger.Info("container start failed", zap.Error(err))
-			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
 		}
 
 		ReconcileLoop(containerWatcher)

@@ -110,31 +110,40 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		}
 	}
 
-	if obj.ChangeDetected() || !obj.Exists() {
-		GroupIdentifier := fmt.Sprintf("%s.%s", containersDefinition.Meta.Group, containersDefinition.Meta.Name)
+	GroupIdentifier := fmt.Sprintf("%s.%s", containersDefinition.Meta.Group, containersDefinition.Meta.Name)
+	containersFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
 
-		containersFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
+	if obj.Exists() {
+		if obj.ChangeDetected() || containersFromDefinition == nil {
+			if containersFromDefinition == nil {
+				containersFromDefinition = reconcile.NewWatcher(*containersDefinition, implementation.Shared.Manager)
+				containersFromDefinition.Logger.Info("containers object created")
 
-		if containersFromDefinition == nil {
-			containersFromDefinition = reconcile.NewWatcher(*containersDefinition, implementation.Shared.Manager)
-			containersFromDefinition.Logger.Info("containers object created")
+				go reconcile.HandleTickerAndEvents(implementation.Shared, containersFromDefinition)
+			} else {
+				containersFromDefinition.Definition = *containersDefinition
+				containersFromDefinition.Logger.Info("containers object modified")
+			}
 
-			go reconcile.HandleTickerAndEvents(implementation.Shared, containersFromDefinition)
+			implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
+			reconcile.ReconcileContainer(implementation.Shared, containersFromDefinition)
 		} else {
-			containersFromDefinition.Definition = *containersDefinition
-			containersFromDefinition.Logger.Info("containers object modified")
+			return httpcontract.ResponseImplementation{
+				HttpStatus:       200,
+				Explanation:      "containers object is same as the one on the server",
+				ErrorExplanation: "",
+				Error:            false,
+				Success:          true,
+			}, errors.New("containers object is same on the server")
 		}
+	} else {
+		containersFromDefinition = reconcile.NewWatcher(*containersDefinition, implementation.Shared.Manager)
+		containersFromDefinition.Logger.Info("containers object created")
+
+		go reconcile.HandleTickerAndEvents(implementation.Shared, containersFromDefinition)
 
 		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
 		reconcile.ReconcileContainer(implementation.Shared, containersFromDefinition)
-	} else {
-		return httpcontract.ResponseImplementation{
-			HttpStatus:       200,
-			Explanation:      "containers object is same as the one on the server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, errors.New("containers object is same on the server")
 	}
 
 	return httpcontract.ResponseImplementation{

@@ -108,6 +108,13 @@ func generateCertPrivKeyPair(keys *keys.Keys, config *configuration.Configuratio
 		return nil, nil, errors.New("invalid external IP provided")
 	}
 
+	certDomains := []string{config.Domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}
+	certIPs := []net.IP{ip, net.IPv6loopback}
+
+	fmt.Println("Generating certificates for the domains and IPs liste below")
+	fmt.Println(certDomains)
+	fmt.Println(certIPs)
+
 	cert := &x509.Certificate{
 		SerialNumber: generateSerialNumber(keys),
 		Subject: pkix.Name{
@@ -118,8 +125,8 @@ func generateCertPrivKeyPair(keys *keys.Keys, config *configuration.Configuratio
 			StreetAddress: []string{"BB"},
 			PostalCode:    []string{"75270"},
 		},
-		DNSNames:     []string{config.Domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)},
-		IPAddresses:  []net.IP{ip, net.IPv6loopback},
+		DNSNames:     certDomains,
+		IPAddresses:  certIPs,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
 		SubjectKeyId: SubjectKeyIdentifier[:],

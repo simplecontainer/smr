@@ -59,7 +59,7 @@ func ParseTemplate(obj objects.ObjectInterface, retrieve map[string]string, root
 
 	if rootFormat != nil {
 		for key, value := range SaveToKVStore {
-			format := f.NewFromString(key)
+			format := f.NewFromString(rootFormat.ToString())
 			format.Key = key
 
 			err := obj.Add(format, value)

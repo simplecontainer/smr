@@ -13,20 +13,16 @@ func (api *Api) Ps(c *gin.Context) {
 	registry := pl.GetShared().(*shared.Shared).Registry
 
 	if registry != nil {
-		if len(registry.Containers) > 0 {
-			data, err := json.Marshal(registry.Containers)
-			result := make(map[string]interface{})
+		data, err := json.Marshal(registry.Containers)
+		result := make(map[string]interface{})
 
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, result)
-				return
-			}
-
-			json.Unmarshal(data, &result)
-			c.JSON(http.StatusOK, result)
-		} else {
-			c.JSON(http.StatusOK, "{}")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, result)
+			return
 		}
+
+		json.Unmarshal(data, &result)
+		c.JSON(http.StatusOK, result)
 	} else {
 		result := make(map[string]interface{})
 		c.JSON(http.StatusOK, result)

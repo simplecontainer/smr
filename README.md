@@ -1,7 +1,7 @@
 Quick start
 ===========
 
-**Note: The project is not stable.**
+**Note: The project is not stable yet. Use it on your own responsibility.**
 
 This is a quick start tutorial for getting a simple container up and running.
 
@@ -51,8 +51,18 @@ docker run \
        smr:$LATEST_VERSION create smr
 ```
 
-This will generate project and create configuration file.
+This will generate project and create configuration file, and also It will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate
+with the simplecontainer agent in a secured manner.
 
+This bundle is needed by the client to connect to the Simplecontainer API.
+
+```bash
+cat $HOME/.ssh/simplecontainer/client.pem
+-----BEGIN PRIVATE KEY-----
+MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
+ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
+...
+```
 Afterward running will start simplecontainer as docker container, and it will be able
 to manage containers on top of docker.
 
@@ -69,9 +79,6 @@ docker run \
        --name smr-agent \
        -d smr:$LATEST_VERSION start
 ```
-
-This will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate 
-with the simplecontainer agent in a secured manner.
 
 Installation of the client
 --------------------------
@@ -97,20 +104,9 @@ GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
 ```
 Afterward access to control plane of the simple container is configured.
 
-## Running containers (Plain way)
-
-Run the next commands:
-```bash
-smr secret create secret.mysql.mysql.password 123456789
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/working/mysql-envs.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/working/mysql-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/working/containers.yaml
-smr ps
-```
-
 ## Running containers (GitOps way)
 
-It is possible to hold definition YAML files in the repository and let the simplecontainer apply it from the repository.
+It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
 ```bash
 smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/gitops/gitops-plain.yaml 
@@ -121,13 +117,62 @@ Applying this definition will create GitOps object on the simplecontainer.
 ```bash
 smr gitops list                               
 GROUP  NAME     REPOSITORY                                   REVISION  SYNCED        AUTO   STATE    
-test   testApp  https://github.com/simplecontainer/examples  main      Never synced  false  Drifted  
+test   smr      https://github.com/simplecontainer/examples  main      Never synced  false  Drifted  
 
-smr gitops test testApp sync 
+smr gitops sync test smr
+
+smr ps 
+GROUP    NAME     DOCKER NAME        IMAGE         IP                                      PORTS                      DEPS  DOCKER STATE  SMR STATE  
+nginx    nginx    nginx-nginx-1      nginx:1.23.3  10.10.0.3 (ghost), 172.17.0.3 (bridge)  80, 443                          running        (2m0s)    
+nginx    nginx    nginx-nginx-2      nginx:1.23.3  10.10.0.4 (ghost), 172.17.0.4 (bridge)  80, 443                          running        (2m0s)    
+nginx    nginx    nginx-nginx-3      nginx:1.23.3  10.10.0.5 (ghost), 172.17.0.5 (bridge)  80, 443                          running        (2m0s)    
+traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80:80, 443:443, 8888:8080        running        (2m0s)    
 ```
 
 In this example auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
 all the definitions in the `/gitops/bundle` directory from the `https://github.com/simplecontainer/examples` repository.
+
+To see more info about the Gitops object:
+
+```bash
+smr gitops get test smr
+```
+
+Output:
+
+```json
+{
+  "gitops": {
+    "meta": {
+      "group": "test",
+      "name": "smr"
+    },
+    "spec": {
+      "automaticSync": false,
+      "certKeyRef": {
+        "Group": "",
+        "Identifier": ""
+      },
+      "directory": "/gitops/bundle",
+      "httpAuthRef": {
+        "Group": "",
+        "Identifier": ""
+      },
+      "poolingInterval": "",
+      "repoURL": "https://github.com/simplecontainer/examples",
+      "revision": "main"
+    }
+  },
+  "kind": "gitops"
+}
+```
+
+## Running containers (Plain way)
+
+Run the next commands:
+```bash
+
+```
 
 Important links
 ---------------------------

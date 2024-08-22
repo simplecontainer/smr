@@ -7,13 +7,15 @@ import (
 )
 
 type Object struct {
-	Changelog        diff.Changelog
-	client           *http.Client
+	Changelog diff.Changelog
+	client    *http.Client
+
 	definition       map[string]any
-	definitionString string
+	DefinitionString string
 	definitionByte   []byte
 	changed          bool
 	exists           bool
-	created          time.Time
-	updated          time.Time
+	restoring        bool
+	Created          time.Time
+	Updated          time.Time
 }

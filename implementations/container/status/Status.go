@@ -16,6 +16,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[StatusState](gograph.Directed())
 
 	created := gograph.NewVertex(StatusState{STATUS_CREATED, CATEGORY_PRERUN})
+	recreated := gograph.NewVertex(StatusState{STATUS_RECREATED, CATEGORY_PRERUN})
 	prepare := gograph.NewVertex(StatusState{STATUS_PREPARE, CATEGORY_PRERUN})
 	dependsChecking := gograph.NewVertex(StatusState{STATUS_DEPENDS_CHECKING, CATEGORY_PRERUN})
 	dependsSolved := gograph.NewVertex(StatusState{STATUS_DEPENDS_SOLVED, CATEGORY_PRERUN})
@@ -37,6 +38,11 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(created, kill)
 	status.StateMachine.AddEdge(created, dead)
 	status.StateMachine.AddEdge(created, pendingDelete)
+
+	status.StateMachine.AddEdge(recreated, prepare)
+	status.StateMachine.AddEdge(recreated, kill)
+	status.StateMachine.AddEdge(recreated, dead)
+	status.StateMachine.AddEdge(recreated, pendingDelete)
 
 	status.StateMachine.AddEdge(prepare, dependsChecking)
 	status.StateMachine.AddEdge(prepare, prepareFailed)

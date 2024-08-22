@@ -163,27 +163,39 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 				// registry is modified by the generateReplicaNamesAndGroups so it is safe to use
 				// it instead of the object
 
-				if obj.ChangeDetected() || !obj.Exists() {
-					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)
+				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)
+				containerFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
 
-					containerFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
+				if obj.Exists() {
+					if obj.ChangeDetected() || containerFromDefinition == nil {
+						if containerFromDefinition == nil {
+							containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager)
+							containerFromDefinition.Logger.Info("container object recreated")
 
-					if containerFromDefinition == nil {
-						containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager)
-						containerFromDefinition.Logger.Info("container object created")
+							go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
+							containerFromDefinition.Container.Status.SetState(status.STATUS_RECREATED)
+						} else {
+							containerFromDefinition.Container = containerObjs[k]
+							containerFromDefinition.Logger.Info("container object modified")
+							containerFromDefinition.Container.Status.SetState(status.STATUS_CREATED)
+						}
 
-						go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
+						implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containerFromDefinition)
+
+						reconcile.ReconcileContainer(implementation.Shared, containerFromDefinition)
 					} else {
-						containerFromDefinition.Container = containerObjs[k]
-						containerFromDefinition.Logger.Info("container object modified")
+						logger.Log.Debug("no change detected in the containers definition")
 					}
+				} else {
+					containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager)
+					containerFromDefinition.Logger.Info("container object created")
+
+					go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
 
 					containerFromDefinition.Container.Status.SetState(status.STATUS_CREATED)
 					implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containerFromDefinition)
 
 					reconcile.ReconcileContainer(implementation.Shared, containerFromDefinition)
-				} else {
-					logger.Log.Debug("no change detected in the containers definition")
 				}
 			}
 		}

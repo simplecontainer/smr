@@ -48,7 +48,6 @@ func (container *Container) Prepare(client *http.Client) error {
 
 		v.Data = resourceObject.Spec.Data
 		resources = append(resources, v)
-
 	}
 
 	for k, _ := range resources {
