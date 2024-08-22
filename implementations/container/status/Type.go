@@ -1,36 +1,22 @@
 package status
 
 import (
-	"encoding/json"
 	"github.com/hmdsefi/gograph"
-	"strings"
 	"time"
 )
 
 type Status struct {
-	State                  StatusState
+	State                  *StatusState `json:"state"`
 	LastReadiness          bool
 	LastReadinessTimestamp time.Time
-	StateMachine           gograph.Graph[StatusState] `json:"-"`
+	StateMachine           gograph.Graph[*StatusState] `json:"-"`
 	Reconciling            bool
 	LastUpdate             time.Time
 }
 
 type StatusState struct {
-	state    string
+	State    string
 	category int8
-}
-
-func (s StatusState) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		State string `json:"state"`
-	}{
-		State: strings.ToUpper(s.state),
-	})
-}
-
-func (s StatusState) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &s)
 }
 
 const CATEGORY_PRERUN = 0

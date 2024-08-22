@@ -13,26 +13,26 @@ func NewStatus() *Status {
 }
 
 func (status *Status) CreateGraph() {
-	status.StateMachine = gograph.New[StatusState](gograph.Directed())
+	status.StateMachine = gograph.New[*StatusState](gograph.Directed())
 
-	created := gograph.NewVertex(StatusState{STATUS_CREATED, CATEGORY_PRERUN})
-	recreated := gograph.NewVertex(StatusState{STATUS_RECREATED, CATEGORY_PRERUN})
-	prepare := gograph.NewVertex(StatusState{STATUS_PREPARE, CATEGORY_PRERUN})
-	dependsChecking := gograph.NewVertex(StatusState{STATUS_DEPENDS_CHECKING, CATEGORY_PRERUN})
-	dependsSolved := gograph.NewVertex(StatusState{STATUS_DEPENDS_SOLVED, CATEGORY_PRERUN})
-	start := gograph.NewVertex(StatusState{STATUS_START, CATEGORY_PRERUN})
-	readinessChecking := gograph.NewVertex(StatusState{STATUS_READINESS_CHECKING, CATEGORY_WHILERUN})
-	readinessReady := gograph.NewVertex(StatusState{STATUS_READY, CATEGORY_WHILERUN})
-	running := gograph.NewVertex(StatusState{STATUS_RUNNING, CATEGORY_WHILERUN})
-	dead := gograph.NewVertex(StatusState{STATUS_DEAD, CATEGORY_POSTRUN})
-	backoff := gograph.NewVertex(StatusState{STATUS_BACKOFF, CATEGORY_END})
+	created := gograph.NewVertex(&StatusState{STATUS_CREATED, CATEGORY_PRERUN})
+	recreated := gograph.NewVertex(&StatusState{STATUS_RECREATED, CATEGORY_PRERUN})
+	prepare := gograph.NewVertex(&StatusState{STATUS_PREPARE, CATEGORY_PRERUN})
+	dependsChecking := gograph.NewVertex(&StatusState{STATUS_DEPENDS_CHECKING, CATEGORY_PRERUN})
+	dependsSolved := gograph.NewVertex(&StatusState{STATUS_DEPENDS_SOLVED, CATEGORY_PRERUN})
+	start := gograph.NewVertex(&StatusState{STATUS_START, CATEGORY_PRERUN})
+	readinessChecking := gograph.NewVertex(&StatusState{STATUS_READINESS_CHECKING, CATEGORY_WHILERUN})
+	readinessReady := gograph.NewVertex(&StatusState{STATUS_READY, CATEGORY_WHILERUN})
+	running := gograph.NewVertex(&StatusState{STATUS_RUNNING, CATEGORY_WHILERUN})
+	dead := gograph.NewVertex(&StatusState{STATUS_DEAD, CATEGORY_POSTRUN})
+	backoff := gograph.NewVertex(&StatusState{STATUS_BACKOFF, CATEGORY_END})
 
-	dependsFailed := gograph.NewVertex(StatusState{STATUS_DEPENDS_FAILED, CATEGORY_PRERUN})
-	readinessFailed := gograph.NewVertex(StatusState{STATUS_READINESS_FAILED, CATEGORY_WHILERUN})
-	prepareFailed := gograph.NewVertex(StatusState{STATUS_INVALID_CONFIGURATION, CATEGORY_END})
+	dependsFailed := gograph.NewVertex(&StatusState{STATUS_DEPENDS_FAILED, CATEGORY_PRERUN})
+	readinessFailed := gograph.NewVertex(&StatusState{STATUS_READINESS_FAILED, CATEGORY_WHILERUN})
+	prepareFailed := gograph.NewVertex(&StatusState{STATUS_INVALID_CONFIGURATION, CATEGORY_END})
 
-	kill := gograph.NewVertex(StatusState{STATUS_KILL, CATEGORY_WHILERUN})
-	pendingDelete := gograph.NewVertex(StatusState{STATUS_PENDING_DELETE, CATEGORY_END})
+	kill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
+	pendingDelete := gograph.NewVertex(&StatusState{STATUS_PENDING_DELETE, CATEGORY_END})
 
 	status.StateMachine.AddEdge(created, prepare)
 	status.StateMachine.AddEdge(created, kill)
@@ -112,9 +112,9 @@ func (status *Status) TransitionState(container string, destination string) bool
 		edges := status.StateMachine.EdgesOf(currentVertex[0])
 
 		for _, edge := range edges {
-			if edge.Destination().Label().state == destination {
+			if edge.Destination().Label().State == destination {
 				logger.Log.Info("container transitioned state",
-					zap.String("old-state", status.State.state),
+					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
 					zap.String("container", container),
 				)
@@ -127,9 +127,9 @@ func (status *Status) TransitionState(container string, destination string) bool
 			}
 		}
 
-		if status.State.state != destination {
+		if status.State.State != destination {
 			logger.Log.Info("container failed to transition state",
-				zap.String("old-state", status.State.state),
+				zap.String("old-state", status.State.State),
 				zap.String("new-state", destination),
 				zap.String("container", container),
 			)
@@ -143,20 +143,20 @@ func (status *Status) TransitionState(container string, destination string) bool
 	return false
 }
 
-func (status *Status) TypeFromString(state string) (StatusState, error) {
+func (status *Status) TypeFromString(state string) (*StatusState, error) {
 	vertexes := status.StateMachine.GetAllVertices()
 
 	for _, v := range vertexes {
-		if v.Label().state == state {
+		if v.Label().State == state {
 			return v.Label(), nil
 		}
 	}
 
-	return StatusState{}, errors.New("state not found")
+	return &StatusState{}, errors.New("state not found")
 }
 
 func (status *Status) GetState() string {
-	return status.State.state
+	return status.State.State
 }
 
 func (status *Status) GetCategory() int8 {
@@ -164,5 +164,5 @@ func (status *Status) GetCategory() int8 {
 }
 
 func (status *Status) IfStateIs(state string) bool {
-	return status.State.state == state
+	return status.State.State == state
 }

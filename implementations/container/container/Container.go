@@ -74,7 +74,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 			Owner:         Owner{},
 		},
 		Status: status.Status{
-			State:      status.StatusState{},
+			State:      &status.StatusState{},
 			LastUpdate: time.Now(),
 		},
 	}
