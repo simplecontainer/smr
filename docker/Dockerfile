@@ -14,15 +14,15 @@ RUN set -ex && \
 RUN mkdir /opt/smr && \
     adduser -D smr-agent && \
     mkdir -p /home/smr-agent/smr/smr && \
-    mkdir -p /home/smr-agent/.ssh && \
+    mkdir -p /home/smr-agent/.ssh/simplecontainer && \
     mkdir -p /badger
 
-COPY smr /opt/smr-agent/smr
-COPY operators/**/*.so /home/smr-agent/smr/smr/operators/
-COPY implementations/**/*.so /home/smr-agent/smr/smr/implementations/
+COPY smr /opt/smr/smr
+COPY operators/**/*.so /opt/smr/operators/
+COPY implementations/**/*.so /opt/smr/implementations/
 
-RUN chmod +x /opt/smr-agent/smr && \
-    chown -R smr-agent /opt/smr-agent/smr && \
+RUN chmod +x /opt/smr/smr && \
+    chown -R smr-agent /opt/smr/smr && \
     chown -R smr-agent /home/smr-agent && \
     chown -R smr-agent /badger && \
     chown -R smr-agent /home/smr-agent/.ssh
@@ -33,6 +33,7 @@ COPY --from=initial / /
 
 USER smr-agent
 
-ENTRYPOINT /opt/smr-agent/smr create smr --daemon --daemon-secured --optmode
-EXPOSE 8080
+ENTRYPOINT ["/opt/smr/smr"]
+CMD ["start"]
+EXPOSE 1443
 

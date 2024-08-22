@@ -8,6 +8,7 @@ import (
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -22,17 +23,17 @@ func New(client *http.Client) *Object {
 		Changelog:        diff.Changelog{},
 		client:           client,
 		definition:       map[string]any{},
-		definitionString: "",
+		DefinitionString: "",
 		definitionByte:   make([]byte, 0),
 		exists:           false,
 		changed:          false,
-		created:          time.Now(),
-		updated:          time.Now(),
+		Created:          time.Now(),
+		Updated:          time.Now(),
 	}
 }
 
 func (obj *Object) GetDefinitionString() string {
-	return obj.definitionString
+	return obj.DefinitionString
 }
 
 func (obj *Object) GetDefinition() map[string]any {
@@ -44,7 +45,7 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Add(format *f.Format, data string) error {
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/create/%s", format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", static.SMR_AGENT_URL, format.ToString())
 	response := SendRequest(obj.client, URL, "POST", map[string]string{"value": data})
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
@@ -57,7 +58,7 @@ func (obj *Object) Add(format *f.Format, data string) error {
 }
 
 func (obj *Object) Update(format *f.Format, data string) error {
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/update/%s", format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", static.SMR_AGENT_URL, format.ToString())
 	response := SendRequest(obj.client, URL, "PUT", map[string]string{"value": data})
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", data))
@@ -70,7 +71,7 @@ func (obj *Object) Update(format *f.Format, data string) error {
 }
 
 func (obj *Object) Find(format *f.Format) error {
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/get/%s", format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", static.SMR_AGENT_URL, format.ToString())
 	response := SendRequest(obj.client, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
@@ -93,9 +94,10 @@ func (obj *Object) Find(format *f.Format) error {
 
 				obj.definition = data
 				obj.definitionByte = b64decoded
+				obj.DefinitionString = value.(string)
 			} else {
 				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
-				obj.definitionString = string(b64decoded)
+				obj.DefinitionString = string(b64decoded)
 			}
 		}
 
@@ -112,44 +114,24 @@ func (obj *Object) Find(format *f.Format) error {
 func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 	var objects = make(map[string]*Object)
 
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/prefix/%s", format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", static.SMR_AGENT_URL, format.ToString())
 	response := SendRequest(obj.client, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
 
 	if response.Success {
-		for key, value := range response.Data {
-			if strings.Contains(key, "object") {
-				fmt.Println(value.(string))
+		if response.Data["keys"] != nil {
+			keys := response.Data["keys"].([]interface{})
 
-				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
-
-				if err != nil {
-					return nil, err
-				}
-
-				fmt.Println(string(b64decoded))
-
-				data := make(map[string]any)
-				err = json.Unmarshal(b64decoded, &data)
+			for _, value := range keys {
+				objTmp := New(obj.client)
+				err := objTmp.Find(f.NewFromString(value.(string)))
 
 				if err != nil {
-					return nil, err
+					fmt.Println(err)
 				}
 
-				objMany := New(obj.client)
-				objMany.definition = data
-				objMany.definitionByte = b64decoded
-
-				objects[key] = objMany
-			} else {
-				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
-
-				objMany := New(obj.client)
-				objMany.definitionString = string(b64decoded)
-				objMany.definitionByte = b64decoded
-
-				objects[key] = objMany
+				objects[value.(string)] = objTmp
 			}
 		}
 	} else {
@@ -167,7 +149,7 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 		prefix += "."
 	}
 
-	URL := fmt.Sprintf("https://smr-agent.docker.private:1443/api/v1/database/keys/%s", prefix)
+	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", static.SMR_AGENT_URL, prefix)
 	response := SendRequest(obj.client, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))

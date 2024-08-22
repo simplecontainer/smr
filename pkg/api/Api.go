@@ -42,9 +42,19 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 }
 
 func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
-	dataKeyRotationDuration := time.Duration(3600)
+	opts := badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger")
 
-	dbSecrets, err := badger.Open(badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger").WithEncryptionKey(masterKey).WithEncryptionKeyRotationDuration(dataKeyRotationDuration))
+	opts.Dir = "/home/smr-agent/smr/smr/persistent/kv-store/badger"
+	opts.ValueDir = "/home/smr-agent/smr/smr/persistent/kv-store/badger"
+	opts.DetectConflicts = true
+	opts.CompactL0OnClose = true
+	opts.Logger = nil
+	opts.SyncWrites = true
+	opts.EncryptionKey = masterKey
+	opts.EncryptionKeyRotationDuration = 24 * time.Hour
+	opts.IndexCacheSize = 100 << 20
+
+	dbSecrets, err := badger.Open(opts)
 	if err != nil {
 		logger.Log.Fatal(err.Error())
 	}

@@ -53,7 +53,7 @@ func (api *Api) Apply(c *gin.Context) {
 }
 
 func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.Context) {
-	plugin, err := plugins.GetPluginInstance(api.Config.Root, "implementations", kind)
+	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "implementations", kind)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
@@ -101,7 +101,7 @@ func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "internal implementation malfunctioned on the server",
+				Explanation:      err.Error(),
 				ErrorExplanation: err.Error(),
 				Error:            true,
 				Success:          false,

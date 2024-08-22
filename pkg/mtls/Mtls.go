@@ -10,6 +10,12 @@ import (
 )
 
 func NewKeys(directory string) *keys.Keys {
+	err := os.MkdirAll(directory, os.ModePerm)
+
+	if err != nil {
+		panic(err)
+	}
+
 	dirCAPrivateKey := fmt.Sprintf("%s/caprivate.key", directory)
 	dirCACertpem := fmt.Sprintf("%s/cacert.pem", directory)
 
@@ -18,6 +24,7 @@ func NewKeys(directory string) *keys.Keys {
 
 	dirClientPrivateKey := fmt.Sprintf("%s/clientprivate.key", directory)
 	dirClientCertPem := fmt.Sprintf("%s/clientcert.pem", directory)
+	dirClientBundle := fmt.Sprintf("%s/client.pem", directory)
 
 	caPrivateKey, err := os.ReadFile(dirCAPrivateKey)
 	if err != nil {
@@ -62,6 +69,7 @@ func NewKeys(directory string) *keys.Keys {
 		ClientCertPem:        bytes.NewBuffer(clientCertPem),
 		ClientPrivateKeyPath: dirClientPrivateKey,
 		ClientCertPemPath:    dirClientCertPem,
+		ClientBundlePath:     dirClientBundle,
 	}
 }
 
@@ -108,6 +116,11 @@ func SaveToDirectory(keys *keys.Keys) error {
 	}
 
 	err = os.WriteFile(keys.ClientCertPemPath, keys.ClientCertPem.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(keys.ClientBundlePath, []byte(GeneratePemBundle(keys)), 0644)
 	if err != nil {
 		return err
 	}

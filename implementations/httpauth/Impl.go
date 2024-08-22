@@ -70,7 +70,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 	var format *f.Format
 
-	format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
+	format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Name, "object")
 	obj := objects.New(implementation.Shared.Client)
 	err = obj.Find(format)
 
@@ -88,13 +88,13 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.Root, "hub.so")
+		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.OptRoot, "hub.so")
 		sharedHub := pl.GetShared().(*hubShared.Shared)
 
 		sharedHub.Event <- &hub.Event{
 			Kind:       KIND,
 			Group:      httpauth.Meta.Group,
-			Identifier: httpauth.Meta.Identifier,
+			Identifier: httpauth.Meta.Name,
 			Data:       nil,
 		}
 	} else {
@@ -139,7 +139,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 
 	var format *f.Format
 
-	format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
+	format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Name, "object")
 	obj := objects.New(implementation.Shared.Client)
 	err = obj.Find(format)
 
@@ -198,7 +198,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 	mapstructure.Decode(data["httpauth"], &httpauth)
 
-	format := f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "object")
+	format := f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Name, "object")
 
 	obj := objects.New(implementation.Shared.Client)
 	err = obj.Find(format)
@@ -207,7 +207,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Identifier, "")
+			format = f.New("httpauth", httpauth.Meta.Group, httpauth.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return httpcontract.ResponseImplementation{

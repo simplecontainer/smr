@@ -15,6 +15,7 @@ import (
 
 func Load(in io.Reader) (*configuration.Configuration, error) {
 	configObj := configuration.NewConfig()
+
 	viper.SetConfigType("yaml")
 	err := viper.ReadConfig(in)
 
@@ -24,9 +25,13 @@ func Load(in io.Reader) (*configuration.Configuration, error) {
 
 	err = viper.Unmarshal(configObj)
 
+	fmt.Println(configObj)
+
 	if err != nil {
 		return nil, err
 	}
+
+	configObj.Environment = GetEnvironmentInfo()
 
 	return configObj, err
 }
@@ -47,31 +52,17 @@ func Save(configObj *configuration.Configuration, out io.Writer) error {
 	return nil
 }
 
-func ReadFlags(configObj *configuration.Configuration) {
-	/* Operation mode */
-	flag.Bool("daemon", false, "Run daemon as HTTP API")
-	flag.Bool("daemon-secured", false, "Run daemon as HTTPS mTLS API")
-	flag.String("daemon-domain", "localhost", "Domain name where daemon will be exposed to")
-
-	/* Client cli config options */
-	flag.String("context", "default", "Context file to use for connection")
-
-	/* Logs and output */
-	flag.Bool("verbose", false, "Verbose output of the cli and daemon")
-
-	/* Meta data */
-	flag.String("project", "", "Project name to operate on")
-	flag.Bool("optmode", false, "Project is setup in the /opt/smr directory act accordingly")
+func SetFlags() {
+	flag.String("project", "", "Project name")
+	flag.Bool("verbose", false, "Verbose output")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
 	viper.BindPFlags(pflag.CommandLine)
+}
 
-	configObj.Flags.Daemon = viper.GetBool("daemon")
-	configObj.Flags.DaemonSecured = viper.GetBool("daemon-secured")
-	configObj.Flags.DaemonDomain = viper.GetString("daemon-domain")
-	configObj.Flags.OptMode = viper.GetBool("optmode")
+func ReadFlags(configObj *configuration.Configuration) {
 	configObj.Flags.Verbose = viper.GetBool("verbose")
 }
 
@@ -83,7 +74,7 @@ func GetEnvironmentInfo() *configuration.Environment {
 
 	OPTDIR := "/opt/smr"
 
-	if _, err := os.Stat(OPTDIR); err != nil {
+	if _, err = os.Stat(OPTDIR); err != nil {
 		if err = os.Mkdir(OPTDIR, os.FileMode(0750)); err != nil {
 			panic(err.Error())
 		}
