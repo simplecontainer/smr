@@ -17,9 +17,8 @@ type Status struct {
 }
 
 type StatusState struct {
-	state         string
-	ReadOnlyState string
-	category      int8
+	state    string
+	category int8
 }
 
 func (s StatusState) MarshalJSON() ([]byte, error) {
@@ -31,7 +30,7 @@ func (s StatusState) MarshalJSON() ([]byte, error) {
 }
 
 func (s StatusState) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, s.state)
+	return json.Unmarshal(data, &s)
 }
 
 const CATEGORY_PRERUN = 0
