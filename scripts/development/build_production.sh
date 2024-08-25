@@ -50,7 +50,6 @@ do
     cd "$BASE_DIR/operators/$DIRNAME"
     rm -rf *.so
 
-
     go build -ldflags '-s -w' --buildmode=plugin || exit 1
     chmod +x *.so
     upx -9 -k *.so
