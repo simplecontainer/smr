@@ -11,6 +11,7 @@ type Configuration struct {
 }
 
 type Flags struct {
+	Opt     bool
 	Verbose bool
 }
 

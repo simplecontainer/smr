@@ -3,11 +3,10 @@ package dependency
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/implementations/container/registry"
-	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/f"
 	"time"
 )
 
@@ -26,6 +25,7 @@ func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
 
 	return &Dependency{
 		Name:    depend.Name,
+		Group:   depend.Group,
 		Timeout: depend.Timeout,
 		Ctx:     ctx,
 		Cancel:  cancel,
@@ -47,46 +47,77 @@ func Ready(registry *registry.Registry, group string, name string, dependsOn []v
 
 			channel <- &State{
 				State: FAILED,
+				Error: err,
 			}
 
-			return false, nil
+			return false, err
 		}
 	}
 
 	channel <- &State{
 		State: SUCCESS,
+		Error: nil,
 	}
 
 	return true, nil
 }
 
 func SolveDepends(registry *registry.Registry, myGroup string, myName string, depend *Dependency, channel chan *State) error {
-	format := f.NewFromString(depend.Name)
-
 	myContainer := registry.Find(myGroup, myName)
 
-	if myContainer == nil || myContainer.Status.IfStateIs(status.STATUS_DEPENDS_CHECKING) {
+	if myContainer == nil { // || myContainer.Status.IfStateIs(status.STATUS_DEPENDS_CHECKING) {
 		depend.Cancel()
 		return errors.New("container not found")
 	}
 
-	otherGroup := format.Kind
-	otherName := format.Group
+	otherGroup := depend.Group
+	otherName := depend.Name
 
-	channel <- &State{
-		State: CHECKING,
-	}
+	if otherName == "*" {
+		for _, container := range registry.Containers[otherGroup] {
+			if container == nil {
+				channel <- &State{
+					State: CHECKING,
+					Error: errors.New(fmt.Sprintf("container not found %s", container.Static.GeneratedName)),
+				}
 
-	container := registry.Find(otherGroup, otherName)
+				return errors.New(fmt.Sprintf("container not found %s", container.Static.GeneratedName))
+			} else {
+				if !container.Status.LastReadiness {
+					channel <- &State{
+						State: CHECKING,
+						Error: errors.New(fmt.Sprintf("container not ready %s", container.Static.GeneratedName)),
+					}
 
-	if container == nil {
-		return errors.New("container not found")
+					return errors.New(fmt.Sprintf("container not ready %s", container.Static.GeneratedName))
+				}
+
+				// Otherwise no-op continue to check next container and if every container is ready return nil
+			}
+		}
+
+		return nil
 	} else {
-		if container.Status.LastReadiness {
-			depend.Cancel()
-			return nil
+		container := registry.Find(otherGroup, otherName)
+
+		if container == nil {
+			channel <- &State{
+				State: CHECKING,
+				Error: errors.New(fmt.Sprintf("container not found %s.%s", otherGroup, otherName)),
+			}
+
+			return errors.New(fmt.Sprintf("container not found %s.%s", otherGroup, otherName))
 		} else {
-			return errors.New("container not ready")
+			if container.Status.LastReadiness {
+				return nil
+			} else {
+				channel <- &State{
+					State: CHECKING,
+					Error: errors.New("container not ready"),
+				}
+
+				return errors.New("container not ready")
+			}
 		}
 	}
 }

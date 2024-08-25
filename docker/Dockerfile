@@ -34,6 +34,6 @@ COPY --from=initial / /
 USER smr-agent
 
 ENTRYPOINT ["/opt/smr/smr"]
-CMD ["start"]
+CMD ["start", "--opt"]
 EXPOSE 1443
 

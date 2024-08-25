@@ -153,6 +153,11 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 				switch dependencyResult.State {
 				case dependency.CHECKING:
 					containerWatcher.Logger.Info("checking dependency")
+
+					if dependencyResult.Error != nil {
+						containerWatcher.Logger.Info(dependencyResult.Error.Error())
+					}
+
 					break
 				case dependency.SUCCESS:
 					containerWatcher.Logger.Info("dependency check success")
@@ -162,6 +167,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 					break
 				case dependency.FAILED:
 					containerWatcher.Logger.Info("dependency check failed")
+					containerWatcher.Logger.Info(dependencyResult.Error.Error())
 					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEPENDS_FAILED)
 
 					ContinueReconciliation = true
@@ -252,7 +258,8 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 			break
 		}
 
-		if dockerState.State == "exited" {
+		switch dockerState.State {
+		case "exited":
 			containerWatcher.Logger.Info("container is dead")
 			shared.Registry.BackOffTracking(containerObj.Static.Group, containerObj.Static.GeneratedName)
 
@@ -266,7 +273,12 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 				containerObj.Delete()
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
 			}
-		} else {
+			break
+		case "created":
+			containerObj.Delete()
+			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
+			break
+		default:
 			containerWatcher.Logger.Info("container not dead retry again", zap.String("current-state", dockerState.State))
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_KILL)
 		}
@@ -277,8 +289,8 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		containerWatcher.Logger.Info("container is in backoff state")
 		break
 	case status.STATUS_DEPENDS_FAILED:
-		containerWatcher.Logger.Info("container readiness failed")
-		containerObj.Status.TransitionState(containerObj.GetGroupIdentifier(), status.STATUS_KILL)
+		containerWatcher.Logger.Info("container depends failed")
+		containerObj.Status.TransitionState(containerObj.GetGroupIdentifier(), status.STATUS_PREPARE)
 
 		ReconcileLoop(containerWatcher)
 		break

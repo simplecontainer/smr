@@ -15,7 +15,7 @@ echo "***********************************************"
 echo "$BASE_DIR/../implementations/$DIRNAME"
 echo "***********************************************"
 
-go build -ldflags '-s -w'
+go build -ldflags '-s -w' || exit 1
 chmod +x smr
 upx -9 -k smr
 
@@ -31,7 +31,7 @@ do
     cd "$BASE_DIR/implementations/$DIRNAME"
     rm -rf *.so
 
-    go build -ldflags '-s -w' --buildmode=plugin
+    go build -ldflags '-s -w' --buildmode=plugin || exit 1
     chmod +x *.so
     upx -9 -k *.so
 done
@@ -51,7 +51,7 @@ do
     rm -rf *.so
 
 
-    go build -ldflags '-s -w' --buildmode=plugin
+    go build -ldflags '-s -w' --buildmode=plugin || exit 1
     chmod +x *.so
     upx -9 -k *.so
 done

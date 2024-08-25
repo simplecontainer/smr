@@ -25,8 +25,6 @@ func Load(in io.Reader) (*configuration.Configuration, error) {
 
 	err = viper.Unmarshal(configObj)
 
-	fmt.Println(configObj)
-
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +52,7 @@ func Save(configObj *configuration.Configuration, out io.Writer) error {
 
 func SetFlags() {
 	flag.String("project", "", "Project name")
+	flag.Bool("opt", false, "Run in opt mode - do it only in containers")
 	flag.Bool("verbose", false, "Verbose output")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -63,6 +62,7 @@ func SetFlags() {
 }
 
 func ReadFlags(configObj *configuration.Configuration) {
+	configObj.Flags.Opt = viper.GetBool("opt")
 	configObj.Flags.Verbose = viper.GetBool("verbose")
 }
 
@@ -74,9 +74,11 @@ func GetEnvironmentInfo() *configuration.Environment {
 
 	OPTDIR := "/opt/smr"
 
-	if _, err = os.Stat(OPTDIR); err != nil {
-		if err = os.Mkdir(OPTDIR, os.FileMode(0750)); err != nil {
-			panic(err.Error())
+	if viper.GetBool("opt") {
+		if _, err = os.Stat(OPTDIR); err != nil {
+			if err = os.Mkdir(OPTDIR, os.FileMode(0750)); err != nil {
+				panic(err.Error())
+			}
 		}
 	}
 

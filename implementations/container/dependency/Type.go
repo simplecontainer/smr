@@ -6,6 +6,7 @@ import (
 
 type Dependency struct {
 	Name     string
+	Group    string
 	Timeout  string
 	Ctx      context.Context
 	Function func() error
@@ -14,6 +15,7 @@ type Dependency struct {
 
 type State struct {
 	State int8
+	Error error
 }
 
 const CHECKING = 0

@@ -90,5 +90,6 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 }
 
 func generateResponse(URL string, method string, data []byte, body []byte) string {
+	return fmt.Sprint("failed to fetch object from the kv store: ")
 	return fmt.Sprintf("URL: %s\nMETHOD: %s\nSEND_DATA: \n\n%s\nRESPONSE:\n\n%s", URL, method, string(data), string(body))
 }
