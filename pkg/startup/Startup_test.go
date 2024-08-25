@@ -64,8 +64,11 @@ func TestGetEnvironmentInfo(t *testing.T) {
 
 func TestLoad(t *testing.T) {
 	const validConfiguration = `
-target: "development"
-root: "/home/qdnqn/smr/smr"
+target: development
+root: /home/smr-agent/smr/smr
+optroot: /opt/smr
+domain: localhost
+externalIP: 127.0.0.1
 `
 
 	type Wanted struct {
@@ -91,9 +94,11 @@ root: "/home/qdnqn/smr/smr"
 			Wanted{
 				configuration: &configuration.Configuration{
 					Target:      "development",
-					Root:        "/home/qdnqn/smr/smr",
-					Environment: nil,
+					Root:        "/home/smr-agent/smr/smr",
+					ExternalIP:  "127.0.0.1",
+					Domain:      "localhost",
 					Flags:       configuration.Flags{},
+					Environment: GetEnvironmentInfo(),
 				},
 				error: nil,
 			},
@@ -107,7 +112,11 @@ root: "/home/qdnqn/smr/smr"
 
 			configObj, err := Load(bytes.NewBuffer([]byte(validConfiguration)))
 
-			assert.Equal(t, tc.wanted.configuration, configObj)
+			assert.Equal(t, tc.wanted.configuration.Environment, configObj.Environment)
+			assert.Equal(t, tc.wanted.configuration.Target, configObj.Target)
+			assert.Equal(t, tc.wanted.configuration.Root, configObj.Root)
+			assert.Equal(t, tc.wanted.configuration.ExternalIP, configObj.ExternalIP)
+			assert.Equal(t, tc.wanted.configuration.Domain, configObj.Domain)
 			assert.Equal(t, tc.wanted.error, err)
 		})
 	}

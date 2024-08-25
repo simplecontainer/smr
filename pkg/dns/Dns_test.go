@@ -48,7 +48,7 @@ func TestAddARecord(t *testing.T) {
 			dnsRecords := New()
 
 			dnsRecords.AddARecord(tc.parameters.domain, tc.parameters.ip)
-			response := dnsRecords.Find(tc.parameters.domain)
+			response := dnsRecords.Find(fmt.Sprintf("%s.", tc.parameters.domain))
 
 			assert.Equal(t, tc.wanted.response, response)
 		})
@@ -90,7 +90,7 @@ func TestRemoveARecord(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				error: errors.New(fmt.Sprintf("ip 10.0.0.2 not found for specifed domain mysql.mysql-mysql-1.%s", static.SMR_LOCAL_DOMAIN)),
+				error: errors.New(fmt.Sprintf("ip 10.0.0.2 not found for specifed domain mysql.mysql-mysql-1.%s.", static.SMR_LOCAL_DOMAIN)),
 			},
 			Parameters{
 				domain: fmt.Sprintf("mysql.mysql-mysql-1.%s", static.SMR_LOCAL_DOMAIN),
@@ -110,7 +110,7 @@ func TestRemoveARecord(t *testing.T) {
 				dnsRecords.AddARecord(tc.parameters.domain, tc.parameters.ip)
 			}
 
-			err := dnsRecords.RemoveARecord(tc.parameters.domain, tc.parameters.ip)
+			err := dnsRecords.RemoveARecord(fmt.Sprintf("%s.", tc.parameters.domain), tc.parameters.ip)
 
 			assert.Equal(t, tc.wanted.error, err)
 		})
@@ -181,7 +181,7 @@ func TestParseQuery(t *testing.T) {
 			m := new(dns.Msg)
 
 			q := new(dns.Msg)
-			q.SetQuestion(tc.parameters.domain, dns.TypeA)
+			q.SetQuestion(fmt.Sprintf("%s.", tc.parameters.domain), dns.TypeA)
 
 			m.SetReply(q)
 			m.Compress = false
