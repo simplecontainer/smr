@@ -29,6 +29,7 @@ These objects let you manage Docker containers with configure features:
 - CLI client to interact with the simplecontainer manager
 - Fast learning curve - no over complication
 - Reliable dependency ordering and readiness probes
+- Recreate containers from the KV store in case of failure
 - Templating of the container objects to leverage secrets and configuration
 
 
@@ -178,6 +179,26 @@ smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/
 smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/traefik-config.yaml
 smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/containers.yaml
 ```
+
+This example demonstrates:
+- configuration
+- resource
+- container
+- readiness check
+- dependency
+
+After running commands above, check the `smr ps`:
+```bash
+smr ps
+GROUP    NAME     DOCKER NAME        IMAGE         IP                                      PORTS                      DEPS  DOCKER STATE  SMR STATE        
+mysql    mysql    mysql-mysql-1      mysql:8.0     10.10.0.3 (ghost), 172.17.0.4 (bridge)  3306                             running       running (2m55s)  
+mysql    mysql    mysql-mysql-2      mysql:8.0     10.10.0.2 (ghost), 172.17.0.3 (bridge)  3306                             running       running (2m53s)  
+nginx    nginx    nginx-nginx-1      nginx:1.23.3  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80, 443                    *     running       running (2m52s)  
+traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.5 (ghost), 172.17.0.5 (bridge)  80:80, 443:443, 8888:8080  *     running       running (2m53s)
+```
+
+Containers from group mysql will start first. 
+Traefik and nginx will wait till mysql is ready because of the dependency defined.
 
 Important links
 ---------------------------
