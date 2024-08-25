@@ -50,6 +50,7 @@ type ContainerInternal struct {
 
 type DependsOn struct {
 	Name    string `validate:"required" json:"name"`
+	Group   string `validate:"required" json:"group"`
 	Timeout string `validate:"required" json:"timeout"`
 }
 

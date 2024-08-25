@@ -14,7 +14,7 @@ echo "***********************************************"
 echo "$BASE_DIR/../implementations/$DIRNAME"
 echo "***********************************************"
 
-go build -ldflags '-s -w'
+go build -ldflags '-s -w' || exit 1
 
 for dir in implementations/*/
 do
@@ -28,7 +28,7 @@ do
     cd "$BASE_DIR/implementations/$DIRNAME"
     rm -rf *.so
 
-    go build -ldflags '-s -w' --buildmode=plugin
+    go build -ldflags '-s -w' --buildmode=plugin || exit 1
 done
 
 cd "$BASE_DIR"
@@ -45,5 +45,5 @@ do
     cd "$BASE_DIR/operators/$DIRNAME"
     rm -rf *.so
 
-    go build -ldflags '-s -w' --buildmode=plugin
+    go build -ldflags '-s -w' --buildmode=plugin || exit 1
 done
