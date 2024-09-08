@@ -1,7 +1,10 @@
+![simplecontainer manager](.github/resources/repository.jpg)
+
 Quick start
 ===========
 
-**Note: The project is not stable yet. Use it on your own responsibility.**
+> [!WARNING]
+> The project is not stable yet. Use it on your own responsibility. 
 
 This is a quick start tutorial for getting a simple container up and running.
 
