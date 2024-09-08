@@ -44,7 +44,7 @@ Note: This is example for the localhost. If domain is example.com running on the
 just replace the DOMAIN and EXTERNALIP values.
 
 ```bash
-LATEST_VERSION=v0.0.1
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
 
 mkdir $HOME/.smr
 docker pull simplecontainermanager/smr:$LATEST_VERSION
@@ -71,7 +71,7 @@ Afterward running will start simplecontainer as docker container, and it will be
 to manage containers on top of docker.
 
 ```bash
-LATEST_VERSION=v0.0.1
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
 
 docker run \
        -v /var/run/docker.sock:/var/run/docker.sock \
@@ -94,10 +94,10 @@ To install client just download it from releases:
 
 https://github.com/simplecontainer/client/releases
 
-Example:
+Example for installing latest version:
 
 ```azure
-VERSION=v0.0.1
+VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
 PLATFORM=linux-amd64
 curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
 sudo mv client /usr/local/bin/smr
