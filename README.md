@@ -97,7 +97,7 @@ Example:
 VERSION=v0.0.1
 PLATFORM=linux-amd64
 curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
-sudo mv client /usr/bin/smr
+sudo mv client /usr/local/bin/smr
 smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/client.pem --context localhost
 {"level":"info","ts":1720694421.2032707,"caller":"context/Connect.go:40","msg":"authenticated against the smr-agent"}
 smr ps
@@ -105,7 +105,7 @@ GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
 ```
 Afterward access to control plane of the simple container is configured.
 
-## Running containers (GitOps way)
+## Running Docker containers using GitOps
 
 It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
@@ -130,7 +130,7 @@ nginx    nginx    nginx-nginx-3      nginx:1.23.3  10.10.0.5 (ghost), 172.17.0.5
 traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80:80, 443:443, 8888:8080        running        (2m0s)    
 ```
 
-In this example auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
+In this example, auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
 all the definitions in the `/gitops/bundle` directory from the `https://github.com/simplecontainer/examples` repository.
 
 To see more info about the Gitops object:
@@ -190,11 +190,11 @@ This example demonstrates:
 After running commands above, check the `smr ps`:
 ```bash
 smr ps
-GROUP    NAME     DOCKER NAME        IMAGE         IP                                      PORTS                      DEPS  DOCKER STATE  SMR STATE        
-mysql    mysql    mysql-mysql-1      mysql:8.0     10.10.0.3 (ghost), 172.17.0.4 (bridge)  3306                             running       running (2m55s)  
-mysql    mysql    mysql-mysql-2      mysql:8.0     10.10.0.2 (ghost), 172.17.0.3 (bridge)  3306                             running       running (2m53s)  
-nginx    nginx    nginx-nginx-1      nginx:1.23.3  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80, 443                    *     running       running (2m52s)  
-traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.5 (ghost), 172.17.0.5 (bridge)  80:80, 443:443, 8888:8080  *     running       running (2m53s)
+GROUP    NAME     DOCKER NAME        IMAGE         IP                                      PORTS                      DEPS      DOCKER STATE  SMR STATE         
+mysql    mysql    mysql-mysql-1      mysql:8.0     10.10.0.3 (ghost), 172.17.0.4 (bridge)  3306                                 running       running (51m17s)  
+mysql    mysql    mysql-mysql-2      mysql:8.0     10.10.0.2 (ghost), 172.17.0.3 (bridge)  3306                                 running       running (51m15s)  
+nginx    nginx    nginx-nginx-1      nginx:1.23.3  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80, 443                    mysql.*   running       running (51m14s)  
+traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.5 (ghost), 172.17.0.5 (bridge)  80:80, 443:443, 8888:8080  mysql.*   running       running (51m15s)  
 ```
 
 Containers from group mysql will start first. 

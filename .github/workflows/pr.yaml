@@ -66,5 +66,3 @@ jobs:
 
             go build -ldflags '-s -w' --buildmode=plugin
           done
-
-

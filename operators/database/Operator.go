@@ -67,8 +67,44 @@ OUTER:
 	}
 }
 
-func (operator *Operator) DatabaseReady(request operators.Request) httpcontract.ResponseOperator {
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", request.Data["username"], request.Data["password"], request.Data["ip"], request.Data["port"]))
+func (operator *Operator) MysqlReady(request operators.Request) httpcontract.ResponseOperator {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=5s", request.Data["username"], request.Data["password"], request.Data["hostname"], request.Data["port"]))
+	if err != nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "database connection can't be opened",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	defer db.Close()
+	err = db.Ping()
+
+	if err != nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "database can't be pinged",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	return httpcontract.ResponseOperator{
+		HttpStatus:       200,
+		Explanation:      "database connection is ready",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	}
+}
+func (operator *Operator) PostgresReady(request operators.Request) httpcontract.ResponseOperator {
+	db, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", request.Data["hostname"], request.Data["port"], request.Data["username"], request.Data["password"], request.Data["database"]))
 	if err != nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -105,4 +141,4 @@ func (operator *Operator) DatabaseReady(request operators.Request) httpcontract.
 }
 
 // Exported
-var Mysql Operator
+var Database Operator

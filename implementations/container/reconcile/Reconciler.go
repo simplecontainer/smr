@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/dependency"
 	"github.com/simplecontainer/smr/implementations/container/shared"
@@ -202,8 +203,19 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		} else {
 			containerWatcher.Logger.Info("container is already running")
 
-			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
-			go containerObj.Ready(shared.Client, containerWatcher.ReadinessChan, containerWatcher.Logger)
+			var c *types.Container
+			c, err = containerObj.Get()
+
+			// Best effort connect agent
+			containerObj.ConnectAgentToTheNetwork(c.ID, shared.Manager.Config.Environment)
+			containerObj.UpdateDns(shared.DnsCache)
+
+			if err != nil {
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
+				go containerObj.Ready(shared.Client, containerWatcher.ReadinessChan, containerWatcher.Logger)
+			}
 		}
 
 		ReconcileLoop(containerWatcher)

@@ -271,56 +271,56 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 	}
 
 	if container.Static.NetworkMode != "host" {
-		agent := Existing("smr-agent")
-
-		var agentContainer *types.Container
-		agentContainer, err = agent.Get()
+		err = container.ConnectAgentToTheNetwork(resp.ID, environment)
+		container.UpdateDns(dnsCache)
 
 		if err != nil {
 			return nil, err
 		}
+	}
 
-		if agentContainer != nil {
-			networks := container.GetNetworkInfoTS()
+	return container.Get()
+}
 
-			for _, nid := range networks {
-				if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
-					err = container.ConnectToTheSameNetwork(agent.Runtime.Id, nid.NetworkId)
-					if err != nil {
-						container.Stop()
-						container.Delete()
+func (container *Container) ConnectAgentToTheNetwork(containerDockerId string, environment *configuration.Environment) error {
+	agent := Existing("smr-agent")
 
-						return c, err
-					}
-				}
+	var agentContainer *types.Container
+	agentContainer, err := agent.Get()
 
-				dnsCache.AddARecord(container.GetDomain(nid.NetworkName), networks[nid.NetworkId].IP)
-				dnsCache.AddARecord(container.GetHeadlessDomain(nid.NetworkName), networks[nid.NetworkId].IP)
+	if err != nil {
+		return err
+	}
+
+	if agentContainer != nil {
+		networks := container.GetNetworkInfoTS()
+
+		for _, nid := range networks {
+			if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
+				return container.ConnectToNetwork(agent.Runtime.Id, nid.NetworkId)
 			}
-
-			agentNetworks := agent.GetNetworkInfoTS()
-
-			for _, nid := range agentNetworks {
-				if nid.IP == environment.AGENTIP {
-					err = container.ConnectToTheSameNetwork(resp.ID, nid.NetworkId)
-					if err != nil {
-						container.Stop()
-						container.Delete()
-						return c, err
-					}
-
-					break
-				}
-			}
-
-			return container.Get()
-		} else {
-			container.Stop()
-			container.Delete()
-			return nil, errors.New("failed to find smr-agent container and cleaning up everything")
 		}
+
+		//agentNetworks := agent.GetNetworkInfoTS()
+		//
+		//for _, nid := range agentNetworks {
+		//	if nid.IP == environment.AGENTIP {
+		//		return container.ConnectToTheSameNetwork(containerDockerId, nid.NetworkId)
+		//	}
+		//}
+
+		return nil
 	} else {
-		return container.Get()
+		return errors.New("failed to find smr-agent container and cleaning up everything")
+	}
+}
+
+func (container *Container) UpdateDns(dnsCache *dns.Records) {
+	networks := container.GetNetworkInfoTS()
+
+	for _, nid := range networks {
+		dnsCache.AddARecord(container.GetDomain(nid.NetworkName), networks[nid.NetworkId].IP)
+		dnsCache.AddARecord(container.GetHeadlessDomain(nid.NetworkName), networks[nid.NetworkId].IP)
 	}
 }
 

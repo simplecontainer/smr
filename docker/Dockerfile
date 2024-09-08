@@ -9,6 +9,7 @@ RUN set -ex && \
         do curl -sSL ${GLIBC_REPO}/releases/download/${GLIBC_VERSION}/${pkg}.apk -o /tmp/${pkg}.apk; done && \
     apk add --allow-untrusted --force-overwrite /tmp/*.apk && \
     rm -v /tmp/*.apk && \
+    rm -rf /tmp && \
     /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib
 
 RUN mkdir /opt/smr && \
@@ -27,7 +28,7 @@ RUN chmod +x /opt/smr/smr && \
     chown -R smr-agent /badger && \
     chown -R smr-agent /home/smr-agent/.ssh
 
-FROM alpine:latest
+FROM scratch
 
 COPY --from=initial / /
 
@@ -36,4 +37,3 @@ USER smr-agent
 ENTRYPOINT ["/opt/smr/smr"]
 CMD ["start", "--opt"]
 EXPOSE 1443
-

@@ -55,11 +55,6 @@ func (container *Container) PrepareResources(client *http.Client) error {
 	for k, v := range container.Static.Resources {
 		format := f.New("resource", v.Group, v.Name, "object")
 
-		fmt.Println("xxxxxxxxxxxxx")
-		fmt.Println(v.Group)
-		fmt.Println(v.Name)
-		fmt.Println("xxxxxxxxxxxx")
-
 		obj := objects.New(client)
 		err := obj.Find(format)
 
