@@ -68,3 +68,6 @@ jobs:
           done
 
 
+
+      - name: Build container
+        run: docker build
