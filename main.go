@@ -52,6 +52,7 @@ func main() {
 
 	var db *badger.DB
 	api := api.NewApi(conf, db)
+	api.VersionServer = SMR_VERSION
 	api.Manager.LogLevel = helpers.GetLogLevel(logLevel)
 
 	// Run any commands before starting daemon

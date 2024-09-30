@@ -32,6 +32,7 @@ func StartPlugins(implementationsRootDir string, mgr *manager.Manager) {
 
 		if pl != nil {
 			pl.Start(mgr)
+			mgr.PluginsRegistry = append(mgr.PluginsRegistry, strings.Replace(pluginName, ".so", "", 1))
 		}
 	}
 }

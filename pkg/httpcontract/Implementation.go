@@ -6,4 +6,5 @@ type ResponseImplementation struct {
 	ErrorExplanation string
 	Error            bool
 	Success          bool
+	Data             interface{}
 }

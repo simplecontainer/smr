@@ -12,6 +12,7 @@ type Manager struct {
 	Config           *configuration.Configuration
 	Keys             *keys.Keys
 	RelationRegistry *relations.RelationRegistry
+	PluginsRegistry  []string
 	DnsCache         *dns.Records
 	LogLevel         zapcore.Level
 }

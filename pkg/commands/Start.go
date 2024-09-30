@@ -87,7 +87,20 @@ func Start() {
 				{
 					logs := v1.Group("/logs")
 					{
+						//logs.GET("/", api.Agent)
 						logs.GET(":kind/:group/:identifier", api.Logs)
+					}
+
+					definitions := v1.Group("/definitions")
+					{
+						definitions.GET("/", api.Definitions)
+						definitions.GET("/:definition", api.Definition)
+					}
+
+					dns := v1.Group("/dns")
+					{
+						dns.GET("/", api.ListDns)
+						dns.GET("/:dns", api.ListDns)
 					}
 
 					operators := v1.Group("/operators")
@@ -130,6 +143,7 @@ func Start() {
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 				router.GET("/healthz", api.Health)
+				router.GET("/version", api.Version)
 				router.GET("/restore", api.Restore)
 
 				api.SetupEncryptedDatabase(api.Keys.ServerPrivateKey.Bytes()[:32])
