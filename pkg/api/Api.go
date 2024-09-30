@@ -30,6 +30,7 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api.Manager.RelationRegistry = api.RelationRegistry
 	api.Manager.Keys = api.Keys
 	api.Manager.DnsCache = api.DnsCache
+	api.Manager.PluginsRegistry = []string{}
 
 	api.RelationRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
 	api.RelationRegistry.Register("gitops", []string{"certkey", "httpauth"})

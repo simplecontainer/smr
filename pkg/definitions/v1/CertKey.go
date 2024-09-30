@@ -20,10 +20,10 @@ type CertKeySpec struct {
 	PublicKey          string `json:"publicKey"`
 	PrivateKey         string `json:"privateKey"`
 	PrivateKeyPassword string `json:"privateKeyPassword"`
-	KeyStore           string `json:"keystore"`
+	KeyStore           string `json:"keyStore"`
 	KeyStorePassword   string `json:"keyStorePassword"`
-	CertStore          string `json:"certstore"`
-	CertStorePassword  string `json:"certstorePassword"`
+	CertStore          string `json:"certStore"`
+	CertStorePassword  string `json:"certStorePassword"`
 }
 
 func (certkey *CertKey) ToJsonString() (string, error) {

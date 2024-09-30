@@ -18,6 +18,7 @@ type Api struct {
 	BadgerSync       *sync.RWMutex
 	RelationRegistry *relations.RelationRegistry
 	Manager          *manager.Manager
+	VersionServer    string
 }
 
 type Kv struct {
