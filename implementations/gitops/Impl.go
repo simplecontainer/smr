@@ -40,7 +40,7 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var gitopsDefinition v1.Gitops
+	var gitopsDefinition v1.GitopsDefinition
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
 		return httpcontract.ResponseImplementation{
@@ -127,7 +127,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 }
 
 func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var gitopsDefinition v1.Gitops
+	var gitopsDefinition v1.GitopsDefinition
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
 		return httpcontract.ResponseImplementation{

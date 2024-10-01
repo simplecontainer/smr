@@ -12,7 +12,7 @@ type ContainersWatcher struct {
 }
 
 type Containers struct {
-	Definition      v1.Containers
+	Definition      v1.ContainersDefinition
 	Syncing         bool
 	Tracking        bool
 	ContainersQueue chan string        `json:"-"`

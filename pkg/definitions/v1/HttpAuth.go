@@ -6,7 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type HttpAuth struct {
+type HttpAuthDefinition struct {
 	Meta HttpAuthMeta `json:"meta"`
 	Spec HttpAuthSpec `json:"spec"`
 }
@@ -21,12 +21,12 @@ type HttpAuthSpec struct {
 	Password string
 }
 
-func (httpauth *HttpAuth) ToJsonString() (string, error) {
+func (httpauth *HttpAuthDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(httpauth)
 	return string(bytes), err
 }
 
-func (httpauth *HttpAuth) Validate() (bool, error) {
+func (httpauth *HttpAuthDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(httpauth)

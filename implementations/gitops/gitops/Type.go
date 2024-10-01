@@ -14,12 +14,12 @@ type Gitops struct {
 	PoolingInterval  string
 	AutomaticSync    bool
 	InSync           bool
-	CertKeyRef       v1.CertKeyRef
-	HttpAuthRef      v1.HttpauthRef
+	CertKeyRef       v1.GitopsCertKeyRef
+	HttpAuthRef      v1.GitopsHttpauthRef
 	LastSyncedCommit plumbing.Hash
 	CertKey          *certkey.CertKey   `json:"-"`
 	HttpAuth         *httpauth.HttpAuth `json:"-"`
-	Definition       *v1.Gitops
+	Definition       *v1.GitopsDefinition
 }
 
 type Event struct {

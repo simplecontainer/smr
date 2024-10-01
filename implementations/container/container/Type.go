@@ -38,7 +38,7 @@ type Static struct {
 	Privileged             bool
 	Readiness              []Readiness
 	Resources              []Resource
-	Definition             v1.Container
+	Definition             v1.ContainerDefinition
 }
 
 type Runtime struct {

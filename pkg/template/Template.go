@@ -35,7 +35,7 @@ func ParseTemplate(obj objects.ObjectInterface, retrieve map[string]string, root
 
 		switch formatFind.Kind {
 		case "configuration":
-			configuration := v1.Configuration{}
+			configuration := v1.ConfigurationDefinition{}
 
 			err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
 

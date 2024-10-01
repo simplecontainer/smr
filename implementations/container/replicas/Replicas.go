@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefinition v1.Container, changelog diff.Changelog) (map[string][]string, map[string][]string, error) {
+func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefinition v1.ContainerDefinition, changelog diff.Changelog) (map[string][]string, map[string][]string, error) {
 	create := map[string][]string{
 		"groups": make([]string, 0),
 		"names":  make([]string, 0),
@@ -78,7 +78,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 	return create, remove, nil
 }
 
-func (replicas *Replicas) GetReplica(shared *shared.Shared, containerDefinition v1.Container) ([]string, []string, error) {
+func (replicas *Replicas) GetReplica(shared *shared.Shared, containerDefinition v1.ContainerDefinition) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
 

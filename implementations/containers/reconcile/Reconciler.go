@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func NewWatcher(containers v1.Containers, mgr *manager.Manager) *watcher.Containers {
+func NewWatcher(containers v1.ContainersDefinition, mgr *manager.Manager) *watcher.Containers {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 

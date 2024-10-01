@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-func NewWatcher(gitopsObj *v1.Gitops, mgr *manager.Manager) *watcher.Gitops {
+func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager) *watcher.Gitops {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 

@@ -37,7 +37,7 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var resource v1.Resource
+	var resource v1.ResourceDefinition
 
 	if err := json.Unmarshal(jsonData, &resource); err != nil {
 		return httpcontract.ResponseImplementation{
@@ -118,7 +118,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 }
 
 func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var resource v1.Resource
+	var resource v1.ResourceDefinition
 
 	if err := json.Unmarshal(jsonData, &resource); err != nil {
 		return httpcontract.ResponseImplementation{
@@ -179,7 +179,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 }
 
 func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var resource v1.Resource
+	var resource v1.ResourceDefinition
 
 	if err := json.Unmarshal(jsonData, &resource); err != nil {
 		return httpcontract.ResponseImplementation{
