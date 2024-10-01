@@ -112,7 +112,7 @@ func convertPortMappingsToExposedPorts(portMappings []PortMappings) []string {
 	return exposedPorts
 }
 
-func convertReadinessDefinitionToReadiness(readinessDefinition []v1.Readiness) []Readiness {
+func convertReadinessDefinitionToReadiness(readinessDefinition []v1.ContainerReadiness) []Readiness {
 	var readiness = make([]Readiness, 0)
 
 	for _, val := range readinessDefinition {

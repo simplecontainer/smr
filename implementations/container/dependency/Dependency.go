@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
+func NewDependencyFromDefinition(depend v1.ContainerDependsOn) *Dependency {
 	if depend.Timeout == "" {
 		depend.Timeout = "30s"
 	}
@@ -32,7 +32,7 @@ func NewDependencyFromDefinition(depend v1.DependsOn) *Dependency {
 	}
 }
 
-func Ready(registry *registry.Registry, group string, name string, dependsOn []v1.DependsOn, channel chan *State) (bool, error) {
+func Ready(registry *registry.Registry, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {

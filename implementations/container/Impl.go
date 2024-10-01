@@ -63,7 +63,7 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	containerDefinition := &v1.Container{}
+	containerDefinition := &v1.ContainerDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containerDefinition); err != nil {
 		return httpcontract.ResponseImplementation{
@@ -231,7 +231,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 }
 
 func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	containersDefinition := &v1.Container{}
+	containersDefinition := &v1.ContainerDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
 		return httpcontract.ResponseImplementation{
@@ -318,7 +318,7 @@ func FetchContainersFromRegistry(registry *registry.Registry, groups []string, n
 	return order
 }
 
-func generateReplicaNamesAndGroups(shared *shared.Shared, changed bool, containerDefinition v1.Container, changelog diff.Changelog) (map[string][]string, map[string][]string, error) {
+func generateReplicaNamesAndGroups(shared *shared.Shared, changed bool, containerDefinition v1.ContainerDefinition, changelog diff.Changelog) (map[string][]string, map[string][]string, error) {
 	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT)
 
 	r := replicas.Replicas{
@@ -333,7 +333,7 @@ func generateReplicaNamesAndGroups(shared *shared.Shared, changed bool, containe
 	return create, remove, err
 }
 
-func GetReplicaNamesAndGroups(shared *shared.Shared, containerDefinition v1.Container) ([]string, []string, error) {
+func GetReplicaNamesAndGroups(shared *shared.Shared, containerDefinition v1.ContainerDefinition) ([]string, []string, error) {
 	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT)
 
 	r := replicas.Replicas{

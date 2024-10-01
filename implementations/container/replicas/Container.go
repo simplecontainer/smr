@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Manager, containerDefinition v1.Container, changelog diff.Changelog) ([]string, []string, error) {
+func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Manager, containerDefinition v1.ContainerDefinition, changelog diff.Changelog) ([]string, []string, error) {
 	groups := make([]string, 0)
 	names := make([]string, 0)
 

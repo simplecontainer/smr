@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type CertKey struct {
+type CertKeyDefinition struct {
 	Meta CertKeyMeta `json:"meta"`
 	Spec CertKeySpec `json:"spec"`
 }
@@ -26,12 +26,12 @@ type CertKeySpec struct {
 	CertStorePassword  string `json:"certStorePassword"`
 }
 
-func (certkey *CertKey) ToJsonString() (string, error) {
+func (certkey *CertKeyDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(certkey)
 	return string(bytes), err
 }
 
-func (certkey *CertKey) Validate() (bool, error) {
+func (certkey *CertKeyDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(certkey)

@@ -62,7 +62,7 @@ func (container *Container) PrepareResources(client *http.Client) error {
 			return errors.New(fmt.Sprintf("failed to fetch resource from the kv store %s", format.ToString()))
 		}
 
-		resourceObject := v1.Resource{}
+		resourceObject := v1.ResourceDefinition{}
 
 		err = json.Unmarshal(obj.GetDefinitionByte(), &resourceObject)
 

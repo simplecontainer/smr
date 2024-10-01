@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.Container) (*Container, error) {
+func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.ContainerDefinition) (*Container, error) {
 	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -29,7 +29,7 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 		return nil, err
 	}
 
-	var definitionCopy v1.Container
+	var definitionCopy v1.ContainerDefinition
 
 	err = json.Unmarshal(definitionEncoded, &definitionCopy)
 

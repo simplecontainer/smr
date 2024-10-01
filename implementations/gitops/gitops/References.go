@@ -12,7 +12,7 @@ import (
 func (gitops *Gitops) Prepare(client *http.Client) {
 	format := f.New("httpauth", gitops.HttpAuthRef.Group, gitops.HttpAuthRef.Identifier, "object")
 
-	var httpAuth v1.HttpAuth
+	var httpAuth v1.HttpAuthDefinition
 	obj := objects.Object{}
 	obj.FindAndConvert(client, format, httpAuth)
 
@@ -21,7 +21,7 @@ func (gitops *Gitops) Prepare(client *http.Client) {
 		Password: httpAuth.Spec.Password,
 	}
 
-	var certKey v1.CertKey
+	var certKey v1.CertKeyDefinition
 	format = f.New("certkey", gitops.CertKeyRef.Group, gitops.CertKeyRef.Identifier, "object")
 	obj.FindAndConvert(client, format, certKey)
 

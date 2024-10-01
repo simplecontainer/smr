@@ -17,7 +17,7 @@ type Gitops struct {
 	Syncing     bool
 	Tracking    bool
 	BackOff     BackOff
-	Definition  v1.Gitops
+	Definition  v1.GitopsDefinition
 	GitopsQueue chan *gitops.Gitops `json:"-"`
 	Ctx         context.Context     `json:"-"`
 	Cancel      context.CancelFunc  `json:"-"`

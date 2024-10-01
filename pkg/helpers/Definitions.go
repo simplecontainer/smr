@@ -11,25 +11,25 @@ func Definitions(defintion string) ([]byte, error) {
 
 	switch defintion {
 	case "certkey":
-		out, err = yaml.Marshal(v1.CertKey{})
+		out, err = yaml.Marshal(v1.CertKeyDefinition{})
 		break
 	case "configuration":
-		out, err = yaml.Marshal(v1.Configuration{})
+		out, err = yaml.Marshal(v1.ConfigurationDefinition{})
 		break
 	case "resource":
-		out, err = yaml.Marshal(v1.Resource{})
+		out, err = yaml.Marshal(v1.ResourceDefinition{})
 		break
 	case "httpauth":
-		out, err = yaml.Marshal(v1.HttpAuth{})
+		out, err = yaml.Marshal(v1.HttpAuthDefinition{})
 		break
 	case "containers":
-		out, err = yaml.Marshal(v1.Containers{})
+		out, err = yaml.Marshal(v1.ContainersDefinition{})
 		break
 	case "container":
-		out, err = yaml.Marshal(v1.Container{})
+		out, err = yaml.Marshal(v1.ContainerDefinition{})
 		break
 	case "gitops":
-		out, err = yaml.Marshal(v1.Gitops{})
+		out, err = yaml.Marshal(v1.GitopsDefinition{})
 		break
 	}
 

@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func NewReadinessFromDefinition(client *http.Client, container *Container, readiness v1.Readiness) (*Readiness, error) {
+func NewReadinessFromDefinition(client *http.Client, container *Container, readiness v1.ContainerReadiness) (*Readiness, error) {
 	if readiness.Timeout == "" {
 		readiness.Timeout = "30s"
 	}

@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type Configuration struct {
+type ConfigurationDefinition struct {
 	Meta ConfigurationMeta `json:"meta"`
 	Spec ConfigurationSpec `json:"spec"`
 }
@@ -19,12 +19,12 @@ type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
 }
 
-func (configuration *Configuration) ToJsonString() (string, error) {
+func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(configuration)
 	return string(bytes), err
 }
 
-func (configuration *Configuration) Validate() (bool, error) {
+func (configuration *ConfigurationDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(configuration)

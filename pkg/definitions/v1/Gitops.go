@@ -6,7 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type Gitops struct {
+type GitopsDefinition struct {
 	Meta GitopsMeta `json:"meta"`
 	Spec GitopsSpec `json:"spec"`
 }
@@ -17,31 +17,31 @@ type GitopsMeta struct {
 }
 
 type GitopsSpec struct {
-	RepoURL         string      `json:"repoURL"`
-	Revision        string      `json:"revision"`
-	DirectoryPath   string      `json:"directory"`
-	PoolingInterval string      `json:"poolingInterval"`
-	AutomaticSync   bool        `json:"automaticSync"`
-	CertKeyRef      CertKeyRef  `json:"certKeyRef"`
-	HttpAuthRef     HttpauthRef `json:"httpAuthRef"`
+	RepoURL         string            `json:"repoURL"`
+	Revision        string            `json:"revision"`
+	DirectoryPath   string            `json:"directory"`
+	PoolingInterval string            `json:"poolingInterval"`
+	AutomaticSync   bool              `json:"automaticSync"`
+	CertKeyRef      GitopsCertKeyRef  `json:"certKeyRef"`
+	HttpAuthRef     GitopsHttpauthRef `json:"httpAuthRef"`
 }
 
-type CertKeyRef struct {
+type GitopsCertKeyRef struct {
 	Group      string
 	Identifier string
 }
 
-type HttpauthRef struct {
+type GitopsHttpauthRef struct {
 	Group      string
 	Identifier string
 }
 
-func (gitops *Gitops) ToJsonString() (string, error) {
+func (gitops *GitopsDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(gitops)
 	return string(bytes), err
 }
 
-func (gitops *Gitops) Validate() (bool, error) {
+func (gitops *GitopsDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(gitops)

@@ -6,7 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type Resource struct {
+type ResourceDefinition struct {
 	Meta ResourceMeta `json:"meta"`
 	Spec ResourceSpec `json:"spec"`
 }
@@ -20,12 +20,12 @@ type ResourceSpec struct {
 	Data map[string]string `json:"data"`
 }
 
-func (resource *Resource) ToJsonString() (string, error) {
+func (resource *ResourceDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(resource)
 	return string(bytes), err
 }
 
-func (resource *Resource) Validate() (bool, error) {
+func (resource *ResourceDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(resource)

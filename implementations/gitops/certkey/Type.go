@@ -11,5 +11,5 @@ type CertKey struct {
 	KeyStorePassword   string `json:"keyStorePassword"`
 	CertStore          string `json:"certstore"`
 	CertStorePassword  string `json:"certstorePassword"`
-	Definition         v1.CertKey
+	Definition         v1.CertKeyDefinition
 }
