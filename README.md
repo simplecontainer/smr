@@ -55,18 +55,8 @@ docker run \
        simplecontainermanager/smr:$LATEST_VERSION create smr
 ```
 
-This will generate project and create configuration file, and also It will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate
-with the simplecontainer agent in a secured manner.
+This will generate project and create configuration file.
 
-This bundle is needed by the client to connect to the Simplecontainer API.
-
-```bash
-cat $HOME/.ssh/simplecontainer/client.pem
------BEGIN PRIVATE KEY-----
-MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
-ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
-...
-```
 Afterward running will start simplecontainer as docker container, and it will be able
 to manage containers on top of docker.
 
@@ -82,6 +72,18 @@ docker run \
        --dns 127.0.0.1 \
        --name smr-agent \
        -d simplecontainermanager/smr:$LATEST_VERSION start
+```
+
+Agent will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate
+with the simplecontainer agent in a secured manner.
+
+This bundle is needed by the client to connect to the Simplecontainer API.
+```bash
+cat $HOME/.ssh/simplecontainer/client.pem
+-----BEGIN PRIVATE KEY-----
+MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
+ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
+...
 ```
 
 Installation of the client
