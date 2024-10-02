@@ -67,7 +67,7 @@ func SortFiles(gitopsObj *gitops.Gitops, localPath string, shared *shared.Shared
 	orderedByDependencies := make([]map[string]string, 0)
 
 	for _, e := range entries {
-		if filepath.Ext(e.Name()) == "yaml" {
+		if filepath.Ext(e.Name()) == ".yaml" {
 			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitopsObj.DirectoryPath, e.Name()))
 			if err != nil {
 				return nil, err
