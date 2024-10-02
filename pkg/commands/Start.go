@@ -113,6 +113,7 @@ func Start() {
 					objects := v1.Group("/")
 					{
 						objects.POST("apply", api.Apply)
+						objects.POST("apply/:kind", api.Apply)
 						objects.POST("compare", api.Compare)
 						objects.POST("delete", api.Delete)
 					}

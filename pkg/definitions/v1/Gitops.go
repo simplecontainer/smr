@@ -27,13 +27,13 @@ type GitopsSpec struct {
 }
 
 type GitopsCertKeyRef struct {
-	Group      string
-	Identifier string
+	Group string
+	Name  string
 }
 
 type GitopsHttpauthRef struct {
-	Group      string
-	Identifier string
+	Group string
+	Name  string
 }
 
 func (gitops *GitopsDefinition) ToJsonString() (string, error) {

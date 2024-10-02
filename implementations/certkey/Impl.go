@@ -93,10 +93,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		sharedHub := pl.GetShared().(*hubShared.Shared)
 
 		sharedHub.Event <- &hub.Event{
-			Kind:       KIND,
-			Group:      certkey.Meta.Group,
-			Identifier: certkey.Meta.Name,
-			Data:       nil,
+			Kind:  KIND,
+			Group: certkey.Meta.Group,
+			Name:  certkey.Meta.Name,
+			Data:  nil,
 		}
 	} else {
 		return httpcontract.ResponseImplementation{

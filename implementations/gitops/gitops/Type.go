@@ -14,6 +14,7 @@ type Gitops struct {
 	PoolingInterval  string
 	AutomaticSync    bool
 	InSync           bool
+	AuthType         *AuthType
 	CertKeyRef       v1.GitopsCertKeyRef
 	HttpAuthRef      v1.GitopsHttpauthRef
 	LastSyncedCommit plumbing.Hash
@@ -21,6 +22,13 @@ type Gitops struct {
 	HttpAuth         *httpauth.HttpAuth `json:"-"`
 	Definition       *v1.GitopsDefinition
 }
+
+type AuthType struct {
+	AuthType string
+}
+
+const httpAuthType string = "http"
+const sshAuthType string = "ssh"
 
 type Event struct {
 	Event string

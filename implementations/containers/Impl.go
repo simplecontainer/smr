@@ -16,6 +16,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
@@ -88,7 +89,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 			if err != nil {
 				return httpcontract.ResponseImplementation{
-					HttpStatus:       200,
+					HttpStatus:       http.StatusInternalServerError,
 					Explanation:      "failed to update object",
 					ErrorExplanation: err.Error(),
 					Error:            false,
@@ -101,7 +102,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 		if err != nil {
 			return httpcontract.ResponseImplementation{
-				HttpStatus:       200,
+				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "failed to add object",
 				ErrorExplanation: err.Error(),
 				Error:            false,
@@ -129,7 +130,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 			reconcile.ReconcileContainer(implementation.Shared, containersFromDefinition)
 		} else {
 			return httpcontract.ResponseImplementation{
-				HttpStatus:       200,
+				HttpStatus:       http.StatusOK,
 				Explanation:      "containers object is same as the one on the server",
 				ErrorExplanation: "",
 				Error:            false,
@@ -147,7 +148,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}
 
 	return httpcontract.ResponseImplementation{
-		HttpStatus:       200,
+		HttpStatus:       http.StatusOK,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",
 		Error:            false,

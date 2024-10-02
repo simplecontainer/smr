@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
@@ -40,7 +41,7 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var gitopsDefinition v1.GitopsDefinition
+	var gitopsDefinition = &v1.GitopsDefinition{}
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
 		return httpcontract.ResponseImplementation{
@@ -70,7 +71,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		panic(err)
 	}
 
-	mapstructure.Decode(data["spec"], &gitopsDefinition)
+	mapstructure.Decode(data, &gitopsDefinition)
 
 	var format *f.Format
 
@@ -86,39 +87,68 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
 			err = obj.Update(format, jsonStringFromRequest)
+
+			if err != nil {
+				return httpcontract.ResponseImplementation{
+					HttpStatus:       http.StatusInternalServerError,
+					Explanation:      "failed to update object",
+					ErrorExplanation: err.Error(),
+					Error:            false,
+					Success:          true,
+				}, err
+			}
 		}
 	} else {
 		err = obj.Add(format, jsonStringFromRequest)
+
+		if err != nil {
+			return httpcontract.ResponseImplementation{
+				HttpStatus:       http.StatusInternalServerError,
+				Explanation:      "failed to add object",
+				ErrorExplanation: err.Error(),
+				Error:            false,
+				Success:          true,
+			}, err
+		}
 	}
 
-	if obj.ChangeDetected() || !obj.Exists() {
-		GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name)
+	GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name)
+	gitopsFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
 
-		gitopsFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
+	if obj.Exists() {
+		if obj.ChangeDetected() || gitopsFromDefinition == nil {
+			if gitopsFromDefinition == nil {
+				gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager)
+				go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
 
-		if gitopsFromDefinition == nil {
-			gitopsFromDefinition = reconcile.NewWatcher(&gitopsDefinition, implementation.Shared.Manager)
-			go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
+				gitopsFromDefinition.Logger.Info("new gitops object created")
+			} else {
+				gitopsFromDefinition.Definition = *gitopsDefinition
+				gitopsFromDefinition.Logger.Info("gitops object modified")
 
-			gitopsFromDefinition.Logger.Info("new gitops object created")
+				go reconcile.ReconcileGitops(implementation.Shared, gitopsFromDefinition)
+			}
+
+			implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
 		} else {
-			gitopsFromDefinition.Definition = gitopsDefinition
-			gitopsFromDefinition.Logger.Info("gitops object modified")
+			return httpcontract.ResponseImplementation{
+				HttpStatus:       http.StatusOK,
+				Explanation:      "gitops object is same as the one on the server",
+				ErrorExplanation: "",
+				Error:            false,
+				Success:          true,
+			}, errors.New("gitops object is same on the server")
 		}
-
-		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
 	} else {
-		return httpcontract.ResponseImplementation{
-			HttpStatus:       200,
-			Explanation:      "object is same as the one on the server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, errors.New("object is same on the server")
+		gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager)
+		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
+
+		gitopsFromDefinition.Logger.Info("new gitops object created")
+		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
 	}
 
 	return httpcontract.ResponseImplementation{
-		HttpStatus:       200,
+		HttpStatus:       http.StatusOK,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",
 		Error:            false,

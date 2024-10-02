@@ -30,7 +30,7 @@ func Event(shared *shared.Shared, event *hub.Event) {
 
 	// handle container events
 	if helpers.Contains([]string{"Container"}, event.Kind) {
-		container = shared.Registry.Find(event.Group, event.Identifier)
+		container = shared.Registry.Find(event.Group, event.Name)
 	}
 
 	if container == nil {
