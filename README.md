@@ -52,7 +52,7 @@ docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost \
        -e EXTERNALIP=127.0.0.1 \
-       smr:$LATEST_VERSION create smr
+       simplecontainermanager/smr:$LATEST_VERSION create smr
 ```
 
 This will generate project and create configuration file, and also It will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate
@@ -81,7 +81,7 @@ docker run \
        -p 0.0.0.0:1443:1443 \
        --dns 127.0.0.1 \
        --name smr-agent \
-       -d smr:$LATEST_VERSION start
+       -d simplecontainermanager/smr:$LATEST_VERSION start
 ```
 
 Installation of the client
