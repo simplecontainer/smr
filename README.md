@@ -96,10 +96,11 @@ https://github.com/simplecontainer/client/releases
 
 Example for installing latest version:
 
-```azure
-VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
-PLATFORM=linux-amd64
-curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
+```bash
+export VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
+export PLATFORM=linux-amd64
+curl -Lo client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
+chmod +x client
 sudo mv client /usr/local/bin/smr
 smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/client.pem --context localhost
 {"level":"info","ts":1720694421.2032707,"caller":"context/Connect.go:40","msg":"authenticated against the smr-agent"}
