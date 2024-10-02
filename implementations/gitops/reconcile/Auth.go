@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"encoding/base64"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -8,8 +9,8 @@ import (
 )
 
 func GetAuth(gitopsObj *gitops.Gitops) (transport.AuthMethod, error) {
-	var auth transport.AuthMethod
-	var err error
+	var auth transport.AuthMethod = nil
+	var err error = nil
 
 	if gitopsObj.HttpAuth != nil {
 		auth = &gitHttp.BasicAuth{
@@ -19,9 +20,9 @@ func GetAuth(gitopsObj *gitops.Gitops) (transport.AuthMethod, error) {
 	}
 
 	if gitopsObj.CertKey != nil {
-		auth, err = ssh.NewPublicKeys(ssh.DefaultUsername, []byte(gitopsObj.CertKey.PrivateKey), gitopsObj.CertKey.PrivateKeyPassword)
-		return nil, err
+		b64decoded, _ := base64.StdEncoding.DecodeString(gitopsObj.CertKey.PrivateKey)
+		auth, err = ssh.NewPublicKeys(ssh.DefaultUsername, b64decoded, gitopsObj.CertKey.PrivateKeyPassword)
 	}
 
-	return auth, nil
+	return auth, err
 }

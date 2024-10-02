@@ -86,7 +86,9 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 		}
 	}
 
-	data["certkeys"] = objs
+	for k, v := range objs {
+		data[k] = v.GetDefinition()
+	}
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,

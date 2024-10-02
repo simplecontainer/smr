@@ -47,7 +47,6 @@ func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager) *watcher.G
 			LastSyncedCommit: plumbing.Hash{},
 			CertKey:          nil,
 			HttpAuth:         nil,
-			Definition:       gitopsObj,
 		},
 		BackOff: watcher.BackOff{
 			BackOff: false,
@@ -60,6 +59,7 @@ func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager) *watcher.G
 		Cancel:      fn,
 		Ticker:      time.NewTicker(interval),
 		Logger:      loggerObj,
+		Definition:  *gitopsObj,
 	}
 
 	return watcher
@@ -71,19 +71,23 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 		case <-gitopsWatcher.Ctx.Done():
 			gitopsWatcher.Ticker.Stop()
 			close(gitopsWatcher.GitopsQueue)
-			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
+			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Definition.Meta.Group, gitopsWatcher.Definition.Meta.Name))
 
 			return
 		case <-gitopsWatcher.GitopsQueue:
+			ReconcileGitops(shared, gitopsWatcher)
+
 			if gitopsWatcher.BackOff.BackOff {
 				gitopsWatcher.Logger.Info("gitops reconcile is invalid, delete old and apply new",
 					zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 				)
 			} else {
-				go ReconcileGitops(shared, gitopsWatcher)
+				go SyncGitops(shared, gitopsWatcher)
 			}
 			break
 		case <-gitopsWatcher.Ticker.C:
+			ReconcileGitops(shared, gitopsWatcher)
+
 			if gitopsWatcher.BackOff.BackOff {
 				gitopsWatcher.Logger.Info("gitops reconcile is invalid, delete old and apply new",
 					zap.String("repository", gitopsWatcher.Gitops.RepoURL),
@@ -101,7 +105,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 			CheckInSync(shared, gitopsWatcher)
 
 			if gitopsWatcher.Gitops.AutomaticSync && !gitopsWatcher.Gitops.InSync {
-				go ReconcileGitops(shared, gitopsWatcher)
+				go SyncGitops(shared, gitopsWatcher)
 			}
 
 			break
@@ -110,6 +114,23 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 }
 
 func ReconcileGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
+	gitopsWatcher.Gitops = &gitops.Gitops{
+		RepoURL:          gitopsWatcher.Definition.Spec.RepoURL,
+		Revision:         gitopsWatcher.Definition.Spec.Revision,
+		DirectoryPath:    gitopsWatcher.Definition.Spec.DirectoryPath,
+		PoolingInterval:  gitopsWatcher.Definition.Spec.PoolingInterval,
+		AutomaticSync:    gitopsWatcher.Definition.Spec.AutomaticSync,
+		InSync:           false,
+		CertKeyRef:       gitopsWatcher.Definition.Spec.CertKeyRef,
+		HttpAuthRef:      gitopsWatcher.Definition.Spec.HttpAuthRef,
+		LastSyncedCommit: plumbing.Hash{},
+		CertKey:          nil,
+		HttpAuth:         nil,
+		Definition:       &gitopsWatcher.Definition,
+	}
+}
+
+func SyncGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	var orderedByDependencies []map[string]string
 	var auth transport.AuthMethod
 	var hash plumbing.Hash
@@ -122,77 +143,95 @@ func ReconcileGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	gitopsWatcher.Syncing = true
 
-	gitopsObj := gitopsWatcher.Gitops
-	auth, err = GetAuth(gitopsObj)
+	gitopsWatcher.Gitops.AuthType, err = gitopsWatcher.Gitops.Prepare(shared.Client)
+	auth, err = GetAuth(gitopsWatcher.Gitops)
 
 	if err != nil {
 		gitopsWatcher.Logger.Error("gitops reconcile auth configuration failed",
-			zap.String("repository", gitopsObj.RepoURL),
+			zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 			zap.Error(err),
 		)
 
 		gitopsWatcher.Backoff()
+		gitopsWatcher.Syncing = false
+		return
 	}
 
-	localPath := fmt.Sprintf("/tmp/%s", path.Base(gitopsObj.RepoURL))
-	hash, err = Clone(gitopsObj, auth, localPath)
+	localPath := fmt.Sprintf("/tmp/%s", path.Base(gitopsWatcher.Gitops.RepoURL))
+	hash, err = Clone(gitopsWatcher.Gitops, auth, localPath)
 
 	if err != nil {
 		gitopsWatcher.Logger.Error("gitops reconcile git clone failed",
-			zap.String("repository", gitopsObj.RepoURL),
+			zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 			zap.Error(err),
 		)
 
 		gitopsWatcher.Backoff()
+		gitopsWatcher.Syncing = false
+		return
 	}
 
-	if gitopsObj.LastSyncedCommit != hash || !gitopsObj.InSync {
-		orderedByDependencies, err = SortFiles(gitopsObj, localPath, shared)
+	if gitopsWatcher.Gitops.LastSyncedCommit != hash || !gitopsWatcher.Gitops.InSync {
+		orderedByDependencies, err = SortFiles(gitopsWatcher.Gitops, localPath, shared)
 
 		if err != nil {
 			gitopsWatcher.Logger.Error("gitops reconcile dependency order failed",
-				zap.String("repository", gitopsObj.RepoURL),
+				zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 				zap.Error(err),
 			)
 
 			gitopsWatcher.Backoff()
+			gitopsWatcher.Syncing = false
+			return
 		}
 
-		for _, fileInfo := range orderedByDependencies {
-			fileName := fileInfo["name"]
+		if len(orderedByDependencies) > 0 {
+			for _, fileInfo := range orderedByDependencies {
+				fileName := fileInfo["name"]
 
-			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitopsObj.DirectoryPath, fileName))
-			if err != nil {
-				gitopsWatcher.Logger.Info("gitops reconcile unable to read file",
-					zap.String("repository", gitopsObj.RepoURL),
-					zap.Error(err),
-				)
+				definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitopsWatcher.Gitops.DirectoryPath, fileName))
+				if err != nil {
+					gitopsWatcher.Logger.Info("gitops reconcile unable to read file",
+						zap.String("repository", gitopsWatcher.Gitops.RepoURL),
+						zap.Error(err),
+					)
 
-				gitopsWatcher.Backoff()
+					gitopsWatcher.Backoff()
+					gitopsWatcher.Syncing = false
+					return
+				}
+
+				response := sendRequest(shared.Client, "https://localhost:1443/api/v1/apply", definition, gitopsWatcher)
+
+				if response.Success {
+					gitopsWatcher.Logger.Info("gitops reconcile apply success",
+						zap.String("repository", gitopsWatcher.Gitops.RepoURL),
+						zap.String("file", fileName),
+						zap.Error(err),
+					)
+
+					gitopsWatcher.Gitops.LastSyncedCommit = hash
+				} else {
+					gitopsWatcher.Logger.Info("gitops reconcile invalid object sent",
+						zap.String("repository", gitopsWatcher.Gitops.RepoURL),
+						zap.Error(err),
+					)
+
+					gitopsWatcher.Backoff()
+					gitopsWatcher.Syncing = false
+					return
+				}
 			}
-
-			response := sendRequest(shared.Client, "https://localhost:1443/api/v1/apply", definition, gitopsObj)
-
-			if response.Success {
-				gitopsWatcher.Logger.Info("gitops reconcile apply success",
-					zap.String("repository", gitopsObj.RepoURL),
-					zap.String("file", fileName),
-					zap.Error(err),
-				)
-
-				gitopsObj.LastSyncedCommit = hash
-			} else {
-				gitopsWatcher.Logger.Info("gitops reconcile invalid object sent",
-					zap.String("repository", gitopsObj.RepoURL),
-					zap.Error(err),
-				)
-
-				gitopsWatcher.Backoff()
-			}
+		} else {
+			gitopsWatcher.Logger.Info("git repository doesnt contain any valid simplecontainer definitions",
+				zap.String("repository", gitopsWatcher.Gitops.RepoURL),
+				zap.String("directory", gitopsWatcher.Gitops.DirectoryPath),
+				zap.String("revision", gitopsWatcher.Gitops.Revision),
+			)
 		}
 	} else {
 		gitopsWatcher.Logger.Info("gitops reconcile hash is same as the last synced",
-			zap.String("repository", gitopsObj.RepoURL),
+			zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 		)
 	}
 
@@ -208,24 +247,25 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		return
 	}
 
-	gitopsObj := gitopsWatcher.Gitops
-	auth, err = GetAuth(gitopsObj)
+	gitopsWatcher.Gitops.AuthType, err = gitopsWatcher.Gitops.Prepare(shared.Client)
+	auth, err = GetAuth(gitopsWatcher.Gitops)
 
 	if err != nil {
 		gitopsWatcher.Logger.Info("gitops reconcile auth configuration failed",
-			zap.String("repository", gitopsObj.RepoURL),
+			zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 			zap.Error(err),
 		)
 
 		gitopsWatcher.Backoff()
+		return
 	}
 
-	localPath := fmt.Sprintf("/tmp/%s", path.Base(gitopsObj.RepoURL))
-	_, err = Clone(gitopsObj, auth, localPath)
+	localPath := fmt.Sprintf("/tmp/%s", path.Base(gitopsWatcher.Gitops.RepoURL))
+	_, err = Clone(gitopsWatcher.Gitops, auth, localPath)
 
 	if err != nil {
 		gitopsWatcher.Logger.Info("gitops reconcile git clone failed",
-			zap.String("repository", gitopsObj.RepoURL),
+			zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 			zap.Error(err),
 		)
 
@@ -233,14 +273,14 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	}
 
 	gitopsWatcher.Logger.Info("checking if everything is in sync",
-		zap.String("repoUrl", gitopsObj.RepoURL),
+		zap.String("repoUrl", gitopsWatcher.Gitops.RepoURL),
 	)
 
-	orderedByDependencies, err := SortFiles(gitopsObj, localPath, shared)
+	orderedByDependencies, err := SortFiles(gitopsWatcher.Gitops, localPath, shared)
 
 	if err != nil {
 		gitopsWatcher.Logger.Error("gitops reconcile git clone failed",
-			zap.String("repository", gitopsObj.RepoURL),
+			zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 			zap.Error(err),
 		)
 
@@ -254,17 +294,17 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 		gitopsWatcher.Logger.Info("checking in sync", zap.String("file", fileName))
 
-		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitopsObj.DirectoryPath, fileName))
+		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", localPath, gitopsWatcher.Gitops.DirectoryPath, fileName))
 		if err != nil {
 			gitopsWatcher.Logger.Debug("gitops reconcile unable to read file",
-				zap.String("repository", gitopsObj.RepoURL),
+				zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 				zap.Error(err),
 			)
 
 			gitopsWatcher.Backoff()
 		}
 
-		response := sendRequest(shared.Client, "https://localhost:1443/api/v1/compare", definition, gitopsObj)
+		response := sendRequest(shared.Client, "https://localhost:1443/api/v1/compare", definition, gitopsWatcher)
 
 		switch response.HttpStatus {
 		case http.StatusOK:
@@ -276,7 +316,7 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			break
 		case http.StatusBadRequest:
 			gitopsWatcher.Logger.Info("gitops reconcile invalid object sent",
-				zap.String("repository", gitopsObj.RepoURL),
+				zap.String("repository", gitopsWatcher.Gitops.RepoURL),
 				zap.Error(err),
 			)
 
@@ -285,10 +325,10 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		}
 	}
 
-	gitopsObj.InSync = inSync
+	gitopsWatcher.Gitops.InSync = inSync
 }
 
-func sendRequest(client *http.Client, URL string, data string, gitopsObj *gitops.Gitops) *httpcontract.ResponseImplementation {
+func sendRequest(client *http.Client, URL string, data string, gitopsWatcher *watcher.Gitops) *httpcontract.ResponseImplementation {
 	var req *http.Request
 	var err error
 
@@ -305,11 +345,11 @@ func sendRequest(client *http.Client, URL string, data string, gitopsObj *gitops
 
 		req, err = http.NewRequest("POST", URL, bytes.NewBuffer([]byte(data)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name))
+		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsWatcher.Definition.Meta.Group, gitopsWatcher.Definition.Meta.Name))
 	} else {
 		req, err = http.NewRequest("GET", URL, nil)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name))
+		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsWatcher.Definition.Meta.Group, gitopsWatcher.Definition.Meta.Name))
 	}
 
 	if err != nil {

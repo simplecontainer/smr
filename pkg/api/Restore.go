@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -14,7 +13,9 @@ import (
 )
 
 func (api *Api) Restore(c *gin.Context) {
-	var format *f.Format
+	var formatContainers *f.Format
+	var formatGitops *f.Format
+
 	client, err := manager.GenerateHttpClient(api.Keys)
 
 	if err != nil {
@@ -27,20 +28,58 @@ func (api *Api) Restore(c *gin.Context) {
 		})
 	}
 
-	response := make(map[string]any, 0)
+	data := make(map[string]any, 0)
 
-	format = f.New("containers")
+	formatContainers = f.New("containers")
+	formatGitops = f.New("gitops")
 	obj := objects.New(client)
 
-	var objs map[string]*objects.Object
-	objs, err = obj.FindMany(format)
+	objsTmp, errTmp := obj.FindMany(formatContainers)
 
-	for name, object := range objs {
-		b64decoded := make([]byte, 0)
-		b64decoded, err = base64.StdEncoding.DecodeString(object.GetDefinitionString())
+	if errTmp != nil {
+		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: errTmp.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
 
-		sendRequest(client, "https://localhost:1443/api/v1/apply", string(b64decoded))
-		response[name] = object
+		return
+	}
+
+	for name, object := range objsTmp {
+		response := sendRequest(client, "https://localhost:1443/api/v1/apply/containers", string(object.GetDefinitionByte()))
+
+		if !response.Error {
+			data[name] = string(object.GetDefinitionByte())
+		} else {
+			data[name] = response.ErrorExplanation
+		}
+	}
+
+	objsTmp, errTmp = obj.FindMany(formatGitops)
+
+	if errTmp != nil {
+		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: errTmp.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	for name, object := range objsTmp {
+		response := sendRequest(client, "https://localhost:1443/api/v1/apply/gitops", string(object.GetDefinitionByte()))
+
+		if !response.Error {
+			data[name] = string(object.GetDefinitionByte())
+		} else {
+			data[name] = response.ErrorExplanation
+		}
 	}
 
 	c.JSON(http.StatusOK, httpcontract.ResponseOperator{
@@ -48,7 +87,7 @@ func (api *Api) Restore(c *gin.Context) {
 		ErrorExplanation: "",
 		Error:            true,
 		Success:          false,
-		Data:             response,
+		Data:             data,
 	})
 }
 

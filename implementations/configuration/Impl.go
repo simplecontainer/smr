@@ -68,7 +68,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		panic(err)
 	}
 
-	mapstructure.Decode(data["spec"], &config)
+	mapstructure.Decode(data, &config)
 
 	var format *f.Format
 
@@ -102,10 +102,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		sharedHub := pl.GetShared().(*hubShared.Shared)
 
 		sharedHub.Event <- &hub.Event{
-			Kind:       KIND,
-			Group:      config.Meta.Group,
-			Identifier: config.Meta.Name,
-			Data:       nil,
+			Kind:  KIND,
+			Group: config.Meta.Group,
+			Name:  config.Meta.Name,
+			Data:  nil,
 		}
 	} else {
 		return httpcontract.ResponseImplementation{

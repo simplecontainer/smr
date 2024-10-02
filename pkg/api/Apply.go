@@ -39,7 +39,27 @@ func (api *Api) Apply(c *gin.Context) {
 		}
 
 		if data != nil {
-			api.ImplementationWrapperApply(data["kind"].(string), jsonData, c)
+			kind := ""
+
+			if c.Param("kind") != "" {
+				kind = c.Param("kind")
+			} else {
+				if data["kind"] != nil {
+					kind = data["kind"].(string)
+				} else {
+					c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
+						HttpStatus:       http.StatusBadRequest,
+						Explanation:      "",
+						ErrorExplanation: "invalid definition sent - kind is not defined",
+						Error:            true,
+						Success:          false,
+					})
+
+					return
+				}
+			}
+
+			api.ImplementationWrapperApply(kind, jsonData, c)
 		} else {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusBadRequest,
