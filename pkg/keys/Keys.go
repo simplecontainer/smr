@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -66,6 +67,26 @@ func (keys *Keys) Exists(directory string, username string) error {
 	}
 
 	return nil
+}
+
+func (keys *Keys) ClientExists(directory string, username string) error {
+	var usernameCert = fmt.Sprintf("%s.pem", username)
+
+	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+
+		for _, s := range []string{"pem"} {
+			if s == usernameCert {
+				return errors.New("username already exists")
+			}
+		}
+
+		return nil
+	})
+
+	return err
 }
 
 func (keys *Keys) LoadClients(directory string) error {

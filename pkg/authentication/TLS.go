@@ -20,10 +20,10 @@ func NewUser(TLSRequest *tls.ConnectionState) *User {
 
 func (user *User) CreateUser(k *keys.Keys, username string, domain string, externalIP string) (string, error) {
 	if user.Username == "root" && user.Domain == "localhost" {
-		found := k.Exists(static.SMR_SSH_HOME, filepath.Clean(username))
+		exists := k.ClientExists(static.SMR_SSH_HOME, filepath.Clean(username))
 		usernameClean := filepath.Clean(username)
 
-		if found != nil {
+		if exists == nil {
 			newClient := keys.Client{}
 			err := newClient.Generate(
 				k.CA,
@@ -52,7 +52,7 @@ func (user *User) CreateUser(k *keys.Keys, username string, domain string, exter
 
 			return fmt.Sprintf("%s/%s.pem", static.SMR_SSH_HOME, usernameClean), nil
 		} else {
-			return "", errors.New("credentials for given username already exists")
+			return "", exists
 		}
 	} else {
 		return "", errors.New("users can only be created by root user from localhost")

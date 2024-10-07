@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"net/http"
 	"path/filepath"
+	"strings"
 )
 
 func (api *Api) CreateUser(c *gin.Context) {
@@ -37,7 +38,7 @@ func (api *Api) CreateUser(c *gin.Context) {
 
 		c.JSON(http.StatusOK, httpcontract.ResponseImplementation{
 			HttpStatus:       http.StatusOK,
-			Explanation:      fmt.Sprintf("user created, run: cat %s", path),
+			Explanation:      fmt.Sprintf("user created, run: cat %s", strings.Replace(path, "/home/smr-agent", "$HOME", 1)),
 			ErrorExplanation: "",
 			Error:            true,
 			Success:          false,
