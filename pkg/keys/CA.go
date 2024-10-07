@@ -58,6 +58,12 @@ func (ca *CA) Generate() error {
 		return err
 	}
 
+	ca.Certificate, err = x509.ParseCertificate(ca.CertificateBytes)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 func (ca *CA) Write(directory string) error {

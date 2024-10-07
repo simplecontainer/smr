@@ -66,6 +66,12 @@ func (server *Server) Generate(ca *CA, domains []string, ips []net.IP, CN string
 		return err
 	}
 
+	server.Certificate, err = x509.ParseCertificate(server.CertificateBytes)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 func (server *Server) Write(directory string) error {

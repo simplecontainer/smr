@@ -102,6 +102,9 @@ func Start() {
 				}
 
 				for username, c := range api.Keys.Clients {
+					fmt.Println(username)
+					fmt.Println(c.Certificate.DNSNames)
+
 					var httpClient *http.Client
 					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients["root"])
 					if err != nil {
@@ -227,8 +230,18 @@ func Start() {
 
 				plugins.StartPlugins(api.Config.OptRoot, api.Manager)
 
-				defer server.Close()
-				server.ListenAndServeTLS("", "")
+				defer func(server *http.Server) {
+					err = server.Close()
+					if err != nil {
+						return
+					}
+				}(&server)
+
+				err = server.ListenAndServeTLS("", "")
+
+				if err != nil {
+					panic(err)
+				}
 			},
 		},
 		depends_on: []func(*api.Api, []string){
