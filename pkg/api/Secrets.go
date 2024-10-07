@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // SecretsGet godoc
@@ -23,6 +24,18 @@ import (
 //	@Failure		500	{object}	httpcontract.ResponseOperator
 //	@Router			/database/{key} [get]
 func (api *Api) SecretsGet(c *gin.Context) {
+	if !strings.HasPrefix(c.Param("secret"), "secret.") {
+		c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
+			Explanation:      "secret not found",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		var value []byte
 
@@ -167,7 +180,10 @@ func (api *Api) SecretsGetKeys(c *gin.Context) {
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
 			k := item.Key()
-			keys = append(keys, string(k))
+
+			if strings.HasPrefix(string(k), "secret.") {
+				keys = append(keys, string(k))
+			}
 		}
 
 		return nil

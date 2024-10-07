@@ -7,19 +7,27 @@ import (
 	"net/http"
 )
 
-func GenerateHttpClient(keys *keys.Keys) (*http.Client, error) {
-	cert, err := tls.X509KeyPair(keys.ClientCertPem.Bytes(), keys.ClientPrivateKey.Bytes())
+func GenerateHttpClient(k *keys.Keys) (*http.Client, error) {
+	var PEMCertificate []byte
+	var PEMPrivateKey []byte
+
+	var err error
+
+	PEMCertificate, err = keys.PEMEncode(keys.CERTIFICATE, k.Server.CertificateBytes)
+	PEMPrivateKey, err = keys.PEMEncode(keys.PRIVATE_KEY, k.Server.PrivateKeyBytes)
+
+	cert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(keys.CAPem.Bytes())
+	CAPool := x509.NewCertPool()
+	CAPool.AddCert(k.CA.Certificate)
 
 	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs:      caCertPool,
+				RootCAs:      CAPool,
 				Certificates: []tls.Certificate{cert},
 			},
 		},

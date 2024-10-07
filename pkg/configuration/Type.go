@@ -6,6 +6,7 @@ type Configuration struct {
 	OptRoot     string       `yaml:"optroot"`
 	Domain      string       `yaml:"domain"`
 	ExternalIP  string       `yaml:"externalIP"`
+	CommonName  string       `yaml:"commonName"`
 	Environment *Environment `yaml:"-"`
 	Flags       Flags        `yaml:"-"`
 }

@@ -17,3 +17,4 @@ develop: build build_docker run
 production: build_production build_docker run
 dockerd: build_docker run
 dockerp: build_docker run_private
+run: run

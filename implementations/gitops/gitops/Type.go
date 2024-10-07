@@ -14,6 +14,8 @@ type Gitops struct {
 	PoolingInterval  string
 	AutomaticSync    bool
 	InSync           bool
+	API              string
+	Context          string
 	AuthType         *AuthType
 	CertKeyRef       v1.GitopsCertKeyRef
 	HttpAuthRef      v1.GitopsHttpauthRef

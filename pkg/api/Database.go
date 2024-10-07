@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -119,6 +120,13 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			return err
 		})
 
+		if err == nil {
+			err = api.Badger.Update(func(txn *badger.Txn) error {
+				err = txn.Set([]byte(fmt.Sprintf("%s.auth", c.Param("key"))), []byte(valueSent.User))
+				return err
+			})
+		}
+
 		api.BadgerSync.Unlock()
 
 		if err != nil {
@@ -174,6 +182,7 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
+
 			keys = append(keys, string(k))
 		}
 
@@ -227,6 +236,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
 			k := item.Key()
+
 			keys = append(keys, string(k))
 		}
 

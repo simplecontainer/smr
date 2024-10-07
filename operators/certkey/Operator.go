@@ -72,7 +72,7 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 
 	format := f.New(KIND, "", "", "")
 
-	obj := objects.New(request.Client)
+	obj := objects.New(request.Client.Get(request.User.Username), request.User)
 	objs, err := obj.FindMany(format)
 
 	if err != nil {
@@ -114,7 +114,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
-	obj := objects.New(request.Client)
+	obj := objects.New(request.Client.Get(request.User.Username), request.User)
 	err := obj.Find(format)
 
 	if err != nil {
@@ -159,7 +159,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 	format := f.NewFromString(GroupIdentifier)
 
-	obj := objects.New(request.Client)
+	obj := objects.New(request.Client.Get(request.User.Username), request.User)
 	err := obj.Find(format)
 
 	if err != nil {

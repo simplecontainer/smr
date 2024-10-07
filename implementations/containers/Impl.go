@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/containers/reconcile"
 	"github.com/simplecontainer/smr/implementations/containers/shared"
 	"github.com/simplecontainer/smr/implementations/containers/watcher"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -23,13 +24,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
 
-	client, err := manager.GenerateHttpClient(mgr.Keys)
-
-	if err != nil {
-		panic(err)
-	}
-
-	implementation.Shared.Client = client
+	implementation.Shared.Client = mgr.Http
 
 	implementation.Shared.Watcher = &watcher.ContainersWatcher{}
 	implementation.Shared.Watcher.Containers = make(map[string]*watcher.Containers)
@@ -41,7 +36,7 @@ func (implementation *Implementation) GetShared() interface{} {
 	return implementation.Shared
 }
 
-func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
@@ -75,7 +70,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	var format *f.Format
 	format = f.New("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -120,14 +115,14 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 				containersFromDefinition = reconcile.NewWatcher(*containersDefinition, implementation.Shared.Manager)
 				containersFromDefinition.Logger.Info("containers object created")
 
-				go reconcile.HandleTickerAndEvents(implementation.Shared, containersFromDefinition)
+				go reconcile.HandleTickerAndEvents(implementation.Shared, user, containersFromDefinition)
 			} else {
 				containersFromDefinition.Definition = *containersDefinition
 				containersFromDefinition.Logger.Info("containers object modified")
 			}
 
 			implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
-			reconcile.ReconcileContainer(implementation.Shared, containersFromDefinition)
+			reconcile.ReconcileContainer(implementation.Shared, user, containersFromDefinition)
 		} else {
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusOK,
@@ -141,10 +136,10 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 		containersFromDefinition = reconcile.NewWatcher(*containersDefinition, implementation.Shared.Manager)
 		containersFromDefinition.Logger.Info("containers object created")
 
-		go reconcile.HandleTickerAndEvents(implementation.Shared, containersFromDefinition)
+		go reconcile.HandleTickerAndEvents(implementation.Shared, user, containersFromDefinition)
 
 		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
-		reconcile.ReconcileContainer(implementation.Shared, containersFromDefinition)
+		reconcile.ReconcileContainer(implementation.Shared, user, containersFromDefinition)
 	}
 
 	return httpcontract.ResponseImplementation{
@@ -156,7 +151,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}, nil
 }
 
-func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Compare(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
@@ -178,7 +173,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	var format *f.Format
 	format = f.New("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -215,7 +210,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	}
 }
 
-func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
@@ -237,7 +232,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 	var format *f.Format
 	format = f.New("containers", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	if !obj.Exists() {
@@ -269,12 +264,12 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 	for _, definition := range containersDefinition.Spec {
 		format = f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
-		obj = objects.New(implementation.Shared.Client)
+		obj = objects.New(implementation.Shared.Client.Get(user.Username), user)
 		obj.Find(format)
 
 		if obj.Exists() {
 			pl := plugins.GetPlugin(implementation.Shared.Manager.Config.OptRoot, "container.so")
-			pl.Delete(obj.GetDefinitionByte())
+			pl.Delete(user, obj.GetDefinitionByte())
 		}
 	}
 

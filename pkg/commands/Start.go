@@ -7,14 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
+	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/mtls"
+	middleware "github.com/simplecontainer/smr/pkg/middlewares"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -46,31 +49,72 @@ func Start() {
 
 				api.Manager.Config = api.Config
 
-				api.Keys = mtls.NewKeys("/home/smr-agent/.ssh/simplecontainer")
+				api.Keys = keys.NewKeys()
 				api.Manager.Keys = api.Keys
 
-				var found bool
-				found, err = mtls.GenerateIfNoKeysFound(api.Keys, api.Config)
+				var found error
+				found = api.Keys.Exists(static.SMR_SSH_HOME, "root")
 
-				if err != nil {
-					panic(err)
-				}
-
-				if !found {
-					err = mtls.SaveToDirectory(api.Keys)
+				if found != nil {
+					err = api.Keys.Generate(
+						[]string{api.Config.Domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)},
+						[]net.IP{net.ParseIP(api.Config.ExternalIP), net.IPv6loopback},
+					)
 
 					if err != nil {
-						logger.Log.Error("failed to save keys to directory", zap.String("error", err.Error()))
+						logger.Log.Error(err.Error())
 						os.Exit(1)
 					}
 
 					fmt.Println("/*********************************************************************/")
 					fmt.Println("/* Certificate is generated for the use by the smr client!           */")
 					fmt.Println("/* It is located in the .ssh directory in home of the running user!  */")
-					fmt.Println("/* cat $HOME/.ssh/simplecontainer/client.pem                         */")
+					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
 					fmt.Println("/*********************************************************************/")
 
-					mtls.GeneratePemBundle(api.Keys)
+					err = api.Keys.CA.Write(static.SMR_SSH_HOME)
+					if err != nil {
+						panic(err)
+					}
+
+					err = api.Keys.Server.Write(static.SMR_SSH_HOME)
+					if err != nil {
+						panic(err)
+					}
+
+					err = api.Keys.Clients["root"].Write(static.SMR_SSH_HOME, "root")
+					if err != nil {
+						panic(err)
+					}
+
+					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, "root", api.Keys.Clients["root"])
+
+					if err != nil {
+						panic(err)
+					}
+				} else {
+					err = api.Keys.LoadClients(static.SMR_SSH_HOME)
+
+					if err != nil {
+						fmt.Println(err.Error())
+						os.Exit(1)
+					}
+				}
+
+				for username, c := range api.Keys.Clients {
+					fmt.Println(username)
+					fmt.Println(c.Certificate.DNSNames)
+
+					var httpClient *http.Client
+					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients["root"])
+					if err != nil {
+						panic(err)
+					}
+
+					api.Manager.Http.Append(username, &client.Client{
+						Http: httpClient,
+						API:  fmt.Sprintf("%s:1443", c.Certificate.DNSNames[0]),
+					})
 				}
 
 				mdns.HandleFunc(".", api.HandleDns)
@@ -82,9 +126,15 @@ func Start() {
 				defer DNSserver.Shutdown()
 
 				router := gin.New()
+				router.Use(middleware.TLSAuth())
 
 				v1 := router.Group("/api/v1")
 				{
+					users := v1.Group("/user")
+					{
+						users.POST("/:username/:domain/:externalIP", api.CreateUser)
+					}
+
 					logs := v1.Group("/logs")
 					{
 						//logs.GET("/", api.Agent)
@@ -147,14 +197,18 @@ func Start() {
 				router.GET("/version", api.Version)
 				router.GET("/restore", api.Restore)
 
-				api.SetupEncryptedDatabase(api.Keys.ServerPrivateKey.Bytes()[:32])
+				api.SetupEncryptedDatabase(api.Keys.Server.PrivateKeyBytes[:32])
 
-				certPool := x509.NewCertPool()
-				if ok := certPool.AppendCertsFromPEM(api.Keys.CAPem.Bytes()); !ok {
-					panic("invalid cert in CA PEM")
-				}
+				CAPool := x509.NewCertPool()
+				CAPool.AddCert(api.Keys.CA.Certificate)
 
-				serverTLSCert, err := tls.X509KeyPair(api.Keys.ServerCertPem.Bytes(), api.Keys.ServerPrivateKey.Bytes())
+				var PEMCertificate []byte
+				var PEMPrivateKey []byte
+
+				PEMCertificate, err = keys.PEMEncode(keys.CERTIFICATE, api.Keys.Server.CertificateBytes)
+				PEMPrivateKey, err = keys.PEMEncode(keys.PRIVATE_KEY, api.Keys.Server.PrivateKeyBytes)
+
+				serverTLSCert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
 				if err != nil {
 					logger.Log.Fatal("error opening certificate and key file for control connection", zap.String("error", err.Error()))
 					return
@@ -162,7 +216,7 @@ func Start() {
 
 				tlsConfig := &tls.Config{
 					ClientAuth:   tls.RequireAndVerifyClientCert,
-					ClientCAs:    certPool,
+					ClientCAs:    CAPool,
 					Certificates: []tls.Certificate{serverTLSCert},
 				}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/simplecontainer/smr/implementations/hub/hub"
 	"github.com/simplecontainer/smr/implementations/hub/shared"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/manager"
 )
@@ -16,7 +17,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	return nil
 }
 
-func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       501,
 		Explanation:      "not implemented",
@@ -26,7 +27,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}, nil
 }
 
-func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Compare(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       501,
 		Explanation:      "not implemented",
@@ -36,7 +37,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	}, nil
 }
 
-func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       501,
 		Explanation:      "not implemented",

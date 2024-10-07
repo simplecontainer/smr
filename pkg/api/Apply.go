@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/implementations"
 	"github.com/simplecontainer/smr/pkg/plugins"
@@ -59,7 +60,7 @@ func (api *Api) Apply(c *gin.Context) {
 				}
 			}
 
-			api.ImplementationWrapperApply(kind, jsonData, c)
+			api.ImplementationWrapperApply(authentication.NewUser(c.Request.TLS), kind, jsonData, c)
 		} else {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusBadRequest,
@@ -72,7 +73,7 @@ func (api *Api) Apply(c *gin.Context) {
 	}
 }
 
-func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.Context) {
+func (api *Api) ImplementationWrapperApply(user *authentication.User, kind string, jsonData []byte, c *gin.Context) {
 	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "implementations", kind)
 
 	if err != nil {
@@ -116,7 +117,7 @@ func (api *Api) ImplementationWrapperApply(kind string, jsonData []byte, c *gin.
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Apply(jsonData)
+		response, err = pl.Apply(user, jsonData)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{

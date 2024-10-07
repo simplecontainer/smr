@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/dgraph-io/badger/v4"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -11,6 +12,7 @@ import (
 )
 
 type Api struct {
+	User             *authentication.User
 	Config           *configuration.Configuration
 	Keys             *keys.Keys
 	DnsCache         *dns.Records
@@ -23,4 +25,5 @@ type Api struct {
 
 type Kv struct {
 	Value string
+	User  string
 }

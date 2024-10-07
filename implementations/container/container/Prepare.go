@@ -4,23 +4,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/template"
-	"net/http"
 	"regexp"
 	"strings"
 )
 
-func (container *Container) Prepare(client *http.Client) error {
-	err := container.PrepareConfiguration(client)
+func (container *Container) Prepare(client *client.Http, user *authentication.User) error {
+	err := container.PrepareConfiguration(client, user)
 
 	if err != nil {
 		return err
 	}
 
-	err = container.PrepareResources(client)
+	err = container.PrepareResources(client, user)
 
 	if err != nil {
 		return err
@@ -34,13 +35,13 @@ func (container *Container) Prepare(client *http.Client) error {
 	return nil
 }
 
-func (container *Container) PrepareConfiguration(client *http.Client) error {
+func (container *Container) PrepareConfiguration(client *client.Http, user *authentication.User) error {
 	var dependencyMap []*f.Format
 	var err error
 
 	format := f.New("configuration", container.Static.Group, container.Static.GeneratedName, "")
 
-	obj := objects.New(client)
+	obj := objects.New(client.Get(user.Username), user)
 	container.Runtime.Configuration, container.Runtime.ObjectDependencies, err = template.ParseTemplate(obj, container.Runtime.Configuration, format)
 
 	if err != nil {
@@ -51,11 +52,11 @@ func (container *Container) PrepareConfiguration(client *http.Client) error {
 	return nil
 }
 
-func (container *Container) PrepareResources(client *http.Client) error {
+func (container *Container) PrepareResources(client *client.Http, user *authentication.User) error {
 	for k, v := range container.Static.Resources {
 		format := f.New("resource", v.Group, v.Name, "object")
 
-		obj := objects.New(client)
+		obj := objects.New(client.Get(user.Username), user)
 		err := obj.Find(format)
 
 		if err != nil {

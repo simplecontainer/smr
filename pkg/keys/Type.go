@@ -1,28 +1,36 @@
 package keys
 
 import (
-	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 )
 
 type Keys struct {
-	CAPrivateKey *bytes.Buffer
-	CAPem        *bytes.Buffer
+	CA      *CA
+	Server  *Server
+	Clients map[string]*Client
+}
 
-	CAPrivateKeyPath string
-	CAPemPath        string
+type CA struct {
+	PrivateKey       *rsa.PrivateKey
+	Certificate      *x509.Certificate
+	CertificateBytes []byte
+	PrivateKeyBytes  []byte
+	Sni              int64
+}
 
-	ServerPrivateKey *bytes.Buffer
-	ServerCertPem    *bytes.Buffer
+type Server struct {
+	PrivateKey       *rsa.PrivateKey
+	Certificate      *x509.Certificate
+	CertificateBytes []byte
+	PrivateKeyBytes  []byte
+	Sni              int64
+}
 
-	ServerPrivateKeyPath string
-	ServerCertPemPath    string
-
-	ClientPrivateKey *bytes.Buffer
-	ClientCertPem    *bytes.Buffer
-
-	ClientPrivateKeyPath string
-	ClientCertPemPath    string
-	ClientBundlePath     string
-
-	SerialNumber int64
+type Client struct {
+	PrivateKey       *rsa.PrivateKey
+	Certificate      *x509.Certificate
+	CertificateBytes []byte
+	PrivateKeyBytes  []byte
+	Sni              int64
 }

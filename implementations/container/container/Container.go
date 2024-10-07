@@ -7,15 +7,16 @@ import (
 	"errors"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	dockerClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/simplecontainer/smr/implementations/container/status"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/static"
 	"io/ioutil"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -117,11 +118,17 @@ func Existing(name string) *Container {
 	container.Static.Name = name
 
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
 	}
-	defer cli.Close()
+
+	defer func(cli *dockerClient.Client) {
+		err = cli.Close()
+		if err != nil {
+			return
+		}
+	}(cli)
 
 	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{
 		All: true,
@@ -134,7 +141,7 @@ func Existing(name string) *Container {
 	if c := container.self(containers); c != nil {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
-		if c != nil && c.State == "running" {
+		if c.State == "running" {
 			for _, netw := range container.Static.Networks {
 				if data.NetworkSettings.Networks[netw] != nil {
 					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
@@ -176,17 +183,17 @@ func (container *Container) SetOwner(owner string) {
 	}
 }
 
-func (container *Container) Run(environment *configuration.Environment, client *http.Client, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) Run(environment *configuration.Environment, client *client.Http, dnsCache *dns.Records, user *authentication.User) (*types.Container, error) {
 	c, _ := container.Get()
 
 	if c == nil {
-		return container.run(c, environment, client, dnsCache)
+		return container.run(c, environment, client, dnsCache, user)
 	}
 
 	return c, nil
 }
 
-func (container *Container) run(c *types.Container, environment *configuration.Environment, httpClient *http.Client, dnsCache *dns.Records) (*types.Container, error) {
+func (container *Container) run(c *types.Container, environment *configuration.Environment, client *client.Http, dnsCache *dns.Records, user *authentication.User) (*types.Container, error) {
 	err := container.CreateNetwork()
 
 	if err != nil {
@@ -194,9 +201,9 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 	}
 
 	ctx := context.Background()
-	cli := &client.Client{}
+	cli := &dockerClient.Client{}
 
-	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +217,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 
 	resp := dockerContainer.ContainerCreateCreatedBody{}
 
-	unpackedEnvs, err := UnpackSecretsEnvs(httpClient, container.Static.Env)
+	unpackedEnvs, err := UnpackSecretsEnvs(client, user, container.Static.Env)
 
 	if err != nil {
 		return nil, err
@@ -229,7 +236,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		DNS: []string{
 			environment.AGENTIP,
 		},
-		Mounts:       container.mappingToMounts(httpClient),
+		Mounts:       container.mappingToMounts(client, user),
 		PortBindings: container.portMappings(),
 		NetworkMode:  dockerContainer.NetworkMode(container.Static.NetworkMode),
 		Privileged:   container.Static.Privileged,
@@ -326,7 +333,7 @@ func (container *Container) UpdateDns(dnsCache *dns.Records) {
 
 func (container *Container) Get() (*types.Container, error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
 	}
@@ -374,7 +381,7 @@ func (container *Container) Get() (*types.Container, error) {
 
 func (container *Container) GetFromId(runtimeId string) *types.Container {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
 	}
@@ -398,7 +405,7 @@ func (container *Container) GetFromId(runtimeId string) *types.Container {
 func (container *Container) Start() bool {
 	if c, _ := container.Get(); c != nil && c.State == "exited" {
 		ctx := context.Background()
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			panic(err)
 		}
@@ -418,7 +425,7 @@ func (container *Container) Start() bool {
 func (container *Container) Stop() bool {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			panic(err)
 		}
@@ -442,7 +449,7 @@ func (container *Container) Stop() bool {
 func (container *Container) Restart() bool {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			panic(err)
 		}
@@ -464,7 +471,7 @@ func (container *Container) Restart() bool {
 func (container *Container) Delete() error {
 	if c, _ := container.Get(); c != nil && c.State != "running" {
 		ctx := context.Background()
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			panic(err)
 		}
@@ -488,7 +495,7 @@ func (container *Container) Delete() error {
 
 func (container *Container) Rename(newName string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
 	}
@@ -509,7 +516,7 @@ func (container *Container) Exec(command []string) ExecResult {
 		var execResult ExecResult
 
 		ctx := context.Background()
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 		if err != nil {
 			panic(err)
 		}

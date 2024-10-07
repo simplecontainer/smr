@@ -3,9 +3,9 @@ package shared
 import (
 	"github.com/simplecontainer/smr/implementations/container/registry"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/manager"
-	"net/http"
 )
 
 type Shared struct {
@@ -13,5 +13,5 @@ type Shared struct {
 	Watcher  *watcher.ContainerWatcher
 	DnsCache *dns.Records
 	Manager  *manager.Manager
-	Client   *http.Client
+	Client   *client.Http
 }

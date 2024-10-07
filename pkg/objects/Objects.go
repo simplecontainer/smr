@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/r3labs/diff/v3"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
-	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -18,7 +18,7 @@ import (
 
 //go:generate mockgen -source=Interface.go -destination=mock/Interface.go
 
-func New(client *http.Client) *Object {
+func New(client *client.Client, user *authentication.User) *Object {
 	return &Object{
 		Changelog:        diff.Changelog{},
 		client:           client,
@@ -29,6 +29,7 @@ func New(client *http.Client) *Object {
 		changed:          false,
 		Created:          time.Now(),
 		Updated:          time.Now(),
+		User:             user,
 	}
 }
 
@@ -45,8 +46,11 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Add(format *f.Format, data string) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", static.SMR_AGENT_URL, format.ToString())
-	response := SendRequest(obj.client, URL, "POST", map[string]string{"value": data})
+	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, format.ToString())
+	response := SendRequest(obj.client.Http, URL, "POST", map[string]string{"value": data, "user": obj.User.ToString()})
+
+	fmt.Println(response)
+	fmt.Println(URL)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
 
@@ -58,8 +62,8 @@ func (obj *Object) Add(format *f.Format, data string) error {
 }
 
 func (obj *Object) Update(format *f.Format, data string) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", static.SMR_AGENT_URL, format.ToString())
-	response := SendRequest(obj.client, URL, "PUT", map[string]string{"value": data})
+	URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", obj.client.API, format.ToString())
+	response := SendRequest(obj.client.Http, URL, "PUT", map[string]string{"value": data})
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", data))
 
@@ -71,8 +75,8 @@ func (obj *Object) Update(format *f.Format, data string) error {
 }
 
 func (obj *Object) Find(format *f.Format) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", static.SMR_AGENT_URL, format.ToString())
-	response := SendRequest(obj.client, URL, "GET", nil)
+	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", obj.client.API, format.ToString())
+	response := SendRequest(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
@@ -114,8 +118,8 @@ func (obj *Object) Find(format *f.Format) error {
 func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 	var objects = make(map[string]*Object)
 
-	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", static.SMR_AGENT_URL, format.ToString())
-	response := SendRequest(obj.client, URL, "GET", nil)
+	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, format.ToString())
+	response := SendRequest(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
 
@@ -124,7 +128,7 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 			keys := response.Data["keys"].([]interface{})
 
 			for _, value := range keys {
-				objTmp := New(obj.client)
+				objTmp := New(obj.client, obj.User)
 				err := objTmp.Find(f.NewFromString(value.(string)))
 
 				if err != nil {
@@ -149,8 +153,8 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 		prefix += "."
 	}
 
-	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", static.SMR_AGENT_URL, prefix)
-	response := SendRequest(obj.client, URL, "DELETE", nil)
+	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, prefix)
+	response := SendRequest(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 

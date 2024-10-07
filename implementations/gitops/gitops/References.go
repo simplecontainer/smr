@@ -4,18 +4,19 @@ import (
 	"encoding/json"
 	"github.com/simplecontainer/smr/implementations/gitops/certkey"
 	"github.com/simplecontainer/smr/implementations/gitops/httpauth"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"net/http"
 )
 
-func (gitops *Gitops) Prepare(client *http.Client) (*AuthType, error) {
+func (gitops *Gitops) Prepare(client *client.Http, user *authentication.User) (*AuthType, error) {
 	if gitops.HttpAuthRef.Group != "" && gitops.HttpAuthRef.Name != "" {
 		format := f.New("httpauth", gitops.HttpAuthRef.Group, gitops.HttpAuthRef.Name, "object")
 
 		var httpAuth v1.HttpAuthDefinition
-		obj := objects.New(client)
+		obj := objects.New(client.Get(user.Username), user)
 		err := obj.Find(format)
 
 		if err != nil {
@@ -39,7 +40,7 @@ func (gitops *Gitops) Prepare(client *http.Client) (*AuthType, error) {
 	if gitops.CertKeyRef.Group != "" && gitops.CertKeyRef.Name != "" {
 		var certKey v1.CertKeyDefinition
 		format := f.New("certkey", gitops.CertKeyRef.Group, gitops.CertKeyRef.Name, "object")
-		obj := objects.New(client)
+		obj := objects.New(client.Get(user.Username), user)
 		err := obj.Find(format)
 
 		if err != nil {

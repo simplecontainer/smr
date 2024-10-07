@@ -76,9 +76,6 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
-	fmt.Println(sharedObj.Watcher.Repositories["test.smr"])
-	fmt.Println(sharedObj.Watcher.Repositories)
-
 	for key, gitopsInstance := range sharedObj.Watcher.Repositories {
 		data[key] = gitopsInstance.Gitops
 	}
@@ -107,7 +104,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
 
-	obj := objects.New(request.Client)
+	obj := objects.New(request.Client.Get(request.User.Username), request.User)
 	err := obj.Find(format)
 
 	if err != nil {

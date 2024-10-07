@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/gitops/reconcile"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
 	"github.com/simplecontainer/smr/implementations/gitops/watcher"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -22,13 +23,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
 
-	client, err := manager.GenerateHttpClient(mgr.Keys)
-
-	if err != nil {
-		panic(err)
-	}
-
-	implementation.Shared.Client = client
+	implementation.Shared.Client = mgr.Http
 
 	implementation.Shared.Watcher = &watcher.RepositoryWatcher{}
 	implementation.Shared.Watcher.Repositories = make(map[string]*watcher.Gitops)
@@ -40,7 +35,7 @@ func (implementation *Implementation) GetShared() interface{} {
 	return implementation.Shared
 }
 
-func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var gitopsDefinition = &v1.GitopsDefinition{}
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
@@ -76,7 +71,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	var format *f.Format
 
 	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name, "object")
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -118,7 +113,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	if obj.Exists() {
 		if obj.ChangeDetected() || gitopsFromDefinition == nil {
 			if gitopsFromDefinition == nil {
-				gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager)
+				gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager, user)
 				go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
 
 				gitopsFromDefinition.Logger.Info("new gitops object created")
@@ -140,7 +135,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 			}, errors.New("gitops object is same on the server")
 		}
 	} else {
-		gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager)
+		gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager, user)
 		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
 
 		gitopsFromDefinition.Logger.Info("new gitops object created")
@@ -156,7 +151,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}, nil
 }
 
-func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Compare(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var gitopsDefinition v1.GitopsDefinition
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
@@ -180,7 +175,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	var format *f.Format
 
 	format = f.New("gitops", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name, "object")
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -217,7 +212,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	}
 }
 
-func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
 		Explanation:      "object in sync",

@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/certkey/shared"
 	"github.com/simplecontainer/smr/implementations/hub/hub"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -15,19 +16,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
 	implementation.Shared.Manager = mgr
 	implementation.Started = true
 
-	client, err := manager.GenerateHttpClient(mgr.Keys)
-
-	if err != nil {
-		panic(err)
-	}
-
-	implementation.Shared.Client = client
+	implementation.Shared.Client = mgr.Http
 
 	return nil
 }
@@ -36,7 +32,7 @@ func (implementation *Implementation) GetShared() interface{} {
 	return implementation.Shared
 }
 
-func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var certkey v1.CertKeyDefinition
 
 	if err := json.Unmarshal(jsonData, &certkey); err != nil {
@@ -72,7 +68,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	var format *f.Format
 	format = f.New("certkey", certkey.Meta.Group, certkey.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -83,9 +79,29 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
 			err = obj.Update(format, jsonStringFromRequest)
+
+			if err != nil {
+				return httpcontract.ResponseImplementation{
+					HttpStatus:       http.StatusInternalServerError,
+					Explanation:      "",
+					ErrorExplanation: err.Error(),
+					Error:            true,
+					Success:          false,
+				}, err
+			}
 		}
 	} else {
 		err = obj.Add(format, jsonStringFromRequest)
+
+		if err != nil {
+			return httpcontract.ResponseImplementation{
+				HttpStatus:       http.StatusInternalServerError,
+				Explanation:      "",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+			}, err
+		}
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
@@ -117,7 +133,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}, nil
 }
 
-func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Compare(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var certkey v1.CertKeyDefinition
 
 	if err := json.Unmarshal(jsonData, &certkey); err != nil {
@@ -141,7 +157,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	var format *f.Format
 
 	format = f.New("certkey", certkey.Meta.Group, certkey.Meta.Name, "object")
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -178,7 +194,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	}
 }
 
-func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	var certkey v1.CertKeyDefinition
 
 	if err := json.Unmarshal(jsonData, &certkey); err != nil {
@@ -201,7 +217,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 
 	format := f.New("certkey", certkey.Meta.Group, certkey.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	if obj.Exists() {

@@ -57,6 +57,7 @@ func Create() {
 				api.Config.Domain = domain
 				api.Config.ExternalIP = externalIP
 				api.Config.OptRoot = "/opt/smr"
+				api.Config.CommonName = "root"
 
 				err = startup.Save(api.Config, out)
 
