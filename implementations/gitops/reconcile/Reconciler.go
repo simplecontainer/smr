@@ -10,6 +10,8 @@ import (
 	"github.com/simplecontainer/smr/implementations/gitops/gitops"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
 	"github.com/simplecontainer/smr/implementations/gitops/watcher"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -21,7 +23,7 @@ import (
 	"time"
 )
 
-func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager) *watcher.Gitops {
+func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager, user *authentication.User) *watcher.Gitops {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
@@ -55,6 +57,7 @@ func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager) *watcher.G
 		Tracking:    true,
 		Syncing:     false,
 		GitopsQueue: make(chan *gitops.Gitops),
+		User:        user,
 		Ctx:         ctx,
 		Cancel:      fn,
 		Ticker:      time.NewTicker(interval),
@@ -143,7 +146,7 @@ func SyncGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	gitopsWatcher.Syncing = true
 
-	gitopsWatcher.Gitops.AuthType, err = gitopsWatcher.Gitops.Prepare(shared.Client)
+	gitopsWatcher.Gitops.AuthType, err = gitopsWatcher.Gitops.Prepare(shared.Client, gitopsWatcher.User)
 	auth, err = GetAuth(gitopsWatcher.Gitops)
 
 	if err != nil {
@@ -201,7 +204,7 @@ func SyncGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 					return
 				}
 
-				response := sendRequest(shared.Client, "https://localhost:1443/api/v1/apply", definition, gitopsWatcher)
+				response := sendRequest(shared.Client, gitopsWatcher.User, "https://localhost:1443/api/v1/apply", definition, gitopsWatcher)
 
 				if response.Success {
 					gitopsWatcher.Logger.Info("gitops reconcile apply success",
@@ -247,7 +250,7 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		return
 	}
 
-	gitopsWatcher.Gitops.AuthType, err = gitopsWatcher.Gitops.Prepare(shared.Client)
+	gitopsWatcher.Gitops.AuthType, err = gitopsWatcher.Gitops.Prepare(shared.Client, shared.Manager.User)
 	auth, err = GetAuth(gitopsWatcher.Gitops)
 
 	if err != nil {
@@ -304,7 +307,7 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			gitopsWatcher.Backoff()
 		}
 
-		response := sendRequest(shared.Client, "https://localhost:1443/api/v1/compare", definition, gitopsWatcher)
+		response := sendRequest(shared.Client, gitopsWatcher.User, "https://localhost:1443/api/v1/compare", definition, gitopsWatcher)
 
 		switch response.HttpStatus {
 		case http.StatusOK:
@@ -328,7 +331,7 @@ func CheckInSync(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	gitopsWatcher.Gitops.InSync = inSync
 }
 
-func sendRequest(client *http.Client, URL string, data string, gitopsWatcher *watcher.Gitops) *httpcontract.ResponseImplementation {
+func sendRequest(client *client.Http, user *authentication.User, URL string, data string, gitopsWatcher *watcher.Gitops) *httpcontract.ResponseImplementation {
 	var req *http.Request
 	var err error
 
@@ -362,7 +365,7 @@ func sendRequest(client *http.Client, URL string, data string, gitopsWatcher *wa
 		}
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Get(user.Username).Http.Do(req)
 
 	if err != nil {
 		return &httpcontract.ResponseImplementation{

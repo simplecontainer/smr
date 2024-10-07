@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/implementations"
 	"github.com/simplecontainer/smr/pkg/plugins"
@@ -38,11 +39,11 @@ func (api *Api) Delete(c *gin.Context) {
 			})
 		}
 
-		api.ImplementationWrapperDelete(data["kind"].(string), jsonData, c)
+		api.ImplementationWrapperDelete(authentication.NewUser(c.Request.TLS), data["kind"].(string), jsonData, c)
 	}
 }
 
-func (api *Api) ImplementationWrapperDelete(kind string, jsonData []byte, c *gin.Context) {
+func (api *Api) ImplementationWrapperDelete(user *authentication.User, kind string, jsonData []byte, c *gin.Context) {
 	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "implementations", kind)
 
 	if err != nil {
@@ -86,7 +87,7 @@ func (api *Api) ImplementationWrapperDelete(kind string, jsonData []byte, c *gin
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Delete(jsonData)
+		response, err = pl.Delete(user, jsonData)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{

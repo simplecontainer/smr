@@ -22,6 +22,8 @@ type GitopsSpec struct {
 	DirectoryPath   string            `json:"directory"`
 	PoolingInterval string            `json:"poolingInterval"`
 	AutomaticSync   bool              `json:"automaticSync"`
+	API             string            `json:"API"`
+	Context         string            `json:"context"`
 	CertKeyRef      GitopsCertKeyRef  `json:"certKeyRef"`
 	HttpAuthRef     GitopsHttpauthRef `json:"httpAuthRef"`
 }

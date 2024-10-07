@@ -14,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -22,6 +23,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 func (implementation *Implementation) Start(mgr *manager.Manager) error {
@@ -30,13 +32,7 @@ func (implementation *Implementation) Start(mgr *manager.Manager) error {
 
 	container.IsDockerRunning()
 
-	client, err := manager.GenerateHttpClient(mgr.Keys)
-
-	if err != nil {
-		panic(err)
-	}
-
-	implementation.Shared.Client = client
+	implementation.Shared.Client = mgr.Http
 	implementation.Shared.Watcher = &watcher.ContainerWatcher{}
 	implementation.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
@@ -62,7 +58,7 @@ func (implementation *Implementation) GetShared() interface{} {
 	return implementation.Shared
 }
 
-func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	containerDefinition := &v1.ContainerDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containerDefinition); err != nil {
@@ -96,7 +92,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	var format *f.Format
 	format = f.New("container", containerDefinition.Meta.Group, containerDefinition.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
@@ -123,7 +119,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 
 		if err != nil {
 			return httpcontract.ResponseImplementation{
-				HttpStatus:       200,
+				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "failed to add object",
 				ErrorExplanation: err.Error(),
 				Error:            false,
@@ -169,7 +165,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 				if obj.Exists() {
 					if obj.ChangeDetected() || containerFromDefinition == nil {
 						if containerFromDefinition == nil {
-							containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager)
+							containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager, user)
 							containerFromDefinition.Logger.Info("container object recreated")
 
 							go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
@@ -187,7 +183,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 						logger.Log.Debug("no change detected in the containers definition")
 					}
 				} else {
-					containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager)
+					containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager, user)
 					containerFromDefinition.Logger.Info("container object created")
 
 					go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
@@ -220,7 +216,7 @@ func (implementation *Implementation) Apply(jsonData []byte) (httpcontract.Respo
 	}, nil
 }
 
-func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Compare(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
 		Explanation:      "object in sync",
@@ -230,7 +226,7 @@ func (implementation *Implementation) Compare(jsonData []byte) (httpcontract.Res
 	}, nil
 }
 
-func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.ResponseImplementation, error) {
+func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
 	containersDefinition := &v1.ContainerDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
@@ -252,7 +248,7 @@ func (implementation *Implementation) Delete(jsonData []byte) (httpcontract.Resp
 	var format *f.Format
 	format = f.New("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
 
-	obj := objects.New(implementation.Shared.Client)
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	if obj.Exists() {

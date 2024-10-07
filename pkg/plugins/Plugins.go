@@ -55,14 +55,15 @@ func GetPlugin(implementationsRootDir string, pluginWanted string) implementatio
 		pluginName := filepath.Base(pluginPath)
 		pluginName = strings.TrimSuffix(pluginName, ".so")
 
-		plugin, err := GetPluginInstance(implementationsRootDir, "implementations", pluginName)
+		pl, err := GetPluginInstance(implementationsRootDir, "implementations", pluginName)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if plugin != nil {
-			ImplementationInternal, err := plugin.Lookup(cases.Title(language.English).String(pluginName))
+		if pl != nil {
+			var ImplementationInternal plugin.Symbol
+			ImplementationInternal, err = pl.Lookup(cases.Title(language.English).String(pluginName))
 
 			if err != nil {
 				panic(err)

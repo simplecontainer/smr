@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/dependency"
 	"github.com/simplecontainer/smr/implementations/hub/hub"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"go.uber.org/zap"
 	"time"
 )
@@ -24,4 +25,5 @@ type Container struct {
 	Ticker         *time.Ticker                   `json:"-"`
 	Logger         *zap.Logger
 	EventChannel   chan *hub.Event
+	User           *authentication.User `json:"-"`
 }

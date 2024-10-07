@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"io"
 	"net/http"
@@ -16,23 +17,13 @@ func (api *Api) Restore(c *gin.Context) {
 	var formatContainers *f.Format
 	var formatGitops *f.Format
 
-	client, err := manager.GenerateHttpClient(api.Keys)
-
-	if err != nil {
-		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
-			Explanation:      "failed to generate client for the internal secure communication",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-	}
-
 	data := make(map[string]any, 0)
+
+	user := authentication.NewUser(c.Request.TLS)
 
 	formatContainers = f.New("containers")
 	formatGitops = f.New("gitops")
-	obj := objects.New(client)
+	obj := objects.New(api.Manager.Http.Get(user.Username), user)
 
 	objsTmp, errTmp := obj.FindMany(formatContainers)
 
@@ -49,7 +40,7 @@ func (api *Api) Restore(c *gin.Context) {
 	}
 
 	for name, object := range objsTmp {
-		response := sendRequest(client, "https://localhost:1443/api/v1/apply/containers", string(object.GetDefinitionByte()))
+		response := sendRequest(api.Manager.Http, user, "https://localhost:1443/api/v1/apply/containers", string(object.GetDefinitionByte()))
 
 		if !response.Error {
 			data[name] = string(object.GetDefinitionByte())
@@ -73,7 +64,7 @@ func (api *Api) Restore(c *gin.Context) {
 	}
 
 	for name, object := range objsTmp {
-		response := sendRequest(client, "https://localhost:1443/api/v1/apply/gitops", string(object.GetDefinitionByte()))
+		response := sendRequest(api.Manager.Http, user, "https://localhost:1443/api/v1/apply/gitops", string(object.GetDefinitionByte()))
 
 		if !response.Error {
 			data[name] = string(object.GetDefinitionByte())
@@ -91,7 +82,7 @@ func (api *Api) Restore(c *gin.Context) {
 	})
 }
 
-func sendRequest(client *http.Client, URL string, data string) *httpcontract.ResponseImplementation {
+func sendRequest(client *client.Http, user *authentication.User, URL string, data string) *httpcontract.ResponseImplementation {
 	var req *http.Request
 	var err error
 
@@ -123,7 +114,7 @@ func sendRequest(client *http.Client, URL string, data string) *httpcontract.Res
 		}
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Get(user.Username).Http.Do(req)
 
 	if err != nil {
 		return &httpcontract.ResponseImplementation{

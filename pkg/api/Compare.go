@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/implementations"
 	"github.com/simplecontainer/smr/pkg/plugins"
@@ -38,11 +39,11 @@ func (api *Api) Compare(c *gin.Context) {
 			})
 		}
 
-		api.ImplementationWrapperCompare(data["kind"].(string), jsonData, c)
+		api.ImplementationWrapperCompare(authentication.NewUser(c.Request.TLS), data["kind"].(string), jsonData, c)
 	}
 }
 
-func (api *Api) ImplementationWrapperCompare(kind string, jsonData []byte, c *gin.Context) {
+func (api *Api) ImplementationWrapperCompare(user *authentication.User, kind string, jsonData []byte, c *gin.Context) {
 	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "implementations", kind)
 
 	if err != nil {
@@ -86,7 +87,7 @@ func (api *Api) ImplementationWrapperCompare(kind string, jsonData []byte, c *gi
 		}
 
 		var response httpcontract.ResponseImplementation
-		response, err = pl.Compare(jsonData)
+		response, err = pl.Compare(user, jsonData)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{

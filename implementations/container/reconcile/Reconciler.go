@@ -12,13 +12,14 @@ import (
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/implementations/container/watcher"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
 	"time"
 )
 
-func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watcher.Container {
+func NewWatcher(containerObj *container.Container, mgr *manager.Manager, user *authentication.User) *watcher.Container {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
@@ -44,6 +45,7 @@ func NewWatcher(containerObj *container.Container, mgr *manager.Manager) *watche
 		Ticker:         time.NewTicker(interval),
 		Logger:         loggerObj,
 		EventChannel:   sharedContainer.Event,
+		User:           user,
 	}
 }
 
@@ -127,7 +129,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_PREPARE:
-		err := containerObj.Prepare(shared.Client)
+		err := containerObj.Prepare(shared.Client, containerWatcher.User)
 
 		if err == nil {
 			go dependency.Ready(shared.Registry, containerObj.Static.Group, containerObj.Static.GeneratedName, containerObj.Static.Definition.Spec.Container.Dependencies, containerWatcher.DependencyChan)
@@ -190,12 +192,12 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 
 		if dockerState != "running" {
 			containerWatcher.Logger.Info("container attempt to start")
-			_, err = containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache)
+			_, err = containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache, containerWatcher.User)
 
 			if err == nil {
 				containerWatcher.Logger.Info("container started")
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
-				go containerObj.Ready(shared.Client, containerWatcher.ReadinessChan, containerWatcher.Logger)
+				go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 			} else {
 				containerWatcher.Logger.Info("container start failed", zap.Error(err))
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
@@ -214,7 +216,7 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 				containerWatcher.Logger.Error(err.Error())
 			} else {
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
-				go containerObj.Ready(shared.Client, containerWatcher.ReadinessChan, containerWatcher.Logger)
+				go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 			}
 		}
 

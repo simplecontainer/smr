@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/implementations/container/status"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -18,7 +20,7 @@ import (
 	"time"
 )
 
-func NewReadinessFromDefinition(client *http.Client, container *Container, readiness v1.ContainerReadiness) (*Readiness, error) {
+func NewReadinessFromDefinition(client *client.Http, user *authentication.User, container *Container, readiness v1.ContainerReadiness) (*Readiness, error) {
 	if readiness.Timeout == "" {
 		readiness.Timeout = "30s"
 	}
@@ -47,7 +49,7 @@ func NewReadinessFromDefinition(client *http.Client, container *Container, readi
 	}
 
 	var bodyUnpack map[string]string
-	bodyUnpack, err = UnpackSecretsReadiness(client, readiness.Body)
+	bodyUnpack, err = UnpackSecretsReadiness(client, user, readiness.Body)
 
 	if err != nil {
 		cancel()
@@ -65,16 +67,16 @@ func NewReadinessFromDefinition(client *http.Client, container *Container, readi
 	}, nil
 }
 
-func (container *Container) Ready(client *http.Client, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
+func (container *Container) Ready(client *client.Http, user *authentication.User, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
 	for _, ready := range container.Static.Definition.Spec.Container.Readiness {
-		readiness, err := NewReadinessFromDefinition(client, container, ready)
+		readiness, err := NewReadinessFromDefinition(client, user, container, ready)
 
 		if err != nil {
 			return false, err
 		}
 
 		readiness.Function = func() error {
-			return SolveReadiness(client, container, logger, readiness, channel)
+			return SolveReadiness(client, user, container, logger, readiness, channel)
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), readiness.Ctx)
@@ -99,7 +101,7 @@ func (container *Container) Ready(client *http.Client, channel chan *ReadinessSt
 	return true, nil
 }
 
-func SolveReadiness(client *http.Client, container *Container, logger *zap.Logger, readiness *Readiness, channel chan *ReadinessState) error {
+func SolveReadiness(client *client.Http, user *authentication.User, container *Container, logger *zap.Logger, readiness *Readiness, channel chan *ReadinessState) error {
 	if !container.Status.IfStateIs(status.STATUS_READINESS_CHECKING) {
 		readiness.Cancel()
 	}
@@ -125,7 +127,7 @@ func SolveReadiness(client *http.Client, container *Container, logger *zap.Logge
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Get(user.Username).Http.Do(req)
 	if err != nil {
 		return errors.New("readiness request failed")
 	} else {

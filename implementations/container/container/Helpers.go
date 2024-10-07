@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"log"
-	"net/http"
 	"os"
 )
 
@@ -58,7 +59,7 @@ func convertResourcesDefinitionToResources(definition []map[string]string) []Res
 	return resources
 }
 
-func (container *Container) mappingToMounts(client *http.Client) []mount.Mount {
+func (container *Container) mappingToMounts(client *client.Http, user *authentication.User) []mount.Mount {
 	var mounts []mount.Mount
 
 	for _, v := range container.Static.Resources {
@@ -67,7 +68,7 @@ func (container *Container) mappingToMounts(client *http.Client) []mount.Mount {
 			log.Fatal(err)
 		}
 
-		if _, err = tmpFile.WriteString(UnpackSecretsResources(client, v.Data[v.Key])); err != nil {
+		if _, err = tmpFile.WriteString(UnpackSecretsResources(client, user, v.Data[v.Key])); err != nil {
 			log.Fatal(err)
 		}
 

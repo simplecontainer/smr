@@ -40,9 +40,6 @@ Installation of the agent
 -------------------------
 To start using simple container first run it to generate smr project and build configuration file.
 
-Note: This is example for the localhost. If domain is example.com running on the virtual machine with IP 1.2.3.4,
-just replace the DOMAIN and EXTERNALIP values.
-
 ```bash
 LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
 
@@ -75,9 +72,12 @@ docker run \
 ```
 
 Agent will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate
-with the simplecontainer agent in a secured manner.
+with the simplecontainer agent in a secured manner. These certificates are only valid for the root user and this certificate bundle
+is only usable from the localhost to be more secured.
 
 This bundle is needed by the client to connect to the Simplecontainer API.
+
+Adding new certificates can be done via CLI for users to connect from external domains.
 ```bash
 cat $HOME/.ssh/simplecontainer/client.pem
 -----BEGIN PRIVATE KEY-----

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/implementations/containers/shared"
 	"github.com/simplecontainer/smr/implementations/containers/watcher"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/plugins"
@@ -36,7 +37,7 @@ func NewWatcher(containers v1.ContainersDefinition, mgr *manager.Manager) *watch
 	}
 }
 
-func HandleTickerAndEvents(shared *shared.Shared, containers *watcher.Containers) {
+func HandleTickerAndEvents(shared *shared.Shared, user *authentication.User, containers *watcher.Containers) {
 	for {
 		select {
 		case <-containers.Ctx.Done():
@@ -46,18 +47,18 @@ func HandleTickerAndEvents(shared *shared.Shared, containers *watcher.Containers
 
 			return
 		case _ = <-containers.ContainersQueue:
-			ReconcileContainer(shared, containers)
+			ReconcileContainer(shared, user, containers)
 			break
 		case _ = <-containers.Ticker.C:
 			if !containers.Syncing {
-				ReconcileContainer(shared, containers)
+				ReconcileContainer(shared, user, containers)
 			}
 			break
 		}
 	}
 }
 
-func ReconcileContainer(shared *shared.Shared, containers *watcher.Containers) {
+func ReconcileContainer(shared *shared.Shared, user *authentication.User, containers *watcher.Containers) {
 	if containers.Syncing {
 		containers.Logger.Info("containers already reconciling, waiting for the free slot")
 		return
@@ -72,7 +73,7 @@ func ReconcileContainer(shared *shared.Shared, containers *watcher.Containers) {
 			containers.Logger.Info(err.Error())
 		} else {
 			pl := plugins.GetPlugin(shared.Manager.Config.OptRoot, "container.so")
-			pl.Apply([]byte(definitionString))
+			pl.Apply(user, []byte(definitionString))
 		}
 	}
 

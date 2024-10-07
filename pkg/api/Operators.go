@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/operators"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"golang.org/x/text/cases"
@@ -117,23 +117,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 			}
 		}
 
-		client, err := manager.GenerateHttpClient(api.Keys)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "failed to generate mtls http client",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-		}
-
 		request := operators.Request{
 			Manager: api.Manager,
 			Data:    body,
-			Client:  client,
+			User:    authentication.NewUser(c.Request.TLS),
+			Client:  api.Manager.Http,
 		}
 
 		operatorResponse := pl.Run(operator, request)
@@ -193,7 +181,7 @@ func (api *Api) ListSupported(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "operator implementation malfunctioned on the server",
-				ErrorExplanation: err.Error(),
+				ErrorExplanation: "check server logs",
 				Error:            true,
 				Success:          false,
 				Data:             nil,
@@ -202,13 +190,20 @@ func (api *Api) ListSupported(c *gin.Context) {
 			return
 		}
 
-		operatorResponse := pl.Run("ListSupported", map[string]any{})
+		request := operators.Request{
+			Manager: api.Manager,
+			Data:    nil,
+			User:    authentication.NewUser(c.Request.TLS),
+			Client:  nil,
+		}
+
+		operatorResponse := pl.Run("ListSupported", request)
 		c.JSON(http.StatusOK, operatorResponse)
 		return
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "operator is not present on the server",
-			"error":   err.Error(),
+			"error":   "check server logs",
 			"fail":    true,
 			"success": false,
 			"data":    nil,
@@ -219,9 +214,9 @@ func (api *Api) ListSupported(c *gin.Context) {
 }
 
 func cleanPath(path string) string {
-	cleanPath := filepath.Clean(
+	cp := filepath.Clean(
 		path,
 	)
 
-	return cleanPath
+	return cp
 }
