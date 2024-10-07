@@ -15,7 +15,7 @@ docker rm smr-agent
 docker run \
        -v /var/run/docker.sock:/var/run/docker.sock \
        -v $HOME/.smr:/home/smr-agent/smr \
-       -e DOMAIN=localhost \
+       -e DOMAIN=localhost,public.domain \
        -e EXTERNALIP=127.0.0.1 \
        smr:$LATEST_SMR_COMMIT create smr
 

@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func Start() {
@@ -57,7 +58,7 @@ func Start() {
 
 				if found != nil {
 					err = api.Keys.Generate(
-						[]string{api.Config.Domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)},
+						append([]string{fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
 						[]net.IP{net.ParseIP(api.Config.ExternalIP), net.IPv6loopback},
 					)
 
