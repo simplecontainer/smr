@@ -92,19 +92,16 @@ func Start() {
 					if err != nil {
 						panic(err)
 					}
-				} else {
-					err = api.Keys.LoadClients(static.SMR_SSH_HOME)
+				}
 
-					if err != nil {
-						fmt.Println(err.Error())
-						os.Exit(1)
-					}
+				err = api.Keys.LoadClients(static.SMR_SSH_HOME)
+
+				if err != nil {
+					fmt.Println(err.Error())
+					os.Exit(1)
 				}
 
 				for username, c := range api.Keys.Clients {
-					fmt.Println(username)
-					fmt.Println(c.Certificate.DNSNames)
-
 					var httpClient *http.Client
 					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients["root"])
 					if err != nil {
