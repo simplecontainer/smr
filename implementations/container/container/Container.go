@@ -207,7 +207,13 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
+
+	defer func(cli *dockerClient.Client) {
+		err = cli.Close()
+		if err != nil {
+			return
+		}
+	}(cli)
 
 	err = container.PullImage(ctx, cli)
 

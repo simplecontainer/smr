@@ -21,8 +21,6 @@ func ListenEvents(shared *shared.Shared, e chan *hub.Event) {
 func Event(shared *shared.Shared, event *hub.Event) {
 	var container *container.Container
 
-	fmt.Println(event)
-
 	if event == nil {
 		fmt.Println("nil event")
 		return

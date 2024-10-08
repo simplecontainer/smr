@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"strings"
@@ -15,6 +16,7 @@ import (
 func (container *Container) PullImage(ctx context.Context, cli *client.Client) error {
 	if !container.CheckIfImagePresent(ctx, cli) {
 		logger.Log.Info(fmt.Sprintf("Pulling the image %s:%s", container.Static.Image, container.Static.Tag))
+		container.Status.PulledImage = status.PULLING_IMAGE
 
 		reader, err := cli.ImagePull(ctx, container.Static.Image+":"+container.Static.Tag, container.GetDockerAuth())
 		if err != nil {
@@ -28,19 +30,36 @@ func (container *Container) PullImage(ctx context.Context, cli *client.Client) e
 		var errorMessage error
 		buffIOReader := bufio.NewReader(reader)
 
+		var streamBytes []byte
+
 		for {
-			streamBytes, err := buffIOReader.ReadBytes('\n')
+			streamBytes, err = buffIOReader.ReadBytes('\n')
 			if err == io.EOF {
 				break
 			}
-			json.Unmarshal(streamBytes, &errorMessage)
+
 			if errorMessage != nil {
+				container.Status.PulledImage = status.PULLED_FAILED
 				return errorMessage
+			}
+
+			err = json.Unmarshal(streamBytes, &errorMessage)
+
+			if err != nil {
+				container.Status.PulledImage = status.PULLED_FAILED
+				return err
 			}
 		}
 
-		defer reader.Close()
+		defer func(reader io.ReadCloser) {
+			err = reader.Close()
+			if err != nil {
+				return
+			}
+		}(reader)
+
 		logger.Log.Info(fmt.Sprintf("pulled the image %s:%s", container.Static.Image, container.Static.Tag))
+		container.Status.PulledImage = status.PULLING_IMAGE
 
 		return nil
 	} else {

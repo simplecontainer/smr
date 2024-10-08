@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/operators"
 	"github.com/simplecontainer/smr/pkg/plugins"
+	"net/http"
 	"reflect"
 )
 
@@ -148,7 +149,44 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
 
-	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
+	format := f.New("gitops", request.Data["group"].(string), request.Data["identifier"].(string), "object")
+
+	obj := objects.New(request.Client.Get(request.User.Username), request.User)
+	err := obj.Find(format)
+
+	if err != nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       http.StatusInternalServerError,
+			Explanation:      "object database failed to process request",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}
+	}
+
+	if !obj.Exists() {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       404,
+			Explanation:      "object not found on the server",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+		}
+	}
+
+	_, err = obj.Remove(format)
+
+	if err != nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       http.StatusInternalServerError,
+			Explanation:      "object removal failed",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}
+	}
+
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
 	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)
@@ -163,6 +201,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 			Data:             nil,
 		}
 	} else {
+
 		sharedObj.Watcher.Find(GroupIdentifier).Cancel()
 		sharedObj.Watcher.Remove(GroupIdentifier)
 	}
