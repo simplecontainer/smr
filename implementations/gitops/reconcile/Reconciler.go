@@ -89,8 +89,6 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 			}
 			break
 		case <-gitopsWatcher.Ticker.C:
-			ReconcileGitops(shared, gitopsWatcher)
-
 			if gitopsWatcher.BackOff.BackOff {
 				gitopsWatcher.Logger.Info("gitops reconcile is invalid, delete old and apply new",
 					zap.String("repository", gitopsWatcher.Gitops.RepoURL),
