@@ -35,8 +35,13 @@ func ListenDockerEvents(shared *shared.Shared) {
 
 func HandleDockerEvent(shared *shared.Shared, event events.Message) {
 	var container *container.Container
+	var c *types.Container
 
-	c := container.GetFromId(event.Actor.Attributes["container"])
+	if event.Actor.Attributes["container"] != "" {
+		c = container.GetFromId(event.Actor.Attributes["container"])
+	} else {
+		c = container.GetFromId(event.ID)
+	}
 
 	if c == nil {
 		logger.Log.Debug("container is not found in the docker daemon",
@@ -114,8 +119,22 @@ func HandleDisconnect(shared *shared.Shared, containerObj *container.Container, 
 }
 
 func HandleStart(shared *shared.Shared, containerObj *container.Container, event events.Message) {
-	// Container started it is running so update status accordingly
-	// containerObj.Status.TransitionState(status.STATUS_RUNNING)
+	reconcile := true
+
+	// labels for ignoring events for specific container
+	val, exists := containerObj.Static.Labels["reconcile"]
+	if exists {
+		if val == "false" {
+			logger.Log.Info("reconcile label set to false for the container, skipping reconcile", zap.String("container", containerObj.Static.GeneratedName))
+			reconcile = false
+		}
+	}
+
+	if reconcile {
+		fmt.Println("Starting container")
+		logger.Log.Info(fmt.Sprintf("container is stopped- reconcile %s", containerObj.Static.GeneratedName))
+		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+	}
 }
 
 func HandleKill(shared *shared.Shared, containerObj *container.Container, event events.Message) {
@@ -128,8 +147,26 @@ func HandleKill(shared *shared.Shared, containerObj *container.Container, event 
 }
 
 func HandleStop(shared *shared.Shared, containerObj *container.Container, event events.Message) {
-	// Stop will stop the container so update the status accordingly
-	// containerObj.Status.TransitionState(status.STATUS_DEAD)
+	reconcile := true
+
+	// labels for ignoring events for specific container
+	val, exists := containerObj.Static.Labels["reconcile"]
+	if exists {
+		if val == "false" {
+			logger.Log.Info("reconcile label set to false for the container, skipping reconcile", zap.String("container", containerObj.Static.GeneratedName))
+			reconcile = false
+		}
+	}
+
+	fmt.Println("Label existence")
+	fmt.Println(exists)
+
+	if reconcile {
+		fmt.Println("Stopping container")
+
+		logger.Log.Info(fmt.Sprintf("container is stopped- reconcile %s", containerObj.Static.GeneratedName))
+		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
+	}
 }
 
 func HandleDie(shared *shared.Shared, containerObj *container.Container, event events.Message) {
