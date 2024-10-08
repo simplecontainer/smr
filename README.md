@@ -4,7 +4,7 @@ Quick start
 ===========
 
 > [!WARNING]
-> The project is not stable yet. Use it on your own responsibility. 
+> The project is not stable yet. Releases and major changes are introduced often. 
 
 This is a quick start tutorial for getting a simple container up and running.
 
