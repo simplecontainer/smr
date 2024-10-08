@@ -13,7 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"go.uber.org/zap"
@@ -23,12 +22,12 @@ import (
 	"time"
 )
 
-func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager, user *authentication.User) *watcher.Gitops {
+func NewWatcher(gitopsObj *gitops.Gitops, mgr *manager.Manager, user *authentication.User) *watcher.Gitops {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
 	cfg := zap.NewProductionConfig()
-	cfg.OutputPaths = []string{fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Meta.Group, gitopsObj.Meta.Name)}
+	cfg.OutputPaths = []string{fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)}
 
 	loggerObj, err := cfg.Build()
 
@@ -37,19 +36,7 @@ func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager, user *auth
 	}
 
 	watcher := &watcher.Gitops{
-		Gitops: &gitops.Gitops{
-			RepoURL:          gitopsObj.Spec.RepoURL,
-			Revision:         gitopsObj.Spec.Revision,
-			DirectoryPath:    gitopsObj.Spec.DirectoryPath,
-			PoolingInterval:  gitopsObj.Spec.PoolingInterval,
-			AutomaticSync:    gitopsObj.Spec.AutomaticSync,
-			InSync:           false,
-			CertKeyRef:       gitopsObj.Spec.CertKeyRef,
-			HttpAuthRef:      gitopsObj.Spec.HttpAuthRef,
-			LastSyncedCommit: plumbing.Hash{},
-			CertKey:          nil,
-			HttpAuth:         nil,
-		},
+		Gitops: gitopsObj,
 		BackOff: watcher.BackOff{
 			BackOff: false,
 			Failure: 0,
@@ -62,7 +49,6 @@ func NewWatcher(gitopsObj *v1.GitopsDefinition, mgr *manager.Manager, user *auth
 		Cancel:      fn,
 		Ticker:      time.NewTicker(interval),
 		Logger:      loggerObj,
-		Definition:  *gitopsObj,
 	}
 
 	return watcher
@@ -74,12 +60,10 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 		case <-gitopsWatcher.Ctx.Done():
 			gitopsWatcher.Ticker.Stop()
 			close(gitopsWatcher.GitopsQueue)
-			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Definition.Meta.Group, gitopsWatcher.Definition.Meta.Name))
+			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 
 			return
 		case <-gitopsWatcher.GitopsQueue:
-			ReconcileGitops(shared, gitopsWatcher)
-
 			if gitopsWatcher.BackOff.BackOff {
 				gitopsWatcher.Logger.Info("gitops reconcile is invalid, delete old and apply new",
 					zap.String("repository", gitopsWatcher.Gitops.RepoURL),
@@ -114,22 +98,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 	}
 }
 
-func ReconcileGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
-	gitopsWatcher.Gitops = &gitops.Gitops{
-		RepoURL:          gitopsWatcher.Definition.Spec.RepoURL,
-		Revision:         gitopsWatcher.Definition.Spec.Revision,
-		DirectoryPath:    gitopsWatcher.Definition.Spec.DirectoryPath,
-		PoolingInterval:  gitopsWatcher.Definition.Spec.PoolingInterval,
-		AutomaticSync:    gitopsWatcher.Definition.Spec.AutomaticSync,
-		InSync:           false,
-		CertKeyRef:       gitopsWatcher.Definition.Spec.CertKeyRef,
-		HttpAuthRef:      gitopsWatcher.Definition.Spec.HttpAuthRef,
-		LastSyncedCommit: plumbing.Hash{},
-		CertKey:          nil,
-		HttpAuth:         nil,
-		Definition:       &gitopsWatcher.Definition,
-	}
-}
+func ReconcileGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {}
 
 func SyncGitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	var orderedByDependencies []map[string]string
@@ -346,11 +315,11 @@ func sendRequest(client *client.Http, user *authentication.User, URL string, dat
 
 		req, err = http.NewRequest("POST", URL, bytes.NewBuffer([]byte(data)))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsWatcher.Definition.Meta.Group, gitopsWatcher.Definition.Meta.Name))
+		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 	} else {
 		req, err = http.NewRequest("GET", URL, nil)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsWatcher.Definition.Meta.Group, gitopsWatcher.Definition.Meta.Name))
+		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 	}
 
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
+	"github.com/simplecontainer/smr/implementations/gitops/gitops"
 	"github.com/simplecontainer/smr/implementations/gitops/reconcile"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
 	"github.com/simplecontainer/smr/implementations/gitops/watcher"
@@ -108,23 +109,22 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 	}
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", gitopsDefinition.Meta.Group, gitopsDefinition.Meta.Name)
-	gitopsFromDefinition := implementation.Shared.Watcher.Find(GroupIdentifier)
+	gitopsWatcherFromRegistry := implementation.Shared.Watcher.Find(GroupIdentifier)
 
 	if obj.Exists() {
-		if obj.ChangeDetected() || gitopsFromDefinition == nil {
-			if gitopsFromDefinition == nil {
-				gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager, user)
-				go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
+		if obj.ChangeDetected() || gitopsWatcherFromRegistry == nil {
+			if gitopsWatcherFromRegistry == nil {
+				gitopsWatcherFromRegistry = reconcile.NewWatcher(gitops.New(gitopsDefinition), implementation.Shared.Manager, user)
+				go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsWatcherFromRegistry)
 
-				gitopsFromDefinition.Logger.Info("new gitops object created")
+				gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 			} else {
-				gitopsFromDefinition.Definition = *gitopsDefinition
-				gitopsFromDefinition.Logger.Info("gitops object modified")
-
-				go reconcile.ReconcileGitops(implementation.Shared, gitopsFromDefinition)
+				implementation.Shared.Watcher.Find(GroupIdentifier).Gitops = gitops.New(gitopsDefinition)
+				gitopsWatcherFromRegistry.Logger.Info("gitops object modified")
 			}
 
-			implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
+			go reconcile.ReconcileGitops(implementation.Shared, gitopsWatcherFromRegistry)
+			implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
 		} else {
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusOK,
@@ -135,11 +135,11 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 			}, errors.New("gitops object is same on the server")
 		}
 	} else {
-		gitopsFromDefinition = reconcile.NewWatcher(gitopsDefinition, implementation.Shared.Manager, user)
-		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsFromDefinition)
+		gitopsWatcherFromRegistry = reconcile.NewWatcher(gitops.New(gitopsDefinition), implementation.Shared.Manager, user)
+		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsWatcherFromRegistry)
 
-		gitopsFromDefinition.Logger.Info("new gitops object created")
-		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsFromDefinition)
+		gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
+		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
 	}
 
 	return httpcontract.ResponseImplementation{
