@@ -56,7 +56,6 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			containerWatcher.Ticker.Stop()
 
 			close(containerWatcher.ContainerQueue)
-			close(containerWatcher.EventChannel)
 			close(containerWatcher.ReadinessChan)
 			close(containerWatcher.DependencyChan)
 

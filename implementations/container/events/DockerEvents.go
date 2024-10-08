@@ -18,7 +18,12 @@ func ListenDockerEvents(shared *shared.Shared) {
 	if err != nil {
 		panic(err)
 	}
-	defer cli.Close()
+	defer func(cli *client.Client) {
+		err = cli.Close()
+		if err != nil {
+			return
+		}
+	}(cli)
 
 	cEvents, cErr := cli.Events(ctx, types.EventsOptions{})
 
@@ -157,9 +162,6 @@ func HandleStop(shared *shared.Shared, containerObj *container.Container, event 
 			reconcile = false
 		}
 	}
-
-	fmt.Println("Label existence")
-	fmt.Println(exists)
 
 	if reconcile {
 		fmt.Println("Stopping container")

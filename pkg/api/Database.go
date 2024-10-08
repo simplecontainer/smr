@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
@@ -119,13 +118,6 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			err = txn.Set([]byte(c.Param("key")), []byte(valueSent.Value))
 			return err
 		})
-
-		if err == nil {
-			err = api.Badger.Update(func(txn *badger.Txn) error {
-				err = txn.Set([]byte(fmt.Sprintf("%s.auth", c.Param("key"))), []byte(valueSent.User))
-				return err
-			})
-		}
 
 		api.BadgerSync.Unlock()
 

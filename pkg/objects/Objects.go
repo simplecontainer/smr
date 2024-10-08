@@ -47,15 +47,24 @@ func (obj *Object) GetDefinitionByte() []byte {
 
 func (obj *Object) Add(format *f.Format, data string) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", map[string]string{"value": data, "user": obj.User.ToString()})
-
-	fmt.Println(response)
-	fmt.Println(URL)
+	response := SendRequest(obj.client.Http, URL, "POST", map[string]string{"value": data})
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
 
 	if response.Success {
-		return nil
+		fAuth := f.NewFromString(format.ToString())
+		fAuth.Key = "auth"
+
+		URL = fmt.Sprintf("https://%s/api/v1/database/create/%s.auth", obj.client.API, format.ToString())
+		response = SendRequest(obj.client.Http, URL, "POST", map[string]string{"value": obj.User.ToString()})
+
+		logger.Log.Debug("object auth remove", zap.String("URL", URL))
+
+		if !response.Success {
+			return errors.New(response.ErrorExplanation)
+		} else {
+			return nil
+		}
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}
@@ -135,7 +144,9 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 					fmt.Println(err)
 				}
 
-				objects[value.(string)] = objTmp
+				if !strings.HasSuffix(value.(string), ".auth") {
+					objects[value.(string)] = objTmp
+				}
 			}
 		}
 	} else {
@@ -159,7 +170,16 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 
 	if response.Success {
-		return true, nil
+		URL = fmt.Sprintf("https://%s/api/v1/database/keys/%s.auth", obj.client.API, prefix)
+		response = SendRequest(obj.client.Http, URL, "DELETE", nil)
+
+		logger.Log.Debug("object auth remove", zap.String("URL", URL))
+
+		if !response.Success {
+			return false, errors.New(response.ErrorExplanation)
+		} else {
+			return true, nil
+		}
 	} else {
 		return false, errors.New(response.ErrorExplanation)
 	}

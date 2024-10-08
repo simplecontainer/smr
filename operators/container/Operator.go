@@ -201,7 +201,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 
-	format := f.New("containers", request.Data["group"].(string), request.Data["identifier"].(string), "object")
+	format := f.New("container", request.Data["group"].(string), request.Data["identifier"].(string), "object")
 
 	obj := objects.New(request.Client.Get(request.User.Username), request.User)
 	err := obj.Find(format)
@@ -219,7 +219,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 
-	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "containers.so")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
 	_, err = pl.Delete(request.User, obj.GetDefinitionByte())
 
 	if err != nil {
@@ -242,4 +242,4 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 }
 
 // Exported
-var Containers Operator
+var Container Operator

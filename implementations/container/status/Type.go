@@ -11,6 +11,7 @@ type Status struct {
 	LastReadinessTimestamp time.Time
 	StateMachine           gograph.Graph[*StatusState] `json:"-"`
 	Reconciling            bool
+	PulledImage            uint8
 	LastUpdate             time.Time
 }
 
@@ -18,6 +19,10 @@ type StatusState struct {
 	State    string
 	category int8
 }
+
+const PULLING_IMAGE = 1
+const PULLED_IMAGE = 2
+const PULLED_FAILED = 3
 
 const CATEGORY_PRERUN = 0
 const CATEGORY_WHILERUN = 1
