@@ -256,13 +256,43 @@ func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Contain
 		}
 
 		ReconcileLoop(containerWatcher)
+
 		break
 	case status.STATUS_READY:
 		containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_RUNNING)
-
 		ReconcileLoop(containerWatcher)
+
 		break
 	case status.STATUS_RUNNING:
+		dockerState, err := containerObj.Get()
+
+		if err != nil {
+			ReconcileLoop(containerWatcher)
+			break
+		}
+
+		switch dockerState.State {
+		case "exited":
+			containerWatcher.Logger.Info("container is dead")
+			shared.Registry.BackOffTracking(containerObj.Static.Group, containerObj.Static.GeneratedName)
+
+			if shared.Registry.BackOffTracker[containerObj.Static.Group][containerObj.Static.GeneratedName] > 5 {
+				containerWatcher.Logger.Error(fmt.Sprintf("%s container is backoff restarting", containerObj.Static.GeneratedName))
+
+				shared.Registry.BackOffReset(containerObj.Static.Group, containerObj.Static.GeneratedName)
+
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_BACKOFF)
+			} else {
+				containerObj.Delete()
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
+			}
+			break
+		case "stopped":
+			containerWatcher.Logger.Error(fmt.Sprintf("%s container is stopped waiting for dead to restart", containerObj.Static.GeneratedName))
+			break
+		}
+
+		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_DEAD:
 		dockerState, err := containerObj.Get()

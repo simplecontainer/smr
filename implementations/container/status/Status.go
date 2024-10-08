@@ -72,6 +72,8 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(running, dead)
 	status.StateMachine.AddEdge(running, readinessChecking)
 	status.StateMachine.AddEdge(running, dead)
+	status.StateMachine.AddEdge(running, prepare)
+	status.StateMachine.AddEdge(running, backoff)
 	status.StateMachine.AddEdge(running, kill)
 	status.StateMachine.AddEdge(running, pendingDelete)
 
