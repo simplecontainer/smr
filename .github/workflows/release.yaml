@@ -101,5 +101,5 @@ jobs:
         with:
           body: "Automatically created - fill in accordingly"
           allowUpdates: true
-          draft: true
+          draft: false
           tag: ${{ github.ref_name }}

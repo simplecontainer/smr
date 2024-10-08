@@ -1,0 +1,26 @@
+name: Simplecontainer client CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag for the release process
+        run: |
+          increment_version() {
+            local delimiter=.
+            local array=($(echo "$1" | tr $delimiter '\n'))
+            array[$2]=$((array[$2]+1))
+            echo $(local IFS=$delimiter ; echo "${array[*]}")
+          }
+          
+          VERSION=$(cat version | sed s/v//)
+          NEW_VERSION=v$(increment_version 2 $VERSION)
+          
+          git tag $NEW_VERSION
+          git push origin tag $NEW_VERSION
