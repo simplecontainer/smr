@@ -15,50 +15,56 @@ import (
 	"path/filepath"
 )
 
-func Clone(gitopsObj *gitops.Gitops, auth transport.AuthMethod, localPath string) (plumbing.Hash, error) {
-	if _, err := os.Stat(localPath); errors.Is(err, os.ErrNotExist) {
-		_, err = git.PlainClone(localPath, false, &git.CloneOptions{
-			URL:      gitopsObj.RepoURL,
-			Progress: os.Stdout,
-			Auth:     auth,
+func Clone(gitopsObj *gitops.Gitops, auth transport.AuthMethod, path string) (plumbing.Hash, error) {
+	var repository *git.Repository
+	var err error
+
+	if _, err = os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		repository, err = git.PlainClone(path, false, &git.CloneOptions{
+			URL:           gitopsObj.RepoURL,
+			Progress:      os.Stdout,
+			ReferenceName: plumbing.NewBranchReferenceName(gitopsObj.Revision),
+			Auth:          auth,
 		})
 
-		fmt.Println(err)
-		fmt.Println(auth.String())
-		fmt.Println(auth.Name())
+		if err != nil {
+			return plumbing.Hash{}, err
+		}
+	} else {
+		repository, err = git.PlainOpen(path)
 
 		if err != nil {
 			return plumbing.Hash{}, err
 		}
 	}
 
-	var r *git.Repository
-	var err error
+	worktree, _ := repository.Worktree()
 
+	err = worktree.Pull(&git.PullOptions{
+		RemoteName:    "origin",
+		Auth:          auth,
+		SingleBranch:  true,
+		Force:         true,
+		ReferenceName: plumbing.NewBranchReferenceName(gitopsObj.Revision),
+	})
+
+	if err != nil {
+		if err.Error() != "already up-to-date" {
+			return plumbing.Hash{}, err
+		}
+	}
+
+	var ref *plumbing.Reference
 	var commit *object.Commit
 
-	r, err = git.PlainOpen(localPath)
-
-	if err != nil {
-		return plumbing.Hash{}, err
-	}
-
-	w, _ := r.Worktree()
-
-	err = w.Pull(&git.PullOptions{RemoteName: "origin", Auth: auth})
-
-	if err != nil {
-		return plumbing.Hash{}, err
-	}
-
-	ref, _ := r.Head()
-	commit, err = r.CommitObject(ref.Hash())
+	ref, _ = repository.Head()
+	commit, err = repository.CommitObject(ref.Hash())
 
 	if commit == nil {
 		return plumbing.Hash{}, err
 	}
 
-	return commit.Hash, err
+	return commit.ID(), nil
 }
 
 func SortFiles(gitopsObj *gitops.Gitops, localPath string, shared *shared.Shared) ([]map[string]string, error) {
