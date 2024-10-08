@@ -45,7 +45,11 @@ func Clone(gitopsObj *gitops.Gitops, auth transport.AuthMethod, localPath string
 
 	w, _ := r.Worktree()
 
-	_ = w.Pull(&git.PullOptions{RemoteName: "origin", Auth: auth})
+	err = w.Pull(&git.PullOptions{RemoteName: "origin", Auth: auth})
+
+	if err != nil {
+		return plumbing.Hash{}, err
+	}
 
 	ref, _ := r.Head()
 	commit, err = r.CommitObject(ref.Hash())
