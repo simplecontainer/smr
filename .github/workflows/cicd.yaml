@@ -20,7 +20,7 @@ jobs:
           }
           
           VERSION=$(cat version | sed s/v//)
-          NEW_VERSION=v$(increment_version 2 $VERSION)
+          NEW_VERSION=v$(increment_version $VERSION 2)
           
           git tag $NEW_VERSION
           git push origin tag $NEW_VERSION
