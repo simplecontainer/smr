@@ -7,13 +7,13 @@ import (
 )
 
 type GitopsDefinition struct {
-	Meta GitopsMeta `json:"meta"`
-	Spec GitopsSpec `json:"spec"`
+	Meta GitopsMeta `json:"meta" validate:"required"`
+	Spec GitopsSpec `json:"spec" validate:"required"`
 }
 
 type GitopsMeta struct {
-	Group string `json:"group"`
-	Name  string `json:"name"`
+	Group string `json:"group" validate:"required"`
+	Name  string `json:"name" validate:"required"`
 }
 
 type GitopsSpec struct {

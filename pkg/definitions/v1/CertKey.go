@@ -6,13 +6,13 @@ import (
 )
 
 type CertKeyDefinition struct {
-	Meta CertKeyMeta `json:"meta"`
-	Spec CertKeySpec `json:"spec"`
+	Meta CertKeyMeta `json:"meta" validate:"required"`
+	Spec CertKeySpec `json:"spec" validate:"required"`
 }
 
 type CertKeyMeta struct {
-	Group string `json:"group"`
-	Name  string `json:"name"`
+	Group string `json:"group" validate:"required"`
+	Name  string `json:"name" validate:"required"`
 }
 
 type CertKeySpec struct {

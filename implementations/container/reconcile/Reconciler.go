@@ -318,6 +318,9 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			}
 			break
 		case "created":
+			containerWatcher.Logger.Info("container couldn't be created")
+			shared.Registry.BackOffTracking(containerObj.Static.Group, containerObj.Static.GeneratedName)
+
 			containerObj.Delete()
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
 			break

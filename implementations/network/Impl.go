@@ -6,7 +6,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/implementations/hub/hub"
 	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
-	"github.com/simplecontainer/smr/implementations/resource/shared"
+	"github.com/simplecontainer/smr/implementations/network/shared"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -33,9 +33,9 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var resource v1.ResourceDefinition
+	var network v1.NetworkDefinition
 
-	if err := json.Unmarshal(jsonData, &resource); err != nil {
+	if err := json.Unmarshal(jsonData, &network); err != nil {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -45,7 +45,7 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		}, err
 	}
 
-	valid, err := resource.Validate()
+	valid, err := network.Validate()
 
 	if !valid {
 		return httpcontract.ResponseImplementation{
@@ -57,21 +57,24 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		}, err
 	}
 
-	err = json.Unmarshal(jsonData, &resource)
+	data := make(map[string]interface{})
+	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
 		panic(err)
 	}
 
-	var format *f.Format
+	mapstructure.Decode(data["network"], &network)
 
-	format = f.New("resource", resource.Meta.Group, resource.Meta.Name, "object")
+	var format *f.Format
+	format = f.New("network", network.Meta.Group, network.Meta.Name, "object")
+
 	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = resource.ToJsonString()
+	jsonStringFromRequest, err = network.ToJsonString()
 
-	logger.Log.Debug("server received resource object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received network object", zap.String("definition", jsonStringFromRequest))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -107,8 +110,8 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 
 		sharedHub.Event <- &hub.Event{
 			Kind:  KIND,
-			Group: resource.Meta.Group,
-			Name:  resource.Meta.Name,
+			Group: network.Meta.Group,
+			Name:  network.Meta.Name,
 			Data:  nil,
 		}
 	} else {
@@ -131,9 +134,9 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 }
 
 func (implementation *Implementation) Compare(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var resource v1.ResourceDefinition
+	var network v1.NetworkDefinition
 
-	if err := json.Unmarshal(jsonData, &resource); err != nil {
+	if err := json.Unmarshal(jsonData, &network); err != nil {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -149,16 +152,16 @@ func (implementation *Implementation) Compare(user *authentication.User, jsonDat
 		panic(err)
 	}
 
-	mapstructure.Decode(data["spec"], &resource)
+	mapstructure.Decode(data["spec"], &network)
 
 	var format *f.Format
 
-	format = f.New("resource", resource.Meta.Group, resource.Meta.Name, "object")
+	format = f.New("network", network.Meta.Group, network.Meta.Name, "object")
 	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = resource.ToJsonString()
+	jsonStringFromRequest, err = network.ToJsonString()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
@@ -192,9 +195,9 @@ func (implementation *Implementation) Compare(user *authentication.User, jsonDat
 }
 
 func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var resource v1.ResourceDefinition
+	var network v1.NetworkDefinition
 
-	if err := json.Unmarshal(jsonData, &resource); err != nil {
+	if err := json.Unmarshal(jsonData, &network); err != nil {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -210,9 +213,9 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 		panic(err)
 	}
 
-	mapstructure.Decode(data["spec"], &resource)
+	mapstructure.Decode(data["network"], &network)
 
-	format := f.New("resource", resource.Meta.Group, resource.Meta.Name, "object")
+	format := f.New("network", network.Meta.Group, network.Meta.Name, "object")
 
 	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
@@ -221,7 +224,7 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("httpauth", resource.Meta.Group, resource.Meta.Name, "")
+			format = f.New("network", network.Meta.Group, network.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return httpcontract.ResponseImplementation{
@@ -251,7 +254,7 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 	}
 }
 
-var Resource Implementation = Implementation{
+var Network Implementation = Implementation{
 	Started: false,
 	Shared:  &shared.Shared{},
 }

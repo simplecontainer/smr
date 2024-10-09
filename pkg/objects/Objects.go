@@ -52,9 +52,6 @@ func (obj *Object) Add(format *f.Format, data string) error {
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
 
 	if response.Success {
-		fAuth := f.NewFromString(format.ToString())
-		fAuth.Key = "auth"
-
 		URL = fmt.Sprintf("https://%s/api/v1/database/create/%s.auth", obj.client.API, format.ToString())
 		response = SendRequest(obj.client.Http, URL, "POST", map[string]string{"value": obj.User.ToString()})
 

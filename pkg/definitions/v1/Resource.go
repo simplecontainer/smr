@@ -7,13 +7,13 @@ import (
 )
 
 type ResourceDefinition struct {
-	Meta ResourceMeta `json:"meta"`
-	Spec ResourceSpec `json:"spec"`
+	Meta ResourceMeta `json:"meta" validate:"required"`
+	Spec ResourceSpec `json:"spec" validate:"required"`
 }
 
 type ResourceMeta struct {
-	Group string `json:"group"`
-	Name  string `json:"name"`
+	Group string `json:"group" validate:"required"`
+	Name  string `json:"name" validate:"required"`
 }
 
 type ResourceSpec struct {

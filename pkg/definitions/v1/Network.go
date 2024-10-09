@@ -5,29 +5,30 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type ConfigurationDefinition struct {
-	Meta ConfigurationMeta `json:"meta" validate:"required"`
-	Spec ConfigurationSpec `json:"spec" validate:"required"`
+type NetworkDefinition struct {
+	Meta NetworkMeta `json:"meta" validate:"required"`
+	Spec NetworkSpec `json:"spec" validate:"required"`
 }
 
-type ConfigurationMeta struct {
+type NetworkMeta struct {
 	Group string `json:"group" validate:"required"`
 	Name  string `json:"name" validate:"required"`
 }
 
-type ConfigurationSpec struct {
-	Data map[string]string `json:"data"`
+type NetworkSpec struct {
+	Driver          string
+	IPV4AddressPool string
 }
 
-func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(configuration)
+func (Network *NetworkDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(Network)
 	return string(bytes), err
 }
 
-func (configuration *ConfigurationDefinition) Validate() (bool, error) {
+func (Network *NetworkDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	err := validate.Struct(configuration)
+	err := validate.Struct(Network)
 	if err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return false, err

@@ -43,6 +43,10 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(syncing, backoff)
 	status.StateMachine.AddEdge(syncing, invaliddefinitions)
 
+	status.StateMachine.AddEdge(invalidgit, created)
+
+	status.StateMachine.AddEdge(invaliddefinitions, cloning)
+
 	status.StateMachine.AddEdge(insync, pendingDelete)
 	status.StateMachine.AddEdge(insync, cloning)
 
@@ -70,7 +74,7 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				logger.Log.Info("container transitioned state",
+				logger.Log.Debug("container transitioned state",
 					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
 					zap.String("gitops", gitops),
@@ -86,7 +90,7 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 		}
 
 		if status.State.State != destination {
-			logger.Log.Info("container failed to transition state",
+			logger.Log.Debug("container failed to transition state",
 				zap.String("old-state", status.State.State),
 				zap.String("new-state", destination),
 				zap.String("gitops", gitops),
