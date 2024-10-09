@@ -298,7 +298,9 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 		if gitopsWatcher.Gitops.AutomaticSync == false {
 			gitopsWatcher.Gitops.ManualSync = true
 		}
-		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_SYNCING)
+
+		gitopsWatcher.Gitops.ForcePoll = true
+		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
 		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
