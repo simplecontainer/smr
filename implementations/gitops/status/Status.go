@@ -28,7 +28,6 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(created, syncing)
 	status.StateMachine.AddEdge(created, invalidgit)
-	status.StateMachine.AddEdge(created, cloning)
 
 	status.StateMachine.AddEdge(cloning, invalidgit)
 	status.StateMachine.AddEdge(cloning, syncing)
@@ -37,7 +36,6 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(inspecting, invalidgit)
 	status.StateMachine.AddEdge(inspecting, drifted)
 	status.StateMachine.AddEdge(inspecting, insync)
-	status.StateMachine.AddEdge(inspecting, pendingDelete)
 
 	status.StateMachine.AddEdge(syncing, insync)
 	status.StateMachine.AddEdge(syncing, backoff)
@@ -45,13 +43,21 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(invalidgit, created)
 
-	status.StateMachine.AddEdge(invaliddefinitions, cloning)
-
-	status.StateMachine.AddEdge(insync, pendingDelete)
-	status.StateMachine.AddEdge(insync, cloning)
-
 	status.StateMachine.AddEdge(drifted, syncing)
+
+	status.StateMachine.AddEdge(invaliddefinitions, cloning)
+	status.StateMachine.AddEdge(invalidgit, cloning)
+	status.StateMachine.AddEdge(insync, cloning)
+	status.StateMachine.AddEdge(created, cloning)
+
 	status.StateMachine.AddEdge(drifted, pendingDelete)
+	status.StateMachine.AddEdge(insync, pendingDelete)
+	status.StateMachine.AddEdge(inspecting, pendingDelete)
+	status.StateMachine.AddEdge(syncing, pendingDelete)
+	status.StateMachine.AddEdge(created, pendingDelete)
+	status.StateMachine.AddEdge(cloning, pendingDelete)
+	status.StateMachine.AddEdge(invaliddefinitions, pendingDelete)
+
 }
 
 func (status *Status) SetState(state string) error {

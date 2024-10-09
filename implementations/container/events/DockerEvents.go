@@ -136,7 +136,6 @@ func HandleStart(shared *shared.Shared, containerObj *container.Container, event
 	}
 
 	if reconcile {
-		fmt.Println("Starting container")
 		logger.Log.Info(fmt.Sprintf("container is stopped- reconcile %s", containerObj.Static.GeneratedName))
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
 	}
@@ -164,8 +163,6 @@ func HandleStop(shared *shared.Shared, containerObj *container.Container, event 
 	}
 
 	if reconcile {
-		fmt.Println("Stopping container")
-
 		logger.Log.Info(fmt.Sprintf("container is stopped- reconcile %s", containerObj.Static.GeneratedName))
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)).ContainerQueue <- containerObj
 	}
