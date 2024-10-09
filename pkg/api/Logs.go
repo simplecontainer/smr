@@ -1,11 +1,13 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hpcloud/tail"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"net/http"
+	"os"
 )
 
 func (api *Api) Logs(c *gin.Context) {
@@ -18,6 +20,10 @@ func (api *Api) Logs(c *gin.Context) {
 	header.Set("Transfer-Encoding", "chunked")
 	header.Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
+	if _, err := os.Stat("/tmp/%s.%s.%s.log"); errors.Is(err, os.ErrNotExist) {
+
+	}
 
 	t, err := tail.TailFile(fmt.Sprintf("/tmp/%s.%s.%s.log", kind, group, identifier),
 		tail.Config{

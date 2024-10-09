@@ -64,11 +64,11 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			return
 		case <-containerWatcher.ContainerQueue:
 			containerWatcher.Ticker.Reset(5 * time.Second)
-			go ReconcileContainer(shared, containerWatcher)
+			go Container(shared, containerWatcher)
 			break
 		case <-containerWatcher.Ticker.C:
 			if !containerWatcher.Container.Status.Reconciling && containerWatcher.Container.Status.GetCategory() != status.CATEGORY_END {
-				go ReconcileContainer(shared, containerWatcher)
+				go Container(shared, containerWatcher)
 			} else {
 				containerWatcher.Ticker.Stop()
 			}
@@ -77,7 +77,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 	}
 }
 
-func ReconcileContainer(shared *shared.Shared, containerWatcher *watcher.Container) {
+func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	containerObj := containerWatcher.Container
 
 	if containerObj.Status.Reconciling {

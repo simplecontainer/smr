@@ -147,7 +147,7 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 				obj.Remove(format)
 
 				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PENDING_DELETE)
-				reconcile.ReconcileContainer(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
+				reconcile.Container(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
 			}
 		}
 
@@ -178,7 +178,7 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 
 						implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containerFromDefinition)
 
-						reconcile.ReconcileContainer(implementation.Shared, containerFromDefinition)
+						reconcile.Container(implementation.Shared, containerFromDefinition)
 					} else {
 						logger.Log.Debug("no change detected in the containers definition")
 					}
@@ -191,7 +191,7 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 					containerFromDefinition.Container.Status.SetState(status.STATUS_CREATED)
 					implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, containerFromDefinition)
 
-					reconcile.ReconcileContainer(implementation.Shared, containerFromDefinition)
+					reconcile.Container(implementation.Shared, containerFromDefinition)
 				}
 			}
 		}
@@ -271,7 +271,7 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 					obj.Remove(format)
 
 					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PENDING_DELETE)
-					reconcile.ReconcileContainer(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
+					reconcile.Container(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
 				}
 			}
 

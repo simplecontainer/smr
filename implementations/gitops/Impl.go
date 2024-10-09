@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/implementations/gitops/gitops"
 	"github.com/simplecontainer/smr/implementations/gitops/reconcile"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
+	"github.com/simplecontainer/smr/implementations/gitops/status"
 	"github.com/simplecontainer/smr/implementations/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -118,13 +119,15 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 				go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsWatcherFromRegistry)
 
 				gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
+				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			} else {
 				implementation.Shared.Watcher.Find(GroupIdentifier).Gitops = gitops.New(gitopsDefinition)
 				gitopsWatcherFromRegistry.Logger.Info("gitops object modified")
+				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			}
 
-			go reconcile.ReconcileGitops(implementation.Shared, gitopsWatcherFromRegistry)
 			implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
+			reconcile.Gitops(implementation.Shared, gitopsWatcherFromRegistry)
 		} else {
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusOK,
@@ -139,7 +142,9 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		go reconcile.HandleTickerAndEvents(implementation.Shared, gitopsWatcherFromRegistry)
 
 		gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
+		gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 		implementation.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
+		reconcile.Gitops(implementation.Shared, gitopsWatcherFromRegistry)
 	}
 
 	return httpcontract.ResponseImplementation{
@@ -213,6 +218,59 @@ func (implementation *Implementation) Compare(user *authentication.User, jsonDat
 }
 
 func (implementation *Implementation) Delete(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
+	containersDefinition := &v1.GitopsDefinition{}
+
+	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       400,
+			Explanation:      "invalid definition sent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
+	}
+
+	data := make(map[string]interface{})
+	err := json.Unmarshal(jsonData, &data)
+	if err != nil {
+		panic(err)
+	}
+
+	var format *f.Format
+	format = f.New("gitops", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "object")
+
+	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
+	err = obj.Find(format)
+
+	if !obj.Exists() {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       404,
+			Explanation:      "object not found on the server",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+		}, nil
+	}
+
+	GroupIdentifier := fmt.Sprintf("%s.%s", containersDefinition.Meta.Group, containersDefinition.Meta.Name)
+
+	_, err = obj.Remove(format)
+
+	if err != nil {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       500,
+			Explanation:      "object removal failed",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, nil
+	}
+
+	gitopsObj := implementation.Shared.Watcher.Find(GroupIdentifier).Gitops
+
+	gitopsObj.Status.TransitionState(gitopsObj.Definition.Meta.Name, status.STATUS_PENDING_DELETE)
+	reconcile.Gitops(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
+
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
 		Explanation:      "object in sync",

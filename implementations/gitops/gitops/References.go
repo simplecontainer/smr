@@ -2,8 +2,6 @@ package gitops
 
 import (
 	"encoding/json"
-	"github.com/simplecontainer/smr/implementations/gitops/certkey"
-	"github.com/simplecontainer/smr/implementations/gitops/httpauth"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -12,8 +10,8 @@ import (
 )
 
 func (gitops *Gitops) Prepare(client *client.Http, user *authentication.User) (*AuthType, error) {
-	if gitops.HttpAuthRef.Group != "" && gitops.HttpAuthRef.Name != "" {
-		format := f.New("httpauth", gitops.HttpAuthRef.Group, gitops.HttpAuthRef.Name, "object")
+	if gitops.Auth.HttpAuthRef.Group != "" && gitops.Auth.HttpAuthRef.Name != "" {
+		format := f.New("httpauth", gitops.Auth.HttpAuthRef.Group, gitops.Auth.HttpAuthRef.Name, "object")
 
 		var httpAuth v1.HttpAuthDefinition
 		obj := objects.New(client.Get(user.Username), user)
@@ -29,17 +27,17 @@ func (gitops *Gitops) Prepare(client *client.Http, user *authentication.User) (*
 			return nil, err
 		}
 
-		gitops.HttpAuth = &httpauth.HttpAuth{
+		gitops.AuthInternal.HttpAuth = &HttpAuth{
 			Username: httpAuth.Spec.Username,
 			Password: httpAuth.Spec.Password,
 		}
 
-		return &AuthType{AuthType: httpAuthType}, nil
+		return &AuthType{AuthType: HTTP_AUTH_TYPE}, nil
 	}
 
-	if gitops.CertKeyRef.Group != "" && gitops.CertKeyRef.Name != "" {
+	if gitops.Auth.CertKeyRef.Group != "" && gitops.Auth.CertKeyRef.Name != "" {
 		var certKey v1.CertKeyDefinition
-		format := f.New("certkey", gitops.CertKeyRef.Group, gitops.CertKeyRef.Name, "object")
+		format := f.New("certkey", gitops.Auth.CertKeyRef.Group, gitops.Auth.CertKeyRef.Name, "object")
 		obj := objects.New(client.Get(user.Username), user)
 		err := obj.Find(format)
 
@@ -53,13 +51,13 @@ func (gitops *Gitops) Prepare(client *client.Http, user *authentication.User) (*
 			return nil, err
 		}
 
-		gitops.CertKey = &certkey.CertKey{
+		gitops.AuthInternal.CertKey = &CertKey{
 			Certificate: certKey.Spec.Certificate,
 			PublicKey:   certKey.Spec.PublicKey,
 			PrivateKey:  certKey.Spec.PrivateKey,
 		}
 
-		return &AuthType{AuthType: sshAuthType}, nil
+		return &AuthType{AuthType: SSH_AUTH_TYPE}, nil
 	}
 
 	return nil, nil

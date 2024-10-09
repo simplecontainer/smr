@@ -8,10 +8,6 @@ import (
 	"time"
 )
 
-func NewStatus() *Status {
-	return &Status{}
-}
-
 func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[*StatusState](gograph.Directed())
 

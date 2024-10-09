@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/implementations/gitops/shared"
+	"github.com/simplecontainer/smr/implementations/gitops/status"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -189,9 +190,9 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
-	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)
+	gitopsWatcher := sharedObj.Watcher.Find(GroupIdentifier)
 
-	if gitopsInstance == nil {
+	if gitopsWatcher == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
 			Explanation:      "gitops definition doesn't exists",
@@ -201,6 +202,11 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 			Data:             nil,
 		}
 	} else {
+		if gitopsWatcher.Gitops.AutomaticSync == false {
+			gitopsWatcher.Gitops.ManualSync = true
+		}
+
+		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 
 		sharedObj.Watcher.Find(GroupIdentifier).Cancel()
 		sharedObj.Watcher.Remove(GroupIdentifier)
@@ -209,6 +215,50 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
 		Explanation:      "gitops definition is deleted and removed from server",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	}
+}
+
+func (operator *Operator) Refresh(request operators.Request) httpcontract.ResponseOperator {
+	if request.Data == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "send some data",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
+
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	gitopsWatcher := sharedObj.Watcher.Find(GroupIdentifier)
+
+	if gitopsWatcher == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       404,
+			Explanation:      "gitops definition doesn't exists",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	} else {
+		gitopsWatcher.Gitops.ForcePoll = true
+		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
+		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+	}
+
+	return httpcontract.ResponseOperator{
+		HttpStatus:       200,
+		Explanation:      "sync is triggered manually",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
@@ -233,9 +283,9 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
-	gitopsInstance := sharedObj.Watcher.Find(GroupIdentifier)
+	gitopsWatcher := sharedObj.Watcher.Find(GroupIdentifier)
 
-	if gitopsInstance == nil {
+	if gitopsWatcher == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
 			Explanation:      "gitops definition doesn't exists",
@@ -245,7 +295,11 @@ func (operator *Operator) Sync(request operators.Request) httpcontract.ResponseO
 			Data:             nil,
 		}
 	} else {
-		gitopsInstance.GitopsQueue <- gitopsInstance.Gitops
+		if gitopsWatcher.Gitops.AutomaticSync == false {
+			gitopsWatcher.Gitops.ManualSync = true
+		}
+		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_SYNCING)
+		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
 	return httpcontract.ResponseOperator{
