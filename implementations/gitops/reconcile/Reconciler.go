@@ -167,12 +167,13 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			err = gitopsWatcher.Gitops.Sync(shared.Client, gitopsWatcher.User, defs)
 
 			if err != nil {
-				if err.Error() == "gitops object is same on the server" {
+				if err.Error() == "object is same on the server" {
 					gitopsWatcher.Logger.Info(fmt.Sprintf("gitops object is same on the server"))
 				} else {
 					gitopsWatcher.Logger.Info(fmt.Sprintf("failed to sync latest changes"))
 					gitopsWatcher.Logger.Error(err.Error())
 					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
+					gitopsWatcher.Syncing = false
 					Loop(gitopsWatcher)
 					return
 				}

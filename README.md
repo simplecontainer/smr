@@ -47,8 +47,8 @@ mkdir $HOME/.smr
 docker pull simplecontainermanager/smr:$LATEST_VERSION
 docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
-       -e DOMAIN=localhost \
-       -e EXTERNALIP=127.0.0.1 \
+       -e DOMAIN=localhost,external.domain.tld,... \
+       -e EXTERNALIP=127.0.0.1,EXTERNAL_IP,... \
        simplecontainermanager/smr:$LATEST_VERSION create smr
 ```
 
