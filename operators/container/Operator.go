@@ -4,6 +4,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/implementations/container/shared"
+	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -186,6 +187,46 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 		Error:            false,
 		Success:          true,
 		Data:             definition,
+	}
+}
+
+func (operator *Operator) Restart(request operators.Request) httpcontract.ResponseOperator {
+	if request.Data == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "send some data",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	container := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+
+	if container == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       404,
+			Explanation:      "container not found in the registry",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	container.Status.TransitionState(container.Static.Name, status.STATUS_CREATED)
+
+	return httpcontract.ResponseOperator{
+		HttpStatus:       200,
+		Explanation:      "container object is restarted",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
 	}
 }
 

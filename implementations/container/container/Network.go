@@ -9,8 +9,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 )
 
-const STARTING_SUBNET string = "10.10.0.0/16"
-
 func (container *Container) AddNetworkInfoTS(networkId string, ipAddress string, networkName string) {
 	container.Runtime.NetworkLock.Lock()
 
@@ -69,7 +67,7 @@ func (container *Container) GetNetwork() *network.NetworkingConfig {
 	if container.Static.NetworkMode != "host" {
 		for _, netw := range container.Static.Networks.Networks {
 			dnetw.EndpointsConfig[netw.Reference.Name] = &network.EndpointSettings{
-				NetworkID: netw.Reference.Name,
+				NetworkID: netw.Docker.NetworkId,
 			}
 		}
 	}
