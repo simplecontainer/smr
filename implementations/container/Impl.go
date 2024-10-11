@@ -261,53 +261,64 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 			if len(groups) > 0 {
 				containerObjs := FetchContainersFromRegistry(implementation.Shared.Registry, groups, names)
 
+				format = f.New("container", containersDefinition.Meta.Group, containersDefinition.Meta.Name, "")
+				obj.Remove(format)
+
+				for k, name := range names {
+					format = f.New("configuration", groups[k], name, "")
+					obj.Remove(format)
+				}
+
 				for _, containerObj := range containerObjs {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.Static.Group, containerObj.Static.GeneratedName)
-
-					format = f.New("container", containerObj.Static.Group, containerObj.Static.Name, "")
-					obj.Remove(format)
-
-					format = f.New("configuration", containerObj.Static.Group, containerObj.Static.GeneratedName, "")
-					obj.Remove(format)
-
 					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PENDING_DELETE)
 					reconcile.Container(implementation.Shared, implementation.Shared.Watcher.Find(GroupIdentifier))
 				}
-			}
 
-			return httpcontract.ResponseImplementation{
-				HttpStatus:       200,
-				Explanation:      "container is deleted",
-				ErrorExplanation: "",
-				Error:            false,
-				Success:          true,
-			}, nil
+				return httpcontract.ResponseImplementation{
+					HttpStatus:       200,
+					Explanation:      "container is deleted",
+					ErrorExplanation: "",
+					Error:            false,
+					Success:          true,
+				}, nil
+			} else {
+				return httpcontract.ResponseImplementation{
+					HttpStatus:       404,
+					Explanation:      "",
+					ErrorExplanation: "container is not found on the server",
+					Error:            true,
+					Success:          false,
+				}, nil
+			}
 		} else {
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       404,
-				Explanation:      "container is not found on the server",
-				ErrorExplanation: err.Error(),
+				Explanation:      "",
+				ErrorExplanation: "container is not found on the server",
 				Error:            true,
 				Success:          false,
 			}, nil
 		}
+	} else {
+		return httpcontract.ResponseImplementation{
+			HttpStatus:       404,
+			Explanation:      "",
+			ErrorExplanation: "container is not found on the server",
+			Error:            true,
+			Success:          false,
+		}, nil
 	}
-
-	return httpcontract.ResponseImplementation{
-		HttpStatus:       200,
-		Explanation:      "container is not found on the server",
-		ErrorExplanation: err.Error(),
-		Error:            false,
-		Success:          true,
-	}, nil
 }
 
 func FetchContainersFromRegistry(registry *registry.Registry, groups []string, names []string) []*container.Container {
 	var order []*container.Container
 
 	for i, _ := range names {
-		if registry.Containers[groups[i]][names[i]] != nil {
-			order = append(order, registry.Containers[groups[i]][names[i]])
+		if registry.Containers[groups[i]] != nil {
+			if registry.Containers[groups[i]][names[i]] != nil {
+				order = append(order, registry.Containers[groups[i]][names[i]])
+			}
 		}
 	}
 

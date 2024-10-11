@@ -157,6 +157,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 		if gitopsWatcher.Syncing {
 			gitopsWatcher.Logger.Info("gitops already reconciling, waiting for the free slot")
+			gitopsWatcher.Gitops.Status.Reconciling = false
 			return
 		}
 
@@ -164,19 +165,17 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		if gitopsWatcher.Gitops.Status.LastSyncedCommit != gitopsWatcher.Gitops.Commit.ID() || !gitopsWatcher.Gitops.Status.InSync {
 			defs, err := gitopsWatcher.Gitops.Definitions(shared.Manager.RelationRegistry)
 
-			err = gitopsWatcher.Gitops.Sync(shared.Client, gitopsWatcher.User, defs)
+			err = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User, defs)
 
 			if err != nil {
-				if err.Error() == "object is same on the server" {
-					gitopsWatcher.Logger.Info(fmt.Sprintf("gitops object is same on the server"))
-				} else {
-					gitopsWatcher.Logger.Info(fmt.Sprintf("failed to sync latest changes"))
-					gitopsWatcher.Logger.Error(err.Error())
-					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
-					gitopsWatcher.Syncing = false
-					Loop(gitopsWatcher)
-					return
-				}
+				gitopsWatcher.Logger.Info(fmt.Sprintf("failed to sync latest changes"))
+				gitopsWatcher.Logger.Info(err.Error())
+				gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
+				gitopsWatcher.Syncing = false
+
+				Loop(gitopsWatcher)
+				return
+
 			}
 
 			gitopsWatcher.Gitops.Status.LastSyncedCommit = gitopsWatcher.Gitops.Commit.ID()
@@ -194,6 +193,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		break
 	case status.STATUS_INSPECTING:
 		gitopsWatcher.Syncing = true
+
 		if gitopsWatcher.Gitops.Status.LastSyncedCommit != gitopsWatcher.Gitops.Commit.ID() || !gitopsWatcher.Gitops.Status.InSync {
 			defs, err := gitopsWatcher.Gitops.Definitions(shared.Manager.RelationRegistry)
 
@@ -214,6 +214,8 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INSYNC)
 		}
 
+		gitopsWatcher.Syncing = false
+
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_INSYNC:
@@ -226,6 +228,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	case status.STATUS_DRIFTED:
 		gitopsWatcher.Logger.Info("drift detected")
 		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_SYNCING)
+
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_PENDING_DELETE:

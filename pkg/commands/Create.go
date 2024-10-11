@@ -52,12 +52,18 @@ func Create() {
 					externalIP = os.Getenv("EXTERNALIP")
 				}
 
+				hostHomeDir := ""
+				if os.Getenv("HOMEDIR") != "" {
+					hostHomeDir = os.Getenv("HOMEDIR")
+				}
+
 				api.Config.Target = target
 				api.Config.Root = api.Config.Environment.PROJECTDIR
 				api.Config.Domain = domain
 				api.Config.ExternalIP = externalIP
 				api.Config.OptRoot = "/opt/smr"
 				api.Config.CommonName = "root"
+				api.Config.HostHome = hostHomeDir
 
 				err = startup.Save(api.Config, out)
 

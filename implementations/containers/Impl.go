@@ -238,8 +238,8 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 	if !obj.Exists() {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       404,
-			Explanation:      "object not found on the server",
-			ErrorExplanation: "",
+			Explanation:      "",
+			ErrorExplanation: "object not found on the server",
 			Error:            true,
 			Success:          false,
 		}, nil
@@ -275,7 +275,7 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 
 	return httpcontract.ResponseImplementation{
 		HttpStatus:       200,
-		Explanation:      "everything went good",
+		Explanation:      "action completed successfully",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,

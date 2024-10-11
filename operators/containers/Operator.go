@@ -234,7 +234,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       http.StatusOK,
-		Explanation:      "everything went good",
+		Explanation:      "action completed successfully",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,

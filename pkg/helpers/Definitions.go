@@ -31,6 +31,10 @@ func Definitions(defintion string) ([]byte, error) {
 	case "gitops":
 		out, err = yaml.Marshal(v1.GitopsDefinition{})
 		break
+	case "network":
+		out, err = yaml.Marshal(v1.NetworkDefinition{})
+		break
+
 	}
 
 	return out, err

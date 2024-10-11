@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/mitchellh/mapstructure"
-	"github.com/simplecontainer/smr/implementations/hub/hub"
-	hubShared "github.com/simplecontainer/smr/implementations/hub/shared"
+	"github.com/simplecontainer/smr/implementations/network/network"
 	"github.com/simplecontainer/smr/implementations/network/shared"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -14,7 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/plugins"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -33,9 +31,9 @@ func (implementation *Implementation) GetShared() interface{} {
 }
 
 func (implementation *Implementation) Apply(user *authentication.User, jsonData []byte) (httpcontract.ResponseImplementation, error) {
-	var network v1.NetworkDefinition
+	var networkDefinition v1.NetworkDefinition
 
-	if err := json.Unmarshal(jsonData, &network); err != nil {
+	if err := json.Unmarshal(jsonData, &networkDefinition); err != nil {
 		return httpcontract.ResponseImplementation{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -45,7 +43,7 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		}, err
 	}
 
-	valid, err := network.Validate()
+	valid, err := networkDefinition.Validate()
 
 	if !valid {
 		return httpcontract.ResponseImplementation{
@@ -63,16 +61,16 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		panic(err)
 	}
 
-	mapstructure.Decode(data["network"], &network)
+	mapstructure.Decode(data["network"], &networkDefinition)
 
 	var format *f.Format
-	format = f.New("network", network.Meta.Group, network.Meta.Name, "object")
+	format = f.New("network", networkDefinition.Meta.Group, networkDefinition.Meta.Name, "object")
 
 	obj := objects.New(implementation.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = network.ToJsonString()
+	jsonStringFromRequest, err = networkDefinition.ToJsonString()
 
 	logger.Log.Debug("server received network object", zap.String("definition", jsonStringFromRequest))
 
@@ -105,14 +103,18 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		pl := plugins.GetPlugin(implementation.Shared.Manager.Config.OptRoot, "hub.so")
-		sharedHub := pl.GetShared().(*hubShared.Shared)
+		networkObj := network.New(networkDefinition)
 
-		sharedHub.Event <- &hub.Event{
-			Kind:  KIND,
-			Group: network.Meta.Group,
-			Name:  network.Meta.Name,
-			Data:  nil,
+		err = networkObj.Create()
+
+		if err != nil {
+			return httpcontract.ResponseImplementation{
+				HttpStatus:       http.StatusInternalServerError,
+				Explanation:      "",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+			}, err
 		}
 	} else {
 		return httpcontract.ResponseImplementation{

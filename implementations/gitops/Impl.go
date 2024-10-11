@@ -131,11 +131,11 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		} else {
 			return httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusOK,
-				Explanation:      "gitops object is same as the one on the server",
+				Explanation:      "object is same on the server",
 				ErrorExplanation: "",
 				Error:            false,
 				Success:          true,
-			}, errors.New("gitops object is same on the server")
+			}, errors.New("object is same on the server")
 		}
 	} else {
 		gitopsWatcherFromRegistry = reconcile.NewWatcher(gitops.New(gitopsDefinition), implementation.Shared.Manager, user)

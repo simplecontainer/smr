@@ -21,7 +21,7 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 	if numberOfReplicasToDestroy > 0 {
 		for i := existingNumberOfReplicas; i > (existingNumberOfReplicas - numberOfReplicasToDestroy); i -= 1 {
 			name := containerDefinition.Meta.Name
-			containerObj, err := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
+			containerObj, err := container.NewContainerFromDefinition(mgr.Config, name, containerDefinition)
 
 			if err != nil {
 				return []string{}, []string{}, err
@@ -40,7 +40,7 @@ func (replicas *Replicas) HandleContainer(shared *shared.Shared, mgr *manager.Ma
 
 	for i := numberOfReplicasToCreate; i > 0; i -= 1 {
 		name := containerDefinition.Meta.Name
-		containerObj, err := container.NewContainerFromDefinition(mgr.Config.Environment, name, containerDefinition)
+		containerObj, err := container.NewContainerFromDefinition(mgr.Config, name, containerDefinition)
 
 		if err != nil {
 			return []string{}, []string{}, err

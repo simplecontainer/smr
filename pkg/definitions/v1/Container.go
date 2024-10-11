@@ -12,10 +12,9 @@ type ContainerDefinition struct {
 }
 
 type ContainerMeta struct {
-	Enabled bool              `json:"enabled"`
-	Name    string            `validate:"required" json:"name"`
-	Group   string            `validate:"required" json:"group"`
-	Labels  map[string]string `json:"labels"`
+	Name   string            `validate:"required" json:"name"`
+	Group  string            `validate:"required" json:"group"`
+	Labels map[string]string `json:"labels"`
 }
 
 type ContainerSpec struct {
@@ -30,36 +29,16 @@ type ContainerInternal struct {
 	Command       []string             `json:"command"`
 	Dependencies  []ContainerDependsOn `json:"dependencies"`
 	Readiness     []ContainerReadiness `json:"readiness"`
-	Networks      []string             `validate:"required" json:"networks"`
-	Ports         []map[string]string  `json:"ports"`
-	Volumes       []map[string]string  `json:"volumes"`
-	Operators     []map[string]any     `json:"operators"`
+	Networks      []ContainerNetwork   `validate:"required" json:"networks"`
+	Ports         []ContainerPort      `json:"ports"`
+	Volumes       []ContainerVolume    `json:"volumes"`
 	Configuration map[string]string    `json:"configuration"`
-	Resources     []map[string]string  `json:"resources"`
+	Resources     []ContainerResource  `json:"resources"`
 	Replicas      int                  `validate:"required" json:"replicas"`
 	Capabilities  []string             `json:"capabilities"`
 	Privileged    bool                 `json:"privileged"`
 	NetworkMode   string               `json:"network_mode"`
 }
-
-//type ContainerInternalV2 struct {
-//	Image         string               `validate:"required" json:"image"`
-//	Tag           string               `validate:"required" json:"tag"`
-//	Replicas      int                  `validate:"required" json:"replicas"`
-//	Entrypoint    []string             `json:"entrypoint"`
-//	Command       []string             `json:"command"`
-//	Dependencies  []ContainerDependsOn `json:"dependencies"`
-//	Readiness     []ContainerReadiness `json:"readiness"`
-//	Networks      []ContainerNetwork   `validate:"required" json:"networks"`
-//	NetworkMode   string               `json:"network_mode"`
-//	Ports         []ContainerPort      `json:"ports"`
-//	Volumes       []ContainerVolume    `json:"volumes"`
-//	Envs          []string             `json:"envs"`
-//	Configuration map[string]string    `json:"configuration"`
-//	Resources     []ContainerResource  `json:"resources"`
-//	Capabilities  []string             `json:"capabilities"`
-//	Privileged    bool                 `json:"privileged"`
-//}
 
 type ContainerDependsOn struct {
 	Name    string `validate:"required" json:"name"`
@@ -74,26 +53,29 @@ type ContainerReadiness struct {
 	Body     map[string]string `json:"body"`
 }
 
-//type ContainerNetwork struct {
-//	Network string
-//}
-//
-//type ContainerPort struct {
-//	Container string `json:"container"`
-//	Host      string `json:"host"`
-//}
-//
-//type ContainerVolume struct {
-//	Host   string `json:"host"`
-//	Target string `json:"target"`
-//}
-//
-//type ContainerResource struct {
-//	Name       string
-//	Group      string
-//	Key        string
-//	MountPoint string
-//}
+type ContainerNetwork struct {
+	Group string
+	Name  string
+}
+
+type ContainerPort struct {
+	Container string `json:"container"`
+	Host      string `json:"host"`
+}
+
+type ContainerVolume struct {
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	HostPath   string `json:"hostPath"`
+	MountPoint string `json:"mountPoint"`
+}
+
+type ContainerResource struct {
+	Name       string
+	Group      string
+	Key        string
+	MountPoint string
+}
 
 func (definition *ContainerDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(definition)

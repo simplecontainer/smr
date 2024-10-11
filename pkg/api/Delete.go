@@ -28,7 +28,7 @@ func (api *Api) Delete(c *gin.Context) {
 	} else {
 		data := make(map[string]interface{})
 
-		err := json.Unmarshal(jsonData, &data)
+		err = json.Unmarshal(jsonData, &data)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
 				HttpStatus:       http.StatusBadRequest,

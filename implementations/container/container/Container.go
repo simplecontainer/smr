@@ -7,8 +7,11 @@ import (
 	"errors"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/go-connections/nat"
+	"github.com/simplecontainer/smr/implementations/container/container/internal"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -22,7 +25,7 @@ import (
 	"time"
 )
 
-func NewContainerFromDefinition(environment *configuration.Environment, name string, definition v1.ContainerDefinition) (*Container, error) {
+func NewContainerFromDefinition(config *configuration.Configuration, name string, definition v1.ContainerDefinition) (*Container, error) {
 	// Make deep copy of the definition, so we can preserve it for later usage
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -51,22 +54,21 @@ func NewContainerFromDefinition(environment *configuration.Environment, name str
 			Image:         definition.Spec.Container.Image,
 			Tag:           definition.Spec.Container.Tag,
 			Replicas:      definition.Spec.Container.Replicas,
-			Networks:      definition.Spec.Container.Networks,
 			Env:           definition.Spec.Container.Envs,
 			Entrypoint:    definition.Spec.Container.Entrypoint,
 			Command:       definition.Spec.Container.Command,
-			MappingFiles:  definition.Spec.Container.Volumes,
-			MappingPorts:  convertMapToPortMapping(definition.Spec.Container.Ports),
-			ExposedPorts:  convertPortMappingsToExposedPorts(convertMapToPortMapping(definition.Spec.Container.Ports)),
-			Capabilities:  definition.Spec.Container.Capabilities,
 			NetworkMode:   definition.Spec.Container.NetworkMode,
+			Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
+			Ports:         internal.NewPorts(definition.Spec.Container.Ports),
+			Volumes:       internal.NewVolumes(definition.Spec.Container.Volumes, config),
+			Readiness:     internal.NewReadinesses(definition.Spec.Container.Readiness),
+			Resources:     internal.NewResources(definition.Spec.Container.Resources),
+			Capabilities:  definition.Spec.Container.Capabilities,
 			Privileged:    definition.Spec.Container.Privileged,
-			Readiness:     convertReadinessDefinitionToReadiness(definition.Spec.Container.Readiness),
-			Resources:     convertResourcesDefinitionToResources(definition.Spec.Container.Resources),
 			Definition:    definitionCopy,
 		},
 		Runtime: Runtime{
-			Auth:          GetAuth(definition.Spec.Container.Image, environment),
+			Auth:          GetAuth(definition.Spec.Container.Image, config.Environment),
 			Id:            "",
 			Networks:      map[string]Network{},
 			State:         "",
@@ -102,7 +104,7 @@ func Existing(name string) *Container {
 			GeneratedNameNoProject: name,
 			Image:                  "image",
 			Tag:                    "tag",
-			Networks:               []string{"network"},
+			Networks:               &internal.Networks{},
 		},
 		Runtime: Runtime{
 			Id:            "",
@@ -142,15 +144,15 @@ func Existing(name string) *Container {
 		data, _ := cli.ContainerInspect(ctx, container.Runtime.Id)
 
 		if c.State == "running" {
-			for _, netw := range container.Static.Networks {
-				if data.NetworkSettings.Networks[netw] != nil {
-					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw].NetworkID, types.NetworkInspectOptions{
+			for _, netw := range container.Static.Networks.Networks {
+				if data.NetworkSettings.Networks[netw.Reference.Name] != nil {
+					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw.Reference.Name].NetworkID, types.NetworkInspectOptions{
 						Scope:   "",
 						Verbose: false,
 					})
 
-					NetworkId := data.NetworkSettings.Networks[netw].NetworkID
-					IpAddress := data.NetworkSettings.Networks[netw].IPAddress
+					NetworkId := data.NetworkSettings.Networks[netw.Reference.Name].NetworkID
+					IpAddress := data.NetworkSettings.Networks[netw.Reference.Name].IPAddress
 					NetwrName := ""
 
 					if err == nil {
@@ -194,14 +196,10 @@ func (container *Container) Run(environment *configuration.Environment, client *
 }
 
 func (container *Container) run(c *types.Container, environment *configuration.Environment, client *client.Http, dnsCache *dns.Records, user *authentication.User) (*types.Container, error) {
-	err := container.CreateNetwork()
-
-	if err != nil {
-		return nil, err
-	}
-
 	ctx := context.Background()
 	cli := &dockerClient.Client{}
+
+	var err error
 
 	cli, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -229,6 +227,27 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		return nil, err
 	}
 
+	var exposedPorts nat.PortSet
+	exposedPorts, err = container.Static.Ports.ToPortExposed()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var portBindings nat.PortMap
+	portBindings, err = container.Static.Ports.ToPortMap()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var mounts []mount.Mount
+	mounts, err = container.Static.Volumes.ToMounts()
+
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err = cli.ContainerCreate(ctx, &dockerContainer.Config{
 		Hostname:     container.Static.GeneratedName,
 		Labels:       container.GenerateLabels(),
@@ -237,13 +256,13 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		Entrypoint:   container.Static.Entrypoint,
 		Cmd:          container.Static.Command,
 		Tty:          false,
-		ExposedPorts: container.exposedPorts(),
+		ExposedPorts: exposedPorts,
 	}, &dockerContainer.HostConfig{
 		DNS: []string{
 			environment.AGENTIP,
 		},
-		Mounts:       container.mappingToMounts(client, user),
-		PortBindings: container.portMappings(),
+		Mounts:       mounts,
+		PortBindings: portBindings,
 		NetworkMode:  dockerContainer.NetworkMode(container.Static.NetworkMode),
 		Privileged:   container.Static.Privileged,
 		CapAdd:       container.Static.Capabilities,

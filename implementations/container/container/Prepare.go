@@ -10,12 +10,20 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/template"
+	"log"
+	"os"
 	"regexp"
 	"strings"
 )
 
 func (container *Container) Prepare(client *client.Http, user *authentication.User) error {
-	err := container.PrepareConfiguration(client, user)
+	err := container.PrepareNetwork(client, user)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareConfiguration(client, user)
 
 	if err != nil {
 		return err
@@ -27,10 +35,39 @@ func (container *Container) Prepare(client *client.Http, user *authentication.Us
 		return err
 	}
 
-	container.PrepareNetwork()
 	container.PrepareLabels()
 	container.PrepareEnvs()
 	container.PrepareReadiness()
+
+	return nil
+}
+
+func (container *Container) PrepareNetwork(client *client.Http, user *authentication.User) error {
+	for k, v := range container.Static.Networks.Networks {
+		format := f.New("network", v.Reference.Group, v.Reference.Name, "object")
+
+		obj := objects.New(client.Get(user.Username), user)
+		err := obj.Find(format)
+
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed to find network %s", format.ToString()))
+		}
+
+		networkObject := v1.NetworkDefinition{}
+
+		err = json.Unmarshal(obj.GetDefinitionByte(), &networkObject)
+
+		if err != nil {
+			return err
+		}
+
+		container.Static.Networks.Networks[k].Reference.Name = networkObject.Meta.Name
+		container.Static.Networks.Networks[k].Reference.Group = networkObject.Meta.Group
+	}
+
+	for _, network := range container.Static.Networks.Networks {
+		container.Runtime.Configuration[fmt.Sprintf("%s_hostname", network)] = container.GetDomain(network.Reference.Name)
+	}
 
 	return nil
 }
@@ -53,8 +90,8 @@ func (container *Container) PrepareConfiguration(client *client.Http, user *auth
 }
 
 func (container *Container) PrepareResources(client *client.Http, user *authentication.User) error {
-	for k, v := range container.Static.Resources {
-		format := f.New("resource", v.Group, v.Name, "object")
+	for k, v := range container.Static.Resources.Resources {
+		format := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
 
 		obj := objects.New(client.Get(user.Username), user)
 		err := obj.Find(format)
@@ -71,28 +108,41 @@ func (container *Container) PrepareResources(client *client.Http, user *authenti
 			return err
 		}
 
-		v.Data = resourceObject.Spec.Data
-		container.Static.Resources[k].Data, _, err = template.ParseTemplate(obj, resourceObject.Spec.Data, nil)
+		v.Docker.Data = resourceObject.Spec.Data
+		container.Static.Resources.Resources[k].Docker.Data, _, err = template.ParseTemplate(obj, resourceObject.Spec.Data, nil)
 
 		if err != nil {
 			return err
 		}
 
+		tmpFile, err := os.CreateTemp("/tmp", container.Static.Name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if _, err = tmpFile.WriteString(UnpackSecretsResources(client, user, v.Docker.Data[v.Reference.Key])); err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("RESOURCEEEEE")
+		fmt.Println(v.Reference)
+		fmt.Println(v.Reference.MountPoint)
+
+		container.Static.Volumes.Add(v1.ContainerVolume{
+			Type:       "bind",
+			HostPath:   tmpFile.Name(),
+			MountPoint: v.Reference.MountPoint,
+		})
+
 		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, &f.Format{
 			Kind:       "resource",
-			Group:      container.Static.Resources[k].Group,
-			Identifier: container.Static.Resources[k].Name,
+			Group:      container.Static.Resources.Resources[k].Reference.Group,
+			Identifier: container.Static.Resources.Resources[k].Reference.Name,
 			Key:        "",
 		})
 	}
 
 	return nil
-}
-
-func (container *Container) PrepareNetwork() {
-	for _, network := range container.Static.Networks {
-		container.Runtime.Configuration[fmt.Sprintf("%s_hostname", network)] = container.GetDomain(network)
-	}
 }
 
 func (container *Container) PrepareLabels() {
@@ -132,8 +182,8 @@ func (container *Container) PrepareEnvs() {
 }
 
 func (container *Container) PrepareReadiness() {
-	for indexReadiness, _ := range container.Static.Readiness {
-		for index, value := range container.Static.Readiness[indexReadiness].Body {
+	for indexReadiness, _ := range container.Static.Readiness.Readinesses {
+		for index, value := range container.Static.Readiness.Readinesses[indexReadiness].Reference.Data {
 			regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
 			matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
@@ -143,7 +193,7 @@ func (container *Container) PrepareReadiness() {
 				if format.IsValid() && format.Kind == "secret" {
 					continue
 				} else {
-					container.Static.Readiness[indexReadiness].Body[index] = strings.Replace(container.Static.Readiness[indexReadiness].Body[index], matches[0][0], container.Runtime.Configuration[format.Group], 1)
+					container.Static.Readiness.Readinesses[indexReadiness].Docker.Body[index] = strings.Replace(container.Static.Readiness.Readinesses[indexReadiness].Docker.Body[index], matches[0][0], container.Runtime.Configuration[format.Group], 1)
 				}
 			}
 		}

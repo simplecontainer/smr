@@ -57,7 +57,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, containerDefiniti
 			}
 		}
 
-		containerObj, err := container.NewContainerFromDefinition(shared.Manager.Config.Environment, name, containerDefinition)
+		containerObj, err := container.NewContainerFromDefinition(shared.Manager.Config, name, containerDefinition)
 
 		if err != nil {
 			return nil, nil, err

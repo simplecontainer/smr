@@ -199,7 +199,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 			} else {
 				containerWatcher.Logger.Info("container start failed", zap.Error(err))
-				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_DEAD)
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_INVALID_CONFIGURATION)
 			}
 		} else {
 			containerWatcher.Logger.Info("container is already running")

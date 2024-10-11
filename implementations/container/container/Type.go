@@ -2,6 +2,7 @@ package container
 
 import (
 	"context"
+	"github.com/simplecontainer/smr/implementations/container/container/internal"
 	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -16,6 +17,31 @@ type Container struct {
 	Status  status.Status
 }
 
+//type Static struct {
+//	Name                   string
+//	GeneratedName          string
+//	GeneratedNameNoProject string
+//	Labels                 map[string]string
+//	Group                  string
+//	Image                  string
+//	Tag                    string
+//	Replicas               int
+//	Networks               []*Network
+//	Env                    []string
+//	Entrypoint             []string
+//	Command                []string
+//	MappingFiles           []map[string]string
+//	MappingPorts           []PortMappings
+//	ExposedPorts           []string
+//	MountFiles             []string
+//	Capabilities           []string
+//	NetworkMode            string
+//	Privileged             bool
+//	Readiness              []Readiness
+//	Resources              []Resource
+//	Definition             v1.ContainerDefinition
+//}
+
 type Static struct {
 	Name                   string
 	GeneratedName          string
@@ -25,19 +51,17 @@ type Static struct {
 	Image                  string
 	Tag                    string
 	Replicas               int
-	Networks               []string
 	Env                    []string
 	Entrypoint             []string
 	Command                []string
-	MappingFiles           []map[string]string
-	MappingPorts           []PortMappings
-	ExposedPorts           []string
-	MountFiles             []string
-	Capabilities           []string
-	NetworkMode            string
 	Privileged             bool
-	Readiness              []Readiness
-	Resources              []Resource
+	NetworkMode            string
+	Networks               *internal.Networks
+	Ports                  *internal.Ports
+	Volumes                *internal.Volumes
+	Readiness              *internal.Readinesses
+	Resources              *internal.Resources
+	Capabilities           []string
 	Definition             v1.ContainerDefinition
 }
 
@@ -66,7 +90,7 @@ type Network struct {
 	IP          string
 }
 
-type PortMappings struct {
+type Port struct {
 	Container string
 	Host      string
 }
