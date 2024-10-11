@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	"go.uber.org/zap"
+	"strings"
 )
 
 func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authentication.User, definitionsOrdered []map[string]string) error {
@@ -18,7 +19,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 		response := gitops.sendRequest(client, user, "https://localhost:1443/api/v1/apply", definition)
 
 		if !response.Success {
-			if response.ErrorExplanation != "object is same on the server" {
+			if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
 				return errors.New(response.ErrorExplanation)
 			} else {
 				logger.Info(fmt.Sprintf(response.ErrorExplanation))

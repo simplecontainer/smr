@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/docker/go-connections/nat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 )
@@ -52,7 +53,8 @@ func (ports *Ports) ToPortMap() (nat.PortMap, error) {
 
 	for _, port := range ports.Ports {
 		if port.Host != "" {
-			HostPortMapping, err := nat.ParsePortSpec(port.Host)
+			portSpec := fmt.Sprintf("%s:%s", port.Host, port.Container)
+			HostPortMapping, err := nat.ParsePortSpec(portSpec)
 
 			if err != nil {
 				return NatMap, err
