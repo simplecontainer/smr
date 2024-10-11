@@ -37,7 +37,8 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api.Manager.PluginsRegistry = []string{}
 	api.Manager.Http = client.NewHttpClients()
 
-	api.RelationRegistry.Register("containers", []string{"resource", "configuration", "certkey"})
+	api.RelationRegistry.Register("network", []string{""})
+	api.RelationRegistry.Register("containers", []string{"network", "resource", "configuration", "certkey"})
 	api.RelationRegistry.Register("gitops", []string{"certkey", "httpauth"})
 	api.RelationRegistry.Register("configuration", []string{})
 	api.RelationRegistry.Register("resource", []string{"configuration"})
