@@ -259,8 +259,10 @@ func (implementation *Implementation) Delete(user *authentication.User, jsonData
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", containersDefinition.Meta.Group, containersDefinition.Meta.Name)
 
-	implementation.Shared.Watcher.Find(GroupIdentifier).Syncing = true
-	implementation.Shared.Watcher.Find(GroupIdentifier).Cancel()
+	if implementation.Shared.Watcher.Find(GroupIdentifier) != nil {
+		implementation.Shared.Watcher.Find(GroupIdentifier).Syncing = true
+		implementation.Shared.Watcher.Find(GroupIdentifier).Cancel()
+	}
 
 	for _, definition := range containersDefinition.Spec {
 		format = f.New("container", definition.Meta.Group, definition.Meta.Name, "object")

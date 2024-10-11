@@ -227,31 +227,31 @@ func (operator *Operator) Refresh(request operators.Request) httpcontract.Respon
 		}
 	}
 
+	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
+
 	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "gitops.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
 
-	format := f.New("gitops", request.Data["group"].(string), request.Data["identifier"].(string), "object")
+	gitopsWatcher := sharedObj.Watcher.Find(GroupIdentifier)
 
-	obj := objects.New(request.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-	if err != nil {
-		panic(err)
-	}
-
-	if !obj.Exists() {
+	if gitopsWatcher == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
-			Explanation:      "object not found on the server",
+			Explanation:      "gitops definition doesn't exists",
 			ErrorExplanation: "",
 			Error:            true,
 			Success:          false,
+			Data:             nil,
 		}
+	} else {
+		gitopsWatcher.Gitops.ForcePoll = true
+		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
+		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
-
-	pl.Delete(request.User, obj.GetDefinitionByte())
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
-		Explanation:      "sync is triggered manually",
+		Explanation:      "refresh is triggered manually",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,

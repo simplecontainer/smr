@@ -3,7 +3,6 @@ package container
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -27,23 +26,13 @@ func (container *Container) PullImage(ctx context.Context, cli *client.Client) e
 			Error string
 		}
 
-		var errorMessage error
 		buffIOReader := bufio.NewReader(reader)
 
-		var streamBytes []byte
-
 		for {
-			streamBytes, err = buffIOReader.ReadBytes('\n')
+			_, err = buffIOReader.ReadBytes('\n')
 			if err == io.EOF {
 				break
 			}
-
-			if errorMessage != nil {
-				container.Status.PulledImage = status.PULLED_FAILED
-				return errorMessage
-			}
-
-			err = json.Unmarshal(streamBytes, &errorMessage)
 
 			if err != nil {
 				container.Status.PulledImage = status.PULLED_FAILED
