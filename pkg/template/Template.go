@@ -33,6 +33,15 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime map[str
 				return template, nil, errors.New(fmt.Sprintf("container runtime configuration is missing: %s", placeholder))
 			}
 			break
+		case "network":
+			obj.Find(pf)
+
+			if !obj.Exists() {
+				return template, nil, errors.New(fmt.Sprintf("object doesn't exists: %s", pf.ToString()))
+			}
+
+			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
+			break
 		default:
 			switch pf.Kind {
 			case "configuration":

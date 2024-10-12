@@ -44,6 +44,9 @@ func (container *Container) Prepare(client *client.Http, user *authentication.Us
 func (container *Container) PrepareNetwork(client *client.Http, user *authentication.User) error {
 	for _, network := range container.Static.Networks.Networks {
 		container.Runtime.Configuration[fmt.Sprintf("%s_hostname", network.Reference.Name)] = container.GetDomain(network.Reference.Name)
+
+		obj := objects.New(client.Get(user.Username), user)
+		obj.Add(f.NewFromString(fmt.Sprintf("network.%s.%s.dns", container.Static.Group, container.Static.GeneratedName)), container.GetDomain(network.Reference.Name))
 	}
 
 	return nil
