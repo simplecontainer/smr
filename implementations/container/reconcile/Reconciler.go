@@ -122,6 +122,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			break
 		default:
 			containerWatcher.Logger.Info("container recreated")
+
 			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_PREPARE)
 		}
 

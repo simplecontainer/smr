@@ -41,6 +41,13 @@ func NewContainerFromDefinition(config *configuration.Configuration, name string
 		return nil, err
 	}
 
+	var volumes *internal.Volumes
+	volumes, err = internal.NewVolumes(definition.Spec.Container.Volumes, config)
+
+	if err != nil {
+		return nil, err
+	}
+
 	if definition.Spec.Container.Tag == "" {
 		definition.Spec.Container.Tag = "latest"
 	}
@@ -60,7 +67,7 @@ func NewContainerFromDefinition(config *configuration.Configuration, name string
 			NetworkMode:   definition.Spec.Container.NetworkMode,
 			Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
 			Ports:         internal.NewPorts(definition.Spec.Container.Ports),
-			Volumes:       internal.NewVolumes(definition.Spec.Container.Volumes, config),
+			Volumes:       volumes,
 			Readiness:     internal.NewReadinesses(definition.Spec.Container.Readiness),
 			Resources:     internal.NewResources(definition.Spec.Container.Resources),
 			Capabilities:  definition.Spec.Container.Capabilities,

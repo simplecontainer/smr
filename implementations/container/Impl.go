@@ -168,8 +168,8 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 							containerFromDefinition = reconcile.NewWatcher(containerObjs[k], implementation.Shared.Manager, user)
 							containerFromDefinition.Logger.Info("container object recreated")
 
-							go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
 							containerFromDefinition.Container.Status.SetState(status.STATUS_RECREATED)
+							go reconcile.HandleTickerAndEvents(implementation.Shared, containerFromDefinition)
 						} else {
 							containerFromDefinition.Container = containerObjs[k]
 							containerFromDefinition.Logger.Info("container object modified")

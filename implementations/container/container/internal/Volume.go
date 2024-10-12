@@ -5,6 +5,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"os"
 	"strings"
 )
 
@@ -21,19 +22,23 @@ type Volume struct {
 	MountPoint string
 }
 
-func NewVolumes(volumes []v1.ContainerVolume, config *configuration.Configuration) *Volumes {
+func NewVolumes(volumes []v1.ContainerVolume, config *configuration.Configuration) (*Volumes, error) {
 	volumesObj := &Volumes{
 		Volumes: make([]*Volume, 0),
 	}
 
 	for _, v := range volumes {
-		volumesObj.Add(v)
+		err := volumesObj.Add(v)
+
+		if err != nil {
+			return volumesObj, err
+		}
 	}
 
 	volumesObj.HomeDir = config.Environment.HOMEDIR
 	volumesObj.HostHomeDir = config.HostHome
 
-	return volumesObj
+	return volumesObj, nil
 }
 
 func NewVolume(volume v1.ContainerVolume) *Volume {
@@ -45,8 +50,31 @@ func NewVolume(volume v1.ContainerVolume) *Volume {
 	}
 }
 
-func (volumes *Volumes) Add(volume v1.ContainerVolume) {
+func (volumes *Volumes) Add(volume v1.ContainerVolume) error {
+	for _, v := range volumes.Volumes {
+		if v.MountPoint == volume.MountPoint {
+			return errors.New("mountpoints need to be unique")
+		}
+	}
+
 	volumes.Volumes = append(volumes.Volumes, NewVolume(volume))
+	return nil
+}
+
+func (volumes *Volumes) RemoveResources() error {
+	for k, v := range volumes.Volumes {
+		if v.Type == "resource" {
+			err := os.Remove(v.HostPath)
+
+			if err != nil {
+				return err
+			}
+
+			volumes.Volumes = append(volumes.Volumes[:k], volumes.Volumes[k+1:]...)
+		}
+	}
+
+	return nil
 }
 
 func (volumes *Volumes) ToMounts() ([]mount.Mount, error) {
@@ -64,6 +92,13 @@ func (volumes *Volumes) ToMounts() ([]mount.Mount, error) {
 		case mount.TypeVolume:
 			mounts = append(mounts, mount.Mount{
 				Type:   v.Type,
+				Source: v.Name,
+				Target: strings.Replace(v.MountPoint, "~", volumes.HomeDir, 1),
+			})
+			break
+		case "resource":
+			mounts = append(mounts, mount.Mount{
+				Type:   mount.TypeBind,
 				Source: v.Name,
 				Target: strings.Replace(v.MountPoint, "~", volumes.HomeDir, 1),
 			})

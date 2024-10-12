@@ -68,11 +68,17 @@ func (container *Container) PrepareConfiguration(client *client.Http, user *auth
 }
 
 func (container *Container) PrepareResources(client *client.Http, user *authentication.User) error {
+	// Clear resource volumes and generate new ones
+	err := container.Static.Volumes.RemoveResources()
+	if err != nil {
+		return err
+	}
+
 	for k, v := range container.Static.Resources.Resources {
 		format := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
 
 		obj := objects.New(client.Get(user.Username), user)
-		err := obj.Find(format)
+		err = obj.Find(format)
 
 		if err != nil {
 			return errors.New(fmt.Sprintf("failed to fetch resource from the kv store %s", format.ToString()))
@@ -102,15 +108,15 @@ func (container *Container) PrepareResources(client *client.Http, user *authenti
 			log.Fatal(err)
 		}
 
-		fmt.Println("RESOURCEEEEE")
-		fmt.Println(v.Reference)
-		fmt.Println(v.Reference.MountPoint)
-
-		container.Static.Volumes.Add(v1.ContainerVolume{
-			Type:       "bind",
+		err = container.Static.Volumes.Add(v1.ContainerVolume{
+			Type:       "resource",
 			HostPath:   tmpFile.Name(),
 			MountPoint: v.Reference.MountPoint,
 		})
+
+		if err != nil {
+			return err
+		}
 
 		container.Runtime.ObjectDependencies = append(container.Runtime.ObjectDependencies, &f.Format{
 			Kind:       "resource",
