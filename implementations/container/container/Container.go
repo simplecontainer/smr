@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -372,10 +373,12 @@ func (container *Container) SolveAgentNetworking() error {
 		networks = container.GetNetworkInfoTS()
 
 		for _, network := range networks.Networks {
-			if !network.FindNetworkAlias(static.SMR_ENDPOINT_NAME) {
+			err = network.FindNetworkAlias(static.SMR_ENDPOINT_NAME)
+
+			if err == nil {
 				err = network.Connect(agent.Runtime.Id)
 
-				if err != nil {
+				if err != nil && err.Error() != fmt.Sprintf("Error response from daemon: endpoint with name %s already exists in network %s", static.SMR_ENDPOINT_NAME, network.Reference.Name) {
 					return err
 				}
 			}

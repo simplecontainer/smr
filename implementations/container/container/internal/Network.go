@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"github.com/docker/docker/api/types"
 	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
@@ -117,7 +118,7 @@ func (network *Network) Connect(containerId string) error {
 	return nil
 }
 
-func (network *Network) FindNetworkAlias(endpointName string) bool {
+func (network *Network) FindNetworkAlias(endpointName string) error {
 	ctx := context.Background()
 	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 
@@ -135,14 +136,14 @@ func (network *Network) FindNetworkAlias(endpointName string) bool {
 	networks, err := cli.NetworkInspect(ctx, network.Docker.NetworkId, types.NetworkInspectOptions{})
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for _, c := range networks.Containers {
 		if c.Name == endpointName {
-			return true
+			return errors.New("endoint already exists")
 		}
 	}
 
-	return false
+	return nil
 }
