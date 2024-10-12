@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/dependency"
 	"github.com/simplecontainer/smr/implementations/container/shared"
@@ -205,18 +204,19 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		} else {
 			containerWatcher.Logger.Info("container is already running")
 
-			var c *types.Container
-			c, err = containerObj.Get()
-
-			// Best effort connect agent
-			containerObj.ConnectAgentToTheNetwork(c.ID, shared.Manager.Config.Environment)
-			containerObj.UpdateDns(shared.DnsCache)
+			err = containerObj.SolveAgentNetworking()
 
 			if err != nil {
-				containerWatcher.Logger.Error(err.Error())
+				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_BACKOFF)
 			} else {
-				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
-				go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
+				containerObj.UpdateDns(shared.DnsCache)
+
+				if err != nil {
+					containerWatcher.Logger.Error(err.Error())
+				} else {
+					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
+					go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
+				}
 			}
 		}
 

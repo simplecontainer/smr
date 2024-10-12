@@ -1,65 +1,29 @@
 package container
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/network"
-	dockerClient "github.com/docker/docker/client"
-	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/implementations/container/container/internal"
 )
 
 func (container *Container) AddNetworkInfoTS(networkId string, ipAddress string, networkName string) {
 	container.Runtime.NetworkLock.Lock()
 
-	container.Runtime.Networks[networkId] = Network{
-		NetworkId:   networkId,
-		NetworkName: networkName,
-		IP:          ipAddress,
+	network := container.Runtime.Networks.Find(networkId)
+
+	if network != nil {
+		network.Docker.IP = ipAddress
 	}
 
 	container.Runtime.NetworkLock.Unlock()
 }
 
-func (container *Container) GetNetworkInfoTS() map[string]Network {
+func (container *Container) GetNetworkInfoTS() *internal.Networks {
 	container.Runtime.NetworkLock.RLock()
 
-	networkCopy := make(map[string]Network)
-	for k, v := range container.Runtime.Networks {
-		networkCopy[k] = v
-	}
+	networks := container.Runtime.Networks
 
 	container.Runtime.NetworkLock.RUnlock()
-	return networkCopy
-}
-
-func (container *Container) ConnectToNetwork(containerId string, networkId string) error {
-	if c, _ := container.Get(); c != nil && c.State == "running" {
-		ctx := context.Background()
-		cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-		if err != nil {
-			panic(err)
-		}
-		defer cli.Close()
-
-		// TODO: Don't connect if the network is same
-
-		EndpointSettings := &network.EndpointSettings{
-			NetworkID: networkId,
-		}
-
-		err = cli.NetworkConnect(ctx, networkId, containerId, EndpointSettings)
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-			return errors.New("failed to connect to the network")
-		}
-
-		return nil
-	} else {
-		return errors.New("container is not running")
-	}
+	return networks
 }
 
 func (container *Container) GetNetwork() *network.NetworkingConfig {
@@ -67,11 +31,6 @@ func (container *Container) GetNetwork() *network.NetworkingConfig {
 
 	if container.Static.NetworkMode != "host" {
 		for _, netw := range container.Static.Networks.Networks {
-
-			fmt.Println(netw.Reference.Name)
-			fmt.Println(netw.Reference.Group)
-			fmt.Println(netw.Docker.NetworkId)
-
 			dnetw.EndpointsConfig[netw.Reference.Name] = &network.EndpointSettings{
 				NetworkID: netw.Docker.NetworkId,
 			}
@@ -79,27 +38,4 @@ func (container *Container) GetNetwork() *network.NetworkingConfig {
 	}
 
 	return &dnetw
-}
-
-func (container *Container) FindNetworkAlias(endpointName string, networkId string) bool {
-	ctx := context.Background()
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-	defer cli.Close()
-
-	networks, err := cli.NetworkInspect(ctx, networkId, types.NetworkInspectOptions{})
-
-	if err != nil {
-		panic(err)
-	}
-
-	for _, c := range networks.Containers {
-		if c.Name == endpointName {
-			return true
-		}
-	}
-
-	return false
 }

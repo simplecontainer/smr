@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
@@ -77,7 +78,7 @@ func NewContainerFromDefinition(config *configuration.Configuration, name string
 		Runtime: Runtime{
 			Auth:          GetAuth(definition.Spec.Container.Image, config.Environment),
 			Id:            "",
-			Networks:      map[string]Network{},
+			Networks:      nil,
 			State:         "",
 			FoundRunning:  false,
 			Configuration: definition.Spec.Container.Configuration,
@@ -89,6 +90,7 @@ func NewContainerFromDefinition(config *configuration.Configuration, name string
 		},
 	}
 
+	container.Runtime.Networks = container.Static.Networks
 	container.Status.CreateGraph()
 
 	if container.Runtime.Configuration == nil {
@@ -112,13 +114,14 @@ func Existing(name string) *Container {
 			Id:            "",
 			State:         "",
 			FoundRunning:  false,
-			Networks:      map[string]Network{},
+			Networks:      nil,
 			Ready:         false,
 			Configuration: make(map[string]string),
 		},
 		Status: status.Status{},
 	}
 
+	container.Runtime.Networks = internal.NewNetworks([]v1.ContainerNetwork{})
 	container.Static.Name = name
 
 	ctx := context.Background()
@@ -148,7 +151,8 @@ func Existing(name string) *Container {
 		if c.State == "running" {
 			for _, netw := range container.Static.Networks.Networks {
 				if data.NetworkSettings.Networks[netw.Reference.Name] != nil {
-					netwInspect, err := cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw.Reference.Name].NetworkID, types.NetworkInspectOptions{
+					var netwInspect types.NetworkResource
+					netwInspect, err = cli.NetworkInspect(ctx, data.NetworkSettings.Networks[netw.Reference.Name].NetworkID, types.NetworkInspectOptions{
 						Scope:   "",
 						Verbose: false,
 					})
@@ -306,7 +310,12 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 	}
 
 	if container.Static.NetworkMode != "host" {
-		err = container.ConnectAgentToTheNetwork(resp.ID, environment)
+		err = container.SolveAgentNetworking()
+
+		if err != nil {
+			return nil, err
+		}
+
 		container.UpdateDns(dnsCache)
 
 		if err != nil {
@@ -317,45 +326,67 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 	return container.Get()
 }
 
-func (container *Container) ConnectAgentToTheNetwork(containerDockerId string, environment *configuration.Environment) error {
-	agent := Existing("smr-agent")
+func (container *Container) SolveAgentNetworking() error {
+	var dockerContainer *types.Container
+	var err error
 
-	var agentContainer *types.Container
-	agentContainer, err := agent.Get()
+	dockerContainer, err = container.Get()
 
 	if err != nil {
 		return err
 	}
 
+	ctx := context.Background()
+	cli := &dockerClient.Client{}
+
+	cli, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return err
+	}
+
+	agent := Existing("smr-agent")
+
+	var agentContainer *types.Container
+	agentContainer, err = agent.Get()
+
+	for _, network := range agentContainer.NetworkSettings.Networks {
+		EndpointSettings := &dockerNetwork.EndpointSettings{
+			NetworkID: network.NetworkID,
+		}
+
+		err = cli.NetworkConnect(ctx, network.NetworkID, dockerContainer.ID, EndpointSettings)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	if agentContainer != nil {
 		networks := container.GetNetworkInfoTS()
 
-		for _, nid := range networks {
-			if !container.FindNetworkAlias(static.SMR_ENDPOINT_NAME, nid.NetworkId) {
-				return container.ConnectToNetwork(agent.Runtime.Id, nid.NetworkId)
+		for _, network := range networks.Networks {
+			if !network.FindNetworkAlias(static.SMR_ENDPOINT_NAME) {
+				err = network.Connect(agent.Runtime.Id)
+
+				if err != nil {
+					return err
+				}
 			}
 		}
-
-		//agentNetworks := agent.GetNetworkInfoTS()
-		//
-		//for _, nid := range agentNetworks {
-		//	if nid.IP == environment.AGENTIP {
-		//		return container.ConnectToTheSameNetwork(containerDockerId, nid.NetworkId)
-		//	}
-		//}
-
-		return nil
 	} else {
-		return errors.New("failed to find smr-agent container and cleaning up everything")
+		return errors.New("agent is not running")
 	}
+
+	return nil
 }
 
 func (container *Container) UpdateDns(dnsCache *dns.Records) {
 	networks := container.GetNetworkInfoTS()
 
-	for _, nid := range networks {
-		dnsCache.AddARecord(container.GetDomain(nid.NetworkName), networks[nid.NetworkId].IP)
-		dnsCache.AddARecord(container.GetHeadlessDomain(nid.NetworkName), networks[nid.NetworkId].IP)
+	for _, network := range networks.Networks {
+		dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
+		dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
 	}
 }
 

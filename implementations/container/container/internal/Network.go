@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"github.com/docker/docker/api/types"
+	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 )
@@ -55,6 +56,16 @@ func (networks *Networks) Add(network v1.ContainerNetwork) {
 	networks.Networks = append(networks.Networks, NewNetwork(network))
 }
 
+func (networks *Networks) Find(networkId string) *Network {
+	for i, n := range networks.Networks {
+		if n.Docker.NetworkId == networkId {
+			return networks.Networks[i]
+		}
+	}
+
+	return nil
+}
+
 func GetNetworkId(name string) string {
 	ctx := context.Background()
 	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
@@ -76,4 +87,62 @@ func GetNetworkId(name string) string {
 	}
 
 	return ""
+}
+
+func (network *Network) Connect(containerId string) error {
+	ctx := context.Background()
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer func(cli *dockerClient.Client) {
+		err = cli.Close()
+		if err != nil {
+			return
+		}
+	}(cli)
+
+	EndpointSettings := &dockerNetwork.EndpointSettings{
+		NetworkID: network.Docker.NetworkId,
+	}
+
+	err = cli.NetworkConnect(ctx, network.Docker.NetworkId, containerId, EndpointSettings)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (network *Network) FindNetworkAlias(endpointName string) bool {
+	ctx := context.Background()
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer func(cli *dockerClient.Client) {
+		err = cli.Close()
+		if err != nil {
+			return
+		}
+	}(cli)
+
+	networks, err := cli.NetworkInspect(ctx, network.Docker.NetworkId, types.NetworkInspectOptions{})
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, c := range networks.Containers {
+		if c.Name == endpointName {
+			return true
+		}
+	}
+
+	return false
 }

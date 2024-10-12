@@ -113,13 +113,13 @@ func HandleConnect(shared *shared.Shared, container *container.Container, event 
 }
 
 func HandleDisconnect(shared *shared.Shared, containerObj *container.Container, event events.Message) {
-	for _, n := range containerObj.Runtime.Networks {
-		for _, ip := range shared.DnsCache.FindDeleteQueue(containerObj.GetDomain(n.NetworkName)) {
-			shared.DnsCache.RemoveARecord(containerObj.GetDomain(n.NetworkName), ip)
-			shared.DnsCache.RemoveARecord(containerObj.GetHeadlessDomain(n.NetworkName), ip)
+	for _, n := range containerObj.Runtime.Networks.Networks {
+		for _, ip := range shared.DnsCache.FindDeleteQueue(containerObj.GetDomain(n.Reference.Name)) {
+			shared.DnsCache.RemoveARecord(containerObj.GetDomain(n.Reference.Name), ip)
+			shared.DnsCache.RemoveARecord(containerObj.GetHeadlessDomain(n.Reference.Name), ip)
 		}
 
-		shared.DnsCache.ResetDeleteQueue(containerObj.GetDomain(n.NetworkName))
+		shared.DnsCache.ResetDeleteQueue(containerObj.GetDomain(n.Reference.Name))
 	}
 }
 
@@ -145,8 +145,8 @@ func HandleKill(shared *shared.Shared, containerObj *container.Container, event 
 	// It can happen that kill signal occurs in the container even if it is not dying; eg killing thread, goroutine etc.
 	//containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_KILLED)
 
-	for _, n := range containerObj.Runtime.Networks {
-		shared.DnsCache.RemoveARecordQueue(containerObj.GetDomain(n.NetworkName), n.IP)
+	for _, n := range containerObj.Runtime.Networks.Networks {
+		shared.DnsCache.RemoveARecordQueue(containerObj.GetDomain(n.Reference.Name), n.Docker.IP)
 	}
 }
 

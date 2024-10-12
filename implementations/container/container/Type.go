@@ -68,7 +68,7 @@ type Static struct {
 type Runtime struct {
 	Auth               string
 	Id                 string
-	Networks           map[string]Network
+	Networks           *internal.Networks
 	NetworkLock        sync.RWMutex
 	State              string
 	FoundRunning       bool
