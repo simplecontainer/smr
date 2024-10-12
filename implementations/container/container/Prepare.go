@@ -103,10 +103,16 @@ func (container *Container) PrepareResources(client *client.Http, user *authenti
 		tmpFile, err = os.CreateTemp("/tmp", container.Static.Name)
 
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
-		if _, err = tmpFile.WriteString(UnpackSecretsResources(client, user, v.Docker.Data[v.Reference.Key])); err != nil {
+		val, ok := v.Docker.Data[v.Reference.Key]
+
+		if !ok {
+			return errors.New(fmt.Sprintf("key %s doesnt exist in resource %s", v.Reference.Key, v.Reference.Name))
+		}
+
+		if _, err = tmpFile.WriteString(UnpackSecretsResources(client, user, val)); err != nil {
 			log.Fatal(err)
 		}
 
