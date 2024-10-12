@@ -350,9 +350,15 @@ func (container *Container) SolveAgentNetworking() error {
 	var agentContainer *types.Container
 	agentContainer, err = agent.Get()
 
+	networks := container.GetNetworkInfoTS()
+
 	for _, network := range agentContainer.NetworkSettings.Networks {
 		EndpointSettings := &dockerNetwork.EndpointSettings{
 			NetworkID: network.NetworkID,
+		}
+
+		if networks.Find(network.NetworkID) != nil {
+			continue
 		}
 
 		err = cli.NetworkConnect(ctx, network.NetworkID, dockerContainer.ID, EndpointSettings)
@@ -363,7 +369,7 @@ func (container *Container) SolveAgentNetworking() error {
 	}
 
 	if agentContainer != nil {
-		networks := container.GetNetworkInfoTS()
+		networks = container.GetNetworkInfoTS()
 
 		for _, network := range networks.Networks {
 			if !network.FindNetworkAlias(static.SMR_ENDPOINT_NAME) {
