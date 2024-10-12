@@ -99,7 +99,7 @@ func (volumes *Volumes) ToMounts() ([]mount.Mount, error) {
 		case "resource":
 			mounts = append(mounts, mount.Mount{
 				Type:   mount.TypeBind,
-				Source: v.Name,
+				Source: strings.Replace(v.HostPath, "~", volumes.HostHomeDir, 1),
 				Target: strings.Replace(v.MountPoint, "~", volumes.HomeDir, 1),
 			})
 			break
