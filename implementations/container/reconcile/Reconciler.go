@@ -80,6 +80,8 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	containerObj := containerWatcher.Container
 
+	fmt.Println(fmt.Sprintf("%s %s %s", containerObj.Static.GeneratedName, containerObj.Status.State, containerObj.Status.LastUpdate))
+
 	if containerObj.Status.Reconciling {
 		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
 		return
@@ -271,6 +273,9 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		}
 
 		switch dockerState.State {
+		case "running":
+			// shhhhh go to sleep
+			return
 		case "exited":
 			containerWatcher.Logger.Info("container is dead")
 			shared.Registry.BackOffTracking(containerObj.Static.Group, containerObj.Static.GeneratedName)

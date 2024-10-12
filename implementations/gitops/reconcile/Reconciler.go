@@ -14,7 +14,7 @@ import (
 )
 
 func NewWatcher(gitopsObj *gitops.Gitops, mgr *manager.Manager, user *authentication.User) *watcher.Gitops {
-	interval := 5 * time.Second
+	interval := 60 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
 	cfg := zap.NewProductionConfig()
@@ -49,8 +49,15 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 	for {
 		select {
 		case <-gitopsWatcher.Ctx.Done():
+			fmt.Println("CANCELING")
+
 			gitopsWatcher.Ticker.Stop()
 			close(gitopsWatcher.GitopsQueue)
+
+			fmt.Println(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
+
+			fmt.Println(shared.Watcher.Find(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)))
+
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 
 			return
@@ -71,6 +78,11 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 }
 
 func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
+	if gitopsWatcher.Gitops.Status.Reconciling {
+		gitopsWatcher.Logger.Info("gitops already reconciling, waiting for the free slot")
+		return
+	}
+
 	gitopsWatcher.Gitops.Status.Reconciling = true
 	name := gitopsWatcher.Gitops.Definition.Meta.Name
 
@@ -204,6 +216,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 				gitopsWatcher.Logger.Info(fmt.Sprintf("failed to compare latest changes"))
 				gitopsWatcher.Logger.Error(err.Error())
 				gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_GIT)
+
 				Loop(gitopsWatcher)
 				return
 			}
@@ -219,7 +232,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_INSYNC:
-		gitopsWatcher.Logger.Info("everything synced")
 		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
 
 		// Let time ticker trigger transition state instead of direct transition
@@ -232,6 +244,8 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_PENDING_DELETE:
+		fmt.Println("STATUS PENDING DELETE")
+
 		gitopsWatcher.Logger.Info("delete is in process")
 		gitopsWatcher.Cancel()
 		break

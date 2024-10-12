@@ -370,7 +370,7 @@ func (container *Container) Get() (*types.Container, error) {
 	})
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if c := container.self(containers); c != nil {

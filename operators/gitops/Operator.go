@@ -202,12 +202,13 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 			Data:             nil,
 		}
 	} else {
-
+		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_PENDING_DELETE)
+		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
-		Explanation:      "gitops definition is deleted and removed from server",
+		Explanation:      "gitops is transitioned to the pending delete state",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,

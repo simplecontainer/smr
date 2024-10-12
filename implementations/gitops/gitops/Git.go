@@ -44,7 +44,6 @@ func (gitops *Gitops) CloneOrPull(auth transport.AuthMethod) error {
 	}
 
 	var ref *plumbing.Reference
-	var pulled = false
 
 	if time.Now().Sub(gitops.LastPoll) > d || gitops.ForcePoll {
 		err = worktree.Pull(&git.PullOptions{
@@ -63,19 +62,16 @@ func (gitops *Gitops) CloneOrPull(auth transport.AuthMethod) error {
 
 		gitops.LastPoll = time.Now()
 		gitops.ForcePoll = false
-		pulled = true
-	}
 
-	ref, _ = repository.Head()
-	gitops.Commit, err = repository.CommitObject(ref.Hash())
+		ref, _ = repository.Head()
+		gitops.Commit, err = repository.CommitObject(ref.Hash())
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	if !pulled {
-		return errors.New(POLLING_INTERVAL_ERROR)
-	} else {
 		return nil
+	} else {
+		return errors.New(POLLING_INTERVAL_ERROR)
 	}
 }

@@ -15,7 +15,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User, defi
 
 		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, fileName))
 
-		response := gitops.sendRequest(client, user, "https://localhost:1443/api/v1/apply", definition)
+		response := gitops.sendRequest(client, user, "https://localhost:1443/api/v1/compare", definition)
 
 		switch response.HttpStatus {
 		case http.StatusTeapot:
