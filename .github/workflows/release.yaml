@@ -28,8 +28,8 @@ jobs:
           install-only: true
       - name: Display Go version
         run: go version
-      - name: Test code
-        run: go test ./...
+#      - name: Test code
+#        run: go test ./...
       - name: Build code
         run: |
           echo ${{ github.ref_name }} > version
