@@ -273,6 +273,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		switch dockerState.State {
 		case "running":
 			// shhhhh go to sleep
+			containerObj.Status.Reconciling = false
 			return
 		case "exited":
 			containerWatcher.Logger.Info("container is dead")
