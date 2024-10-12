@@ -80,8 +80,6 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	containerObj := containerWatcher.Container
 
-	fmt.Println(fmt.Sprintf("%s %s %s", containerObj.Static.GeneratedName, containerObj.Status.State, containerObj.Status.LastUpdate))
-
 	if containerObj.Status.Reconciling {
 		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
 		return

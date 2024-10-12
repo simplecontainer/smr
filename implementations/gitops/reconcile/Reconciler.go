@@ -14,7 +14,7 @@ import (
 )
 
 func NewWatcher(gitopsObj *gitops.Gitops, mgr *manager.Manager, user *authentication.User) *watcher.Gitops {
-	interval := 60 * time.Second
+	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
 	cfg := zap.NewProductionConfig()
