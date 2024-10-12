@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
@@ -66,6 +67,11 @@ func (container *Container) GetNetwork() *network.NetworkingConfig {
 
 	if container.Static.NetworkMode != "host" {
 		for _, netw := range container.Static.Networks.Networks {
+
+			fmt.Println(netw.Reference.Name)
+			fmt.Println(netw.Reference.Group)
+			fmt.Println(netw.Docker.NetworkId)
+
 			dnetw.EndpointsConfig[netw.Reference.Name] = &network.EndpointSettings{
 				NetworkID: netw.Docker.NetworkId,
 			}

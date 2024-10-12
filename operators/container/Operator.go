@@ -219,6 +219,7 @@ func (operator *Operator) Restart(request operators.Request) httpcontract.Respon
 	}
 
 	container.Status.TransitionState(container.Static.Name, status.STATUS_CREATED)
+	sharedObj.Watcher.Find(container.GetGroupIdentifier()).ContainerQueue <- container
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,

@@ -27,9 +27,15 @@ type NetworkDocker struct {
 }
 
 func NewNetworks(networks []v1.ContainerNetwork) *Networks {
-	return &Networks{
+	networksObj := &Networks{
 		Networks: make([]*Network, 0),
 	}
+
+	for _, network := range networks {
+		networksObj.Add(network)
+	}
+
+	return networksObj
 }
 
 func NewNetwork(network v1.ContainerNetwork) *Network {

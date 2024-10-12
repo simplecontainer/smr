@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -226,7 +225,6 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 	unpackedEnvs, err = UnpackSecretsEnvs(client, user, container.Static.Env)
 
 	if err != nil {
-		fmt.Println("XXXXXXXXXXXX")
 		return nil, err
 	}
 

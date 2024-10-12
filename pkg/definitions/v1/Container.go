@@ -29,7 +29,7 @@ type ContainerInternal struct {
 	Command       []string             `json:"command"`
 	Dependencies  []ContainerDependsOn `json:"dependencies"`
 	Readiness     []ContainerReadiness `json:"readiness"`
-	Networks      []ContainerNetwork   `validate:"required" json:"networks"`
+	Networks      []ContainerNetwork   `json:"networks"`
 	Ports         []ContainerPort      `json:"ports"`
 	Volumes       []ContainerVolume    `json:"volumes"`
 	Configuration map[string]string    `json:"configuration"`
@@ -54,8 +54,8 @@ type ContainerReadiness struct {
 }
 
 type ContainerNetwork struct {
-	Group string
-	Name  string
+	Group string `json:"group"`
+	Name  string `json:"name"`
 }
 
 type ContainerPort struct {

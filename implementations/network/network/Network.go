@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/docker/docker/api/types"
 	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
@@ -9,7 +10,15 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 )
 
-func New(network v1.NetworkDefinition) *Network {
+func New(bytes []byte) *Network {
+	network := v1.NetworkDefinition{}
+
+	err := json.Unmarshal(bytes, &network)
+
+	if err != nil {
+		return &Network{}
+	}
+
 	return &Network{
 		Name:            network.Meta.Name,
 		Driver:          network.Spec.Driver,

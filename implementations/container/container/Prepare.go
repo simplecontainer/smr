@@ -43,28 +43,6 @@ func (container *Container) Prepare(client *client.Http, user *authentication.Us
 }
 
 func (container *Container) PrepareNetwork(client *client.Http, user *authentication.User) error {
-	for k, v := range container.Static.Networks.Networks {
-		format := f.New("network", v.Reference.Group, v.Reference.Name, "object")
-
-		obj := objects.New(client.Get(user.Username), user)
-		err := obj.Find(format)
-
-		if err != nil {
-			return errors.New(fmt.Sprintf("failed to find network %s", format.ToString()))
-		}
-
-		networkObject := v1.NetworkDefinition{}
-
-		err = json.Unmarshal(obj.GetDefinitionByte(), &networkObject)
-
-		if err != nil {
-			return err
-		}
-
-		container.Static.Networks.Networks[k].Reference.Name = networkObject.Meta.Name
-		container.Static.Networks.Networks[k].Reference.Group = networkObject.Meta.Group
-	}
-
 	for _, network := range container.Static.Networks.Networks {
 		container.Runtime.Configuration[fmt.Sprintf("%s_hostname", network)] = container.GetDomain(network.Reference.Name)
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/implementations/network/network"
 	"github.com/simplecontainer/smr/implementations/network/shared"
@@ -102,28 +101,24 @@ func (implementation *Implementation) Apply(user *authentication.User, jsonData 
 		}
 	}
 
+	var networkObj *network.Network
+
 	if obj.ChangeDetected() || !obj.Exists() {
-		networkObj := network.New(networkDefinition)
-
-		err = networkObj.Create()
-
-		if err != nil {
-			return httpcontract.ResponseImplementation{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
+		networkObj = network.New(jsonData)
 	} else {
+		networkObj = network.New(obj.GetDefinitionByte())
+	}
+
+	err = networkObj.Create()
+
+	if err != nil {
 		return httpcontract.ResponseImplementation{
-			HttpStatus:       200,
-			Explanation:      "object is same as the one on the server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, errors.New("object is same on the server")
+			HttpStatus:       http.StatusInternalServerError,
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
 	}
 
 	return httpcontract.ResponseImplementation{
