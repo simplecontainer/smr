@@ -95,11 +95,6 @@ func NewContainerFromDefinition(config *configuration.Configuration, name string
 		container.Runtime.Configuration = make(map[string]string)
 	}
 
-	container.Runtime.Configuration["name"] = name
-	container.Runtime.Configuration["group"] = container.Static.Group
-	container.Runtime.Configuration["image"] = container.Static.Image
-	container.Runtime.Configuration["tag"] = container.Static.Tag
-
 	return container, nil
 }
 

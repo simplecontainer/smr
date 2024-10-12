@@ -11,86 +11,81 @@ import (
 	"strings"
 )
 
-func ParseTemplate(obj objects.ObjectInterface, retrieve map[string]string, rootFormat *f.Format) (map[string]string, []*f.Format, error) {
+func ParseTemplate(obj objects.ObjectInterface, template string, runtime map[string]string) (string, []*f.Format, error) {
 	var dependencyMap = make([]*f.Format, 0)
-	RetrieveFromKVStore, SaveToKVStore := GetTemplatePlaceholders(retrieve, rootFormat)
+	placeholders := GetTemplatePlaceholders(template)
 
-	for key, placeholder := range RetrieveFromKVStore {
-		formatFind := f.NewFromString(placeholder)
-		keyToRetrieve := formatFind.Key
+	var parsed string = template
 
-		// Ignore secrets because they are handled on the container unpack level
-		if formatFind.Kind == "secret" {
+	for _, placeholder := range placeholders {
+		pf := f.NewFromString(placeholder)
+
+		switch pf.Kind {
+		case "secret":
 			continue
-		}
+		case "container":
+			stripedIndex := strings.Replace(placeholder, "container.", "", 1)
+			_, ok := runtime[stripedIndex]
 
-		formatFind.Key = "object"
-		err := obj.Find(formatFind)
-
-		if !obj.Exists() {
-			return nil, nil, errors.New(fmt.Sprintf("object doesn't exists: %s", formatFind.ToString()))
-		}
-
-		dependencyMap = append(dependencyMap, formatFind)
-
-		switch formatFind.Kind {
-		case "configuration":
-			configuration := v1.ConfigurationDefinition{}
-
-			err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
-
-			if err != nil {
-				return nil, nil, err
+			if ok {
+				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), runtime[stripedIndex], -1)
+			} else {
+				return template, nil, errors.New(fmt.Sprintf("container runtime configuration is missing: %s", placeholder))
 			}
+			break
+		default:
+			switch pf.Kind {
+			case "configuration":
+				cf := f.NewFromString(pf.ToString())
+				cf.Key = "object"
 
-			_, ok := configuration.Spec.Data[keyToRetrieve]
+				err := obj.Find(cf)
 
-			if !ok {
-				return nil, nil, errors.New(
-					fmt.Sprintf("missing field in the configuration resource: %s", keyToRetrieve),
-				)
+				if !obj.Exists() {
+					return template, nil, errors.New(fmt.Sprintf("object doesn't exists: %s", pf.ToString()))
+				}
+
+				dependencyMap = append(dependencyMap, cf)
+
+				configuration := v1.ConfigurationDefinition{}
+
+				err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
+
+				if err != nil {
+					return template, nil, err
+				}
+
+				_, ok := configuration.Spec.Data[pf.Key]
+
+				if !ok {
+					return template, nil, errors.New(
+						fmt.Sprintf("missing field in the configuration resource: %s", pf.Key),
+					)
+				}
+
+				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), configuration.Spec.Data[pf.Key], -1)
+				break
+			default:
+				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), placeholder, -1)
 			}
-
-			RetrieveFromKVStore[key] = configuration.Spec.Data[keyToRetrieve]
-
 			break
 		}
 	}
 
-	if rootFormat != nil {
-		for key, value := range SaveToKVStore {
-			format := f.NewFromString(rootFormat.ToString())
-			format.Key = key
-
-			err := obj.Add(format, value)
-
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-
-	// Add non matches to the cumulative result
-	for k, v := range SaveToKVStore {
-		RetrieveFromKVStore[k] = v
-	}
-
-	return RetrieveFromKVStore, dependencyMap, nil
+	return parsed, dependencyMap, nil
 }
 
 func ParseSecretTemplate(obj objects.ObjectInterface, value string) (string, error) {
-	RetrieveFromKVStore, _ := GetTemplatePlaceholders(map[string]string{
-		"secret": value,
-	}, nil)
+	placeholders := GetTemplatePlaceholders(value)
 
-	for _, placeholder := range RetrieveFromKVStore {
+	for _, placeholder := range placeholders {
 		format := f.NewFromString(placeholder)
 
 		if format.Kind == "secret" {
-			err := obj.Find(format)
+			obj.Find(format)
 
 			if !obj.Exists() {
-				return value, err
+				return value, errors.New(fmt.Sprintf("missing secret %s", placeholder))
 			}
 
 			value = strings.Replace(value, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), 1)
@@ -100,23 +95,18 @@ func ParseSecretTemplate(obj objects.ObjectInterface, value string) (string, err
 	return value, nil
 }
 
-func GetTemplatePlaceholders(values map[string]string, rootFormat *f.Format) (map[string]string, map[string]string) {
-	var RetrieveFromKVStore = make(map[string]string, 0)
-	var SaveToKVStore = make(map[string]string, 0)
+func GetTemplatePlaceholders(template string) []string {
+	var placeholders = make([]string, 0)
 
-	for keyOriginal, value := range values {
-		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
-		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+	regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+	matches := regexDetectBigBrackets.FindAllStringSubmatch(template, -1)
 
-		if len(matches) > 0 {
-			for index, _ := range matches {
-				format := f.NewFromString(matches[index][1])
-				RetrieveFromKVStore[keyOriginal] = format.ToString()
-			}
-		} else {
-			SaveToKVStore[keyOriginal] = value
+	if len(matches) > 0 {
+		for index, _ := range matches {
+			format := f.NewFromString(matches[index][1])
+			placeholders = append(placeholders, format.ToString())
 		}
 	}
 
-	return RetrieveFromKVStore, SaveToKVStore
+	return placeholders
 }

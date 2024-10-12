@@ -3,7 +3,6 @@ package container
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/template"
 )
@@ -16,7 +15,6 @@ func UnpackSecretsEnvs(client *client.Http, user *authentication.User, envs []st
 		parsed, err := template.ParseSecretTemplate(obj, v)
 
 		if err != nil {
-			logger.Log.Info(err.Error())
 			return nil, err
 		}
 
@@ -26,15 +24,15 @@ func UnpackSecretsEnvs(client *client.Http, user *authentication.User, envs []st
 	return envsParsed, nil
 }
 
-func UnpackSecretsResources(client *client.Http, user *authentication.User, resource string) string {
+func UnpackSecretsResources(client *client.Http, user *authentication.User, resource string) (string, error) {
 	obj := objects.New(client.Get(user.Username), user)
 	resourceParsed, err := template.ParseSecretTemplate(obj, resource)
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		return resource, err
 	}
 
-	return resourceParsed
+	return resourceParsed, nil
 }
 
 func UnpackSecretsReadiness(client *client.Http, user *authentication.User, body map[string]string) (map[string]string, error) {

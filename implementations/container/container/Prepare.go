@@ -10,7 +10,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/template"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -44,7 +43,7 @@ func (container *Container) Prepare(client *client.Http, user *authentication.Us
 
 func (container *Container) PrepareNetwork(client *client.Http, user *authentication.User) error {
 	for _, network := range container.Static.Networks.Networks {
-		container.Runtime.Configuration[fmt.Sprintf("%s_hostname", network)] = container.GetDomain(network.Reference.Name)
+		container.Runtime.Configuration[fmt.Sprintf("%s_hostname", network.Reference.Name)] = container.GetDomain(network.Reference.Name)
 	}
 
 	return nil
@@ -54,10 +53,15 @@ func (container *Container) PrepareConfiguration(client *client.Http, user *auth
 	var dependencyMap []*f.Format
 	var err error
 
-	format := f.New("configuration", container.Static.Group, container.Static.GeneratedName, "")
-
 	obj := objects.New(client.Get(user.Username), user)
-	container.Runtime.Configuration, container.Runtime.ObjectDependencies, err = template.ParseTemplate(obj, container.Runtime.Configuration, format)
+
+	for i, _ := range container.Runtime.Configuration {
+		container.Runtime.Configuration[i], container.Runtime.ObjectDependencies, err = template.ParseTemplate(obj, container.Runtime.Configuration[i], map[string]string{})
+
+		if err != nil {
+			return err
+		}
+	}
 
 	if err != nil {
 		return err
@@ -92,11 +96,14 @@ func (container *Container) PrepareResources(client *client.Http, user *authenti
 			return err
 		}
 
-		v.Docker.Data = resourceObject.Spec.Data
-		container.Static.Resources.Resources[k].Docker.Data, _, err = template.ParseTemplate(obj, resourceObject.Spec.Data, nil)
+		container.Static.Resources.Resources[k].Docker.Data = resourceObject.Spec.Data
 
-		if err != nil {
-			return err
+		for i, _ := range container.Static.Resources.Resources[k].Docker.Data {
+			container.Static.Resources.Resources[k].Docker.Data[i], _, err = template.ParseTemplate(obj, container.Static.Resources.Resources[k].Docker.Data[i], container.Runtime.Configuration)
+
+			if err != nil {
+				return err
+			}
 		}
 
 		var tmpFile *os.File
@@ -106,14 +113,21 @@ func (container *Container) PrepareResources(client *client.Http, user *authenti
 			return err
 		}
 
-		val, ok := v.Docker.Data[v.Reference.Key]
+		val, ok := container.Static.Resources.Resources[k].Docker.Data[v.Reference.Key]
 
 		if !ok {
 			return errors.New(fmt.Sprintf("key %s doesnt exist in resource %s", v.Reference.Key, v.Reference.Name))
 		}
 
-		if _, err = tmpFile.WriteString(UnpackSecretsResources(client, user, val)); err != nil {
-			log.Fatal(err)
+		var resource string
+		resource, err = UnpackSecretsResources(client, user, val)
+
+		if err != nil {
+			return err
+		}
+
+		if _, err = tmpFile.WriteString(resource); err != nil {
+			return err
 		}
 
 		err = container.Static.Volumes.Add(v1.ContainerVolume{
