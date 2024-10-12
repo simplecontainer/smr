@@ -95,6 +95,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(kill, pendingDelete)
 
 	status.StateMachine.AddEdge(backoff, pendingDelete)
+	status.StateMachine.AddEdge(backoff, created)
 }
 
 func (status *Status) SetState(state string) error {

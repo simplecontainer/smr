@@ -99,7 +99,9 @@ func (container *Container) PrepareResources(client *client.Http, user *authenti
 			return err
 		}
 
-		tmpFile, err := os.CreateTemp("/tmp", container.Static.Name)
+		var tmpFile *os.File
+		tmpFile, err = os.CreateTemp("/tmp", container.Static.Name)
+
 		if err != nil {
 			log.Fatal(err)
 		}
