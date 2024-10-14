@@ -24,220 +24,220 @@ jobs:
 #      - name: Test code
 #        run: go test ./...
 
-build-main:
-  runs-on: ubuntu-latest
-  strategy:
-    matrix:
-      go-version: [ '1.22.x' ]
-      platform: [ 'linux-amd64' ]
-  steps:
-    - uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.BOT_USER_PAT }}
-        show-progress: false
-    - name: Setup Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Install UPX
-      uses: crazy-max/ghaction-upx@v3
-      with:
-        install-only: true
-    - name: Display Go version
-      run: go version
-    - name: Build code
-      run: |
-        echo ${{ github.ref_name }} > version
-                        
-        go build -ldflags '-s -w'
-        chmod +x smr
-        upx -9 smr
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: smr
-        path: |
-          smr
+  build-main:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        platform: [ 'linux-amd64' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Build code
+        run: |
+          echo ${{ github.ref_name }} > version
+                          
+          go build -ldflags '-s -w'
+          chmod +x smr
+          upx -9 smr
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: smr
+          path: |
+            smr
 
-build-implementations:
-  runs-on: ubuntu-latest
-  strategy:
-    matrix:
-      go-version: [ '1.22.x' ]
-      platform: [ 'linux-amd64' ]
-  steps:
-    - uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.BOT_USER_PAT }}
-        show-progress: false
+  build-implementations:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        platform: [ 'linux-amd64' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
 
-    - name: Setup Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Install UPX
-      uses: crazy-max/ghaction-upx@v3
-      with:
-        install-only: true
-    - name: Display Go version
-      run: go version
-    - name: Build code
-      run: |
-        BASE_DIR="$PWD"
-        
-        for dir in implementations/*/
-        do
-          DIR=${dir%*/}
-          DIRNAME="${DIR##*/}"
-        
-          echo "***********************************************"
-          echo "$BASE_DIR/implementations/$DIRNAME"
-          echo "***********************************************"
-        
-          cd "$BASE_DIR/implementations/$DIRNAME"
-        
-          go build -ldflags '-s -w' --buildmode=plugin
-          chmod +x *.so
-        done
-        
-        for dir in implementations/*/
-        do
-          DIR=${dir%*/}
-          DIRNAME="${DIR##*/}"
-        
-          echo "***********************************************"
-          echo "$BASE_DIR/implementations/$DIRNAME"
-          echo "***********************************************"
-        
-          cd "$BASE_DIR/implementations/$DIRNAME"
-        
-          upx -9 *.so &
-        done
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: implementations
-        path: |
-          implementations/**/*.so
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Build code
+        run: |
+          BASE_DIR="$PWD"
+          
+          for dir in implementations/*/
+          do
+            DIR=${dir%*/}
+            DIRNAME="${DIR##*/}"
+          
+            echo "***********************************************"
+            echo "$BASE_DIR/implementations/$DIRNAME"
+            echo "***********************************************"
+          
+            cd "$BASE_DIR/implementations/$DIRNAME"
+          
+            go build -ldflags '-s -w' --buildmode=plugin
+            chmod +x *.so
+          done
+          
+          for dir in implementations/*/
+          do
+            DIR=${dir%*/}
+            DIRNAME="${DIR##*/}"
+          
+            echo "***********************************************"
+            echo "$BASE_DIR/implementations/$DIRNAME"
+            echo "***********************************************"
+          
+            cd "$BASE_DIR/implementations/$DIRNAME"
+          
+            upx -9 *.so &
+          done
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: implementations
+          path: |
+            implementations/**/*.so
 
 
-build-operators:
-  runs-on: ubuntu-latest
-  strategy:
-    matrix:
-      go-version: [ '1.22.x' ]
-      platform: [ 'linux-amd64' ]
-  steps:
-    - uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.BOT_USER_PAT }}
-        show-progress: false
+  build-operators:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        platform: [ 'linux-amd64' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
 
-    - name: Setup Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Install UPX
-      uses: crazy-max/ghaction-upx@v3
-      with:
-        install-only: true
-    - name: Display Go version
-      run: go version
-    - name: Build code
-      run: |
-        BASE_DIR="$PWD"
-        
-        for dir in operators/*/
-        do
-          DIR=${dir%*/}
-          DIRNAME="${DIR##*/}"
-        
-          echo "***********************************************"
-          echo "$BASE_DIR/operators/$DIRNAME"
-          echo "***********************************************"
-        
-          cd "$BASE_DIR/operators/$DIRNAME"
-        
-          go build -ldflags '-s -w' --buildmode=plugin
-          chmod +x *.so
-        done
-        
-        for dir in operators/*/
-        do
-          DIR=${dir%*/}
-          DIRNAME="${DIR##*/}"
-        
-          echo "***********************************************"
-          echo "$BASE_DIR/operators/$DIRNAME"
-          echo "***********************************************"
-        
-          cd "$BASE_DIR/operators/$DIRNAME"
-        
-          upx -9 *.so &
-        done
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: operators
-        path: |
-          operators/**/*.so
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Build code
+        run: |
+          BASE_DIR="$PWD"
+          
+          for dir in operators/*/
+          do
+            DIR=${dir%*/}
+            DIRNAME="${DIR##*/}"
+          
+            echo "***********************************************"
+            echo "$BASE_DIR/operators/$DIRNAME"
+            echo "***********************************************"
+          
+            cd "$BASE_DIR/operators/$DIRNAME"
+          
+            go build -ldflags '-s -w' --buildmode=plugin
+            chmod +x *.so
+          done
+          
+          for dir in operators/*/
+          do
+            DIR=${dir%*/}
+            DIRNAME="${DIR##*/}"
+          
+            echo "***********************************************"
+            echo "$BASE_DIR/operators/$DIRNAME"
+            echo "***********************************************"
+          
+            cd "$BASE_DIR/operators/$DIRNAME"
+          
+            upx -9 *.so &
+          done
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: operators
+          path: |
+            operators/**/*.so
 
-build-docker:
-  runs-on: ubuntu-latest
-  strategy:
-    matrix:
-      go-version: [ '1.22.x' ]
-      platform: [ 'linux-amd64' ]
-  steps:
-    - uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.BOT_USER_PAT }}
-        show-progress: false
+  build-docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        platform: [ 'linux-amd64' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
 
-    - name: Download implementations
-      uses: actions/download-artifact@v3
-      with:
-        name: implementations
-        path: implementations/so
+      - name: Download implementations
+        uses: actions/download-artifact@v3
+        with:
+          name: implementations
+          path: implementations/so
 
-    - name: Download operators
-      uses: actions/download-artifact@v3
-      with:
-        name: operators
-        path: operators/so
+      - name: Download operators
+        uses: actions/download-artifact@v3
+        with:
+          name: operators
+          path: operators/so
 
-    - name: Download smr
-      uses: actions/download-artifact@v3
-      with:
-        name: smr
-        path: smr
+      - name: Download smr
+        uses: actions/download-artifact@v3
+        with:
+          name: smr
+          path: smr
 
-    - name: Build and push docker image
-      run: |
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        docker build . --file docker/Dockerfile --tag docker.io/simplecontainermanager/smr:${{ github.ref_name }}
-        docker push docker.io/simplecontainermanager/smr:${{ github.ref_name }}
-        git tag -d ${{ github.ref_name }}
-        git push --delete origin ${{ github.ref_name }}
-        
-        # Update version to match tag version, git push in next step
-        echo ${{ github.ref_name }} > version
-    - uses: stefanzweifel/git-auto-commit-action@v5
-      with:
-        commit_message: Automated version tracking [no ci]
+      - name: Build and push docker image
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker build . --file docker/Dockerfile --tag docker.io/simplecontainermanager/smr:${{ github.ref_name }}
+          docker push docker.io/simplecontainermanager/smr:${{ github.ref_name }}
+          git tag -d ${{ github.ref_name }}
+          git push --delete origin ${{ github.ref_name }}
+          
+          # Update version to match tag version, git push in next step
+          echo ${{ github.ref_name }} > version
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Automated version tracking [no ci]
 
-        branch: main
-        file_pattern: 'version'
-        repository: .
-        tagging_message: '${{ github.ref_name }}'
-        push_options: '--force'
+          branch: main
+          file_pattern: 'version'
+          repository: .
+          tagging_message: '${{ github.ref_name }}'
+          push_options: '--force'
 
-        commit_user_name: bot
-        commit_user_email: bot@qdnqn.org
-        commit_author: Author <actions@github.com>
-    - uses: ncipollo/release-action@v1
-      with:
-        body: "Automatically created - fill in accordingly"
-        allowUpdates: true
-        draft: false
-        tag: ${{ github.ref_name }}
+          commit_user_name: bot
+          commit_user_email: bot@qdnqn.org
+          commit_author: Author <actions@github.com>
+      - uses: ncipollo/release-action@v1
+        with:
+          body: "Automatically created - fill in accordingly"
+          allowUpdates: true
+          draft: false
+          tag: ${{ github.ref_name }}
