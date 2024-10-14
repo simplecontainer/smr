@@ -102,6 +102,8 @@ jobs:
             chmod +x *.so
           done
           
+          cd $BASE_DIR
+          
           for dir in implementations/*/
           do
             DIR=${dir%*/}
@@ -164,6 +166,8 @@ jobs:
             go build -ldflags '-s -w' --buildmode=plugin
             chmod +x *.so
           done
+          
+          cd $BASE_DIR
           
           for dir in operators/*/
           do
