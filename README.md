@@ -40,6 +40,8 @@ Installation of the agent
 -------------------------
 To start using simple container first run it to generate smr project and build configuration file.
 
+### Configuration for the localhost
+Exposing the control plane only to the localhost:
 ```bash
 LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
 
@@ -47,16 +49,43 @@ mkdir $HOME/.smr
 docker pull simplecontainermanager/smr:$LATEST_VERSION
 docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
-       -e DOMAIN=localhost,external.domain.tld,... \
-       -e EXTERNALIP=127.0.0.1,EXTERNAL_IP,... \
+       -e DOMAIN=localhost \
+       -e EXTERNALIP=127.0.0.1 \
        -e HOMEDIR=$HOME \
-       simplecontainermanager/smr:$LATEST_VERSION create smr
+       smr:$LATEST_VERSION create smr
 ```
 
-This will generate project and create configuration file.
+### Configuration for the Internet and localhost
+Exposing the control plane to the localhost and other domains:
+
+```bash
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+
+mkdir $HOME/.smr
+docker pull simplecontainermanager/smr:$LATEST_VERSION
+docker run \
+       -v $HOME/.smr:/home/smr-agent/smr \
+       -e DOMAIN=localhost,example.com \
+       -e EXTERNALIP=127.0.0.1,PUBLIC_IP \
+       -e HOMEDIR=$HOME \
+       smr:$LATEST_VERSION create smr
+```
+
+>Replace example.com and PUBLIC_IP with your domain and public IP of the machine. You can even add more domains and IPs just by appending coma and adding a new domain or IP.
+
+This will generate a project, build a configuration file, and also it will generate certificates under $HOME/.ssh/simplecontainer. These are important and used by the client to communicate with the simplecontainer in a secure manner.
+This bundle is needed by the client to connect to the Simplecontainer API.
+
+```bash
+$ cat $HOME/.ssh/simplecontainer/root.pem
+-----BEGIN PRIVATE KEY-----
+MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
+ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
+...
+```
 
 Afterward running will start simplecontainer as docker container, and it will be able
-to manage containers on top of docker.
+to manage containers.
 
 ```bash
 LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
@@ -69,23 +98,10 @@ docker run \
        -p 0.0.0.0:1443:1443 \
        --dns 127.0.0.1 \
        --name smr-agent \
-       -d simplecontainermanager/smr:$LATEST_VERSION start
+       -d smr:$LATEST_VERSION start
 ```
 
-Agent will generate certificates under `$HOME/.ssh/simplecontainer`. These are important and used by the client to communicate
-with the simplecontainer agent in a secured manner. These certificates are only valid for the root user and this certificate bundle
-is only usable from the localhost to be more secured.
-
-This bundle is needed by the client to connect to the Simplecontainer API.
-
-Adding new certificates can be done via CLI for users to connect from external domains.
-```bash
-cat $HOME/.ssh/simplecontainer/client.pem
------BEGIN PRIVATE KEY-----
-MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
-ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
-...
-```
+>If you want to expose the control plane only to the localhost change `-p 0.0.0.0:1443:1443` to the `-p 127.0.0.1:1443:1443`
 
 Installation of the client
 --------------------------
@@ -100,17 +116,22 @@ https://github.com/simplecontainer/client/releases
 Example for installing latest version:
 
 ```bash
-export VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
-export PLATFORM=linux-amd64
-curl -Lo client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
-chmod +x client
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
+PLATFORM=linux-amd64
+curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
 sudo mv client /usr/local/bin/smr
-smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/client.pem --context localhost
+```
+
+To access the simplecontainer control plane via local or public network, context needs to be added with the appropriate mtls bundle generated.
+
+```bash
+smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context localhost
 {"level":"info","ts":1720694421.2032707,"caller":"context/Connect.go:40","msg":"authenticated against the smr-agent"}
 smr ps
 GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
 ```
-Afterward access to control plane of the simple container is configured.
+
+Access to the control plane of the simplecontainer is configured successfully if you get same output.
 
 ## Running Docker containers using GitOps
 

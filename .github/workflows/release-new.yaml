@@ -1,0 +1,96 @@
+name: Simplecontainer release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Test code
+        run: go test ./...
+  build-implementations:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Test code
+        run: go test ./...
+  build-operators:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Test code
+        run: go test ./...
+  build-main:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Test code
+        run: go test ./...
