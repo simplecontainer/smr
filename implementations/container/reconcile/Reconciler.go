@@ -207,17 +207,13 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			err = containerObj.SolveAgentNetworking()
 
 			if err != nil {
-				containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_BACKOFF)
-			} else {
-				containerObj.UpdateDns(shared.DnsCache)
-
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-				} else {
-					containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
-					go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
-				}
+				containerWatcher.Logger.Info("container and simplecontainer are already networked")
 			}
+
+			containerObj.UpdateDns(shared.DnsCache)
+
+			containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_READINESS_CHECKING)
+			go containerObj.Ready(shared.Client, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 		}
 
 		ReconcileLoop(containerWatcher)

@@ -53,7 +53,7 @@ type Static struct {
 	Replicas               int
 	Env                    []string
 	Entrypoint             []string
-	Command                []string
+	Args                   []string
 	Privileged             bool
 	NetworkMode            string
 	Networks               *internal.Networks

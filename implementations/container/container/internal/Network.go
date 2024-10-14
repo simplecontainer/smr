@@ -33,6 +33,13 @@ func NewNetworks(networks []v1.ContainerNetwork) *Networks {
 		Networks: make([]*Network, 0),
 	}
 
+	if len(networks) == 0 {
+		networksObj.Add(v1.ContainerNetwork{
+			Group: "docker",
+			Name:  "bridge",
+		})
+	}
+
 	for _, network := range networks {
 		networksObj.Add(network)
 	}

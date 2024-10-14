@@ -26,7 +26,7 @@ type ContainerInternal struct {
 	Tag           string               `validate:"required" json:"tag"`
 	Envs          []string             `json:"envs"`
 	Entrypoint    []string             `json:"entrypoint"`
-	Command       []string             `json:"command"`
+	Args          []string             `json:"args"`
 	Dependencies  []ContainerDependsOn `json:"dependencies"`
 	Readiness     []ContainerReadiness `json:"readiness"`
 	Networks      []ContainerNetwork   `json:"networks"`

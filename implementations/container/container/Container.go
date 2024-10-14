@@ -65,7 +65,7 @@ func NewContainerFromDefinition(config *configuration.Configuration, name string
 			Replicas:      definition.Spec.Container.Replicas,
 			Env:           definition.Spec.Container.Envs,
 			Entrypoint:    definition.Spec.Container.Entrypoint,
-			Command:       definition.Spec.Container.Command,
+			Args:          definition.Spec.Container.Args,
 			NetworkMode:   definition.Spec.Container.NetworkMode,
 			Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
 			Ports:         internal.NewPorts(definition.Spec.Container.Ports),
@@ -262,7 +262,7 @@ func (container *Container) run(c *types.Container, environment *configuration.E
 		Image:        container.Static.Image + ":" + container.Static.Tag,
 		Env:          unpackedEnvs,
 		Entrypoint:   container.Static.Entrypoint,
-		Cmd:          container.Static.Command,
+		Cmd:          container.Static.Args,
 		Tty:          false,
 		ExposedPorts: exposedPorts,
 	}, &dockerContainer.HostConfig{
@@ -376,10 +376,14 @@ func (container *Container) SolveAgentNetworking() error {
 			err = network.FindNetworkAlias(static.SMR_ENDPOINT_NAME)
 
 			if err == nil {
-				err = network.Connect(agent.Runtime.Id)
+				err = network.FindNetworkAlias(container.Static.GeneratedName)
 
-				if err != nil && err.Error() != fmt.Sprintf("Error response from daemon: endpoint with name %s already exists in network %s", static.SMR_ENDPOINT_NAME, network.Reference.Name) {
-					return err
+				if err == nil {
+					err = network.Connect(agent.Runtime.Id)
+
+					if err != nil && err.Error() != fmt.Sprintf("Error response from daemon: endpoint with name %s already exists in network %s", static.SMR_ENDPOINT_NAME, network.Reference.Name) {
+						return err
+					}
 				}
 			}
 		}
