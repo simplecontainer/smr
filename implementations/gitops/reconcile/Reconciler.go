@@ -49,17 +49,10 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 	for {
 		select {
 		case <-gitopsWatcher.Ctx.Done():
-			fmt.Println("CANCELING")
-
 			gitopsWatcher.Ticker.Stop()
 			close(gitopsWatcher.GitopsQueue)
 
-			fmt.Println(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
-
-			fmt.Println(shared.Watcher.Find(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)))
-
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
-
 			return
 		case <-gitopsWatcher.GitopsQueue:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
@@ -177,23 +170,27 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		if gitopsWatcher.Gitops.Status.LastSyncedCommit != gitopsWatcher.Gitops.Commit.ID() || !gitopsWatcher.Gitops.Status.InSync {
 			defs, err := gitopsWatcher.Gitops.Definitions(shared.Manager.RelationRegistry)
 
-			err = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User, defs)
+			if len(defs) == 0 {
+				gitopsWatcher.Logger.Info(fmt.Sprintf("no valid definitions detected: %s/%s", gitopsWatcher.Gitops.Path, gitopsWatcher.Gitops.DirectoryPath))
+			} else {
+				err = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User, defs)
 
-			if err != nil {
-				gitopsWatcher.Logger.Info(fmt.Sprintf("failed to sync latest changes"))
-				gitopsWatcher.Logger.Info(err.Error())
-				gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
-				gitopsWatcher.Syncing = false
+				if err != nil {
+					gitopsWatcher.Logger.Info(fmt.Sprintf("failed to sync latest changes"))
+					gitopsWatcher.Logger.Info(err.Error())
+					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
+					gitopsWatcher.Syncing = false
 
-				Loop(gitopsWatcher)
-				return
+					Loop(gitopsWatcher)
+					return
 
+				}
+
+				gitopsWatcher.Gitops.Status.LastSyncedCommit = gitopsWatcher.Gitops.Commit.ID()
+				gitopsWatcher.Gitops.Status.InSync = true
+
+				gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
 			}
-
-			gitopsWatcher.Gitops.Status.LastSyncedCommit = gitopsWatcher.Gitops.Commit.ID()
-			gitopsWatcher.Gitops.Status.InSync = true
-
-			gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
 		} else {
 			gitopsWatcher.Logger.Info("everything synced")
 		}
@@ -244,8 +241,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_PENDING_DELETE:
-		fmt.Println("STATUS PENDING DELETE")
-
 		gitopsWatcher.Logger.Info("delete is in process")
 		gitopsWatcher.Cancel()
 		break

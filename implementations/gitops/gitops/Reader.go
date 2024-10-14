@@ -10,7 +10,7 @@ import (
 )
 
 func (gitops *Gitops) Definitions(relations *relations.RelationRegistry) ([]map[string]string, error) {
-	entries, err := os.ReadDir(fmt.Sprintf("%s%s", gitops.Path, gitops.DirectoryPath))
+	entries, err := os.ReadDir(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath))
 
 	if err != nil {
 		return nil, err

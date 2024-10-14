@@ -2,6 +2,7 @@ package gitops
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -68,6 +69,10 @@ func (gitops *Gitops) CloneOrPull(auth transport.AuthMethod) error {
 
 		if err != nil {
 			return err
+		}
+
+		if _, missing := os.Stat(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath)); os.IsNotExist(missing) {
+			return errors.New(fmt.Sprintf("%s does not exists in the repository"))
 		}
 
 		return nil
