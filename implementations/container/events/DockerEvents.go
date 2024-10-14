@@ -8,7 +8,11 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/implementations/container/container"
 	"github.com/simplecontainer/smr/implementations/container/shared"
+	"github.com/simplecontainer/smr/implementations/container/status"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"go.uber.org/zap"
 )
 
@@ -117,6 +121,13 @@ func HandleDisconnect(shared *shared.Shared, containerObj *container.Container, 
 		for _, ip := range shared.DnsCache.FindDeleteQueue(containerObj.GetDomain(n.Reference.Name)) {
 			shared.DnsCache.RemoveARecord(containerObj.GetDomain(n.Reference.Name), ip)
 			shared.DnsCache.RemoveARecord(containerObj.GetHeadlessDomain(n.Reference.Name), ip)
+
+			obj := objects.New(shared.Client.Get("root"), &authentication.User{
+				Username: "root",
+				Domain:   "localhost",
+			})
+
+			obj.Remove(f.NewFromString(fmt.Sprintf("network.%s.%s.dns", containerObj.Static.Group, containerObj.Static.GeneratedName)))
 		}
 
 		shared.DnsCache.ResetDeleteQueue(containerObj.GetDomain(n.Reference.Name))
@@ -142,12 +153,7 @@ func HandleStart(shared *shared.Shared, containerObj *container.Container, event
 }
 
 func HandleKill(shared *shared.Shared, containerObj *container.Container, event events.Message) {
-	// It can happen that kill signal occurs in the container even if it is not dying; eg killing thread, goroutine etc.
-	//containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_KILLED)
-
-	for _, n := range containerObj.Runtime.Networks.Networks {
-		shared.DnsCache.RemoveARecordQueue(containerObj.GetDomain(n.Reference.Name), n.Docker.IP)
-	}
+	containerObj.Status.TransitionState(containerObj.Static.GeneratedName, status.STATUS_KILL)
 }
 
 func HandleStop(shared *shared.Shared, containerObj *container.Container, event events.Message) {
