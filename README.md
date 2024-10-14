@@ -138,33 +138,31 @@ Access to the control plane of the simplecontainer is configured successfully if
 It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
 ```bash
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/gitops/gitops-plain.yaml 
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/apps/gitops-plain.yaml 
 ```
 
 Applying this definition will create GitOps object on the simplecontainer.
 
 ```bash
-smr gitops list                               
-GROUP  NAME     REPOSITORY                                   REVISION  SYNCED        AUTO   STATE    
-test   smr      https://github.com/simplecontainer/examples  main      Never synced  false  Drifted  
+smr gitops list
+GROUP     NAME          REPOSITORY                                             REVISION  SYNCED        AUTO   STATE    
+examples  plain-manual  https://github.com/simplecontainer/examples (cb849c3)  main      cb849c3       false  InSync  
 
 smr gitops sync test smr
 
 smr ps 
-GROUP    NAME     DOCKER NAME        IMAGE         IP                                      PORTS                      DEPS  DOCKER STATE  SMR STATE  
-nginx    nginx    nginx-nginx-1      nginx:1.23.3  10.10.0.3 (ghost), 172.17.0.3 (bridge)  80, 443                          running        (2m0s)    
-nginx    nginx    nginx-nginx-2      nginx:1.23.3  10.10.0.4 (ghost), 172.17.0.4 (bridge)  80, 443                          running        (2m0s)    
-nginx    nginx    nginx-nginx-3      nginx:1.23.3  10.10.0.5 (ghost), 172.17.0.5 (bridge)  80, 443                          running        (2m0s)    
-traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80:80, 443:443, 8888:8080        running        (2m0s)    
+GROUP    NAME     DOCKER NAME        IMAGE           IP  PORTS  DEPS  DOCKER STATE  SMR STATE         
+example  busybox  example-busybox-1  busybox:latest                   running       running (50m40s)  
+example  busybox  example-busybox-2  busybox:latest                   running       running (50m40s)  
 ```
 
 In this example, auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
-all the definitions in the `/gitops/bundle` directory from the `https://github.com/simplecontainer/examples` repository.
+all the definitions in the `/tests/minimal` directory from the `https://github.com/simplecontainer/examples` repository.
 
 To see more info about the Gitops object:
 
 ```bash
-smr gitops get test smr
+smr gitops get examples plain-manual
 ```
 
 Output:
@@ -173,19 +171,21 @@ Output:
 {
   "gitops": {
     "meta": {
-      "group": "test",
-      "name": "smr"
+      "group": "examples",
+      "name": "plain-manual"
     },
     "spec": {
+      "API": "",
       "automaticSync": false,
       "certKeyRef": {
         "Group": "",
-        "Identifier": ""
+        "Name": ""
       },
-      "directory": "/gitops/bundle",
+      "context": "",
+      "directory": "/tests/minimal",
       "httpAuthRef": {
         "Group": "",
-        "Identifier": ""
+        "Name": ""
       },
       "poolingInterval": "",
       "repoURL": "https://github.com/simplecontainer/examples",
