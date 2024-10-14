@@ -115,7 +115,7 @@ jobs:
           
             cd "$BASE_DIR/implementations/$DIRNAME"
           
-            upx -9 *.so &
+            upx -9 *.so
           done
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -180,7 +180,7 @@ jobs:
           
             cd "$BASE_DIR/operators/$DIRNAME"
           
-            upx -9 *.so &
+            upx -9 *.so
           done
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -206,13 +206,13 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: implementations
-          path: implementations/so
+          path: implementations/
 
       - name: Download operators
         uses: actions/download-artifact@v3
         with:
           name: operators
-          path: operators/so
+          path: operators/
 
       - name: Download smr
         uses: actions/download-artifact@v3
