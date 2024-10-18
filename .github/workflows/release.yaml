@@ -126,7 +126,7 @@ jobs:
 
   build-docker:
     runs-on: ubuntu-latest
-    needs: [build-main, build-implementations, build-operators]
+    needs: [build-main, build-implementations]
     strategy:
       matrix:
         go-version: [ '1.22.x' ]
