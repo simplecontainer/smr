@@ -1,8 +1,8 @@
-package main
+package resource
 
-type Operator struct{}
+type Resource struct{}
 
-const KIND string = "configuration"
+const KIND string = "resource"
 
 var invalidOperators []string = []string{
 	"Run",

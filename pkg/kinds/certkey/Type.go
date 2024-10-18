@@ -1,8 +1,8 @@
-package main
+package certkey
 
-type Operator struct{}
+type Certkey struct{}
 
-const KIND string = "database"
+const KIND string = "certkey"
 
 var invalidOperators []string = []string{
 	"Run",

@@ -1,8 +1,8 @@
-package main
+package httpauth
 
-type Operator struct{}
+type Httpauth struct{}
 
-const KIND string = "container"
+const KIND string = "httpauth"
 
 var invalidOperators []string = []string{
 	"Run",

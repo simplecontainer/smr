@@ -19,7 +19,6 @@ RUN mkdir /opt/smr && \
     mkdir -p /badger
 
 COPY smr /opt/smr/smr
-COPY operators/**/*.so /opt/smr/operators/
 COPY implementations/**/*.so /opt/smr/implementations/
 
 RUN chmod +x /opt/smr/smr && \

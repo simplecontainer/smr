@@ -1,6 +1,6 @@
-package main
+package containers
 
-type Operator struct{}
+type Containers struct{}
 
 const KIND string = "containers"
 

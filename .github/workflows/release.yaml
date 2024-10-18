@@ -124,71 +124,6 @@ jobs:
           path: |
             implementations/**/*.so
 
-
-  build-operators:
-    runs-on: ubuntu-latest
-    needs: test
-    strategy:
-      matrix:
-        go-version: [ '1.22.x' ]
-        platform: [ 'linux-amd64' ]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.BOT_USER_PAT }}
-          show-progress: false
-
-      - name: Setup Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Install UPX
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          install-only: true
-      - name: Display Go version
-        run: go version
-      - name: Build code
-        run: |
-          BASE_DIR="$PWD"
-          
-          for dir in operators/*/
-          do
-            DIR=${dir%*/}
-            DIRNAME="${DIR##*/}"
-          
-            echo "***********************************************"
-            echo "$BASE_DIR/operators/$DIRNAME"
-            echo "***********************************************"
-          
-            cd "$BASE_DIR/operators/$DIRNAME"
-          
-            go build -ldflags '-s -w' --buildmode=plugin
-            chmod +x *.so
-          done
-          
-          cd $BASE_DIR
-          
-          for dir in operators/*/
-          do
-            DIR=${dir%*/}
-            DIRNAME="${DIR##*/}"
-          
-            echo "***********************************************"
-            echo "$BASE_DIR/operators/$DIRNAME"
-            echo "***********************************************"
-          
-            cd "$BASE_DIR/operators/$DIRNAME"
-          
-            upx -9 *.so
-          done
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: operators
-          path: |
-            operators/**/*.so
-
   build-docker:
     runs-on: ubuntu-latest
     needs: [build-main, build-implementations, build-operators]
@@ -207,12 +142,6 @@ jobs:
         with:
           name: implementations
           path: implementations/
-
-      - name: Download operators
-        uses: actions/download-artifact@v3
-        with:
-          name: operators
-          path: operators/
 
       - name: Download smr
         uses: actions/download-artifact@v3

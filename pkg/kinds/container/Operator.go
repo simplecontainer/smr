@@ -1,21 +1,21 @@
-package main
+package container
 
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/implementations/container/shared"
+	"github.com/simplecontainer/smr/implementations/container/status"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/operators"
 	"github.com/simplecontainer/smr/pkg/plugins"
 	"net/http"
 	"reflect"
 )
 
-func (operator *Operator) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
-	reflected := reflect.TypeOf(operator)
-	reflectedValue := reflect.ValueOf(operator)
+func (container *Container) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
+	reflected := reflect.TypeOf(container)
+	reflectedValue := reflect.ValueOf(container)
 
 	for i := 0; i < reflected.NumMethod(); i++ {
 		method := reflected.Method(i)
@@ -43,8 +43,8 @@ func (operator *Operator) Run(operation string, args ...interface{}) httpcontrac
 	}
 }
 
-func (operator *Operator) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
-	reflected := reflect.TypeOf(operator)
+func (container *Container) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
+	reflected := reflect.TypeOf(container)
 
 	supportedOperations := map[string]any{}
 	supportedOperations["SupportedOperations"] = []string{}
@@ -71,7 +71,7 @@ OUTER:
 	}
 }
 
-func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
+func (container *Container) List(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
 	format := f.New(KIND, "", "", "")
@@ -104,7 +104,7 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 	}
 }
 
-func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOperator {
+func (container *Container) Get(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -148,7 +148,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 	}
 }
 
-func (operator *Operator) View(request operators.Request) httpcontract.ResponseOperator {
+func (container *Container) View(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -163,9 +163,9 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
 	sharedObj := pl.GetShared().(*shared.Shared)
 
-	container := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+	containerObj := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
 
-	if container == nil {
+	if containerObj == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
 			Explanation:      "container not found in the registry",
@@ -177,7 +177,7 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 	}
 
 	var definition = make(map[string]any)
-	definition[container.Static.GeneratedName] = container
+	definition[containerObj.Static.GeneratedName] = containerObj
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
@@ -189,7 +189,7 @@ func (operator *Operator) View(request operators.Request) httpcontract.ResponseO
 	}
 }
 
-func (operator *Operator) Delete(request operators.Request) httpcontract.ResponseOperator {
+func (container *Container) Restart(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -201,7 +201,48 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 
-	format := f.New("containers", request.Data["group"].(string), request.Data["identifier"].(string), "object")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
+	sharedObj := pl.GetShared().(*shared.Shared)
+
+	containerObj := sharedObj.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+
+	if containerObj == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       404,
+			Explanation:      "container not found in the registry",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	containerObj.Status.TransitionState(containerObj.Static.Name, status.STATUS_CREATED)
+	sharedObj.Watcher.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
+
+	return httpcontract.ResponseOperator{
+		HttpStatus:       200,
+		Explanation:      "container object is restarted",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	}
+}
+
+func (container *Container) Delete(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
+	if request.Data == nil {
+		return httpcontract.ResponseOperator{
+			HttpStatus:       400,
+			Explanation:      "send some data",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	format := f.New("container", request.Data["group"].(string), request.Data["identifier"].(string), "object")
 
 	obj := objects.New(request.Client.Get(request.User.Username), request.User)
 	err := obj.Find(format)
@@ -219,7 +260,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 
-	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "containers.so")
+	pl := plugins.GetPlugin(request.Manager.Config.OptRoot, "container.so")
 	_, err = pl.Delete(request.User, obj.GetDefinitionByte())
 
 	if err != nil {
@@ -240,6 +281,3 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		Success:          true,
 	}
 }
-
-// Exported
-var Containers Operator

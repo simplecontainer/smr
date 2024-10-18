@@ -1,4 +1,4 @@
-package main
+package resource
 
 import (
 	"fmt"
@@ -6,13 +6,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/operators"
 	"reflect"
 )
 
-func (operator *Operator) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
-	reflected := reflect.TypeOf(operator)
-	reflectedValue := reflect.ValueOf(operator)
+func (resource *Resource) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
+	reflected := reflect.TypeOf(resource)
+	reflectedValue := reflect.ValueOf(resource)
 
 	for i := 0; i < reflected.NumMethod(); i++ {
 		method := reflected.Method(i)
@@ -40,8 +39,8 @@ func (operator *Operator) Run(operation string, args ...interface{}) httpcontrac
 	}
 }
 
-func (operator *Operator) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
-	reflected := reflect.TypeOf(operator)
+func (resource *Resource) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
+	reflected := reflect.TypeOf(resource)
 
 	supportedOperations := map[string]any{}
 	supportedOperations["SupportedOperations"] = []string{}
@@ -68,7 +67,7 @@ OUTER:
 	}
 }
 
-func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
+func (resource *Resource) List(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
 	format := f.New(KIND, "", "", "")
@@ -93,7 +92,7 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 
 	return httpcontract.ResponseOperator{
 		HttpStatus:       200,
-		Explanation:      "list of the httpauth objects",
+		Explanation:      "list of the resource objects",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
@@ -101,7 +100,7 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 	}
 }
 
-func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOperator {
+func (resource *Resource) Get(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -145,7 +144,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 	}
 }
 
-func (operator *Operator) Delete(request operators.Request) httpcontract.ResponseOperator {
+func (resource *Resource) Delete(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -166,7 +165,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	if err != nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
-			Explanation:      "httpauth definition is not found on the server",
+			Explanation:      "resource definition is not found on the server",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -179,7 +178,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	if !removed {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       500,
-			Explanation:      "httpauth definition is not deleted",
+			Explanation:      "resource definition is not deleted",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -188,7 +187,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	} else {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       200,
-			Explanation:      "httpauth definition is deleted and removed from server",
+			Explanation:      "resource definition is deleted and removed from server",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
@@ -196,6 +195,3 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 }
-
-// Exported
-var Httpauth Operator
