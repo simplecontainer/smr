@@ -1,6 +1,6 @@
-package main
+package gitops
 
-type Operator struct{}
+type Gitops struct{}
 
 const KIND string = "gitops"
 

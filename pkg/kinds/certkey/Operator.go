@@ -1,18 +1,16 @@
-package main
+package certkey
 
 import (
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/operators"
 	"reflect"
 )
 
-func (operator *Operator) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
-	reflected := reflect.TypeOf(operator)
-	reflectedValue := reflect.ValueOf(operator)
+func (certkey *Certkey) Run(operation string, args ...interface{}) httpcontract.ResponseOperator {
+	reflected := reflect.TypeOf(certkey)
+	reflectedValue := reflect.ValueOf(certkey)
 
 	for i := 0; i < reflected.NumMethod(); i++ {
 		method := reflected.Method(i)
@@ -40,8 +38,8 @@ func (operator *Operator) Run(operation string, args ...interface{}) httpcontrac
 	}
 }
 
-func (operator *Operator) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
-	reflected := reflect.TypeOf(operator)
+func (certkey *Certkey) ListSupported(args ...interface{}) httpcontract.ResponseOperator {
+	reflected := reflect.TypeOf(certkey)
 
 	supportedOperations := map[string]any{}
 	supportedOperations["SupportedOperations"] = []string{}
@@ -68,7 +66,7 @@ OUTER:
 	}
 }
 
-func (operator *Operator) List(request operators.Request) httpcontract.ResponseOperator {
+func (certkey *Certkey) List(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	data := make(map[string]any)
 
 	format := f.New(KIND, "", "", "")
@@ -101,7 +99,7 @@ func (operator *Operator) List(request operators.Request) httpcontract.ResponseO
 	}
 }
 
-func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOperator {
+func (certkey *Certkey) Get(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -121,7 +119,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 	if err != nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
-			Explanation:      "configuration definition is not found on the server",
+			Explanation:      "certkey definition is not found on the server",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -145,7 +143,7 @@ func (operator *Operator) Get(request operators.Request) httpcontract.ResponseOp
 	}
 }
 
-func (operator *Operator) Delete(request operators.Request) httpcontract.ResponseOperator {
+func (certkey *Certkey) Delete(request httpcontract.RequestOperator) httpcontract.ResponseOperator {
 	if request.Data == nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       400,
@@ -166,7 +164,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	if err != nil {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       404,
-			Explanation:      "configuration definition is not found on the server",
+			Explanation:      "certkey definition is not found on the server",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -179,7 +177,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	if !removed {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       500,
-			Explanation:      "configuration definition is not deleted",
+			Explanation:      "certkey definition is not deleted",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -188,7 +186,7 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 	} else {
 		return httpcontract.ResponseOperator{
 			HttpStatus:       200,
-			Explanation:      "configuration definition is deleted and removed from server",
+			Explanation:      "certkey definition is deleted and removed from server",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
@@ -196,6 +194,3 @@ func (operator *Operator) Delete(request operators.Request) httpcontract.Respons
 		}
 	}
 }
-
-// Exported
-var Configuration Operator

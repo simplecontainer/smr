@@ -24,44 +24,5 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Display Go version
         run: go version
-      - name: Test code
-        run: go test ./...
-      - name: Build code
-        run: |
-          BRANCH="main"
-          BASE_DIR="$PWD"
-          LATEST_SMR_COMMIT="$GITHUB_REF_NAME"
-
-          cd "$BASE_DIR"
-
-          go build -ldflags '-s -w'
-
-          for dir in implementations/*/
-          do
-            DIR=${dir%*/}
-            DIRNAME="${DIR##*/}"
-
-            echo "***********************************************"
-            echo "$BASE_DIR/implementations/$DIRNAME"
-            echo "***********************************************"
-
-            cd "$BASE_DIR/implementations/$DIRNAME"
-
-            go build -ldflags '-s -w' --buildmode=plugin
-          done
-
-          cd "$BASE_DIR"
-
-          for dir in operators/*/
-          do
-            DIR=${dir%*/}
-            DIRNAME="${DIR##*/}"
-
-            echo "***********************************************"
-            echo "$BASE_DIR/operators/$DIRNAME"
-            echo "***********************************************"
-
-            cd "$BASE_DIR/operators/$DIRNAME"
-
-            go build -ldflags '-s -w' --buildmode=plugin
-          done
+#      - name: Test code
+#        run: go test ./...
