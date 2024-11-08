@@ -1,4 +1,4 @@
-module simplecontainer/smr
+module github.com/simplecontainer/smr
 
 go 1.22.0
 
