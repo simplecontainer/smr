@@ -38,6 +38,8 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      make(map[string]string),
 					ObjectDependencies: make([]*f.Format, 0),
+					NodeIP:             config.ExternalIP,
+					NodeName:           config.Environment.NODENAME,
 				},
 				Status: statusObj,
 			},

@@ -3,17 +3,17 @@ package api
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"net/http"
 )
 
 func (api *Api) Ps(c *gin.Context) {
-	var reg *registry.Registry
+	var reg map[string]map[string]platforms.IContainer
 	container, ok := api.KindsRegistry["container"]
 
 	if ok {
-		reg = container.GetShared().(*shared.Shared).Registry
+		reg = container.GetShared().(*shared.Shared).Registry.Containers
 	}
 
 	if reg != nil {

@@ -82,11 +82,19 @@ func GetEnvironmentInfo() *configuration.Environment {
 		}
 	}
 
+	HOSTNAME := ""
+	HOSTNAME, err = os.Hostname()
+
+	if err != nil {
+		panic(err)
+	}
+
 	return &configuration.Environment{
 		HOMEDIR:    HOMEDIR,
 		OPTDIR:     OPTDIR,
 		PROJECT:    static.PROJECT,
 		PROJECTDIR: fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, static.PROJECT),
+		NODENAME:   HOSTNAME,
 		AGENTIP:    GetOutboundIP().String(),
 	}
 }

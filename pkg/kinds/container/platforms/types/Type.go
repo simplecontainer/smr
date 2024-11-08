@@ -12,10 +12,10 @@ const EVENT_DIE = "start"
 type Runtime struct {
 	Id                 string
 	State              string
-	FoundRunning       bool
-	FirstObserved      bool
 	Ready              bool
 	Configuration      map[string]string
+	NodeName           string
+	NodeIP             string
 	Owner              Owner
 	ObjectDependencies []*f.Format
 }

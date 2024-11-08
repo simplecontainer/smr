@@ -24,4 +24,5 @@ type Environment struct {
 	PROJECTDIR string
 	PROJECT    string
 	AGENTIP    string
+	NODENAME   string
 }
