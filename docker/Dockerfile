@@ -11,7 +11,7 @@ RUN mkdir /opt/smr && \
     mkdir -p /home/smr-agent/.ssh/simplecontainer && \
     mkdir -p /badger
 
-COPY smr-$TARGETOS-$TARGETARCH /opt/smr/smr
+COPY smr-$TARGETOS-$TARGETARCH/smr /opt/smr/smr
 
 RUN chmod +x /opt/smr/smr && \
     chown -R smr-agent /opt/smr/smr && \
