@@ -1,5 +1,4 @@
-ARG PLATFORM=linux/amd64
-FROM --platform=$PLATFORM alpine:latest as initial
+FROM alpine:latest as initial
 
 RUN mkdir /opt/smr && \
     adduser -D smr-agent && \
