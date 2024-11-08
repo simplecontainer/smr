@@ -88,7 +88,7 @@ jobs:
       - name: Build and push docker image
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login docker.io -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker buildx build --push . --file docker/Dockerfile.${{ matrix.os }}.${{ matrix.platform }} --tag docker.io/simplecontainermanager/smr:${{ github.ref_name }} --build-arg PLATFORM=${{ matrix.platform }}  --platform ${{ matrix.os }}/${{ matrix.platform }}
+          docker buildx build --push . --file docker/Dockerfile --tag docker.io/simplecontainermanager/smr:${{ github.ref_name }} --build-arg PLATFORM=${{ matrix.platform }}  --platform ${{ matrix.os }}/${{ matrix.platform }}
 
           git tag -d ${{ github.ref_name }}
           git push --delete origin ${{ github.ref_name }}
