@@ -53,7 +53,10 @@ jobs:
           
           GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags '-s -w'
           chmod +x smr
-          upx -9 smr
+          
+          if echo ${{ matrix.os }} | grep -qv darwin; then
+            upx -9 smr
+          fi
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
