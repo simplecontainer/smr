@@ -2,12 +2,12 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"net/http"
 )
 
 func (api *Api) Health(c *gin.Context) {
-	c.JSON(http.StatusOK, &httpcontract.ResponseImplementation{
+	c.JSON(http.StatusOK, &contracts.ResponseImplementation{
 		HttpStatus:       http.StatusOK,
 		Explanation:      "agent is healthy",
 		ErrorExplanation: "",

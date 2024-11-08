@@ -3,17 +3,21 @@ package api
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/implementations/container/shared"
-	"github.com/simplecontainer/smr/pkg/plugins"
+	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
+	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"net/http"
 )
 
 func (api *Api) Ps(c *gin.Context) {
-	pl := plugins.GetPlugin(api.Config.OptRoot, "container.so")
-	registry := pl.GetShared().(*shared.Shared).Registry
+	var reg *registry.Registry
+	container, ok := api.KindsRegistry["container"]
 
-	if registry != nil {
-		data, err := json.Marshal(registry.Containers)
+	if ok {
+		reg = container.GetShared().(*shared.Shared).Registry
+	}
+
+	if reg != nil {
+		data, err := json.Marshal(reg)
 		result := make(map[string]interface{})
 
 		if err != nil {
@@ -21,7 +25,12 @@ func (api *Api) Ps(c *gin.Context) {
 			return
 		}
 
-		json.Unmarshal(data, &result)
+		err = json.Unmarshal(data, &result)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err)
+		}
+
 		c.JSON(http.StatusOK, result)
 	} else {
 		result := make(map[string]interface{})

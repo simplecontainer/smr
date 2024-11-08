@@ -26,6 +26,11 @@ type CertKeySpec struct {
 	CertStorePassword  string `json:"certStorePassword"`
 }
 
+func (certkey *CertKeyDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(certkey)
+	return bytes, err
+}
+
 func (certkey *CertKeyDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(certkey)
 	return string(bytes), err

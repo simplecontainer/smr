@@ -19,6 +19,11 @@ type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
 }
 
+func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(configuration)
+	return bytes, err
+}
+
 func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(configuration)
 	return string(bytes), err

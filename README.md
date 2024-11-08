@@ -40,6 +40,11 @@ Installation of the agent
 -------------------------
 To start using simple container first run it to generate smr project and build configuration file.
 
+Example provided is for Docker platform which is only currently supported. 
+
+Future platforms to be included:
+- Podman
+
 ### Configuration for the localhost
 Exposing the control plane only to the localhost:
 ```bash
@@ -51,6 +56,7 @@ docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost \
        -e EXTERNALIP=127.0.0.1 \
+       -e PLATFORM=docker \
        -e HOMEDIR=$HOME \
        smr:$LATEST_VERSION create smr
 ```
@@ -66,6 +72,7 @@ docker pull simplecontainermanager/smr:$LATEST_VERSION
 docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost,example.com \
+       -e PLATFORM=docker \
        -e EXTERNALIP=127.0.0.1,PUBLIC_IP \
        -e HOMEDIR=$HOME \
        smr:$LATEST_VERSION create smr
@@ -230,7 +237,7 @@ Traefik and nginx will wait till mysql is ready because of the dependency define
 
 Important links
 ---------------------------
-- https://github.com/simplecontainer/smr
+- https://github.com/simplecosntainer/smr
 - https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
 - https://smr.qdnqn.com

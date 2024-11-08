@@ -38,6 +38,11 @@ type GitopsHttpauthRef struct {
 	Name  string
 }
 
+func (gitops *GitopsDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(gitops)
+	return bytes, err
+}
+
 func (gitops *GitopsDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(gitops)
 	return string(bytes), err

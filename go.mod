@@ -3,7 +3,6 @@ module simplecontainer/smr
 go 1.22.0
 
 require (
-	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/docker/docker v20.10.21+incompatible
@@ -26,7 +25,6 @@ require (
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.3
 	go.uber.org/zap v1.27.0
-	golang.org/x/text v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -107,6 +105,7 @@ require (
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect

@@ -19,6 +19,11 @@ type ContainersMeta struct {
 	Labels  map[string]string `json:"labels"`
 }
 
+func (definition *ContainersDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(definition)
+	return bytes, err
+}
+
 func (definition *ContainersDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(definition)
 	return string(bytes), err

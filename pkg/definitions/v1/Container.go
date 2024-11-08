@@ -77,6 +77,11 @@ type ContainerResource struct {
 	MountPoint string
 }
 
+func (definition *ContainerDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(definition)
+	return bytes, err
+}
+
 func (definition *ContainerDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(definition)
 	return string(bytes), err

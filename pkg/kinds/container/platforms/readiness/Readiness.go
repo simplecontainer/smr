@@ -1,0 +1,142 @@
+package readiness
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/cenkalti/backoff/v4"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
+	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
+)
+
+func Ready(client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
+	for _, ready := range container.GetDefinition().Spec.Container.Readiness {
+		readiness, err := NewReadinessFromDefinition(client, user, container, ready)
+
+		if err != nil {
+			return false, err
+		}
+
+		readiness.Function = func() error {
+			return SolveReadiness(client, user, container, logger, readiness, channel)
+		}
+
+		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), readiness.Ctx)
+
+		err = backoff.Retry(readiness.Function, backOff)
+		if err != nil {
+			channel <- &ReadinessState{
+				State: FAILED,
+			}
+
+			return false, err
+		}
+	}
+
+	channel <- &ReadinessState{
+		State: SUCCESS,
+	}
+
+	container.GetStatus().LastReadiness = true
+	container.GetStatus().LastReadinessTimestamp = time.Now()
+
+	return true, nil
+}
+
+func NewReadinessFromDefinition(client *client.Http, user *authentication.User, container platforms.IContainer, readiness v1.ContainerReadiness) (*Readiness, error) {
+	if readiness.Timeout == "" {
+		readiness.Timeout = "30s"
+	}
+
+	timeout, err := time.ParseDuration(readiness.Timeout)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	for index, value := range readiness.Body {
+		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
+		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
+
+		if len(matches) > 0 {
+			format := f.NewFromString(matches[0][1])
+
+			if format.IsValid() && format.Kind == "secret" {
+				continue
+			} else {
+				readiness.Body[index] = strings.Replace(readiness.Body[index], matches[0][0], container.GetRuntime().Configuration[format.Group], 1)
+			}
+		}
+	}
+
+	var bodyUnpack map[string]string
+	bodyUnpack, err = secrets.UnpackSecretsReadiness(client, user, readiness.Body)
+
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	return &Readiness{
+		Name:       readiness.Name,
+		Operator:   readiness.Operator,
+		Timeout:    readiness.Timeout,
+		Body:       readiness.Body,
+		BodyUnpack: bodyUnpack,
+		Ctx:        ctx,
+		Cancel:     cancel,
+	}, nil
+}
+
+func SolveReadiness(client *client.Http, user *authentication.User, container platforms.IContainer, logger *zap.Logger, readiness *Readiness, channel chan *ReadinessState) error {
+	if !container.GetStatus().IfStateIs(status.STATUS_READINESS_CHECKING) {
+		readiness.Cancel()
+	}
+
+	channel <- &ReadinessState{
+		State: CHECKING,
+	}
+
+	format := f.NewFromString(readiness.Name)
+	URL := fmt.Sprintf("https://%s/api/v1/operators/%s/%s", static.SMR_AGENT_URL, format.Kind, readiness.Operator)
+
+	jsonBytes, err := json.Marshal(readiness.BodyUnpack)
+
+	logger.Info("readiness probe", zap.String("URL", URL), zap.String("data", string(jsonBytes)))
+
+	var req *http.Request
+
+	req, err = http.NewRequest("POST", URL, bytes.NewBuffer(jsonBytes))
+
+	if err != nil {
+		return errors.New("readiness request creation failed")
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Get(user.Username).Http.Do(req)
+	if err != nil {
+		return errors.New("readiness request failed")
+	} else {
+		if resp.StatusCode == http.StatusOK {
+			return nil
+		} else {
+			return errors.New("readiness request failed")
+		}
+	}
+}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"net/http"
@@ -17,10 +17,10 @@ import (
 //	@Tags			database
 //	@Produce		json
 //	@Param			key	path		string	true	"RandomKey"
-//	@Success		200	{object}	  httpcontract.ResponseOperator
-//	@Failure		400	{object}	  httpcontract.ResponseOperator
-//	@Failure		404	{object}	  httpcontract.ResponseOperator
-//	@Failure		500	{object}	  httpcontract.ResponseOperator
+//	@Success		200	{object}	  contracts.ResponseOperator
+//	@Failure		400	{object}	  contracts.ResponseOperator
+//	@Failure		404	{object}	  contracts.ResponseOperator
+//	@Failure		500	{object}	  contracts.ResponseOperator
 //	@Router			/database/{key} [get]
 func (api *Api) DatabaseGet(c *gin.Context) {
 	api.BadgerSync.RLock()
@@ -29,7 +29,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 
 		item, err := txn.Get([]byte(c.Param("key")))
 		if err != nil {
-			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 				Explanation:      "key not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -42,7 +42,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 
 		value, err = item.ValueCopy(nil)
 		if err != nil {
-			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 				Explanation:      "key not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -53,7 +53,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 			return nil
 		}
 
-		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.ResponseOperator{
 			Explanation:      "found key in the key-value store",
 			ErrorExplanation: "",
 			Error:            false,
@@ -71,7 +71,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 	if err != nil {
 		logger.Log.Error(err.Error())
 
-		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 			Explanation:      "failed to read from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -90,10 +90,10 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 //	@Produce		json
 //	@Param			key		path		string	true	"RandomKey"
 //	@Param			value	body		Kv		true	"value"
-//	@Success		200		{object}	  httpcontract.ResponseOperator
-//	@Failure		400		{object}	  httpcontract.ResponseOperator
-//	@Failure		404		{object}	  httpcontract.ResponseOperator
-//	@Failure		500		{object}	  httpcontract.ResponseOperator
+//	@Success		200		{object}	  contracts.ResponseOperator
+//	@Failure		400		{object}	  contracts.ResponseOperator
+//	@Failure		404		{object}	  contracts.ResponseOperator
+//	@Failure		500		{object}	  contracts.ResponseOperator
 //	@Router			/database/{key} [post]
 func (api *Api) DatabaseSet(c *gin.Context) {
 	api.BadgerSync.Lock()
@@ -103,7 +103,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 		valueSent := Kv{}
 
 		if err = json.Unmarshal(jsonData, &valueSent); err != nil {
-			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 				Explanation:      "failed to store value in the key-value store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -122,7 +122,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 		api.BadgerSync.Unlock()
 
 		if err != nil {
-			c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 				Explanation:      "failed to store value in the key-value store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -130,7 +130,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 				Data:             nil,
 			})
 		} else {
-			c.JSON(http.StatusOK, httpcontract.ResponseOperator{
+			c.JSON(http.StatusOK, contracts.ResponseOperator{
 				Explanation:      "value stored in the key value store",
 				ErrorExplanation: "",
 				Error:            false,
@@ -141,7 +141,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			})
 		}
 	} else {
-		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 			Explanation:      "failed to store value in the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -157,10 +157,10 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 //	@Description	get all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	  httpcontract.ResponseOperator
-//	@Failure		400	{object}	  httpcontract.ResponseOperator
-//	@Failure		404	{object}	  httpcontract.ResponseOperator
-//	@Failure		500	{object}	  httpcontract.ResponseOperator
+//	@Success		200	{object}	  contracts.ResponseOperator
+//	@Failure		400	{object}	  contracts.ResponseOperator
+//	@Failure		404	{object}	  contracts.ResponseOperator
+//	@Failure		500	{object}	  contracts.ResponseOperator
 //	@Router			/database/{key}/{prefix} [get]
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	var keys []string
@@ -184,7 +184,7 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.ResponseOperator{
 			Explanation:      "keys found",
 			ErrorExplanation: "",
 			Error:            false,
@@ -194,7 +194,7 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 			},
 		})
 	} else {
-		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 			Explanation:      "failed to retrieve keys from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -210,10 +210,10 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 //	@Description	get all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	  httpcontract.ResponseOperator
-//	@Failure		400	{object}	  httpcontract.ResponseOperator
-//	@Failure		404	{object}	  httpcontract.ResponseOperator
-//	@Failure		500	{object}	  httpcontract.ResponseOperator
+//	@Success		200	{object}	  contracts.ResponseOperator
+//	@Failure		400	{object}	  contracts.ResponseOperator
+//	@Failure		404	{object}	  contracts.ResponseOperator
+//	@Failure		500	{object}	  contracts.ResponseOperator
 //	@Router			/database/keys [get]
 func (api *Api) DatabaseGetKeys(c *gin.Context) {
 	var keys []string
@@ -238,7 +238,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.ResponseOperator{
 			Explanation:      "succesfully retrieved keys from the key-value store",
 			ErrorExplanation: "",
 			Error:            false,
@@ -248,7 +248,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 			},
 		})
 	} else {
-		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 			Explanation:      "failed to retrieve keys from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -264,10 +264,10 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 //	@Description	remove all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	  httpcontract.ResponseOperator
-//	@Failure		400	{object}	  httpcontract.ResponseOperator
-//	@Failure		404	{object}	  httpcontract.ResponseOperator
-//	@Failure		500	{object}	  httpcontract.ResponseOperator
+//	@Success		200	{object}	  contracts.ResponseOperator
+//	@Failure		400	{object}	  contracts.ResponseOperator
+//	@Failure		404	{object}	  contracts.ResponseOperator
+//	@Failure		500	{object}	  contracts.ResponseOperator
 //	@Router			/database/keys [delete]
 func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 	var keys []string
@@ -299,7 +299,7 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 	api.BadgerSync.Unlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, httpcontract.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.ResponseOperator{
 			Explanation:      "succesfully removed keys from the key-value store",
 			ErrorExplanation: "",
 			Error:            false,
@@ -309,7 +309,7 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 			},
 		})
 	} else {
-		c.JSON(http.StatusNotFound, httpcontract.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 			Explanation:      "failed to remove keys from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,

@@ -5,11 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/httpcontract"
-	"github.com/simplecontainer/smr/pkg/implementations"
-	"github.com/simplecontainer/smr/pkg/plugins"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
 )
@@ -18,7 +14,7 @@ func (api *Api) Compare(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -30,7 +26,7 @@ func (api *Api) Compare(c *gin.Context) {
 
 		err := json.Unmarshal(jsonData, &data)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
+			c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid definition sent",
 				ErrorExplanation: err.Error(),
@@ -44,13 +40,29 @@ func (api *Api) Compare(c *gin.Context) {
 }
 
 func (api *Api) ImplementationWrapperCompare(user *authentication.User, kind string, jsonData []byte, c *gin.Context) {
-	plugin, err := plugins.GetPluginInstance(api.Config.OptRoot, "implementations", kind)
+	var err error
+	kindObj, ok := api.KindsRegistry[kind]
+
+	if !ok {
+		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+			HttpStatus:       http.StatusBadRequest,
+			Explanation:      fmt.Sprintf("kind is not present on the server: %s", kind),
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		})
+
+		return
+	}
+
+	var response contracts.ResponseImplementation
+	response, err = kindObj.Compare(user, jsonData)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      fmt.Sprintf("internal implementation is not present on the server: %s", kind),
-			ErrorExplanation: err.Error(),
+		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+			HttpStatus:       http.StatusInternalServerError,
+			Explanation:      "internal implementation malfunctioned on the server",
+			ErrorExplanation: "",
 			Error:            true,
 			Success:          false,
 		})
@@ -58,60 +70,6 @@ func (api *Api) ImplementationWrapperCompare(user *authentication.User, kind str
 		return
 	}
 
-	if plugin != nil {
-		ImplementationInternal, err := plugin.Lookup(cases.Title(language.English).String(kind))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      fmt.Sprintf("plugin lookup failed: %s", cases.Title(language.English).String(kind)),
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			})
-
-			return
-		}
-
-		pl, ok := ImplementationInternal.(implementations.Implementation)
-
-		if !ok {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "internal implementation malfunctioned on the server",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-			})
-
-			return
-		}
-
-		var response httpcontract.ResponseImplementation
-		response, err = pl.Compare(user, jsonData)
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "internal implementation malfunctioned on the server",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-			})
-
-			return
-		}
-
-		c.JSON(response.HttpStatus, response)
-		return
-	} else {
-		c.JSON(http.StatusBadRequest, httpcontract.ResponseImplementation{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      fmt.Sprintf("internal implementation is not present on the server: %s", kind),
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
-	}
+	c.JSON(response.HttpStatus, response)
+	return
 }

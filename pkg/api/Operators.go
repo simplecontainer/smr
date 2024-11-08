@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/httpcontract"
-	"github.com/simplecontainer/smr/pkg/kinds"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -22,7 +21,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 
 	for _, forbidenOperator := range invalidOperators {
 		if forbidenOperator == operator {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
+			c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "this operation is restricted",
 				ErrorExplanation: "can't call internal methods on the operators",
@@ -35,10 +34,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 		}
 	}
 
-	plugin, err := kinds.New(kind)
+	var err error
+	kindObj, ok := api.KindsRegistry[kind]
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
+	if !ok {
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      "operator is not present on the server",
 			ErrorExplanation: err.Error(),
@@ -58,7 +58,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 		jsonData, err = io.ReadAll(c.Request.Body)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
+			c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid JSON sent as the body",
 				ErrorExplanation: err.Error(),
@@ -73,7 +73,7 @@ func (api *Api) RunOperators(c *gin.Context) {
 		err = json.Unmarshal([]byte(jsonData), &body)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
+			c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid JSON sent as the body",
 				ErrorExplanation: err.Error(),
@@ -86,14 +86,10 @@ func (api *Api) RunOperators(c *gin.Context) {
 		}
 	}
 
-	request := httpcontract.RequestOperator{
-		Manager: api.Manager,
-		Data:    body,
-		User:    authentication.NewUser(c.Request.TLS),
-		Client:  api.Manager.Http,
-	}
-
-	operatorResponse := plugin.Run(operator, request)
+	operatorResponse := kindObj.Run(operator, contracts.RequestOperator{
+		Data: body,
+		User: authentication.NewUser(c.Request.TLS),
+	})
 
 	c.JSON(operatorResponse.HttpStatus, operatorResponse)
 }
@@ -101,10 +97,11 @@ func (api *Api) RunOperators(c *gin.Context) {
 func (api *Api) ListSupported(c *gin.Context) {
 	kind := cleanPath(c.Param("group"))
 
-	plugin, err := kinds.New(kind)
+	var err error
+	kindObj, ok := api.KindsRegistry[kind]
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, httpcontract.ResponseOperator{
+	if !ok {
+		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "operator is not present on the server",
 			ErrorExplanation: err.Error(),
@@ -116,14 +113,12 @@ func (api *Api) ListSupported(c *gin.Context) {
 		return
 	}
 
-	request := httpcontract.RequestOperator{
-		Manager: api.Manager,
-		Data:    nil,
-		User:    authentication.NewUser(c.Request.TLS),
-		Client:  nil,
+	request := contracts.RequestOperator{
+		Data: nil,
+		User: authentication.NewUser(c.Request.TLS),
 	}
 
-	operatorResponse := plugin.Run("ListSupported", request)
+	operatorResponse := kindObj.Run("ListSupported", request)
 	c.JSON(http.StatusOK, operatorResponse)
 	return
 }

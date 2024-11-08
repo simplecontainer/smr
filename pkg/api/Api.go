@@ -17,33 +17,35 @@ import (
 
 func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api := &Api{
-		User:             &authentication.User{},
-		Config:           config,
-		Keys:             &keys.Keys{},
-		DnsCache:         &dns.Records{},
-		Badger:           badger,
-		BadgerSync:       &sync.RWMutex{},
-		RelationRegistry: relations.NewDefinitionRelationRegistry(),
-		Manager:          &manager.Manager{},
+		User:          &authentication.User{},
+		Config:        config,
+		Keys:          &keys.Keys{},
+		DnsCache:      &dns.Records{},
+		Badger:        badger,
+		BadgerSync:    &sync.RWMutex{},
+		Kinds:         relations.NewDefinitionRelationRegistry(),
+		KindsRegistry: nil,
+		Manager:       &manager.Manager{},
 	}
 
 	api.Config.Environment = startup.GetEnvironmentInfo()
 
 	api.Manager.User = api.User
 	api.Manager.Config = api.Config
-	api.Manager.RelationRegistry = api.RelationRegistry
+	api.Manager.Kinds = api.Kinds
 	api.Manager.Keys = api.Keys
 	api.Manager.DnsCache = api.DnsCache
 	api.Manager.PluginsRegistry = []string{}
 	api.Manager.Http = client.NewHttpClients()
 
-	api.RelationRegistry.Register("network", []string{""})
-	api.RelationRegistry.Register("containers", []string{"network", "resource", "configuration", "certkey"})
-	api.RelationRegistry.Register("gitops", []string{"certkey", "httpauth"})
-	api.RelationRegistry.Register("configuration", []string{})
-	api.RelationRegistry.Register("resource", []string{"configuration"})
-	api.RelationRegistry.Register("certkey", []string{})
-	api.RelationRegistry.Register("httpauth", []string{})
+	api.Kinds.Register("network", []string{""})
+	api.Kinds.Register("containers", []string{"network", "resource", "configuration", "certkey"})
+	api.Kinds.Register("container", []string{})
+	api.Kinds.Register("gitops", []string{"certkey", "httpauth"})
+	api.Kinds.Register("configuration", []string{})
+	api.Kinds.Register("resource", []string{"configuration"})
+	api.Kinds.Register("certkey", []string{})
+	api.Kinds.Register("httpauth", []string{})
 
 	return api
 }

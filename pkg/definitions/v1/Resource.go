@@ -20,6 +20,11 @@ type ResourceSpec struct {
 	Data map[string]string `json:"data"`
 }
 
+func (resource *ResourceDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(resource)
+	return bytes, err
+}
+
 func (resource *ResourceDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(resource)
 	return string(bytes), err

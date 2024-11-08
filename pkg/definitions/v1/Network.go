@@ -20,15 +20,20 @@ type NetworkSpec struct {
 	IPV4AddressPool string
 }
 
-func (Network *NetworkDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(Network)
+func (network *NetworkDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(network)
+	return bytes, err
+}
+
+func (network *NetworkDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(network)
 	return string(bytes), err
 }
 
-func (Network *NetworkDefinition) Validate() (bool, error) {
+func (network *NetworkDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	err := validate.Struct(Network)
+	err := validate.Struct(network)
 	if err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return false, err

@@ -57,6 +57,12 @@ func Create() {
 					hostHomeDir = os.Getenv("HOMEDIR")
 				}
 
+				platform := static.PLATFORM_DOCKER
+				if os.Getenv("PLATFORM") != "" {
+					platform = os.Getenv("PLATFORM")
+				}
+
+				api.Config.Platform = platform
 				api.Config.Target = target
 				api.Config.Root = api.Config.Environment.PROJECTDIR
 				api.Config.Domain = domain

@@ -1,6 +1,7 @@
 package configuration
 
 type Configuration struct {
+	Platform    string       `yaml:"platform"`
 	Target      string       `default:"development" yaml:"target"`
 	Root        string       `yaml:"root"`
 	OptRoot     string       `yaml:"optroot"`

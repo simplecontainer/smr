@@ -13,7 +13,10 @@ run:
 run_private:
 	./development/docker_run_private.sh
 
-develop: build build_docker run
+logs:
+	docker logs -f smr-agent
+
+develop: build build_docker run logs
 production: build_production build_docker run
 dockerd: build_docker run
 dockerp: build_docker run_private

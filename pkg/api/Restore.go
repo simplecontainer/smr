@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/httpcontract"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"io"
 	"net/http"
@@ -28,7 +28,7 @@ func (api *Api) Restore(c *gin.Context) {
 	objsTmp, errTmp := obj.FindMany(formatContainers)
 
 	if errTmp != nil {
-		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 			Explanation:      "",
 			ErrorExplanation: errTmp.Error(),
 			Error:            true,
@@ -52,7 +52,7 @@ func (api *Api) Restore(c *gin.Context) {
 	objsTmp, errTmp = obj.FindMany(formatGitops)
 
 	if errTmp != nil {
-		c.JSON(http.StatusInternalServerError, httpcontract.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 			Explanation:      "",
 			ErrorExplanation: errTmp.Error(),
 			Error:            true,
@@ -73,7 +73,7 @@ func (api *Api) Restore(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, httpcontract.ResponseOperator{
+	c.JSON(http.StatusOK, contracts.ResponseOperator{
 		Explanation:      "here is the item list from the db",
 		ErrorExplanation: "",
 		Error:            true,
@@ -82,13 +82,13 @@ func (api *Api) Restore(c *gin.Context) {
 	})
 }
 
-func sendRequest(client *client.Http, user *authentication.User, URL string, data string) *httpcontract.ResponseImplementation {
+func sendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.ResponseImplementation {
 	var req *http.Request
 	var err error
 
 	if len(data) > 0 {
 		if err != nil {
-			return &httpcontract.ResponseImplementation{
+			return &contracts.ResponseImplementation{
 				HttpStatus:       0,
 				Explanation:      "failed to marshal data for sending request",
 				ErrorExplanation: err.Error(),
@@ -105,7 +105,7 @@ func sendRequest(client *client.Http, user *authentication.User, URL string, dat
 	}
 
 	if err != nil {
-		return &httpcontract.ResponseImplementation{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "failed to craft request",
 			ErrorExplanation: err.Error(),
@@ -117,7 +117,7 @@ func sendRequest(client *client.Http, user *authentication.User, URL string, dat
 	resp, err := client.Get(user.Username).Http.Do(req)
 
 	if err != nil {
-		return &httpcontract.ResponseImplementation{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "failed to connect to the smr-agent",
 			ErrorExplanation: err.Error(),
@@ -129,7 +129,7 @@ func sendRequest(client *client.Http, user *authentication.User, URL string, dat
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &httpcontract.ResponseImplementation{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "invalid response from the smr-agent",
 			ErrorExplanation: err.Error(),
@@ -138,11 +138,11 @@ func sendRequest(client *client.Http, user *authentication.User, URL string, dat
 		}
 	}
 
-	var response httpcontract.ResponseImplementation
+	var response contracts.ResponseImplementation
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		return &httpcontract.ResponseImplementation{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "failed to unmarshal body response from smr-agent",
 			ErrorExplanation: err.Error(),

@@ -21,6 +21,11 @@ type HttpAuthSpec struct {
 	Password string
 }
 
+func (httpauth *HttpAuthDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(httpauth)
+	return bytes, err
+}
+
 func (httpauth *HttpAuthDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(httpauth)
 	return string(bytes), err

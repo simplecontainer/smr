@@ -11,24 +11,9 @@ LATEST_SMR_COMMIT="$(git rev-parse --short $BRANCH)"
 cd "$BASE_DIR"
 
 echo "***********************************************"
-echo "$BASE_DIR/../implementations/$DIRNAME"
+echo "$BASE_DIR/$DIRNAME"
 echo "***********************************************"
 
-go build -ldflags '-s -w' || exit 1
-
-for dir in implementations/*/
-do
-    DIR=${dir%*/}
-    DIRNAME="${DIR##*/}"
-
-    echo "***********************************************"
-    echo "$BASE_DIR/../implementations/$DIRNAME"
-    echo "***********************************************"
-
-    cd "$BASE_DIR/implementations/$DIRNAME"
-    rm -rf *.so
-
-    CGO_ENABLED=1 go build -ldflags '-s -w' --buildmode=plugin || exit 1
-done
+CGO_ENABLED=1 go build -ldflags '-s -w' || exit 1
 
 cd "$BASE_DIR"

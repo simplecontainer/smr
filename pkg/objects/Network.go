@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/httpcontract"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
 )
 
-func SendRequest(client *http.Client, URL string, method string, data map[string]string) *httpcontract.ResponseOperator {
+func SendRequest(client *http.Client, URL string, method string, data map[string]string) *contracts.ResponseOperator {
 	var req *http.Request
 	var marshaled []byte
 	var err error
@@ -18,7 +18,7 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 		marshaled, err = json.Marshal(data)
 
 		if err != nil {
-			return &httpcontract.ResponseOperator{
+			return &contracts.ResponseOperator{
 				HttpStatus:       0,
 				Explanation:      "failed to marshal data for sending request",
 				ErrorExplanation: err.Error(),
@@ -36,7 +36,7 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 	}
 
 	if err != nil {
-		return &httpcontract.ResponseOperator{
+		return &contracts.ResponseOperator{
 			HttpStatus:       0,
 			Explanation:      "failed to craft request",
 			ErrorExplanation: err.Error(),
@@ -49,7 +49,7 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return &httpcontract.ResponseOperator{
+		return &contracts.ResponseOperator{
 			HttpStatus:       0,
 			Explanation:      "failed to connect to the smr-agent",
 			ErrorExplanation: err.Error(),
@@ -62,7 +62,7 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &httpcontract.ResponseOperator{
+		return &contracts.ResponseOperator{
 			HttpStatus:       0,
 			Explanation:      "invalid response from the smr-agent",
 			ErrorExplanation: err.Error(),
@@ -72,11 +72,11 @@ func SendRequest(client *http.Client, URL string, method string, data map[string
 		}
 	}
 
-	var response httpcontract.ResponseOperator
+	var response contracts.ResponseOperator
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		return &httpcontract.ResponseOperator{
+		return &contracts.ResponseOperator{
 			HttpStatus:       0,
 			Explanation:      "failed to unmarshal body response from smr-agent",
 			ErrorExplanation: generateResponse(URL, method, marshaled, body),

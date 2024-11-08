@@ -1,6 +1,13 @@
 package gitops
 
-type Gitops struct{}
+import (
+	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
+)
+
+type Gitops struct {
+	Started bool
+	Shared  *shared.Shared
+}
 
 const KIND string = "gitops"
 

@@ -9,9 +9,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/kinds"
 	"github.com/simplecontainer/smr/pkg/logger"
 	middleware "github.com/simplecontainer/smr/pkg/middlewares"
-	"github.com/simplecontainer/smr/pkg/plugins"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	swaggerFiles "github.com/swaggo/files"
@@ -52,6 +52,9 @@ func Start() {
 
 				api.Keys = keys.NewKeys()
 				api.Manager.Keys = api.Keys
+
+				api.KindsRegistry = kinds.BuildRegistry(api.Manager)
+				api.Manager.KindsRegistry = api.KindsRegistry
 
 				var found error
 				found = api.Keys.Exists(static.SMR_SSH_HOME, "root")
@@ -228,8 +231,6 @@ func Start() {
 				}
 
 				api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
-
-				plugins.StartPlugins(api.Config.OptRoot, api.Manager)
 
 				defer func(server *http.Server) {
 					err = server.Close()

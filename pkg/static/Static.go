@@ -20,3 +20,5 @@ const SMR_ENDPOINT_NAME = "smr-agent"
 const SMR_AGENT_URL = "smr-agent.cluster.private:1443"
 const SMR_AGENT_DOMAIN = "smr-agent.cluster.private"
 const SMR_LOCAL_DOMAIN string = "cluster.private"
+
+const PLATFORM_DOCKER = "docker"
