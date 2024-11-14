@@ -22,6 +22,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"strconv"
 	"time"
@@ -78,7 +79,7 @@ func New(name string, config *configuration.Configuration, definition *v1.Contai
 	return container, nil
 }
 
-func (container *Docker) IsDaemonRunning() {
+func IsDaemonRunning() {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -99,7 +100,7 @@ func (container *Docker) IsDaemonRunning() {
 	}
 }
 
-func (container *Docker) Start(runtime *types.Runtime) bool {
+func (container *Docker) Start() bool {
 	if c, _ := container.Get(); c != nil && c.State == "exited" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -125,7 +126,7 @@ func (container *Docker) Start(runtime *types.Runtime) bool {
 		return false
 	}
 }
-func (container *Docker) Stop(runtime *types.Runtime) bool {
+func (container *Docker) Stop() bool {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -152,7 +153,7 @@ func (container *Docker) Stop(runtime *types.Runtime) bool {
 		return false
 	}
 }
-func (container *Docker) Restart(runtime *types.Runtime) bool {
+func (container *Docker) Restart() bool {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -179,7 +180,7 @@ func (container *Docker) Restart(runtime *types.Runtime) bool {
 		return false
 	}
 }
-func (container *Docker) Delete(runtime *types.Runtime) error {
+func (container *Docker) Delete() error {
 	if c, _ := container.Get(); c != nil && c.State != "running" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -207,7 +208,7 @@ func (container *Docker) Delete(runtime *types.Runtime) error {
 		return errors.New("cannot delete container that is running")
 	}
 }
-func (container *Docker) Rename(runtime *types.Runtime, newName string) error {
+func (container *Docker) Rename(newName string) error {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -230,7 +231,7 @@ func (container *Docker) Rename(runtime *types.Runtime, newName string) error {
 
 	return err
 }
-func (container *Docker) Exec(runtime *types.Runtime, command []string) types.ExecResult {
+func (container *Docker) Exec(command []string) types.ExecResult {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		var execResult types.ExecResult
 
@@ -384,6 +385,14 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 			return nil, err
 		}
 
+		DNS := []string{}
+
+		if len(container.Definition.Spec.Container.Dns) == 0 {
+			DNS = append(DNS, []string{environment.AGENTIP, "127.0.0.1"}...)
+		} else {
+			DNS = append(DNS, container.Definition.Spec.Container.Dns...)
+		}
+
 		resp, err = cli.ContainerCreate(ctx, &TDContainer.Config{
 			Hostname:     container.GeneratedName,
 			Labels:       container.GenerateLabels(),
@@ -394,9 +403,7 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 			Tty:          false,
 			ExposedPorts: exposedPorts,
 		}, &TDContainer.HostConfig{
-			DNS: []string{
-				environment.AGENTIP,
-			},
+			DNS:          DNS,
 			Mounts:       mounts,
 			PortBindings: portBindings,
 			NetworkMode:  TDContainer.NetworkMode(container.NetworkMode),
@@ -428,10 +435,6 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 			}
 
 			container.UpdateDns(dnsCache)
-
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		return container.Get()
@@ -439,6 +442,7 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 
 	return c, nil
 }
+
 func (container *Docker) Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
 	err := container.PrepareNetwork(client, user, runtime)
 
@@ -485,10 +489,10 @@ func (container *Docker) AttachToNetworks() error {
 	}
 
 	var agent TDTypes.Container
-	agent, err = DockerGet("smr-agent")
+	agent, err = DockerGet(viper.GetString("agent"))
 
 	if err != nil {
-		return err
+		return errors.New("failed to find agent container")
 	}
 
 	networks := container.GetNetworkInfoTS()

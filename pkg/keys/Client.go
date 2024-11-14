@@ -92,13 +92,16 @@ func (client *Client) Write(directory string, username string) error {
 		return err
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/%s.crt", directory, username), PemCertificate, 0644)
+	client.CertificatePath = fmt.Sprintf("%s/%s.crt", directory, username)
+	client.PrivateKeyPath = fmt.Sprintf("%s/%s.key", directory, username)
+
+	err = os.WriteFile(client.CertificatePath, PemCertificate, 0644)
 
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/%s.key", directory, username), PemPrivateKey, 0644)
+	err = os.WriteFile(client.PrivateKeyPath, PemPrivateKey, 0644)
 
 	if err != nil {
 		return err
@@ -107,12 +110,15 @@ func (client *Client) Write(directory string, username string) error {
 	return nil
 }
 func (client *Client) Read(directory string, username string) error {
-	PemCertificate, err := os.ReadFile(fmt.Sprintf("%s/%s.crt", directory, username))
+	client.CertificatePath = fmt.Sprintf("%s/%s.crt", directory, username)
+	client.PrivateKeyPath = fmt.Sprintf("%s/%s.key", directory, username)
+
+	PemCertificate, err := os.ReadFile(client.CertificatePath)
 	if err != nil {
 		return err
 	}
 
-	PemPrivateKey, err := os.ReadFile(fmt.Sprintf("%s/%s.key", directory, username))
+	PemPrivateKey, err := os.ReadFile(client.PrivateKeyPath)
 	if err != nil {
 		return err
 	}

@@ -81,11 +81,8 @@ func (container *Docker) SyncNetworkInformation() error {
 			if container.Networks.Find(networkInspect.ID) != nil {
 				container.UpdateNetworkInfoTS(networkInspect.ID, dockerNetwork.IPAddress, networkInspect.Name)
 			} else {
-				err = container.RemoveNetworkInfoTS(container.DockerID, networkInspect.ID, dockerNetwork.IPAddress, networkInspect.Name)
-
-				if err != nil {
-					return err
-				}
+				// optimistic
+				container.RemoveNetworkInfoTS(container.DockerID, networkInspect.ID, dockerNetwork.IPAddress, networkInspect.Name)
 			}
 		}
 

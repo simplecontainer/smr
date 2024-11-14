@@ -12,8 +12,6 @@ import (
 )
 
 type IContainer interface {
-	IsDaemonRunning()
-
 	Start() bool
 	Stop() bool
 	Restart() bool
@@ -43,14 +41,12 @@ type IContainer interface {
 }
 
 type IPlatform interface {
-	IsDaemonRunning()
-
-	Start(runtime *types.Runtime) bool
-	Stop(runtime *types.Runtime) bool
-	Restart(runtime *types.Runtime) bool
-	Delete(runtime *types.Runtime) error
-	Rename(runtime *types.Runtime, newName string) error
-	Exec(runtime *types.Runtime, command []string) types.ExecResult
+	Start() bool
+	Stop() bool
+	Restart() bool
+	Delete() error
+	Rename(newName string) error
+	Exec(command []string) types.ExecResult
 
 	Get() (*TDTypes.Container, error)
 	Run(*configuration.Environment, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)

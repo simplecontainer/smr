@@ -53,7 +53,14 @@ func Save(configObj *configuration.Configuration, out io.Writer) error {
 func SetFlags() {
 	flag.String("project", "", "Project name")
 	flag.Bool("opt", false, "Run in opt mode - do it only in containers")
+	flag.Int("port", 1443, "SMR TLS port")
 	flag.Bool("verbose", false, "Verbose output")
+	flag.String("agent", "", "Agent container name")
+	flag.String("cluster", "", "SMR Cluster")
+	flag.String("overlay", "10.10.0.0/16", "Overlay network for flannel to use")
+	flag.Int("node", 0, "Distributed KVStore Node ID")
+	flag.Bool("join", false, "Join the cluster")
+	flag.Bool("restore", false, "Restore cluster")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -82,9 +89,6 @@ func GetEnvironmentInfo() *configuration.Environment {
 		}
 	}
 
-	HOSTNAME := ""
-	HOSTNAME, err = os.Hostname()
-
 	if err != nil {
 		panic(err)
 	}
@@ -94,7 +98,6 @@ func GetEnvironmentInfo() *configuration.Environment {
 		OPTDIR:     OPTDIR,
 		PROJECT:    static.PROJECT,
 		PROJECTDIR: fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, static.PROJECT),
-		NODENAME:   HOSTNAME,
 		AGENTIP:    GetOutboundIP().String(),
 	}
 }

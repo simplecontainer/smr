@@ -17,8 +17,9 @@ docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost,public.domain \
        -e EXTERNALIP=127.0.0.1 \
+       -e HOSTNAME=$(hostname) \
        -e HOMEDIR=$HOME \
-       smr:$LATEST_SMR_COMMIT create smr
+       smr:$LATEST_SMR_COMMIT create smr --node 1 --cluster https://localhost:9443 --join
 
 docker run \
        -v /var/run/docker.sock:/var/run/docker.sock \
@@ -26,6 +27,7 @@ docker run \
        -v $HOME/.ssh:/home/smr-agent/.ssh \
        -v /tmp:/tmp \
        -p 0.0.0.0:1443:1443 \
+       -p 0.0.0.0:9212:9212 \
        --dns 127.0.0.1 \
        --name smr-agent \
        -d smr:$LATEST_SMR_COMMIT start

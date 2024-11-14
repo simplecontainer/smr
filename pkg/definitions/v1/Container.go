@@ -38,6 +38,9 @@ type ContainerInternal struct {
 	Capabilities  []string             `json:"capabilities"`
 	Privileged    bool                 `json:"privileged"`
 	NetworkMode   string               `json:"network_mode"`
+	Spread        string               `json:"spread"`
+	Nodes         []string             `json:"nodes"`
+	Dns           []string             `json:"dns"`
 }
 
 type ContainerDependsOn struct {

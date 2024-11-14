@@ -26,7 +26,7 @@ func (keys *Keys) AppendClient(username string, newClient *Client) {
 	keys.Clients[username] = newClient
 }
 
-func (keys *Keys) Generate(domains []string, ip []net.IP) error {
+func (keys *Keys) Generate(domains []string, ips []string) error {
 	err := keys.CA.Generate()
 	if err != nil {
 		return err
@@ -37,6 +37,12 @@ func (keys *Keys) Generate(domains []string, ip []net.IP) error {
 
 	if err != nil {
 		hostname = "simplecontainer"
+	}
+
+	var ip []net.IP = make([]net.IP, 0)
+
+	for _, IP := range ips {
+		ip = append(ip, net.ParseIP(IP))
 	}
 
 	err = keys.Server.Generate(keys.CA, domains, ip, hostname)

@@ -93,13 +93,16 @@ func (server *Server) Write(directory string) error {
 		return err
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/server.crt", directory), PemCertificate, 0644)
+	server.CertificatePath = fmt.Sprintf("%s/server.crt", directory)
+	server.PrivateKeyPath = fmt.Sprintf("%s/server.key", directory)
+
+	err = os.WriteFile(server.CertificatePath, PemCertificate, 0644)
 
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/server.key", directory), PemPrivateKey, 0644)
+	err = os.WriteFile(server.PrivateKeyPath, PemPrivateKey, 0644)
 
 	if err != nil {
 		return err
@@ -108,12 +111,15 @@ func (server *Server) Write(directory string) error {
 	return nil
 }
 func (server *Server) Read(directory string) error {
-	PemCertificate, err := os.ReadFile(fmt.Sprintf("%s/server.crt", directory))
+	server.CertificatePath = fmt.Sprintf("%s/server.crt", directory)
+	server.PrivateKeyPath = fmt.Sprintf("%s/server.key", directory)
+
+	PemCertificate, err := os.ReadFile(server.CertificatePath)
 	if err != nil {
 		return err
 	}
 
-	PemPrivateKey, err := os.ReadFile(fmt.Sprintf("%s/server.key", directory))
+	PemPrivateKey, err := os.ReadFile(server.PrivateKeyPath)
 	if err != nil {
 		return err
 	}

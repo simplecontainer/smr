@@ -9,26 +9,13 @@ import (
 	"net/http"
 )
 
-func SendRequest(client *http.Client, URL string, method string, data map[string]string) *contracts.ResponseOperator {
+func SendRequest(client *http.Client, URL string, method string, data []byte) *contracts.ResponseOperator {
 	var req *http.Request
 	var marshaled []byte
 	var err error
 
 	if data != nil {
-		marshaled, err = json.Marshal(data)
-
-		if err != nil {
-			return &contracts.ResponseOperator{
-				HttpStatus:       0,
-				Explanation:      "failed to marshal data for sending request",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			}
-		}
-
-		req, err = http.NewRequest(method, URL, bytes.NewBuffer(marshaled))
+		req, err = http.NewRequest(method, URL, bytes.NewBuffer(data))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
 		req, err = http.NewRequest(method, URL, nil)

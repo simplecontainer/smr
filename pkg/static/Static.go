@@ -12,6 +12,7 @@ var STRUCTURE = []string{
 	"config",
 	"persistent",
 	"persistent/smr",
+	"persistent/etcd",
 }
 
 const SMR_SSH_HOME = "/home/smr-agent/.ssh/simplecontainer"

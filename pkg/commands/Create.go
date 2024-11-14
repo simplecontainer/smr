@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/spf13/viper"
 	"io"
 	"os"
+	"strings"
 )
 
 func Create() {
@@ -37,6 +40,8 @@ func Create() {
 					panic(err)
 				}
 
+				// TODO: Translate all these to viper flags it is ugly
+
 				target := "development"
 				if os.Getenv("ENVIRONMENT") != "" {
 					target = os.Getenv("ENVIRONMENT")
@@ -62,7 +67,15 @@ func Create() {
 					platform = os.Getenv("PLATFORM")
 				}
 
+				hostname := ""
+				if os.Getenv("HOSTNAME") != "" {
+					hostname = os.Getenv("HOSTNAME")
+				}
+
 				api.Config.Platform = platform
+				api.Config.OverlayNetwork = viper.GetString("overlay")
+				api.Config.Port = viper.GetInt("port")
+				api.Config.Agent = viper.GetString("agent")
 				api.Config.Target = target
 				api.Config.Root = api.Config.Environment.PROJECTDIR
 				api.Config.Domain = domain
@@ -70,6 +83,14 @@ func Create() {
 				api.Config.OptRoot = "/opt/smr"
 				api.Config.CommonName = "root"
 				api.Config.HostHome = hostHomeDir
+				api.Config.Node = hostname
+
+				api.Config.KVStore = &configuration.KVStore{
+					Cluster:     strings.Split(viper.GetString("cluster"), ","),
+					Node:        uint64(viper.GetInt("node")),
+					URL:         viper.GetString("url"),
+					JoinCluster: viper.GetBool("join"),
+				}
 
 				err = startup.Save(api.Config, out)
 

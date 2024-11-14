@@ -55,8 +55,9 @@ docker pull simplecontainermanager/smr:$LATEST_VERSION
 docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost \
-       -e EXTERNALIP=127.0.0.1 \
        -e PLATFORM=docker \
+       -e HOSTNAME=$(hostname) \
+       -e EXTERNALIP=127.0.0.1 \
        -e HOMEDIR=$HOME \
        smr:$LATEST_VERSION create smr
 ```
@@ -73,6 +74,7 @@ docker run \
        -v $HOME/.smr:/home/smr-agent/smr \
        -e DOMAIN=localhost,example.com \
        -e PLATFORM=docker \
+       -e HOSTNAME=$(hostname) \
        -e EXTERNALIP=127.0.0.1,PUBLIC_IP \
        -e HOMEDIR=$HOME \
        smr:$LATEST_VERSION create smr

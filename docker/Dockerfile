@@ -8,16 +8,16 @@ ARG TARGETARCH
 RUN mkdir /opt/smr && \
     adduser -D smr-agent && \
     mkdir -p /home/smr-agent/smr/smr && \
-    mkdir -p /home/smr-agent/.ssh/simplecontainer && \
-    mkdir -p /badger
+    mkdir -p /home/smr-agent/.ssh/simplecontainer
 
 COPY smr-$TARGETOS-$TARGETARCH/smr /opt/smr/smr
 
 RUN chmod +x /opt/smr/smr && \
     chown -R smr-agent /opt/smr/smr && \
     chown -R smr-agent /home/smr-agent && \
-    chown -R smr-agent /badger && \
     chown -R smr-agent /home/smr-agent/.ssh
+
+RUN apk add busybox-extras
 
 FROM scratch
 

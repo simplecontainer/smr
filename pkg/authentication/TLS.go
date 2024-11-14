@@ -2,7 +2,6 @@ package authentication
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -67,22 +66,4 @@ func (user *User) ReadTLSFromGinCtx(TLSRequest *tls.ConnectionState) {
 			user.Username = TLSRequest.PeerCertificates[0].Subject.CommonName
 		}
 	}
-}
-
-func (user *User) ToString() string {
-	if user != nil {
-		str, err := json.Marshal(user)
-
-		if err != nil {
-			return ""
-		}
-
-		return string(str)
-	}
-
-	return ""
-}
-
-func (user *User) FromString(str string) error {
-	return json.Unmarshal([]byte(str), &user)
 }
