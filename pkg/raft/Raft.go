@@ -76,7 +76,7 @@ var defaultSnapshotCount uint64 = 10000
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func NewRaftNode(raftnode *RaftNode, CA *keys.CA, ServerCerts *keys.Server, ClientCerts *keys.Client, TLSConfig *tls.Config, id uint64, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
+func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
 	confChangeC <-chan raftpb.ConfChange) (<-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *Commit)
 	errorC := make(chan error)
@@ -104,7 +104,7 @@ func NewRaftNode(raftnode *RaftNode, CA *keys.CA, ServerCerts *keys.Server, Clie
 		snapshotterReady: make(chan *snap.Snapshotter, 1),
 	}
 
-	go raftnode.startRaft(CA, ServerCerts, ClientCerts)
+	go raftnode.startRaft(keys)
 
 	return commitC, errorC, raftnode.snapshotterReady
 }
@@ -266,7 +266,7 @@ func (rc *RaftNode) writeError(err error) {
 	rc.node.Stop()
 }
 
-func (rc *RaftNode) startRaft(CA *keys.CA, ServerCerts *keys.Server, ClientCerts *keys.Client) {
+func (rc *RaftNode) startRaft(keys *keys.Keys) {
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
 			panic(fmt.Sprintf("smr: cannot create dir for snapshot (%v)", err))
@@ -309,12 +309,12 @@ func (rc *RaftNode) startRaft(CA *keys.CA, ServerCerts *keys.Server, ClientCerts
 		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
 		ErrorC:      make(chan error),
 		TLSInfo: transport.TLSInfo{
-			CertFile:       ServerCerts.CertificatePath,
-			KeyFile:        ServerCerts.PrivateKeyPath,
+			CertFile:       keys.Server.CertificatePath,
+			KeyFile:        keys.Server.PrivateKeyPath,
 			ClientCertAuth: true,
-			ClientCertFile: ClientCerts.CertificatePath,
-			ClientKeyFile:  ClientCerts.PrivateKeyPath,
-			TrustedCAFile:  CA.CertificatePath,
+			ClientCertFile: keys.Clients["root"].CertificatePath,
+			ClientKeyFile:  keys.Clients["root"].PrivateKeyPath,
+			TrustedCAFile:  keys.CA.CertificatePath,
 			HandshakeFailure: func(conn *tls.Conn, err error) {
 				fmt.Println(err.Error())
 			},
@@ -332,7 +332,7 @@ func (rc *RaftNode) startRaft(CA *keys.CA, ServerCerts *keys.Server, ClientCerts
 		}
 	}
 
-	go rc.serveRaft()
+	go rc.serveRaft(keys)
 	go rc.serveChannels()
 }
 
@@ -509,7 +509,7 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	return ms
 }
 
-func (rc *RaftNode) serveRaft() {
+func (rc *RaftNode) serveRaft(keys *keys.Keys) {
 	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers[rc.id-1]))
 	url, err := url.Parse(rc.Peers[rc.id-1])
 	if err != nil {
@@ -521,10 +521,14 @@ func (rc *RaftNode) serveRaft() {
 		log.Fatalf("raft: Failed to listen rafthttp (%v)", err)
 	}
 
-	err = (&http.Server{
-		Handler:   rc.transport.Handler(),
-		TLSConfig: rc.TLSConfig,
-	}).ServeTLS(ln, "", "")
+	server := &http.Server{
+		Handler: rc.transport.Handler(),
+	}
+
+	server.TLSConfig = &tls.Config{}
+	server.TLSConfig.GetCertificate = keys.Reloader.GetCertificateFunc()
+
+	server.ServeTLS(ln, "", "")
 
 	if err != nil {
 		panic(err)

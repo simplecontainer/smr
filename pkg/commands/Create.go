@@ -1,15 +1,12 @@
 package commands
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
-	"io"
 	"os"
 	"strings"
 )
@@ -18,23 +15,11 @@ func Create() {
 	Commands = append(Commands, Command{
 		name: "create",
 		condition: func(*api.Api) bool {
-			if os.Args[2] == "" {
-				logger.Log.Warn("please specify project name")
-				return false
-			} else {
-				return true
-			}
+			return true
 		},
 		functions: []func(*api.Api, []string){
 			func(api *api.Api, args []string) {
-				_, err := bootstrap.CreateProject(os.Args[2], api.Config)
-
-				if err != nil {
-					panic(err)
-				}
-
-				var out io.Writer
-				out, err = os.OpenFile(fmt.Sprintf("%s/%s/%s/%s/config.yaml", api.Config.Environment.HOMEDIR, static.SMR, os.Args[2], static.CONFIGDIR), (os.O_WRONLY | os.O_CREATE), 0644)
+				_, err := bootstrap.CreateProject(static.ROOTSMR, api.Config)
 
 				if err != nil {
 					panic(err)
@@ -92,7 +77,7 @@ func Create() {
 					JoinCluster: viper.GetBool("join"),
 				}
 
-				err = startup.Save(api.Config, out)
+				err = startup.Save(api.Config)
 
 				if err != nil {
 					panic(err)

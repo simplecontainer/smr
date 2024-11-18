@@ -6,9 +6,10 @@ import (
 )
 
 type Keys struct {
-	CA      *CA
-	Server  *Server
-	Clients map[string]*Client
+	CA       *CA
+	Server   *Server
+	Clients  map[string]*Client
+	Reloader *keypairReloader
 }
 
 type CA struct {

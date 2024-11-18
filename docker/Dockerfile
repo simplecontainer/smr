@@ -7,7 +7,7 @@ ARG TARGETARCH
 
 RUN mkdir /opt/smr && \
     adduser -D smr-agent && \
-    mkdir -p /home/smr-agent/smr/smr && \
+    mkdir -p /home/smr-agent/smr && \
     mkdir -p /home/smr-agent/.ssh/simplecontainer
 
 COPY smr-$TARGETOS-$TARGETARCH/smr /opt/smr/smr

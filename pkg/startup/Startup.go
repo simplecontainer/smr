@@ -8,16 +8,27 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
-	"io"
 	"net"
 	"os"
 )
 
-func Load(in io.Reader) (*configuration.Configuration, error) {
+func Load(environment *configuration.Environment) (*configuration.Configuration, error) {
+	path := fmt.Sprintf("%s/%s/config.yaml", environment.PROJECTDIR, static.CONFIGDIR)
+
+	file, err := os.Open(path)
+
+	defer func() {
+		file.Close()
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
 	configObj := configuration.NewConfig()
 
 	viper.SetConfigType("yaml")
-	err := viper.ReadConfig(in)
+	err = viper.ReadConfig(file)
 
 	if err != nil {
 		return nil, err
@@ -34,15 +45,16 @@ func Load(in io.Reader) (*configuration.Configuration, error) {
 	return configObj, err
 }
 
-func Save(configObj *configuration.Configuration, out io.Writer) error {
+func Save(configObj *configuration.Configuration) error {
 	yamlObj, err := yaml.Marshal(*configObj)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	_, err = out.Write(yamlObj)
+	path := fmt.Sprintf("%s/%s/%s/config.yaml", configObj.Environment.HOMEDIR, static.ROOTSMR, static.CONFIGDIR)
 
+	err = os.WriteFile(path, yamlObj, 0644)
 	if err != nil {
 		return err
 	}
@@ -96,8 +108,7 @@ func GetEnvironmentInfo() *configuration.Environment {
 	return &configuration.Environment{
 		HOMEDIR:    HOMEDIR,
 		OPTDIR:     OPTDIR,
-		PROJECT:    static.PROJECT,
-		PROJECTDIR: fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, static.PROJECT),
+		PROJECTDIR: fmt.Sprintf("%s/%s", HOMEDIR, static.ROOTDIR),
 		AGENTIP:    GetOutboundIP().String(),
 	}
 }

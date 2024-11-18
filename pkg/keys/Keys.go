@@ -56,6 +56,51 @@ func (keys *Keys) Generate(domains []string, ips []string) error {
 		return err
 	}
 
+	keys.Reloader, err = NewKeypairReloader(keys.Server.CertificatePath, keys.Server.PrivateKeyPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (keys *Keys) RegenerateClient(domains []string, ips []string) error {
+	var ip []net.IP = make([]net.IP, 0)
+
+	for _, IP := range ips {
+		ip = append(ip, net.ParseIP(IP))
+	}
+
+	keys.Clients["root"] = NewClient()
+	err := keys.Clients["root"].Generate(keys.CA, domains, ip, "root")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (keys *Keys) RegenerateServer(domains []string, ips []string) error {
+	var hostname string
+	var err error
+
+	hostname, err = os.Hostname()
+
+	if err != nil {
+		hostname = "simplecontainer"
+	}
+
+	var ip []net.IP = make([]net.IP, 0)
+
+	for _, IP := range ips {
+		ip = append(ip, net.ParseIP(IP))
+	}
+
+	err = keys.Server.Generate(keys.CA, domains, ip, hostname)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -68,6 +113,11 @@ func (keys *Keys) Exists(directory string, username string) error {
 
 	err = keys.Server.Read(directory)
 
+	if err != nil {
+		return err
+	}
+
+	keys.Reloader, err = NewKeypairReloader(keys.Server.CertificatePath, keys.Server.PrivateKeyPath)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -19,7 +20,10 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
+	"net/url"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
 )
 
@@ -85,39 +89,24 @@ func (api *Api) StartCluster(c *gin.Context) {
 	select {
 	case <-server.Server.ReadyNotify():
 		api.Cluster.EtcdClient = cluster.NewEtcdClient()
+
+		signal.Notify(api.Keys.Reloader.ReloadC, syscall.SIGHUP)
+
 		api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster.Cluster)
+		api.SaveClusterConfiguration()
 
 		go api.Cluster.ListenEvents()
+		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
 
-		deadline := time.Now().Add(10 * time.Second)
-		for {
-			if api.Cluster.RaftNode.NodeReady() != nil || time.Now().After(deadline) {
-				c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
-					Explanation:      "",
-					ErrorExplanation: "flannel overlay network failed to start",
-					Error:            true,
-					Success:          false,
-					Data:             nil,
-				})
-				return
-			}
-		}
-
-		select {
-		case <-api.Cluster.RaftNode.NodeReady():
-			err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
-
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
-					Explanation:      "",
-					ErrorExplanation: "flannel overlay network failed to start",
-					Error:            true,
-					Success:          false,
-					Data:             nil,
-				})
-				return
-			}
-			break
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+				Explanation:      "",
+				ErrorExplanation: "flannel overlay network failed to start",
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+			return
 		}
 
 		c.JSON(http.StatusOK, contracts.ResponseOperator{
@@ -215,11 +204,65 @@ func (api *Api) AddNode(c *gin.Context) {
 	}
 
 	api.Cluster.Add(node)
+
+	var url *url.URL
+	var hostnames = make([]string, 0)
+
+	for _, n := range api.Cluster.Cluster {
+		url, err = client.ParseHostURL(n)
+		tmp := strings.Split(url.Host, ":")
+		hostnames = append(hostnames, tmp[0])
+	}
+
+	logger.Log.Info("regenerating server certificate to support cluster nodes")
+
+	err = api.Keys.RegenerateClient(
+		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
+		append(hostnames, strings.Split(api.Config.ExternalIP, ",")...),
+	)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	err = api.Keys.RegenerateServer(
+		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
+		append(hostnames, strings.Split(api.Config.ExternalIP, ",")...),
+	)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	err = api.Keys.Clients["root"].Write(static.SMR_SSH_HOME, "root")
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	err = api.Keys.Server.Write(static.SMR_SSH_HOME)
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
 	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  node.NodeID,
 		Context: []byte(node.URL),
 	}
+
+	api.SaveClusterConfiguration()
+
+	c.JSON(http.StatusOK, contracts.ResponseOperator{
+		Explanation:      "",
+		ErrorExplanation: "everything went ok",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	})
 }
 func (api *Api) RemoveNode(c *gin.Context) {
 	node, err := cluster.NewNodeRequest(c.Request.Body)
@@ -240,21 +283,24 @@ func (api *Api) RemoveNode(c *gin.Context) {
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: node.NodeID,
 	}
+
+	api.SaveClusterConfiguration()
+
+	c.JSON(http.StatusOK, contracts.ResponseOperator{
+		Explanation:      "",
+		ErrorExplanation: "everything went ok",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	})
 }
 
-func (api *Api) XXL() {
+func (api *Api) SaveClusterConfiguration() {
 	api.Config.KVStore.Node = api.Cluster.Node.NodeID
 	api.Config.KVStore.URL = api.Cluster.Node.URL
 	api.Config.KVStore.Cluster = api.Cluster.Cluster
 
-	fmt.Println(api.Config)
-
-	var out io.Writer
-	var err error
-
-	out, err = os.OpenFile(fmt.Sprintf("%s/%s/config.yaml", api.Config.Environment.PROJECTDIR, static.CONFIGDIR), os.O_WRONLY, 0644)
-
-	err = startup.Save(api.Config, out)
+	err := startup.Save(api.Config)
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}

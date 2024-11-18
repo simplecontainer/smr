@@ -2,7 +2,7 @@ package configuration
 
 type Configuration struct {
 	Platform       string       `yaml:"platform"`
-	OverlayNetwork string       `yaml:overlaynetwork`
+	OverlayNetwork string       `yaml:"overlaynetwork"`
 	Agent          string       `yaml:"agent"`
 	Port           int          `yaml:"port"`
 	KVStore        *KVStore     `yaml:"kvstore"`

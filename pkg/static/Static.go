@@ -2,7 +2,7 @@ package static
 
 const ROOTDIR string = "smr"
 const CONFIGDIR string = "config"
-const PROJECT = "smr"
+const ROOTSMR = "smr"
 
 const SMR string = "smr"
 

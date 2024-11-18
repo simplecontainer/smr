@@ -31,13 +31,7 @@ func Start() {
 		},
 		functions: []func(*api.Api, []string){
 			func(api *api.Api, args []string) {
-				configFile, err := os.Open(fmt.Sprintf("%s/%s/config.yaml", api.Config.Environment.PROJECTDIR, static.CONFIGDIR))
-
-				if err != nil {
-					panic(err)
-				}
-
-				conf, err := startup.Load(configFile)
+				conf, err := startup.Load(api.Config.Environment)
 
 				if err != nil {
 					panic(err)
@@ -60,8 +54,8 @@ func Start() {
 
 				if found != nil {
 					err = api.Keys.Generate(
-						append([]string{fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
-						append([]string{}, strings.Split(api.Config.ExternalIP, ",")...),
+						append([]string{"localhost", fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
+						append([]string{"127.0.0.1"}, strings.Split(api.Config.ExternalIP, ",")...),
 					)
 
 					if err != nil {
@@ -242,6 +236,8 @@ func Start() {
 					Handler:   router,
 					TLSConfig: tlsConfig,
 				}
+
+				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
 
 				api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
 
