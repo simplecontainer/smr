@@ -45,77 +45,10 @@ Example provided is for Docker platform which is only currently supported.
 Future platforms to be included:
 - Podman
 
-### Configuration for the localhost
-Exposing the control plane only to the localhost:
-```bash
-LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
-
-mkdir $HOME/.smr
-docker pull simplecontainermanager/smr:$LATEST_VERSION
-docker run \
-       -v $HOME/.smr:/home/smr-agent/smr \
-       -e DOMAIN=localhost \
-       -e PLATFORM=docker \
-       -e HOSTNAME=$(hostname) \
-       -e EXTERNALIP=127.0.0.1 \
-       -e HOMEDIR=$HOME \
-       smr:$LATEST_VERSION create smr
-```
-
-### Configuration for the Internet and localhost
-Exposing the control plane to the localhost and other domains:
-
-```bash
-LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
-
-mkdir $HOME/.smr
-docker pull simplecontainermanager/smr:$LATEST_VERSION
-docker run \
-       -v $HOME/.smr:/home/smr-agent/smr \
-       -e DOMAIN=localhost,example.com \
-       -e PLATFORM=docker \
-       -e HOSTNAME=$(hostname) \
-       -e EXTERNALIP=127.0.0.1,PUBLIC_IP \
-       -e HOMEDIR=$HOME \
-       smr:$LATEST_VERSION create smr
-```
-
->Replace example.com and PUBLIC_IP with your domain and public IP of the machine. You can even add more domains and IPs just by appending coma and adding a new domain or IP.
-
-This will generate a project, build a configuration file, and also it will generate certificates under $HOME/.ssh/simplecontainer. These are important and used by the client to communicate with the simplecontainer in a secure manner.
-This bundle is needed by the client to connect to the Simplecontainer API.
-
-```bash
-$ cat $HOME/.ssh/simplecontainer/root.pem
------BEGIN PRIVATE KEY-----
-MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
-ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
-...
-```
-
-Afterward running will start simplecontainer as docker container, and it will be able
-to manage containers.
-
-```bash
-LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
-
-docker run \
-       -v /var/run/docker.sock:/var/run/docker.sock \
-       -v $HOME/.smr:/home/smr-agent/smr \
-       -v $HOME/.ssh:/home/smr-agent/.ssh \
-       -v /tmp:/tmp \
-       -p 0.0.0.0:1443:1443 \
-       --dns 127.0.0.1 \
-       --name smr-agent \
-       -d smr:$LATEST_VERSION start
-```
-
->If you want to expose the control plane only to the localhost change `-p 0.0.0.0:1443:1443` to the `-p 127.0.0.1:1443:1443`
-
 Installation of the client
 --------------------------
 
-Client CLI is used for communication to the simplecontainer over network using mTLS. 
+Client CLI is used for communication to the simplecontainer over network using mTLS.
 It is secured by mutual verification and encryption.
 
 To install client just download it from releases:
@@ -131,16 +64,68 @@ curl -o client https://github.com/simplecontainer/client/releases/download/$VERS
 sudo mv client /usr/local/bin/smr
 ```
 
+### Running simplecontainer exposed only on localhost
+Exposing the control plane only to the localhost:
+
+```bash
+smr node run --image smr --tag latest --args="create --agent smr-agent-1" --agent smr-agent-1 --wait
+smr node run --image smr --tag $LATEST_SMR_COMMIT --args="start" --hostport localhost:1443 --agent smr-agent-1
+smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1 -y --wait
+```
+
+### Running simplecontainer expoesed on the internet
+Exposing the control plane to the `smr.example.com` (**Change domain to your domain**):
+
+```bash
+smr node run --image smr --tag latest --args="create --agent smr-agent-1 --domain smr.example.com" --agent smr-agent-1 --wait
+smr node run --image smr --tag $LATEST_SMR_COMMIT --args="start" --agent smr-agent-1
+```
+
+Download `$HOME/.ssh/simplecontainer/root.pem` and copy-paste it to the `$HOME/.ssh/simplecontainer/root.pem` on the
+other machine.
+
+From that machine run:
+```bash
+smr context connect https://smr.example.com:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1 -y --wait
+```
+
+### Explanation of what happens?
+
+These commands will generate a project, build a configuration file, and also it will generate certificates under $HOME/.ssh/simplecontainer. These are important and used by the client to communicate with the simplecontainer in a secure manner.
+
+The client needs this bundle to connect to the Simplecontainer API.
+```
+$ cat $HOME/.ssh/simplecontainer/root.pem
+-----BEGIN PRIVATE KEY-----
+MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
+ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
+...
+```
+
+### Exposing over IP addresses
+
+Same as before smr client can be used:
+```
+smr node run --image smr --tag latest --args="create --agent smr-agent-1 --domain smr.example.com, smr1.example.com --ip 8.8.8.8,9.9.9.9" --agent smr-agent-1 --wait
+smr node run --image smr --tag $LATEST_SMR_COMMIT --args="start" --agent smr-agent-1
+```
+As you can see multiple IP addresses and domains can be used in comma-separated format.
+
+These are important because of certificate creation. Only domains and IPs listed in these commands can verify against the simplecontainer agent.
+
+Contexts and control plane
+--------------------------
+
 To access the simplecontainer control plane via local or public network, context needs to be added with the appropriate mtls bundle generated.
 
 ```bash
-smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context localhost
+smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1
 {"level":"info","ts":1720694421.2032707,"caller":"context/Connect.go:40","msg":"authenticated against the smr-agent"}
 smr ps
 GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
 ```
 
-Access to the control plane of the simplecontainer is configured successfully if you get same output.
+Access to the control plane of the simplecontainer is configured successfully if you get similar output.
 
 ## Running Docker containers using GitOps
 
