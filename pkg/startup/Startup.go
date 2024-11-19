@@ -8,16 +8,27 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
-	"io"
 	"net"
 	"os"
 )
 
-func Load(in io.Reader) (*configuration.Configuration, error) {
+func Load(environment *configuration.Environment) (*configuration.Configuration, error) {
+	path := fmt.Sprintf("%s/%s/config.yaml", environment.PROJECTDIR, static.CONFIGDIR)
+
+	file, err := os.Open(path)
+
+	defer func() {
+		file.Close()
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
 	configObj := configuration.NewConfig()
 
 	viper.SetConfigType("yaml")
-	err := viper.ReadConfig(in)
+	err = viper.ReadConfig(file)
 
 	if err != nil {
 		return nil, err
@@ -34,15 +45,16 @@ func Load(in io.Reader) (*configuration.Configuration, error) {
 	return configObj, err
 }
 
-func Save(configObj *configuration.Configuration, out io.Writer) error {
+func Save(configObj *configuration.Configuration) error {
 	yamlObj, err := yaml.Marshal(*configObj)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	_, err = out.Write(yamlObj)
+	path := fmt.Sprintf("%s/%s/%s/config.yaml", configObj.Environment.HOMEDIR, static.ROOTSMR, static.CONFIGDIR)
 
+	err = os.WriteFile(path, yamlObj, 0644)
 	if err != nil {
 		return err
 	}
@@ -53,7 +65,14 @@ func Save(configObj *configuration.Configuration, out io.Writer) error {
 func SetFlags() {
 	flag.String("project", "", "Project name")
 	flag.Bool("opt", false, "Run in opt mode - do it only in containers")
+	flag.Int("port", 1443, "SMR TLS port")
 	flag.Bool("verbose", false, "Verbose output")
+	flag.String("agent", "", "Agent container name")
+	flag.String("cluster", "", "SMR Cluster")
+	flag.String("overlay", "10.10.0.0/16", "Overlay network for flannel to use")
+	flag.Int("node", 0, "Distributed KVStore Node ID")
+	flag.Bool("join", false, "Join the cluster")
+	flag.Bool("restore", false, "Restore cluster")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -82,9 +101,6 @@ func GetEnvironmentInfo() *configuration.Environment {
 		}
 	}
 
-	HOSTNAME := ""
-	HOSTNAME, err = os.Hostname()
-
 	if err != nil {
 		panic(err)
 	}
@@ -92,9 +108,7 @@ func GetEnvironmentInfo() *configuration.Environment {
 	return &configuration.Environment{
 		HOMEDIR:    HOMEDIR,
 		OPTDIR:     OPTDIR,
-		PROJECT:    static.PROJECT,
-		PROJECTDIR: fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, static.PROJECT),
-		NODENAME:   HOSTNAME,
+		PROJECTDIR: fmt.Sprintf("%s/%s", HOMEDIR, static.ROOTDIR),
 		AGENTIP:    GetOutboundIP().String(),
 	}
 }

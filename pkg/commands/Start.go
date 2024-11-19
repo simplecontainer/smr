@@ -17,7 +17,6 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
-	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,13 +31,7 @@ func Start() {
 		},
 		functions: []func(*api.Api, []string){
 			func(api *api.Api, args []string) {
-				configFile, err := os.Open(fmt.Sprintf("%s/%s/config.yaml", api.Config.Environment.PROJECTDIR, static.CONFIGDIR))
-
-				if err != nil {
-					panic(err)
-				}
-
-				conf, err := startup.Load(configFile)
+				conf, err := startup.Load(api.Config.Environment)
 
 				if err != nil {
 					panic(err)
@@ -61,8 +54,8 @@ func Start() {
 
 				if found != nil {
 					err = api.Keys.Generate(
-						append([]string{fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
-						[]net.IP{net.ParseIP(api.Config.ExternalIP), net.IPv6loopback},
+						append([]string{"localhost", fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
+						append([]string{"127.0.0.1"}, strings.Split(api.Config.ExternalIP, ",")...),
 					)
 
 					if err != nil {
@@ -106,9 +99,6 @@ func Start() {
 				}
 
 				for username, c := range api.Keys.Clients {
-					fmt.Println(username)
-					fmt.Println(c.Certificate.DNSNames)
-
 					var httpClient *http.Client
 					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients["root"])
 					if err != nil {
@@ -126,8 +116,19 @@ func Start() {
 				port := 53
 				DNSserver := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
 
-				go DNSserver.ListenAndServe()
-				defer DNSserver.Shutdown()
+				go func() {
+					err = DNSserver.ListenAndServe()
+					if err != nil {
+						panic(err)
+					}
+				}()
+
+				defer func(DNSserver *mdns.Server) {
+					err = DNSserver.Shutdown()
+					if err != nil {
+						return
+					}
+				}(DNSserver)
 
 				router := gin.New()
 				router.Use(middleware.TLSAuth())
@@ -201,7 +202,11 @@ func Start() {
 				router.GET("/version", api.Version)
 				router.GET("/restore", api.Restore)
 
-				api.SetupEncryptedDatabase(api.Keys.Server.PrivateKeyBytes[:32])
+				router.POST("/cluster/start", api.StartCluster)
+				router.POST("/cluster/node", api.AddNode)
+				router.DELETE("/cluster/node/:node", api.RemoveNode)
+				router.GET("/cluster", api.GetCluster)
+				router.PUT("/etcd/update/*key", api.EtcdPut)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)
@@ -224,11 +229,15 @@ func Start() {
 					Certificates: []tls.Certificate{serverTLSCert},
 				}
 
+				api.SetupEncryptedDatabase(api.Keys.Server.PrivateKeyBytes[:32])
+
 				server := http.Server{
 					Addr:      ":1443",
 					Handler:   router,
 					TLSConfig: tlsConfig,
 				}
+
+				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
 
 				api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
 

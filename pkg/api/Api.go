@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/tls"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -9,8 +10,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/startup"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"sync"
 	"time"
 )
@@ -69,4 +72,17 @@ func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
 	}
 
 	api.Badger = dbSecrets
+}
+
+func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster []string) {
+	proposeC := make(chan string)
+	confChangeC := make(chan raftpb.ConfChange)
+
+	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
+
+	api.Cluster.RaftNode = &raft.RaftNode{}
+	commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster, api.Config.KVStore.JoinCluster, getSnapshot, proposeC, confChangeC)
+
+	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager, proposeC, commitC, errorC)
+	api.Cluster.KVStore.ConfChangeC = confChangeC
 }

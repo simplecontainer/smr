@@ -13,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/spf13/viper"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 					Configuration:      make(map[string]string),
 					ObjectDependencies: make([]*f.Format, 0),
 					NodeIP:             config.ExternalIP,
-					NodeName:           config.Environment.NODENAME,
+					NodeName:           viper.GetString("agent"),
 				},
 				Status: statusObj,
 			},
@@ -50,27 +51,23 @@ func New(platform string, name string, config *configuration.Configuration, defi
 	}
 }
 
-func (c Container) IsDaemonRunning() {
-	c.Platform.IsDaemonRunning()
-}
-
 func (c Container) Start() bool {
-	return c.Platform.Start(c.General.Runtime)
+	return c.Platform.Start()
 }
 func (c Container) Stop() bool {
-	return c.Platform.Stop(c.General.Runtime)
+	return c.Platform.Stop()
 }
 func (c Container) Restart() bool {
-	return c.Platform.Restart(c.General.Runtime)
+	return c.Platform.Restart()
 }
 func (c Container) Delete() error {
-	return c.Platform.Delete(c.General.Runtime)
+	return c.Platform.Delete()
 }
 func (c Container) Rename(newName string) error {
-	return c.Platform.Rename(c.General.Runtime, newName)
+	return c.Platform.Rename(newName)
 }
 func (c Container) Exec(command []string) types.ExecResult {
-	return c.Platform.Exec(c.General.Runtime, command)
+	return c.Platform.Exec(command)
 }
 
 func (c Container) Get() (*TDTypes.Container, error) {

@@ -191,7 +191,7 @@ func (network *Network) FindNetworkAlias(endpointName string) error {
 
 	for _, c := range networks.Containers {
 		if c.Name == endpointName {
-			return errors.New("endoint already exists")
+			return errors.New("endpoint already exists")
 		}
 	}
 

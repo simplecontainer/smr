@@ -40,13 +40,12 @@ func NewPlatformEventsListener(shared *shared.Shared, platform string) {
 			for {
 				select {
 				case err = <-cErr:
-					fmt.Println(err)
+					logger.Log.Error(err.Error())
 				case msg := <-cEvents:
 					// TODO: Do I want to do blocking here? Or go with gouroutine?
 					Handle(platform, shared, msg)
 				}
 			}
-			break
 		}
 	}
 }

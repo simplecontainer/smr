@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -96,26 +95,14 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 //	@Failure		500		{object}	  contracts.ResponseOperator
 //	@Router			/database/{key} [post]
 func (api *Api) DatabaseSet(c *gin.Context) {
-	api.BadgerSync.Lock()
-	jsonData, err := io.ReadAll(c.Request.Body)
+	var data []byte
+	data, err := io.ReadAll(c.Request.Body)
 
 	if err == nil {
-		valueSent := Kv{}
-
-		if err = json.Unmarshal(jsonData, &valueSent); err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
-				Explanation:      "failed to store value in the key-value store",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return
-		}
+		api.BadgerSync.Lock()
 
 		err = api.Badger.Update(func(txn *badger.Txn) error {
-			err = txn.Set([]byte(c.Param("key")), []byte(valueSent.Value))
+			err = txn.Set([]byte(c.Param("key")), data)
 			return err
 		})
 
@@ -130,13 +117,15 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 				Data:             nil,
 			})
 		} else {
+			api.Cluster.KVStore.Propose(c.Param("key"), string(data))
+
 			c.JSON(http.StatusOK, contracts.ResponseOperator{
 				Explanation:      "value stored in the key value store",
 				ErrorExplanation: "",
 				Error:            false,
 				Success:          true,
 				Data: map[string]any{
-					c.Param("key"): valueSent.Value,
+					c.Param("key"): string(data),
 				},
 			})
 		}

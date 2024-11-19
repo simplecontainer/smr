@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency/replicas"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
 	"github.com/simplecontainer/smr/pkg/kinds/container/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
@@ -18,6 +19,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -36,6 +38,13 @@ func (container *Container) Start() error {
 	}
 
 	logger.Log.Info(fmt.Sprintf("platform for running container is %s", container.Shared.Manager.Config.Platform))
+
+	// Check if everything alright with the daemon
+	switch container.Shared.Manager.Config.Platform {
+	case static.PLATFORM_DOCKER:
+		docker.IsDaemonRunning()
+		break
+	}
 
 	// Start listening events based on the platform and for internal events
 	go events.NewPlatformEventsListener(container.Shared, container.Shared.Manager.Config.Platform)

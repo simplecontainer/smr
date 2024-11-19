@@ -9,6 +9,7 @@ import (
 
 type Object struct {
 	Changelog diff.Changelog
+	Raw       bool
 	client    *client.Client
 
 	definition       map[string]any

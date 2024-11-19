@@ -15,6 +15,8 @@ echo "$BASE_DIR/$DIRNAME"
 echo "***********************************************"
 
 CGO_ENABLED=0 go build -ldflags '-s -w' || exit 1
-mv smr smr-linux-amd64
+
+mkdir $BASE_DIR/smr-linux-amd64
+mv smr $BASE_DIR/smr-linux-amd64/smr
 
 cd "$BASE_DIR"
