@@ -92,6 +92,12 @@ func Start() {
 					}
 				}
 
+				api.Keys.Reloader, err = keys.NewKeypairReloader(api.Keys.Server.CertificatePath, api.Keys.Server.PrivateKeyPath)
+				if err != nil {
+					fmt.Println(err.Error())
+					os.Exit(1)
+				}
+
 				err = api.Keys.LoadClients(static.SMR_SSH_HOME)
 
 				if err != nil {

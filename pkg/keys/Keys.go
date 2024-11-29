@@ -56,11 +56,6 @@ func (keys *Keys) Generate(domains []string, ips []string) error {
 		return err
 	}
 
-	keys.Reloader, err = NewKeypairReloader(keys.Server.CertificatePath, keys.Server.PrivateKeyPath)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
