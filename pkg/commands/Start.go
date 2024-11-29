@@ -51,7 +51,23 @@ func Start() {
 				api.Manager.KindsRegistry = api.KindsRegistry
 
 				var found error
-				found = api.Keys.Exists(static.SMR_SSH_HOME, "root")
+
+				found = api.Keys.CAExists(static.SMR_SSH_HOME, "root")
+
+				if found != nil {
+					err = api.Keys.CA.Generate()
+
+					if err != nil {
+						panic("failed to generate CA")
+					}
+
+					err = api.Keys.CA.Write(static.SMR_SSH_HOME)
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				found = api.Keys.ServerExists(static.SMR_SSH_HOME, "root")
 
 				if found != nil {
 					err = api.Keys.Generate(
@@ -69,11 +85,6 @@ func Start() {
 					fmt.Println("/* It is located in the .ssh directory in home of the running user!  */")
 					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
 					fmt.Println("/*********************************************************************/")
-
-					err = api.Keys.CA.Write(static.SMR_SSH_HOME)
-					if err != nil {
-						panic(err)
-					}
 
 					err = api.Keys.Server.Write(static.SMR_SSH_HOME)
 					if err != nil {

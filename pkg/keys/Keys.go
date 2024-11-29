@@ -27,13 +27,7 @@ func (keys *Keys) AppendClient(username string, newClient *Client) {
 }
 
 func (keys *Keys) Generate(domains []string, ips []string) error {
-	err := keys.CA.Generate()
-	if err != nil {
-		return err
-	}
-
-	var hostname string
-	hostname, err = os.Hostname()
+	hostname, err := os.Hostname()
 
 	if err != nil {
 		hostname = "simplecontainer"
@@ -99,14 +93,18 @@ func (keys *Keys) RegenerateServer(domains []string, ips []string) error {
 	return nil
 }
 
-func (keys *Keys) Exists(directory string, username string) error {
+func (keys *Keys) CAExists(directory string, username string) error {
 	err := keys.CA.Read(directory)
 
 	if err != nil {
 		return err
 	}
 
-	err = keys.Server.Read(directory)
+	return nil
+}
+
+func (keys *Keys) ServerExists(directory string, username string) error {
+	err := keys.Server.Read(directory)
 
 	if err != nil {
 		return err
