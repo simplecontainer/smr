@@ -49,3 +49,7 @@ func Contains(s []string, e string) bool {
 	}
 	return false
 }
+
+func SplitClean(c rune) bool {
+	return c == ','
+}

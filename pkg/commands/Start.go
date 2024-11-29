@@ -8,6 +8,7 @@ import (
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -54,8 +55,8 @@ func Start() {
 
 				if found != nil {
 					err = api.Keys.Generate(
-						append([]string{"localhost", fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
-						append([]string{"127.0.0.1"}, strings.Split(api.Config.ExternalIP, ",")...),
+						append([]string{"localhost", fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.FieldsFunc(api.Config.Domain, helpers.SplitClean)...),
+						append([]string{"127.0.0.1"}, strings.FieldsFunc(api.Config.ExternalIP, helpers.SplitClean)...),
 					)
 
 					if err != nil {
