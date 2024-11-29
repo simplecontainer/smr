@@ -25,31 +25,9 @@ func Create() {
 					panic(err)
 				}
 
-				// TODO: Translate all these to viper flags it is ugly
-
-				target := "development"
-				if os.Getenv("ENVIRONMENT") != "" {
-					target = os.Getenv("ENVIRONMENT")
-				}
-
-				domain := "localhost"
-				if os.Getenv("DOMAIN") != "" {
-					domain = os.Getenv("DOMAIN")
-				}
-
-				externalIP := "127.0.0.1"
-				if os.Getenv("EXTERNALIP") != "" {
-					externalIP = os.Getenv("EXTERNALIP")
-				}
-
 				hostHomeDir := ""
 				if os.Getenv("HOMEDIR") != "" {
 					hostHomeDir = os.Getenv("HOMEDIR")
-				}
-
-				platform := static.PLATFORM_DOCKER
-				if os.Getenv("PLATFORM") != "" {
-					platform = os.Getenv("PLATFORM")
 				}
 
 				hostname := ""
@@ -57,14 +35,14 @@ func Create() {
 					hostname = os.Getenv("HOSTNAME")
 				}
 
-				api.Config.Platform = platform
+				api.Config.Platform = viper.GetString("platform")
 				api.Config.OverlayNetwork = viper.GetString("overlay")
 				api.Config.Port = viper.GetInt("port")
 				api.Config.Agent = viper.GetString("agent")
-				api.Config.Target = target
+				api.Config.Target = viper.GetString("environment")
 				api.Config.Root = api.Config.Environment.PROJECTDIR
-				api.Config.Domain = domain
-				api.Config.ExternalIP = externalIP
+				api.Config.Domain = viper.GetString("domains")
+				api.Config.ExternalIP = viper.GetString("ips")
 				api.Config.OptRoot = "/opt/smr"
 				api.Config.CommonName = "root"
 				api.Config.HostHome = hostHomeDir

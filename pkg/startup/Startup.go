@@ -66,7 +66,12 @@ func SetFlags() {
 	flag.String("project", "", "Project name")
 	flag.Bool("opt", false, "Run in opt mode - do it only in containers")
 	flag.Int("port", 1443, "SMR TLS port")
+	flag.String("environment", "development", "Development or production environment")
+	flag.String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
+	flag.String("domains", "", "Domains that TLS certificates are valid for")
+	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
 	flag.Bool("verbose", false, "Verbose output")
+
 	flag.String("agent", "", "Agent container name")
 	flag.String("cluster", "", "SMR Cluster")
 	flag.String("overlay", "10.10.0.0/16", "Overlay network for flannel to use")

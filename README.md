@@ -60,7 +60,8 @@ Example for installing latest version:
 ```bash
 LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
 PLATFORM=linux-amd64
-curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
+curl -Lo client https://github.com/simplecontainer/client/releases/download/$LATEST_VERSION/client-$PLATFORM
+chmod +x client
 sudo mv client /usr/local/bin/smr
 ```
 
@@ -68,8 +69,10 @@ sudo mv client /usr/local/bin/smr
 Exposing the control plane only to the localhost:
 
 ```bash
-smr node run --image smr --tag latest --args="create --agent smr-agent-1" --agent smr-agent-1 --wait
-smr node run --image smr --tag $LATEST_SMR_COMMIT --args="start" --hostport localhost:1443 --agent smr-agent-1
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+
+smr node run --image simplecontainermanager/smr --tag $LATEST_VERSION --args="create --agent smr-agent-1" --agent smr-agent-1 --wait
+smr node run --image simplecontainermanager/smr --tag $LATEST_VERSION --args="start" --hostport localhost:1443 --agent smr-agent-1
 smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1 -y --wait
 ```
 
@@ -77,8 +80,10 @@ smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem -
 Exposing the control plane to the `smr.example.com` (**Change domain to your domain**):
 
 ```bash
-smr node run --image smr --tag latest --args="create --agent smr-agent-1 --domain smr.example.com" --agent smr-agent-1 --wait
-smr node run --image smr --tag $LATEST_SMR_COMMIT --args="start" --agent smr-agent-1
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+
+smr node run --image simplecontainermanager/smr --tag $LATEST_VERSION --args="create --agent smr-agent-1 --domains smr.example.com" --agent smr-agent-1 --wait
+smr node run --image simplecontainermanager/smr --tag $LATEST_VERSION --args="start" --agent smr-agent-1
 ```
 
 Download `$HOME/.ssh/simplecontainer/root.pem` and copy-paste it to the `$HOME/.ssh/simplecontainer/root.pem` on the
@@ -106,7 +111,7 @@ ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
 
 Same as before smr client can be used:
 ```
-smr node run --image smr --tag latest --args="create --agent smr-agent-1 --domain smr.example.com, smr1.example.com --ip 8.8.8.8,9.9.9.9" --agent smr-agent-1 --wait
+smr node run --image smr --tag latest --args="create --agent smr-agent-1 --domains smr.example.com, smr1.example.com --ips 8.8.8.8,9.9.9.9" --agent smr-agent-1 --wait
 smr node run --image smr --tag $LATEST_SMR_COMMIT --args="start" --agent smr-agent-1
 ```
 As you can see multiple IP addresses and domains can be used in comma-separated format.
