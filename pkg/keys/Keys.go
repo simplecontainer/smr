@@ -112,11 +112,6 @@ func (keys *Keys) Exists(directory string, username string) error {
 		return err
 	}
 
-	keys.Reloader, err = NewKeypairReloader(keys.Server.CertificatePath, keys.Server.PrivateKeyPath)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

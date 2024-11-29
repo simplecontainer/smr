@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
@@ -217,8 +218,8 @@ func (api *Api) AddNode(c *gin.Context) {
 	logger.Log.Info("regenerating server certificate to support cluster nodes")
 
 	err = api.Keys.RegenerateClient(
-		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
-		append(hostnames, strings.Split(api.Config.ExternalIP, ",")...),
+		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.FieldsFunc(api.Config.Domain, helpers.SplitClean)...),
+		append(hostnames, strings.FieldsFunc(api.Config.ExternalIP, helpers.SplitClean)...),
 	)
 
 	if err != nil {
@@ -227,8 +228,8 @@ func (api *Api) AddNode(c *gin.Context) {
 	}
 
 	err = api.Keys.RegenerateServer(
-		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.Split(api.Config.Domain, ",")...),
-		append(hostnames, strings.Split(api.Config.ExternalIP, ",")...),
+		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.FieldsFunc(api.Config.Domain, helpers.SplitClean)...),
+		append(hostnames, strings.FieldsFunc(api.Config.ExternalIP, helpers.SplitClean)...),
 	)
 
 	if err != nil {

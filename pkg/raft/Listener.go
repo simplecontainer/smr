@@ -16,7 +16,9 @@ package raft
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"net/url"
 	"time"
 )
 
@@ -27,11 +29,16 @@ type stoppableListener struct {
 	stopc <-chan struct{}
 }
 
-func newStoppableListener(addr string, stopc <-chan struct{}) (*stoppableListener, error) {
-	ln, err := net.Listen("tcp", addr)
+func newStoppableListener(url *url.URL, stopc <-chan struct{}) (*stoppableListener, error) {
+	var ln net.Listener
+	var err error
+
+	ln, err = net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", url.Port()))
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &stoppableListener{ln.(*net.TCPListener), stopc}, nil
 }
 
