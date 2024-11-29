@@ -232,7 +232,7 @@ Important links
 - https://github.com/simplecosntainer/smr
 - https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
-- https://smr.qdnqn.com
+- https://simplecontainer.qdnqn.com
 
 # License
 This project is licensed under the GNU General Public License v3.0. See more in LICENSE file.

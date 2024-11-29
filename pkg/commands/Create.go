@@ -39,7 +39,7 @@ func Create() {
 				api.Config.OverlayNetwork = viper.GetString("overlay")
 				api.Config.Port = viper.GetInt("port")
 				api.Config.Agent = viper.GetString("agent")
-				api.Config.Target = viper.GetString("environment")
+				api.Config.Target = viper.GetString("target")
 				api.Config.Root = api.Config.Environment.PROJECTDIR
 				api.Config.Domain = viper.GetString("domains")
 				api.Config.ExternalIP = viper.GetString("ips")

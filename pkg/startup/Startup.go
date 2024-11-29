@@ -66,7 +66,7 @@ func SetFlags() {
 	flag.String("project", "", "Project name")
 	flag.Bool("opt", false, "Run in opt mode - do it only in containers")
 	flag.Int("port", 1443, "SMR TLS port")
-	flag.String("environment", "development", "Development or production environment")
+	flag.String("target", "development", "Development or production environment")
 	flag.String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
