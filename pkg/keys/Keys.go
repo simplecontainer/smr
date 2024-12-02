@@ -26,7 +26,11 @@ func (keys *Keys) AppendClient(username string, newClient *Client) {
 	keys.Clients[username] = newClient
 }
 
-func (keys *Keys) Generate(domains []string, ips []string) error {
+func (keys *Keys) GenerateCA() error {
+	return keys.CA.Generate()
+}
+
+func (keys *Keys) GenerateServer(domains []string, ips []string) error {
 	hostname, err := os.Hostname()
 
 	if err != nil {
@@ -39,84 +43,32 @@ func (keys *Keys) Generate(domains []string, ips []string) error {
 		ip = append(ip, net.ParseIP(IP))
 	}
 
-	err = keys.Server.Generate(keys.CA, domains, ip, hostname)
-	if err != nil {
-		return err
-	}
-
-	keys.Clients["root"] = NewClient()
-	err = keys.Clients["root"].Generate(keys.CA, domains, ip, "root")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return keys.Server.Generate(keys.CA, domains, ip, hostname)
 }
 
-func (keys *Keys) RegenerateClient(domains []string, ips []string) error {
+func (keys *Keys) GenerateClient(domains []string, ips []string, username string) error {
 	var ip []net.IP = make([]net.IP, 0)
 
 	for _, IP := range ips {
 		ip = append(ip, net.ParseIP(IP))
 	}
 
-	keys.Clients["root"] = NewClient()
-	err := keys.Clients["root"].Generate(keys.CA, domains, ip, "root")
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (keys *Keys) RegenerateServer(domains []string, ips []string) error {
-	var hostname string
-	var err error
-
-	hostname, err = os.Hostname()
-
-	if err != nil {
-		hostname = "simplecontainer"
-	}
-
-	var ip []net.IP = make([]net.IP, 0)
-
-	for _, IP := range ips {
-		ip = append(ip, net.ParseIP(IP))
-	}
-
-	err = keys.Server.Generate(keys.CA, domains, ip, hostname)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	keys.Clients[username] = NewClient()
+	return keys.Clients[username].Generate(keys.CA, domains, ip, username)
 }
 
 func (keys *Keys) CAExists(directory string, username string) error {
-	err := keys.CA.Read(directory)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return keys.CA.Read(directory)
 }
 
 func (keys *Keys) ServerExists(directory string, username string) error {
-	err := keys.Server.Read(directory)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return keys.Server.Read(directory)
 }
 
 func (keys *Keys) ClientExists(directory string, username string) error {
 	var usernameCert = fmt.Sprintf("%s.pem", username)
 
-	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+	return filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
@@ -129,8 +81,6 @@ func (keys *Keys) ClientExists(directory string, username string) error {
 
 		return nil
 	})
-
-	return err
 }
 
 func (keys *Keys) LoadClients(directory string) error {

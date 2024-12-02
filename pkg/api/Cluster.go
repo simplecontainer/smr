@@ -4,12 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/contracts"
-	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
@@ -20,6 +18,7 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os/signal"
@@ -207,30 +206,28 @@ func (api *Api) AddNode(c *gin.Context) {
 	api.Cluster.Add(node)
 
 	var url *url.URL
-	var hostnames = make([]string, 0)
 
 	for _, n := range api.Cluster.Cluster {
 		url, err = client.ParseHostURL(n)
 		tmp := strings.Split(url.Host, ":")
-		hostnames = append(hostnames, tmp[0])
+
+		if net.ParseIP(tmp[0]) != nil {
+			api.Config.IPs = append(api.Config.IPs, tmp[0])
+		} else {
+			api.Config.Domains = append(api.Config.Domains, tmp[0])
+		}
 	}
 
 	logger.Log.Info("regenerating server certificate to support cluster nodes")
 
-	err = api.Keys.RegenerateClient(
-		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.FieldsFunc(api.Config.Domain, helpers.SplitClean)...),
-		append(hostnames, strings.FieldsFunc(api.Config.ExternalIP, helpers.SplitClean)...),
-	)
+	err = api.Keys.GenerateClient(api.Config.Domains, api.Config.IPs, "root")
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	err = api.Keys.RegenerateServer(
-		append([]string{"localhost", url.Host, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.FieldsFunc(api.Config.Domain, helpers.SplitClean)...),
-		append(hostnames, strings.FieldsFunc(api.Config.ExternalIP, helpers.SplitClean)...),
-	)
+	err = api.Keys.GenerateServer(api.Config.Domains, api.Config.IPs)
 
 	if err != nil {
 		logger.Log.Error(err.Error())

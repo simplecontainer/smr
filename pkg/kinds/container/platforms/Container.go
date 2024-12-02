@@ -13,7 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/static"
-	"github.com/spf13/viper"
 	"time"
 )
 
@@ -39,8 +38,6 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      make(map[string]string),
 					ObjectDependencies: make([]*f.Format, 0),
-					NodeIP:             config.ExternalIP,
-					NodeName:           viper.GetString("agent"),
 				},
 				Status: statusObj,
 			},

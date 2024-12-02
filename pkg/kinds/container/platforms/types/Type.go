@@ -14,8 +14,6 @@ type Runtime struct {
 	State              string
 	Ready              bool
 	Configuration      map[string]string
-	NodeName           string
-	NodeIP             string
 	Owner              Owner
 	ObjectDependencies []*f.Format
 }

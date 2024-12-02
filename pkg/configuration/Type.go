@@ -9,10 +9,10 @@ type Configuration struct {
 	Target         string       `default:"development" yaml:"target"`
 	Root           string       `yaml:"root"`
 	OptRoot        string       `yaml:"optroot"`
-	Domain         string       `yaml:"domain"`
-	ExternalIP     string       `yaml:"externalIP"`
+	Domains        []string     `yaml:"domains"`
+	IPs            []string     `yaml:"ips"`
 	CommonName     string       `yaml:"CN"`
-	HostHome       string       `yaml:"home"`
+	HostHome       string       `yaml:"hostHome"`
 	Node           string       `yaml:"node"`
 	Environment    *Environment `yaml:"-"`
 	Flags          Flags        `yaml:"-"`

@@ -8,7 +8,6 @@ import (
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -21,7 +20,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func Start() {
@@ -55,7 +53,7 @@ func Start() {
 				found = api.Keys.CAExists(static.SMR_SSH_HOME, "root")
 
 				if found != nil {
-					err = api.Keys.CA.Generate()
+					err = api.Keys.GenerateCA()
 
 					if err != nil {
 						panic("failed to generate CA")
@@ -70,21 +68,17 @@ func Start() {
 				found = api.Keys.ServerExists(static.SMR_SSH_HOME, "root")
 
 				if found != nil {
-					err = api.Keys.Generate(
-						append([]string{"localhost", fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}, strings.FieldsFunc(api.Config.Domain, helpers.SplitClean)...),
-						append([]string{"127.0.0.1"}, strings.FieldsFunc(api.Config.ExternalIP, helpers.SplitClean)...),
-					)
+					err = api.Keys.GenerateServer(api.Config.Domains, api.Config.IPs)
 
 					if err != nil {
-						logger.Log.Error(err.Error())
-						os.Exit(1)
+						panic(err)
 					}
 
-					fmt.Println("/*********************************************************************/")
-					fmt.Println("/* Certificate is generated for the use by the smr client!           */")
-					fmt.Println("/* It is located in the .ssh directory in home of the running user!  */")
-					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
-					fmt.Println("/*********************************************************************/")
+					err = api.Keys.GenerateClient(api.Config.Domains, api.Config.IPs, "root")
+
+					if err != nil {
+						panic(err)
+					}
 
 					err = api.Keys.Server.Write(static.SMR_SSH_HOME)
 					if err != nil {
@@ -95,6 +89,12 @@ func Start() {
 					if err != nil {
 						panic(err)
 					}
+
+					fmt.Println("/*********************************************************************/")
+					fmt.Println("/* Certificate is generated for the use by the smr client!           */")
+					fmt.Println("/* It is located in the .ssh directory in home of the running user!  */")
+					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
+					fmt.Println("/*********************************************************************/")
 
 					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, "root", api.Keys.Clients["root"])
 

@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
@@ -41,12 +43,23 @@ func Create() {
 				api.Config.Agent = viper.GetString("agent")
 				api.Config.Target = viper.GetString("target")
 				api.Config.Root = api.Config.Environment.PROJECTDIR
-				api.Config.Domain = viper.GetString("domains")
-				api.Config.ExternalIP = viper.GetString("ips")
+				api.Config.Domains = strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean)
+				api.Config.IPs = strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean)
 				api.Config.OptRoot = "/opt/smr"
 				api.Config.CommonName = "root"
 				api.Config.HostHome = hostHomeDir
 				api.Config.Node = hostname
+
+				// Internal domains needed
+				api.Config.Domains = append([]string{
+					"localhost",
+					fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN),
+				}, api.Config.Domains...)
+
+				// Internal IPs needed
+				api.Config.IPs = append([]string{
+					"127.0.0.1",
+				}, api.Config.IPs...)
 
 				api.Config.KVStore = &configuration.KVStore{
 					Cluster:     strings.Split(viper.GetString("cluster"), ","),
