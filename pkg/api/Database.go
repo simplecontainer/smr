@@ -1,12 +1,14 @@
 package api
 
 import (
+	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // DatabaseGet godoc
@@ -23,10 +25,13 @@ import (
 //	@Router			/database/{key} [get]
 func (api *Api) DatabaseGet(c *gin.Context) {
 	api.BadgerSync.RLock()
+
+	key := strings.TrimPrefix(c.Param("key"), "/")
+
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		var value []byte
 
-		item, err := txn.Get([]byte(c.Param("key")))
+		item, err := txn.Get([]byte(key))
 		if err != nil {
 			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
 				Explanation:      "key not found",
@@ -58,7 +63,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 			Error:            false,
 			Success:          true,
 			Data: map[string]any{
-				c.Param("key"): value,
+				key: value,
 			},
 		})
 
@@ -98,18 +103,20 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 	var data []byte
 	data, err := io.ReadAll(c.Request.Body)
 
+	key := strings.TrimPrefix(c.Param("key"), "/")
+
 	if err == nil {
 		api.BadgerSync.Lock()
 
 		err = api.Badger.Update(func(txn *badger.Txn) error {
-			err = txn.Set([]byte(c.Param("key")), data)
+			err = txn.Set([]byte(key), data)
 			return err
 		})
 
 		api.BadgerSync.Unlock()
 
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 				Explanation:      "failed to store value in the key-value store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -117,20 +124,18 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 				Data:             nil,
 			})
 		} else {
-			api.Cluster.KVStore.Propose(c.Param("key"), string(data))
-
 			c.JSON(http.StatusOK, contracts.ResponseOperator{
 				Explanation:      "value stored in the key value store",
 				ErrorExplanation: "",
 				Error:            false,
 				Success:          true,
 				Data: map[string]any{
-					c.Param("key"): string(data),
+					key: string(data),
 				},
 			})
 		}
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 			Explanation:      "failed to store value in the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -138,6 +143,50 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 			Data:             nil,
 		})
 	}
+}
+
+func (api *Api) Propose(c *gin.Context) {
+	var data []byte
+	data, err := io.ReadAll(c.Request.Body)
+
+	fmt.Println("Propose web!")
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+			Explanation:      "failed to store value in the key-value store",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	if api.Cluster.KVStore == nil {
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+			Explanation:      "key-value store is not started yet",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	key := strings.TrimPrefix(c.Param("key"), "/")
+	api.Cluster.KVStore.Propose(key, string(data), api.Config.Agent)
+
+	c.JSON(http.StatusOK, contracts.ResponseImplementation{
+		Explanation:      "value stored in the key value store",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data: map[string]any{
+			key: string(data),
+		},
+	})
 }
 
 // DatabaseGetKeysPrefix godoc
@@ -154,12 +203,14 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	var keys []string
 
+	prefix := strings.TrimPrefix(c.Param("prefix"), "/")
+
 	api.BadgerSync.RLock()
 
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := []byte(c.Param("prefix"))
+		prefix := []byte(prefix)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
@@ -261,6 +312,8 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 	var keys []string
 
+	prefix := strings.TrimPrefix(c.Param("prefix"), "/")
+
 	api.BadgerSync.Lock()
 
 	err := api.Badger.Update(func(txn *badger.Txn) error {
@@ -272,7 +325,7 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 
 		var err error
 
-		prefix := []byte(c.Param("prefix"))
+		prefix := []byte(prefix)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			err = txn.Delete(it.Item().KeyCopy(nil))
 

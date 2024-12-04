@@ -198,12 +198,19 @@ func Start() {
 
 					database := v1.Group("database")
 					{
-						database.POST("create/:key", api.DatabaseSet)
-						database.PUT("update/:key", api.DatabaseSet)
-						database.GET("get/:key", api.DatabaseGet)
+						database.POST("create/*key", api.DatabaseSet)
+						database.PUT("update/*key", api.DatabaseSet)
+						database.POST("propose/*key", api.Propose)
+						database.PUT("propose/*key", api.Propose)
+						database.GET("get/*key", api.DatabaseGet)
 						database.GET("keys", api.DatabaseGetKeys)
-						database.GET("keys/:prefix", api.DatabaseGetKeysPrefix)
-						database.DELETE("keys/:prefix", api.DatabaseRemoveKeys)
+						database.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
+						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
+					}
+
+					etcd := v1.Group("etcd")
+					{
+						etcd.PUT("/etcd/update/*key", api.EtcdPut)
 					}
 
 					secrets := v1.Group("secrets")
@@ -220,11 +227,10 @@ func Start() {
 				router.GET("/version", api.Version)
 				router.GET("/restore", api.Restore)
 
-				router.POST("/cluster/start", api.StartCluster)
+				router.POST("/cluster/start/:join", api.StartCluster)
 				router.POST("/cluster/node", api.AddNode)
 				router.DELETE("/cluster/node/:node", api.RemoveNode)
 				router.GET("/cluster", api.GetCluster)
-				router.PUT("/etcd/update/*key", api.EtcdPut)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)

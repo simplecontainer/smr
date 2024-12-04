@@ -27,4 +27,4 @@ CLUSTER_DOMAIN_2="https://$(docker inspect -f '{{range.NetworkSettings.Networks}
 smr node cluster add --node 2 --url $CLUSTER_DOMAIN_2
 
 smr context connect https://localhost:1444 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-2 -y --wait
-smr node cluster start --node 2 --url $CLUSTER_DOMAIN_2 --cluster $CLUSTER_DOMAIN_1,$CLUSTER_DOMAIN_2
+smr node cluster start --node 2 --url $CLUSTER_DOMAIN_2 --cluster $CLUSTER_DOMAIN_1,$CLUSTER_DOMAIN_2 --join

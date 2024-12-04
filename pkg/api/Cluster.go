@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/cluster"
@@ -88,14 +89,17 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	select {
 	case <-server.Server.ReadyNotify():
+		fmt.Println("etcd server started - continue with starting raft")
 		api.Cluster.EtcdClient = cluster.NewEtcdClient()
 
 		signal.Notify(api.Keys.Reloader.ReloadC, syscall.SIGHUP)
 
-		api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster.Cluster)
+		api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster.Cluster, c.Param("join"))
 		api.SaveClusterConfiguration()
 
-		go api.Cluster.ListenEvents()
+		go api.Cluster.ListenEvents(api.Config.Agent)
+		go api.Cluster.ListenUpdates(api.Config.Agent)
+
 		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
 
 		if err != nil {

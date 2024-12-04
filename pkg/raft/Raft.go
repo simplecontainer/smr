@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/raft/v3"
 	"log"
@@ -437,7 +438,12 @@ func (rc *RaftNode) serveChannels() {
 					rc.proposeC = nil
 				} else {
 					// blocks until accepted by raft state machine
-					rc.node.Propose(context.TODO(), []byte(prop))
+					err = rc.node.Propose(context.TODO(), []byte(prop))
+
+					if err != nil {
+						logger.Log.Error(err.Error())
+						return
+					}
 				}
 
 			case cc, ok := <-rc.confChangeC:

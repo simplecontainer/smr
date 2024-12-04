@@ -16,6 +16,7 @@ package raft
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
@@ -24,6 +25,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"log"
 	"strings"
@@ -35,7 +37,8 @@ import (
 
 // a key-value store backed by raft
 type KVStore struct {
-	proposeC    chan<- string            // channel for proposing updates
+	proposeC    chan<- string // channel for proposing updates
+	EtcdC       chan KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
 	mu          sync.RWMutex
 	mgr         *manager.Manager
@@ -43,13 +46,15 @@ type KVStore struct {
 	snapshotter *snap.Snapshotter
 }
 
-type kv struct {
-	Key string
-	Val string
+type KV struct {
+	Key      string
+	Val      string
+	Category string
+	Agent    string
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, mgr *manager.Manager, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error) *KVStore {
-	s := &KVStore{proposeC: proposeC, kvStore: badger, mgr: mgr, snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, mgr *manager.Manager, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV) *KVStore {
+	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, kvStore: badger, mgr: mgr, snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
@@ -58,7 +63,7 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, mgr *manager.M
 
 	if snapshot != nil {
 		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+		if err = s.recoverFromSnapshot(snapshot.Data); err != nil {
 			log.Panic(err)
 		}
 	}
@@ -68,11 +73,41 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, mgr *manager.M
 	return s
 }
 
-func (s *KVStore) Propose(k string, v string) {
+func (s *KVStore) Propose(k string, v string, agent string) {
 	var buf strings.Builder
-	if err := gob.NewEncoder(&buf).Encode(kv{k, v}); err != nil {
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_OBJECT, agent}); err != nil {
 		log.Fatal(err)
 	}
+
+	s.proposeC <- buf.String()
+}
+
+func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
+	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.mgr.Http.Clients["root"].API, k)
+	response := objects.SendRequest(s.mgr.Http.Clients["root"].Http, URL, "GET", nil)
+
+	if response.Success {
+		b64decoded, err := base64.StdEncoding.DecodeString(response.Data[k].(string))
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+		} else {
+			if string(b64decoded) == v {
+				fmt.Println("not proposing since it is same in the raft")
+				return
+			}
+		}
+	}
+
+	fmt.Println("proposing since it is different")
+
+	var buf strings.Builder
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_ETCD, agent}); err != nil {
+		log.Fatal(err)
+	}
+
 	s.proposeC <- buf.String()
 }
 
@@ -94,7 +129,8 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 		}
 
 		for _, data := range commit.data {
-			var dataKv kv
+			var dataKv KV
+
 			dec := gob.NewDecoder(bytes.NewBufferString(data))
 			if err := dec.Decode(&dataKv); err != nil {
 				log.Fatalf("raftexample: could not decode message (%v)", err)
@@ -102,19 +138,21 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 
 			s.mu.Lock()
 
-			URL := ""
-			if strings.Contains(dataKv.Key, "coreos.com") {
-				URL = fmt.Sprintf("https://%s/etcd/update/%s", s.mgr.Http.Clients["root"].API, dataKv.Key)
-			} else {
-				URL = fmt.Sprintf("https://%s/api/v1/database/update/%s", s.mgr.Http.Clients["root"].API, dataKv.Key)
-			}
-
+			URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.mgr.Http.Clients["root"].API, dataKv.Key)
 			response := objects.SendRequest(s.mgr.Http.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
 
 			logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
 			if !response.Success {
 				log.Panic(errors.New(response.ErrorExplanation))
+			}
+
+			switch dataKv.Category {
+			case static.CATEGORY_ETCD:
+				s.EtcdC <- dataKv
+				break
+			case static.CATEGORY_OBJECT:
+				break
 			}
 
 			s.mu.Unlock()

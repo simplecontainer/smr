@@ -23,3 +23,6 @@ const SMR_AGENT_DOMAIN = "smr-agent.cluster.private"
 const SMR_LOCAL_DOMAIN string = "cluster.private"
 
 const PLATFORM_DOCKER = "docker"
+
+const CATEGORY_OBJECT = "badger"
+const CATEGORY_ETCD = "etcd"

@@ -34,6 +34,8 @@ func (c *Cluster) StartSingleNodeEtcd(config *configuration.Configuration) (e *e
 
 	cfg.AdvertiseClientUrls = []url.URL{*URLC}
 	cfg.ListenClientUrls = []url.URL{*URLC}
+	cfg.Logger = "zap"
+	cfg.LogOutputs = []string{"/tmp/etcd.log"}
 
 	return embed.StartEtcd(cfg)
 }
@@ -54,7 +56,7 @@ func (c *Cluster) ConfigureFlannel(network string) error {
 
 	return nil
 }
-func (c *Cluster) ListenEvents() {
+func (c *Cluster) ListenEvents(agent string) {
 	ctx, _ := context.WithCancel(context.Background())
 	watcher := c.EtcdClient.Watch(ctx, "/coreos.com", clientv3.WithPrefix())
 
@@ -65,16 +67,47 @@ func (c *Cluster) ListenEvents() {
 				for _, event := range watchResp.Events {
 					switch event.Type {
 					case mvccpb.PUT:
-						fmt.Println("proposing put changes")
-						c.KVStore.Propose(string(event.Kv.Key), string(event.Kv.Value))
+						fmt.Println(fmt.Sprintf("proposing put changes: %s", agent))
+						c.KVStore.ProposeEtcd(string(event.Kv.Key), string(event.Kv.Value), agent)
+						break
 					case mvccpb.DELETE:
-						fmt.Println("proposing delete changes")
-						c.KVStore.Propose(string(event.Kv.Key), "")
+						fmt.Println(fmt.Sprintf("proposing delete changes: %s", agent))
+						c.KVStore.ProposeEtcd(string(event.Kv.Key), "", agent)
+						break
 					}
 				}
 			}
 		case <-ctx.Done():
 			logger.Log.Error(errors.New("closed watcher channel should not block").Error())
+		}
+	}
+}
+
+func (c *Cluster) ListenUpdates(agent string) {
+	for {
+		select {
+		case data, ok := <-c.KVStore.EtcdC:
+			if ok {
+				if data.Agent != agent {
+					ctx, _ := context.WithCancel(context.Background())
+
+					val, err := c.EtcdClient.Get(ctx, data.Key)
+
+					if err != nil {
+						logger.Log.Error(err.Error())
+					}
+
+					if len(val.Kvs) == 0 || string(val.Kvs[len(val.Kvs)-1].Value) != data.Val {
+						_, err = c.EtcdClient.Put(ctx, data.Key, data.Val)
+
+						fmt.Println(fmt.Sprintf("etcd insert %s=%s", data.Key, data.Val))
+
+						if err != nil {
+							logger.Log.Error(err.Error())
+						}
+					}
+				}
+			}
 		}
 	}
 }

@@ -46,13 +46,13 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Add(format *f.Format, data string) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
 
 	if response.Success {
-		URL = fmt.Sprintf("https://%s/api/v1/database/create/%s.auth", obj.client.API, format.ToString())
+		URL = fmt.Sprintf("https://%s/api/v1/database/propose/%s.auth", obj.client.API, format.ToString())
 		response = SendRequest(obj.client.Http, URL, "POST", obj.User.ToBytes())
 
 		logger.Log.Debug("object auth remove", zap.String("URL", URL))
@@ -68,7 +68,7 @@ func (obj *Object) Add(format *f.Format, data string) error {
 }
 
 func (obj *Object) Update(format *f.Format, data string) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "PUT", []byte(data))
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", data))

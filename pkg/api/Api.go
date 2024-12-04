@@ -14,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -74,15 +75,19 @@ func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
 	api.Badger = dbSecrets
 }
 
-func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster []string) {
+func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster []string, join string) {
 	proposeC := make(chan string)
 	confChangeC := make(chan raftpb.ConfChange)
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
-	api.Cluster.RaftNode = &raft.RaftNode{}
-	commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster, api.Config.KVStore.JoinCluster, getSnapshot, proposeC, confChangeC)
+	joinBool, _ := strconv.ParseBool(join)
 
-	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager, proposeC, commitC, errorC)
+	api.Cluster.RaftNode = &raft.RaftNode{}
+	commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster, joinBool, getSnapshot, proposeC, confChangeC)
+
+	etcdC := make(chan raft.KV)
+
+	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager, proposeC, commitC, errorC, etcdC)
 	api.Cluster.KVStore.ConfChangeC = confChangeC
 }
