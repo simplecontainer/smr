@@ -17,13 +17,13 @@ import (
 
 func main() {
 	startup.SetFlags()
-	logger.Log = logger.NewLogger()
 
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = static.DEFAULT_LOG_LEVEL
 	}
 
+	logger.Log = logger.NewLogger(logLevel)
 	fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
 
 	// Prepare configuration for the commands

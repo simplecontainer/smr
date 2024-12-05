@@ -3,18 +3,16 @@ package docker
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
 	"strings"
 )
 
 func (container *Docker) PullImage(ctx context.Context, cli *client.Client) error {
-	if !container.CheckIfImagePresent(ctx, cli) {
-		logger.Log.Info(fmt.Sprintf("Pulling the image %s:%s", container.Image, container.Tag))
-
+	if container.CheckIfImagePresent(ctx, cli) != nil {
 		reader, err := cli.ImagePull(ctx, container.Image+":"+container.Tag, container.GetDockerAuth())
 		if err != nil {
 			return err
@@ -44,22 +42,19 @@ func (container *Docker) PullImage(ctx context.Context, cli *client.Client) erro
 			}
 		}(reader)
 
-		logger.Log.Info(fmt.Sprintf("pulled the image %s:%s", container.Image, container.Tag))
-
 		return nil
 	} else {
-		logger.Log.Info(fmt.Sprintf("image %s:%s already present", container.Image, container.Tag))
 		return nil
 	}
 }
 
-func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Client) bool {
+func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Client) error {
 	images, err := cli.ImageList(ctx, image.ListOptions{
 		All: true,
 	})
 
 	if err != nil {
-		logger.Log.Fatal("failed to list container images")
+		return err
 	}
 
 	searchingFor := fmt.Sprintf("%s:%s", container.Image, container.Tag)
@@ -70,12 +65,12 @@ func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Cl
 			registryFrom, imageFrom := splitReposSearchTerm(searchingFor)
 
 			if registryTo == registryFrom && imageTo == imageFrom {
-				return true
+				return nil
 			}
 		}
 	}
 
-	return false
+	return errors.New("image not present")
 }
 
 func (container *Docker) GetDockerAuth() image.PullOptions {
