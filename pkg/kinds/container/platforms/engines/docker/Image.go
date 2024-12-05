@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"io"
@@ -54,7 +54,7 @@ func (container *Docker) PullImage(ctx context.Context, cli *client.Client) erro
 }
 
 func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Client) bool {
-	images, err := cli.ImageList(ctx, types.ImageListOptions{
+	images, err := cli.ImageList(ctx, image.ListOptions{
 		All: true,
 	})
 
@@ -78,8 +78,8 @@ func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Cl
 	return false
 }
 
-func (container *Docker) GetDockerAuth() types.ImagePullOptions {
-	return types.ImagePullOptions{
+func (container *Docker) GetDockerAuth() image.PullOptions {
+	return image.PullOptions{
 		RegistryAuth: container.Auth,
 	}
 }

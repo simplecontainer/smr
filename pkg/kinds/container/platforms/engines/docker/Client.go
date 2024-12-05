@@ -33,7 +33,7 @@ func (container *Docker) RunRaw() (*TDTypes.Container, error) {
 		return nil, err
 	}
 
-	resp := TDContainer.ContainerCreateCreatedBody{}
+	resp := TDContainer.CreateResponse{}
 
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (container *Docker) RunRaw() (*TDTypes.Container, error) {
 
 	container.DockerID = resp.ID
 
-	if err = cli.ContainerStart(ctx, resp.ID, TDTypes.ContainerStartOptions{}); err != nil {
+	if err = cli.ContainerStart(ctx, resp.ID, TDContainer.StartOptions{}); err != nil {
 		return nil, err
 	}
 

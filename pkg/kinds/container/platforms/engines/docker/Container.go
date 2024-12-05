@@ -93,7 +93,7 @@ func IsDaemonRunning() {
 		}
 	}(cli)
 
-	_, err = cli.ContainerList(ctx, TDTypes.ContainerListOptions{})
+	_, err = cli.ContainerList(ctx, TDContainer.ListOptions{})
 
 	if err != nil {
 		panic(err)
@@ -115,7 +115,7 @@ func (container *Docker) Start() bool {
 			}
 		}(cli)
 
-		err = cli.ContainerStart(ctx, container.DockerID, TDTypes.ContainerStartOptions{})
+		err = cli.ContainerStart(ctx, container.DockerID, TDContainer.StartOptions{})
 
 		if err != nil {
 			return false
@@ -141,8 +141,11 @@ func (container *Docker) Stop() bool {
 			}
 		}(cli)
 
-		duration := time.Second * 10
-		err = cli.ContainerStop(ctx, container.DockerID, &duration)
+		duration := 10
+		err = cli.ContainerStop(ctx, container.DockerID, TDContainer.StopOptions{
+			Signal:  "SIGTERM",
+			Timeout: &duration,
+		})
 
 		if err != nil {
 			return false
@@ -168,8 +171,11 @@ func (container *Docker) Restart() bool {
 			}
 		}(cli)
 
-		duration := time.Second * 10
-		err = cli.ContainerRestart(ctx, container.DockerID, &duration)
+		duration := 10
+		err = cli.ContainerRestart(ctx, container.DockerID, TDContainer.StopOptions{
+			Signal:  "SIGTERM",
+			Timeout: &duration,
+		})
 
 		if err != nil {
 			return false
@@ -195,7 +201,7 @@ func (container *Docker) Delete() error {
 			}
 		}(cli)
 
-		err = cli.ContainerRemove(ctx, container.DockerID, TDTypes.ContainerRemoveOptions{
+		err = cli.ContainerRemove(ctx, container.DockerID, TDContainer.RemoveOptions{
 			Force: true,
 		})
 
@@ -355,7 +361,7 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 			return nil, err
 		}
 
-		resp := TDContainer.ContainerCreateCreatedBody{}
+		resp := TDContainer.CreateResponse{}
 
 		var unpackedEnvs []string
 		unpackedEnvs, err = secrets.UnpackSecretsEnvs(client, user, container.Env)
@@ -417,7 +423,7 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 
 		container.DockerID = resp.ID
 
-		if err = cli.ContainerStart(ctx, resp.ID, TDTypes.ContainerStartOptions{}); err != nil {
+		if err = cli.ContainerStart(ctx, resp.ID, TDContainer.StartOptions{}); err != nil {
 			return nil, err
 		}
 

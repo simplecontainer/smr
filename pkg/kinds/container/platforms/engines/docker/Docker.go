@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/docker/docker/api/types"
+	TDContainer "github.com/docker/docker/api/types/container"
 	IDClient "github.com/docker/docker/client"
 )
 
@@ -47,7 +48,7 @@ func DockerGet(containerName string) (types.Container, error) {
 		}
 	}(cli)
 
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{
+	containers, err := cli.ContainerList(ctx, TDContainer.ListOptions{
 		All: true,
 	})
 

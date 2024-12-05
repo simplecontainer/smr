@@ -118,7 +118,9 @@ func (api *Api) StartCluster(c *gin.Context) {
 			ErrorExplanation: "everything went ok",
 			Error:            false,
 			Success:          true,
-			Data:             nil,
+			Data: map[string]any{
+				"agent": api.Config.Agent,
+			},
 		})
 	case <-time.After(60 * time.Second):
 		server.Server.Stop() // trigger a shutdown

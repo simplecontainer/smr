@@ -137,7 +137,7 @@ Access to the control plane of the simplecontainer is configured successfully if
 It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
 ```bash
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/apps/gitops-plain.yaml 
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definition.yaml
 ```
 
 Applying this definition will create GitOps object on the simplecontainer.

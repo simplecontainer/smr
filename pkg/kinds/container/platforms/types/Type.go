@@ -16,6 +16,8 @@ type Runtime struct {
 	Configuration      map[string]string
 	Owner              Owner
 	ObjectDependencies []*f.Format
+	NodeIP             string
+	Agent              string
 }
 
 type Owner struct {
