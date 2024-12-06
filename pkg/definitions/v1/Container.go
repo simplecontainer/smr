@@ -80,20 +80,42 @@ type ContainerResource struct {
 	MountPoint string
 }
 
-func (definition *ContainerDefinition) ToJson() ([]byte, error) {
-	bytes, err := json.Marshal(definition)
+func (container *ContainerDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(container)
 	return bytes, err
 }
 
-func (definition *ContainerDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(definition)
+func (container *ContainerDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(container)
 	return string(bytes), err
 }
 
-func (definition *ContainerDefinition) Validate() (bool, error) {
+func (container *ContainerDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(container)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "container"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
+func (container *ContainerDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	err := validate.Struct(definition)
+	err := validate.Struct(container)
 	if err != nil {
 		var invalidValidationError *validator.InvalidValidationError
 		if errors.As(err, &invalidValidationError) {

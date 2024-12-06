@@ -29,6 +29,28 @@ func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
 	return string(bytes), err
 }
 
+func (configuration *ConfigurationDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(configuration)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "configuration"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
 func (configuration *ConfigurationDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 

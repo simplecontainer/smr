@@ -19,20 +19,42 @@ type ContainersMeta struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-func (definition *ContainersDefinition) ToJson() ([]byte, error) {
-	bytes, err := json.Marshal(definition)
+func (containers *ContainersDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(containers)
 	return bytes, err
 }
 
-func (definition *ContainersDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(definition)
+func (containers *ContainersDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(containers)
 	return string(bytes), err
 }
 
-func (definition *ContainersDefinition) Validate() (bool, error) {
+func (containers *ContainersDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(containers)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "containers"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
+func (containers *ContainersDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	err := validate.Struct(definition)
+	err := validate.Struct(containers)
 	if err != nil {
 		var invalidValidationError *validator.InvalidValidationError
 		if errors.As(err, &invalidValidationError) {

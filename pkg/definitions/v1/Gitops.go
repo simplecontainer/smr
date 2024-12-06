@@ -48,6 +48,28 @@ func (gitops *GitopsDefinition) ToJsonString() (string, error) {
 	return string(bytes), err
 }
 
+func (gitops *GitopsDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(gitops)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "gitops"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
 func (gitops *GitopsDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 

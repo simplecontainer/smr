@@ -36,6 +36,28 @@ func (certkey *CertKeyDefinition) ToJsonString() (string, error) {
 	return string(bytes), err
 }
 
+func (certkey *CertKeyDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(certkey)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "certkey"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
 func (certkey *CertKeyDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 

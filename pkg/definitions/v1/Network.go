@@ -30,6 +30,28 @@ func (network *NetworkDefinition) ToJsonString() (string, error) {
 	return string(bytes), err
 }
 
+func (network *NetworkDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(network)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "network"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
 func (network *NetworkDefinition) Validate() (bool, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 

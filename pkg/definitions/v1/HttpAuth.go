@@ -26,6 +26,28 @@ func (httpauth *HttpAuthDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
+func (httpauth *HttpAuthDefinition) ToJsonStringWithKind() (string, error) {
+	bytes, err := json.Marshal(httpauth)
+
+	var definition map[string]interface{}
+	err = json.Unmarshal(bytes, &definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	definition["kind"] = "httpauth"
+
+	var marshalled []byte
+	marshalled, err = json.Marshal(definition)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(marshalled), err
+}
+
 func (httpauth *HttpAuthDefinition) ToJsonString() (string, error) {
 	bytes, err := json.Marshal(httpauth)
 	return string(bytes), err
