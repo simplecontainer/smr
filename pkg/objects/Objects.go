@@ -110,7 +110,6 @@ func (obj *Object) Find(format *f.Format) error {
 				obj.DefinitionString = string(b64decoded)
 			}
 		}
-
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}

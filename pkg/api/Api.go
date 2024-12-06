@@ -87,7 +87,11 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster []str
 	commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster, joinBool, getSnapshot, proposeC, confChangeC)
 
 	etcdC := make(chan raft.KV)
+	objectC := make(chan raft.KV)
 
-	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager, proposeC, commitC, errorC, etcdC)
+	api.Cluster.Client = api.Manager.Http
+	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC)
 	api.Cluster.KVStore.ConfChangeC = confChangeC
+
+	api.Manager.Cluster = api.Cluster
 }

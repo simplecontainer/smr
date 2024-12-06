@@ -9,9 +9,9 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency/replicas"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/replicas"
 	"github.com/simplecontainer/smr/pkg/kinds/container/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
@@ -99,13 +99,27 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 
 	logger.Log.Debug("server received container object", zap.String("definition", jsonStringFromRequest))
 
+	var dr *replicas.DistributedReplicas
+
 	if obj.Exists() {
+		dr, err = generateReplicaNamesAndGroups(container.Shared, user, obj.ChangeDetected(), request.Definition, obj.Changelog)
+
+		if err != nil {
+			return contracts.ResponseImplementation{
+				HttpStatus:       http.StatusInternalServerError,
+				Explanation:      "failed to update object",
+				ErrorExplanation: err.Error(),
+				Error:            false,
+				Success:          true,
+			}, err
+		}
+
 		if obj.Diff(jsonStringFromRequest) {
 			err = obj.Update(format, jsonStringFromRequest)
 
 			if err != nil {
 				return contracts.ResponseImplementation{
-					HttpStatus:       200,
+					HttpStatus:       http.StatusInternalServerError,
 					Explanation:      "failed to update object",
 					ErrorExplanation: err.Error(),
 					Error:            false,
@@ -114,6 +128,18 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 			}
 		}
 	} else {
+		dr, err = generateReplicaNamesAndGroups(container.Shared, user, obj.ChangeDetected(), request.Definition, obj.Changelog)
+
+		if err != nil {
+			return contracts.ResponseImplementation{
+				HttpStatus:       http.StatusInternalServerError,
+				Explanation:      "failed to update object",
+				ErrorExplanation: err.Error(),
+				Error:            false,
+				Success:          true,
+			}, err
+		}
+
 		err = obj.Add(format, jsonStringFromRequest)
 
 		if err != nil {
@@ -127,14 +153,9 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 		}
 	}
 
-	var create map[string][]string
-	var remove map[string][]string
-
-	create, remove, err = generateReplicaNamesAndGroups(container.Shared, obj.ChangeDetected(), request.Definition, obj.Changelog)
-
 	if err == nil {
-		if len(remove["groups"]) > 0 {
-			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, remove["groups"], remove["names"])
+		if len(dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove) > 0 {
+			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove)
 
 			for _, containerObj := range containerObjs {
 				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
@@ -150,8 +171,8 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 			}
 		}
 
-		if len(create["groups"]) > 0 {
-			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, create["groups"], create["names"])
+		if len(dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Create) > 0 {
+			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Create)
 
 			for k, containerObj := range containerObjs {
 				// containerObj is fetched from the registry and can be used instead of the object
@@ -249,20 +270,18 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 	err = obj.Find(format)
 
 	if obj.Exists() {
-		var groups []string
-		var names []string
-
-		groups, names, err = GetReplicaNamesAndGroups(container.Shared, *request.Definition)
+		var containers []replicas.R
+		containers, err = GetReplicaNamesAndGroups(container.Shared, user, *request.Definition)
 
 		if err == nil {
-			if len(groups) > 0 {
-				containerObjs := FetchContainersFromRegistry(container.Shared.Registry, groups, names)
+			if len(containers) > 0 {
+				containerObjs := FetchContainersFromRegistry(container.Shared.Registry, containers)
 
 				format = f.New("container", request.Definition.Meta.Group, request.Definition.Meta.Name, "")
 				obj.Remove(format)
 
-				for k, name := range names {
-					format = f.New("configuration", groups[k], name, "")
+				for _, c := range containers {
+					format = f.New("configuration", c.Group, c.Name, "")
 					obj.Remove(format)
 				}
 
@@ -338,45 +357,49 @@ func (container *Container) Run(operation string, args ...interface{}) contracts
 }
 
 // TODO: refactor
-func FetchContainersFromRegistry(registry *registry.Registry, groups []string, names []string) []platforms.IContainer {
+func FetchContainersFromRegistry(registry *registry.Registry, containers []replicas.R) []platforms.IContainer {
 	var order []platforms.IContainer
 
-	for i, _ := range names {
-		if registry.Containers[groups[i]] != nil {
-			if registry.Containers[groups[i]][names[i]] != nil {
-				order = append(order, registry.Containers[groups[i]][names[i]])
+	for _, r := range containers {
+		if registry.Containers[r.Group] != nil {
+			if registry.Containers[r.Group][r.Name] != nil {
+				order = append(order, registry.Containers[r.Group][r.Name])
 			}
 		}
 	}
 
 	return order
 }
-func generateReplicaNamesAndGroups(shared *shared.Shared, changed bool, containerDefinition *v1.ContainerDefinition, changelog diff.Changelog) (map[string][]string, map[string][]string, error) {
-	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT)
+
+func generateReplicaNamesAndGroups(shared *shared.Shared, user *authentication.User, changed bool, containerDefinition *v1.ContainerDefinition, changelog diff.Changelog) (*replicas.DistributedReplicas, error) {
+	_, indexes := shared.Registry.Name(shared.Client, containerDefinition.Meta.Group, containerDefinition.Meta.Name)
 
 	r := replicas.Replicas{
-		Group:          containerDefinition.Meta.Group,
-		GeneratedIndex: index - 1,
-		Replicas:       containerDefinition.Spec.Container.Replicas,
-		Changed:        changed,
+		Group:           containerDefinition.Meta.Group,
+		ExistingIndexes: indexes,
+		Replicas:        containerDefinition.Spec.Container.Replicas,
+		Changed:         changed,
+		Spread:          containerDefinition.Spec.Container.Spread,
+		NodeID:          shared.Manager.Config.KVStore.Node,
 	}
 
-	create, remove, err := r.HandleReplica(shared, containerDefinition, changelog)
+	dr, err := r.HandleReplica(shared, user, shared.Manager.Cluster.Cluster, containerDefinition, changelog)
 
-	return create, remove, err
+	return dr, err
 }
-func GetReplicaNamesAndGroups(shared *shared.Shared, containerDefinition v1.ContainerDefinition) ([]string, []string, error) {
-	_, index := shared.Registry.Name(containerDefinition.Meta.Group, containerDefinition.Meta.Name, shared.Manager.Config.Environment.PROJECT)
+func GetReplicaNamesAndGroups(shared *shared.Shared, user *authentication.User, containerDefinition v1.ContainerDefinition) ([]replicas.R, error) {
+	_, indexes := shared.Registry.Name(shared.Client, containerDefinition.Meta.Group, containerDefinition.Meta.Name)
 
 	r := replicas.Replicas{
-		Group:          containerDefinition.Meta.Group,
-		GeneratedIndex: index - 1,
-		Replicas:       containerDefinition.Spec.Container.Replicas,
+		Group:           containerDefinition.Meta.Group,
+		ExistingIndexes: indexes,
+		Replicas:        containerDefinition.Spec.Container.Replicas,
+		NodeID:          shared.Manager.Config.KVStore.Node,
 	}
 
-	groups, names, err := r.GetReplica(shared, containerDefinition)
+	containers, err := r.GetReplica(shared, user, containerDefinition, shared.Manager.Cluster.Cluster)
 
-	return groups, names, err
+	return containers, err
 }
 
 func (container *Container) ListSupported(args ...interface{}) contracts.ResponseOperator {

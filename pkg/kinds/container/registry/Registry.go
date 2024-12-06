@@ -2,14 +2,14 @@ package registry
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"sort"
 	"strconv"
 	"strings"
 )
 
-func (registry *Registry) AddOrUpdate(group string, name string, project string, containerAddr platforms.IContainer) {
+func (registry *Registry) AddOrUpdate(group string, name string, containerAddr platforms.IContainer) {
 	registry.ContainersLock.Lock()
 
 	if registry.Containers[group] == nil {
@@ -57,12 +57,18 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 	}
 }
 
-func (registry *Registry) Name(group string, name string, project string) (string, int) {
-	index := registry.GenerateIndex(group, project)
-	return fmt.Sprintf("%s-%s-%d", group, name, index), index
+func (registry *Registry) Name(client *client.Http, group string, name string) (string, []int) {
+	indexes := registry.GetIndexes(group, name)
+	index := 1
+
+	if len(indexes) > 0 {
+		index = indexes[len(indexes)-1] + 1
+	}
+
+	return fmt.Sprintf("%s-%s-%d", group, name, index), indexes
 }
 
-func (registry *Registry) NameReplicas(group string, name string, project string, index int) (string, int) {
+func (registry *Registry) NameReplicas(group string, name string, index int) (string, int) {
 	return fmt.Sprintf("%s-%s-%d", group, name, index), index
 }
 
@@ -92,43 +98,24 @@ func (registry *Registry) BackOffReset(group string, name string) {
 	registry.ContainersLock.Unlock()
 }
 
-func (registry *Registry) GenerateIndex(name string, project string) int {
-	var indexes []int = registry.GetIndexes(name, project)
-	var index int = 0
-
-	if len(indexes) > 0 {
-		sort.Ints(indexes)
-		index = indexes[len(indexes)-1] + 1
-	}
-
-	if index < 0 {
-		index = 0
-	}
-
-	return index
-}
-
-func (registry *Registry) GetIndexes(name string, project string) []int {
-	containers := registry.Containers[name]
+func (registry *Registry) GetIndexes(group string, name string) []int {
+	containers := registry.Containers[group]
 
 	var indexes = make([]int, 0)
-	name = fmt.Sprintf("%s-%s", project, name)
 
 	if len(containers) > 0 {
 		for _, containerObj := range containers {
-			split := strings.Split(containerObj.GetGeneratedName(), "-")
-			index, err := strconv.Atoi(split[len(split)-1])
+			if containerObj.GetName() == name {
+				split := strings.Split(containerObj.GetGeneratedName(), "-")
+				index, err := strconv.Atoi(split[len(split)-1])
 
-			if err != nil {
-				logger.Log.Fatal("Failed to convert string to int for index calculation")
+				if err != nil {
+					logger.Log.Fatal("Failed to convert string to int for index calculation")
+				}
+
+				indexes = append(indexes, index)
 			}
-
-			indexes = append(indexes, index)
 		}
-	}
-
-	if len(indexes) == 0 {
-		indexes = append(indexes, 0)
 	}
 
 	return indexes
