@@ -21,9 +21,9 @@ func NewDistributed(nodeID uint64, group string, name string) *DistributedReplic
 		Create: make([]R, 0),
 		Remove: make([]R, 0),
 		Numbers: Numbers{
-			Create:   make([]int, 0),
-			Destroy:  make([]int, 0),
-			Existing: make([]int, 0),
+			Create:   make([]uint64, 0),
+			Destroy:  make([]uint64, 0),
+			Existing: make([]uint64, 0),
 		},
 	}
 
@@ -42,6 +42,11 @@ func (dr *DistributedReplicas) Save(client *client.Client, user *authentication.
 
 	obj.Update(format, string(data))
 	return nil
+}
+
+func (dr *DistributedReplicas) Clear(node uint64) {
+	dr.Replicas[node].Create = make([]R, 0)
+	dr.Replicas[node].Remove = make([]R, 0)
 }
 
 func (dr *DistributedReplicas) Load(client *client.Client, user *authentication.User) error {

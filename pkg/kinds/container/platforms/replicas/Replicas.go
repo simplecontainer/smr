@@ -19,7 +19,8 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, user *authenticat
 		logger.Log.Error(err.Error())
 	}
 
-	dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = replicas.GetReplicaNumbers(dr, containerDefinition.Spec.Container.Spread, replicas.Replicas, replicas.ExistingIndexes, len(clstr))
+	dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = replicas.GetReplicaNumbers(dr, containerDefinition.Spec.Container.Spread, replicas.Replicas, replicas.ExistingIndexes, uint64(len(clstr)))
+	dr.Clear(replicas.NodeID)
 
 	create := dr.Replicas[replicas.NodeID].Numbers.Create
 	destroy := dr.Replicas[replicas.NodeID].Numbers.Destroy
@@ -60,7 +61,6 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, user *authenticat
 		}
 
 		var containerObj platforms.IContainer
-		var err error
 
 		containerObj, err = platforms.New(static.PLATFORM_DOCKER, name, shared.Manager.Config, containerDefinition)
 
@@ -94,10 +94,10 @@ func (replicas *Replicas) GetReplica(shared *shared.Shared, user *authentication
 	dr := NewDistributed(replicas.NodeID, containerDefinition.Meta.Group, containerDefinition.Meta.Name)
 	dr.Load(shared.Client.Get(user.Username), user)
 
-	_, _, dr.Replicas[replicas.NodeID].Numbers.Existing = replicas.GetReplicaNumbers(dr, containerDefinition.Spec.Container.Spread, replicas.Replicas, replicas.ExistingIndexes, len(clstr))
+	_, _, dr.Replicas[replicas.NodeID].Numbers.Existing = replicas.GetReplicaNumbers(dr, containerDefinition.Spec.Container.Spread, replicas.Replicas, replicas.ExistingIndexes, uint64(len(clstr)))
 
 	for i := range dr.Replicas[replicas.NodeID].Numbers.Existing {
-		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, i)
+		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, uint64(i))
 		containerObj := shared.Registry.Find(containerDefinition.Meta.Group, name)
 
 		if containerObj != nil {
@@ -108,41 +108,37 @@ func (replicas *Replicas) GetReplica(shared *shared.Shared, user *authentication
 	return containers, nil
 }
 
-func (replicas *Replicas) GetReplicaNumbers(dr *DistributedReplicas, spread v1.ContainerSpread, replicasNumber int, existingIndexes []int, clusterSize int) ([]int, []int, []int) {
+func (replicas *Replicas) GetReplicaNumbers(dr *DistributedReplicas, spread v1.ContainerSpread, replicasNumber uint64, existingIndexes []uint64, clusterSize uint64) ([]uint64, []uint64, []uint64) {
 	switch replicas.Spread.Spread {
 	case platforms.SPREAD_SPECIFIC:
-		for i := 1; i <= clusterSize; i++ {
-			if dr.Replicas[uint64(i)] == nil {
-				dr.Replicas[uint64(i)] = &ScopedReplicas{
-					Create: make([]R, 0),
-					Remove: make([]R, 0),
-					Numbers: Numbers{
-						Create:   make([]int, 0),
-						Destroy:  make([]int, 0),
-						Existing: make([]int, 0),
-					},
-				}
+		if dr.Replicas[replicas.NodeID] == nil {
+			dr.Replicas[replicas.NodeID] = &ScopedReplicas{
+				Create: make([]R, 0),
+				Remove: make([]R, 0),
+				Numbers: Numbers{
+					Create:   make([]uint64, 0),
+					Destroy:  make([]uint64, 0),
+					Existing: make([]uint64, 0),
+				},
 			}
 
-			dr.Replicas[uint64(i)].Numbers.Create, dr.Replicas[uint64(i)].Numbers.Destroy, dr.Replicas[uint64(i)].Numbers.Existing = Specific(replicasNumber, existingIndexes, spread.Agents, i)
+			dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Specific(replicasNumber, existingIndexes, spread.Agents, replicas.NodeID)
 		}
 		break
 	case platforms.SPREAD_UNIFORM:
-		for i := 1; i <= clusterSize; i++ {
-			if dr.Replicas[uint64(i)] == nil {
-				dr.Replicas[uint64(i)] = &ScopedReplicas{
-					Create: make([]R, 0),
-					Remove: make([]R, 0),
-					Numbers: Numbers{
-						Create:   make([]int, 0),
-						Destroy:  make([]int, 0),
-						Existing: make([]int, 0),
-					},
-				}
+		if dr.Replicas[replicas.NodeID] == nil {
+			dr.Replicas[replicas.NodeID] = &ScopedReplicas{
+				Create: make([]R, 0),
+				Remove: make([]R, 0),
+				Numbers: Numbers{
+					Create:   make([]uint64, 0),
+					Destroy:  make([]uint64, 0),
+					Existing: make([]uint64, 0),
+				},
 			}
-
-			dr.Replicas[uint64(i)].Numbers.Create, dr.Replicas[uint64(i)].Numbers.Destroy, dr.Replicas[uint64(i)].Numbers.Existing = Uniform(replicasNumber, existingIndexes, clusterSize, i)
 		}
+
+		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Uniform(replicasNumber, existingIndexes, clusterSize, replicas.NodeID)
 		break
 	default:
 		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Default(replicasNumber, existingIndexes, 1, 1)
@@ -152,9 +148,9 @@ func (replicas *Replicas) GetReplicaNumbers(dr *DistributedReplicas, spread v1.C
 	return dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing
 }
 
-func Default(replicasNumber int, existingIndexes []int, clusterSize int, member int) ([]int, []int, []int) {
-	var create = make([]int, 0)
-	var destroy = make([]int, 0)
+func Default(replicasNumber uint64, existingIndexes []uint64, clusterSize uint64, member uint64) ([]uint64, []uint64, []uint64) {
+	var create = make([]uint64, 0)
+	var destroy = make([]uint64, 0)
 
 	for replicas := 1 * member; replicas <= replicasNumber*member; replicas++ {
 		create = append(create, replicas)
@@ -167,9 +163,9 @@ func Default(replicasNumber int, existingIndexes []int, clusterSize int, member 
 	return create, destroy, existingIndexes
 }
 
-func Uniform(replicasNumber int, existingIndexes []int, clusterSize int, member int) ([]int, []int, []int) {
-	var create = make([]int, 0)
-	var destroy = make([]int, 0)
+func Uniform(replicasNumber uint64, existingIndexes []uint64, clusterSize uint64, member uint64) ([]uint64, []uint64, []uint64) {
+	var create = make([]uint64, 0)
+	var destroy = make([]uint64, 0)
 
 	replicasScoped := replicasNumber / clusterSize
 
@@ -177,7 +173,7 @@ func Uniform(replicasNumber int, existingIndexes []int, clusterSize int, member 
 		create = append(create, replicas)
 	}
 
-	if clusterSize == member {
+	if clusterSize == member && replicasNumber%clusterSize != 0 {
 		create = append(create, replicasNumber)
 	}
 
@@ -188,9 +184,9 @@ func Uniform(replicasNumber int, existingIndexes []int, clusterSize int, member 
 	return create, destroy, existingIndexes
 }
 
-func Specific(replicasNumber int, existingIndexes []int, nodes []int, member int) ([]int, []int, []int) {
-	var create = make([]int, 0)
-	var destroy = make([]int, 0)
+func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, member uint64) ([]uint64, []uint64, []uint64) {
+	var create = make([]uint64, 0)
+	var destroy = make([]uint64, 0)
 
 	return create, destroy, existingIndexes
 }

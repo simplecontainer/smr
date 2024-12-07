@@ -9,7 +9,7 @@ import (
 type Registry struct {
 	Containers     map[string]map[string]platforms.IContainer
 	ContainersLock sync.RWMutex
-	Indexes        map[string][]int
-	BackOffTracker map[string]map[string]int
+	Indexes        map[string][]uint64
+	BackOffTracker map[string]map[string]uint64
 	Object         map[string]objects.Object
 }

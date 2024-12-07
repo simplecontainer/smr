@@ -259,7 +259,6 @@ func (rc *RaftNode) replayWAL() *wal.WAL {
 }
 
 func (rc *RaftNode) writeError(err error) {
-	fmt.Println("STOP HTTP CALED")
 	rc.stopHTTP()
 	close(rc.commitC)
 	rc.errorC <- err

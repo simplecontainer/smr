@@ -6,9 +6,9 @@ import (
 
 type Replicas struct {
 	Group           string
-	GeneratedIndex  int
-	ExistingIndexes []int
-	Replicas        int
+	GeneratedIndex  uint64
+	ExistingIndexes []uint64
+	Replicas        uint64
 	Changed         bool
 	Spread          v1.ContainerSpread
 	NodeID          uint64
@@ -27,9 +27,9 @@ type ScopedReplicas struct {
 }
 
 type Numbers struct {
-	Create   []int
-	Destroy  []int
-	Existing []int
+	Create   []uint64
+	Destroy  []uint64
+	Existing []uint64
 }
 
 type R struct {

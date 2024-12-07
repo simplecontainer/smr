@@ -39,8 +39,6 @@ func (c *Cluster) ListenObjects(agent string) {
 								logger.Log.Info(fmt.Sprintf(response.ErrorExplanation))
 							}
 						}
-					} else {
-						fmt.Println("no update")
 					}
 				}
 			}

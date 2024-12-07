@@ -57,9 +57,9 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 	}
 }
 
-func (registry *Registry) Name(client *client.Http, group string, name string) (string, []int) {
+func (registry *Registry) Name(client *client.Http, group string, name string) (string, []uint64) {
 	indexes := registry.GetIndexes(group, name)
-	index := 1
+	index := uint64(1)
 
 	if len(indexes) > 0 {
 		index = indexes[len(indexes)-1] + 1
@@ -68,14 +68,14 @@ func (registry *Registry) Name(client *client.Http, group string, name string) (
 	return fmt.Sprintf("%s-%s-%d", group, name, index), indexes
 }
 
-func (registry *Registry) NameReplicas(group string, name string, index int) (string, int) {
+func (registry *Registry) NameReplicas(group string, name string, index uint64) (string, uint64) {
 	return fmt.Sprintf("%s-%s-%d", group, name, index), index
 }
 
 func (registry *Registry) BackOffTracking(group string, name string) {
 	registry.ContainersLock.Lock()
 	if registry.BackOffTracker[group] == nil {
-		tmp := make(map[string]int)
+		tmp := make(map[string]uint64)
 		tmp[name] = 0
 
 		registry.BackOffTracker[group] = tmp
@@ -88,7 +88,7 @@ func (registry *Registry) BackOffTracking(group string, name string) {
 func (registry *Registry) BackOffReset(group string, name string) {
 	registry.ContainersLock.Lock()
 	if registry.BackOffTracker[group] == nil {
-		tmp := make(map[string]int)
+		tmp := make(map[string]uint64)
 		tmp[name] = 0
 
 		registry.BackOffTracker[group] = tmp
@@ -98,19 +98,19 @@ func (registry *Registry) BackOffReset(group string, name string) {
 	registry.ContainersLock.Unlock()
 }
 
-func (registry *Registry) GetIndexes(group string, name string) []int {
+func (registry *Registry) GetIndexes(group string, name string) []uint64 {
 	containers := registry.Containers[group]
 
-	var indexes = make([]int, 0)
+	var indexes = make([]uint64, 0)
 
 	if len(containers) > 0 {
 		for _, containerObj := range containers {
 			if containerObj.GetName() == name {
 				split := strings.Split(containerObj.GetGeneratedName(), "-")
-				index, err := strconv.Atoi(split[len(split)-1])
+				index, err := strconv.ParseUint(split[len(split)-1], 10, 64)
 
 				if err != nil {
-					logger.Log.Fatal("Failed to convert string to int for index calculation")
+					logger.Log.Fatal("Failed to convert string to uint64 for index calculation")
 				}
 
 				indexes = append(indexes, index)

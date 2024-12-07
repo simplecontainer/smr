@@ -100,8 +100,6 @@ func (c *Cluster) ListenUpdates(agent string) {
 					if len(val.Kvs) == 0 || string(val.Kvs[len(val.Kvs)-1].Value) != data.Val {
 						_, err = c.EtcdClient.Put(ctx, data.Key, data.Val)
 
-						fmt.Println(fmt.Sprintf("etcd insert %s=%s", data.Key, data.Val))
-
 						if err != nil {
 							logger.Log.Error(err.Error())
 						}

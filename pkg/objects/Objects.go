@@ -108,6 +108,7 @@ func (obj *Object) Find(format *f.Format) error {
 			} else {
 				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
 				obj.DefinitionString = string(b64decoded)
+				obj.definitionByte = b64decoded
 			}
 		}
 	} else {

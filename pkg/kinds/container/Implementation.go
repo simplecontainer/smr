@@ -33,8 +33,8 @@ func (container *Container) Start() error {
 
 	container.Shared.Registry = &registry.Registry{
 		Containers:     make(map[string]map[string]platforms.IContainer),
-		Indexes:        make(map[string][]int),
-		BackOffTracker: make(map[string]map[string]int),
+		Indexes:        make(map[string][]uint64),
+		BackOffTracker: make(map[string]map[string]uint64),
 	}
 
 	logger.Log.Info(fmt.Sprintf("platform for running container is %s", container.Shared.Manager.Config.Platform))

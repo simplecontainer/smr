@@ -95,13 +95,10 @@ func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
 			logger.Log.Error(err.Error())
 		} else {
 			if string(b64decoded) == v {
-				fmt.Println("not proposing since it is same in the raft")
 				return
 			}
 		}
 	}
-
-	fmt.Println("proposing since it is different")
 
 	var buf strings.Builder
 

@@ -15,7 +15,7 @@ type Docker struct {
 	Group                  string
 	Image                  string
 	Tag                    string
-	Replicas               int
+	Replicas               uint64
 	Env                    []string
 	Entrypoint             []string
 	Args                   []string

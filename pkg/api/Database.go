@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -148,8 +147,6 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 func (api *Api) Propose(c *gin.Context) {
 	var data []byte
 	data, err := io.ReadAll(c.Request.Body)
-
-	fmt.Println("Propose web!")
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
