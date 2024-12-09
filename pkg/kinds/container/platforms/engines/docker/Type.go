@@ -6,27 +6,26 @@ import (
 )
 
 type Docker struct {
-	DockerID               string
-	DockerState            string
-	Name                   string
-	GeneratedName          string
-	GeneratedNameNoProject string
-	Labels                 map[string]string
-	Group                  string
-	Image                  string
-	Tag                    string
-	Replicas               uint64
-	Env                    []string
-	Entrypoint             []string
-	Args                   []string
-	Privileged             bool
-	NetworkMode            string
-	Networks               *internal.Networks
-	Ports                  *internal.Ports
-	Volumes                *internal.Volumes
-	Readiness              *internal.Readinesses
-	Resources              *internal.Resources
-	Capabilities           []string
-	Definition             v1.ContainerDefinition
-	Auth                   string
+	DockerID      string
+	DockerState   string
+	Name          string
+	GeneratedName string
+	Labels        map[string]string
+	Group         string
+	Image         string
+	Tag           string
+	Replicas      uint64
+	Env           []string
+	Entrypoint    []string
+	Args          []string
+	Privileged    bool
+	NetworkMode   string
+	Networks      *internal.Networks
+	Ports         *internal.Ports
+	Volumes       *internal.Volumes
+	Readiness     *internal.Readinesses
+	Resources     *internal.Resources
+	Capabilities  []string
+	Definition    v1.ContainerDefinition
+	Auth          string
 }

@@ -43,7 +43,7 @@ func Event(shared *shared.Shared, event *types.Events) {
 
 func HandleChange(shared *shared.Shared, container platforms.IContainer) {
 	if !reconcileIgnore(container.GetLabels()) {
-		container.GetStatus().TransitionState(container.GetGeneratedName(), status.STATUS_PREPARE)
+		container.GetStatus().TransitionState(container.GetGroup(), container.GetGeneratedName(), status.STATUS_PREPARE)
 		shared.Watcher.Find(container.GetGroupIdentifier()).ContainerQueue <- container
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
@@ -32,9 +33,12 @@ func (container *Container) Start() error {
 	container.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
 	container.Shared.Registry = &registry.Registry{
+		ChangeC:        make(chan distributed.Container),
 		Containers:     make(map[string]map[string]platforms.IContainer),
 		Indexes:        make(map[string][]uint64),
 		BackOffTracker: make(map[string]map[string]uint64),
+		Client:         container.Shared.Client,
+		User:           container.Shared.User,
 	}
 
 	logger.Log.Info(fmt.Sprintf("platform for running container is %s", container.Shared.Manager.Config.Platform))
@@ -49,6 +53,8 @@ func (container *Container) Start() error {
 	// Start listening events based on the platform and for internal events
 	go events.NewPlatformEventsListener(container.Shared, container.Shared.Manager.Config.Platform)
 	go events.NewEventsListener(container.Shared, container.Shared.Watcher.EventChannel)
+
+	go container.Shared.Registry.ListenChanges()
 
 	logger.Log.Info(fmt.Sprintf("started listening events for simplecontainer and platform: %s", container.Shared.Manager.Config.Platform))
 
@@ -166,7 +172,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 				format = f.New("configuration", containerObj.GetGroup(), containerObj.GetGeneratedName(), "")
 				obj.Remove(format)
 
-				containerObj.GetStatus().TransitionState(containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
 				reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
 			}
 		}
@@ -287,7 +293,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 
 				for _, containerObj := range containerObjs {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-					containerObj.GetStatus().TransitionState(containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
 					reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
 				}
 
@@ -567,7 +573,7 @@ func (container *Container) Restart(request contracts.RequestOperator) contracts
 		}
 	}
 
-	containerObj.GetStatus().TransitionState(containerObj.GetName(), status.STATUS_CREATED)
+	containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
 	container.Shared.Watcher.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
 
 	return contracts.ResponseOperator{

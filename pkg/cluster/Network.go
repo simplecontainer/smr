@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func sendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.ResponseImplementation {
+func SendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.ResponseImplementation {
 	var req *http.Request
 	var err error
 

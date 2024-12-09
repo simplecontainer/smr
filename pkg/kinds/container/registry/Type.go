@@ -1,6 +1,9 @@
 package registry
 
 import (
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"sync"
@@ -12,4 +15,7 @@ type Registry struct {
 	Indexes        map[string][]uint64
 	BackOffTracker map[string]map[string]uint64
 	Object         map[string]objects.Object
+	ChangeC        chan distributed.Container
+	Client         *client.Http
+	User           *authentication.User
 }

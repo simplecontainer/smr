@@ -1,10 +1,14 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"strconv"
 	"strings"
 )
@@ -24,8 +28,25 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 	registry.ContainersLock.Unlock()
 }
 
+func (registry *Registry) Sync(container distributed.Container) {
+	if registry.Containers[container.Group] != nil && registry.Containers[container.Group][container.Name] != nil {
+		bytes, err := json.Marshal(registry.Containers[container.Group][container.Name])
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return
+		}
+
+		format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", container.Group, container.Name))
+		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
+		obj.Add(format, string(bytes))
+	}
+}
+
 func (registry *Registry) Remove(group string, name string) bool {
 	registry.ContainersLock.Lock()
+
 	if registry.Containers[group] == nil {
 		registry.ContainersLock.Unlock()
 		return true
@@ -43,18 +64,73 @@ func (registry *Registry) Remove(group string, name string) bool {
 
 func (registry *Registry) Find(group string, name string) platforms.IContainer {
 	registry.ContainersLock.RLock()
+
+	format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", group, name))
+	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
 	if registry.Containers[group] != nil {
 		if registry.Containers[group][name] != nil {
 			registry.ContainersLock.RUnlock()
 			return registry.Containers[group][name]
 		} else {
+			obj.Find(format)
+
+			if obj.Exists() {
+				instance, err := platforms.NewGhost(obj.GetDefinition())
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+					return nil
+				}
+
+				return instance
+			}
+
 			registry.ContainersLock.RUnlock()
 			return nil
 		}
 	} else {
+		obj.Find(format)
+
+		if obj.Exists() {
+			instance, err := platforms.NewGhost(obj.GetDefinition())
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+				return nil
+			}
+
+			return instance
+		}
+
 		registry.ContainersLock.RUnlock()
 		return nil
 	}
+}
+
+func (registry *Registry) FindGroup(group string) map[string]platforms.IContainer {
+	registry.ContainersLock.RLock()
+
+	format := f.NewFromString(fmt.Sprintf("container.state.%s", group))
+	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
+	var result map[string]platforms.IContainer
+	objs, _ := obj.FindMany(format)
+
+	if len(objs) > 0 {
+		for _, o := range objs {
+			instance, err := platforms.NewGhost(o.GetDefinition())
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+				continue
+			}
+
+			result[instance.GetGeneratedName()] = instance
+		}
+	}
+
+	return result
 }
 
 func (registry *Registry) Name(client *client.Http, group string, name string) (string, []uint64) {

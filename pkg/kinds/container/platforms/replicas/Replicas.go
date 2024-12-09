@@ -62,7 +62,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, user *authenticat
 
 		var containerObj platforms.IContainer
 
-		containerObj, err = platforms.New(static.PLATFORM_DOCKER, name, shared.Manager.Config, containerDefinition)
+		containerObj, err = platforms.New(static.PLATFORM_DOCKER, name, shared.Manager.Config, shared.Registry.ChangeC, containerDefinition)
 
 		if err != nil {
 			return nil, err

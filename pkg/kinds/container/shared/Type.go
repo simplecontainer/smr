@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
@@ -10,6 +11,7 @@ import (
 
 type Shared struct {
 	Registry *registry.Registry
+	User     *authentication.User
 	Watcher  *watcher.ContainerWatcher
 	DnsCache *dns.Records
 	Manager  *manager.Manager

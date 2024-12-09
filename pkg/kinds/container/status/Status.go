@@ -3,10 +3,22 @@ package status
 import (
 	"errors"
 	"github.com/hmdsefi/gograph"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"time"
 )
+
+func New(ChangeC chan distributed.Container) *Status {
+	s := &Status{
+		State:      &StatusState{},
+		LastUpdate: time.Now(),
+		ChangeC:    ChangeC,
+	}
+
+	s.CreateGraph()
+	return s
+}
 
 func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[*StatusState](gograph.Directed())
@@ -113,7 +125,7 @@ func (status *Status) SetState(state string) error {
 	return errors.New("failed to set state")
 }
 
-func (status *Status) TransitionState(container string, destination string) bool {
+func (status *Status) TransitionState(group string, container string, destination string) bool {
 	currentVertex := status.StateMachine.GetAllVerticesByID(status.State)
 
 	if len(currentVertex) > 0 {
@@ -124,12 +136,18 @@ func (status *Status) TransitionState(container string, destination string) bool
 				logger.Log.Info("container transitioned state",
 					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
+					zap.String("group", group),
 					zap.String("container", container),
 				)
 
 				status.State = edge.Destination().Label()
 				status.Reconciling = false
 				status.LastUpdate = time.Now()
+
+				status.ChangeC <- distributed.Container{
+					Group: group,
+					Name:  container,
+				}
 
 				return true
 			}
