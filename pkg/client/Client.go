@@ -11,10 +11,6 @@ func NewHttpClients() *Http {
 	return &Http{Clients: make(map[string]*Client)}
 }
 
-func LoadClients() {
-
-}
-
 func (http *Http) Get(username string) *Client {
 	return http.Clients[username]
 }

@@ -48,7 +48,7 @@ func NewNetworks(networks []v1.ContainerNetwork) *Networks {
 
 	networksObj.Add(v1.ContainerNetwork{
 		Group: "docker",
-		Name:  "flannel",
+		Name:  "cluster",
 	})
 
 	return networksObj

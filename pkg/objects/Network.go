@@ -14,8 +14,6 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	var marshaled []byte
 	var err error
 
-	fmt.Println(URL)
-
 	if data != nil {
 		req, err = http.NewRequest(method, URL, bytes.NewBuffer(data))
 		req.Header.Set("Content-Type", "application/json")

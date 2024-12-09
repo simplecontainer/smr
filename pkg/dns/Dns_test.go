@@ -45,7 +45,7 @@ func TestAddARecord(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			dnsRecords := New()
+			dnsRecords := New("agent")
 
 			dnsRecords.AddARecord(tc.parameters.domain, tc.parameters.ip)
 			response := dnsRecords.Find(fmt.Sprintf("%s.", tc.parameters.domain))
@@ -104,7 +104,7 @@ func TestRemoveARecord(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			dnsRecords := New()
+			dnsRecords := New("agent")
 
 			if tc.name == "Valid delete" {
 				dnsRecords.AddARecord(tc.parameters.domain, tc.parameters.ip)
@@ -172,7 +172,7 @@ func TestParseQuery(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			dnsRecords := New()
+			dnsRecords := New("agent")
 
 			if tc.name == "Valid domain inside" {
 				dnsRecords.AddARecord(tc.parameters.domain, tc.parameters.ip)

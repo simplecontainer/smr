@@ -41,6 +41,7 @@ type KVStore struct {
 	EtcdC       chan KV
 	ObjectsC    chan KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
+	Agent       string
 	mu          sync.RWMutex
 	client      *client.Http
 	kvStore     *badger.DB
@@ -77,7 +78,13 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client
 func (s *KVStore) Propose(k string, v string, agent string) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_OBJECT, agent}); err != nil {
+	category := static.CATEGORY_PLAIN
+
+	if strings.HasSuffix(k, ".object") {
+		category = static.CATEGORY_OBJECT
+	}
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, category, agent}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -136,21 +143,43 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 
 			s.mu.Lock()
 
-			URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
-			response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
-
-			logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
-
-			if !response.Success {
-				log.Panic(errors.New(response.ErrorExplanation))
-			}
-
 			switch dataKv.Category {
-			case static.CATEGORY_ETCD:
-				s.EtcdC <- dataKv
-				break
 			case static.CATEGORY_OBJECT:
-				s.ObjectsC <- dataKv
+				if dataKv.Agent == s.Agent {
+					URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
+					response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+
+					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+					if !response.Success {
+						log.Panic(errors.New(response.ErrorExplanation))
+					}
+				} else {
+					s.ObjectsC <- dataKv
+				}
+				break
+
+			case static.CATEGORY_PLAIN:
+				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+				if !response.Success {
+					log.Panic(errors.New(response.ErrorExplanation))
+				}
+				break
+			case static.CATEGORY_ETCD:
+				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+				if !response.Success {
+					log.Panic(errors.New(response.ErrorExplanation))
+				}
+
+				s.EtcdC <- dataKv
 				break
 			}
 

@@ -18,7 +18,7 @@ func New(elements ...string) *Format {
 }
 
 func NewFromString(f string) *Format {
-	elements, nonEmptyCount := BuildElements(strings.Split(f, "."))
+	elements, nonEmptyCount := BuildElements(strings.SplitN(f, ".", 4))
 	format := &Format{
 		Kind:       strings.TrimSpace(elements[0]),
 		Group:      strings.TrimSpace(elements[1]),
@@ -56,7 +56,7 @@ func BuildElements(splitted []string) ([]string, int) {
 }
 
 func (format *Format) IsValid() bool {
-	split := strings.Split(format.ToString(), ".")
+	split := strings.SplitN(format.ToString(), ".", 4)
 
 	for _, element := range split {
 		if element == "" {

@@ -8,6 +8,7 @@ import (
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -44,9 +45,6 @@ func Start() {
 
 				api.Keys = keys.NewKeys()
 				api.Manager.Keys = api.Keys
-
-				api.KindsRegistry = kinds.BuildRegistry(api.Manager)
-				api.Manager.KindsRegistry = api.KindsRegistry
 
 				var found error
 
@@ -128,6 +126,14 @@ func Start() {
 						API:  fmt.Sprintf("%s:1443", c.Certificate.DNSNames[0]),
 					})
 				}
+
+				api.DnsCache = dns.New(api.Config.Agent)
+				api.DnsCache.Client = api.Manager.Http
+				api.DnsCache.User = api.User
+
+				api.Manager.DnsCache = api.DnsCache
+
+				fmt.Println(api.Manager.DnsCache)
 
 				mdns.HandleFunc(".", api.HandleDns)
 
@@ -264,6 +270,9 @@ func Start() {
 				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
 
 				api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
+
+				api.KindsRegistry = kinds.BuildRegistry(api.Manager)
+				api.Manager.KindsRegistry = api.KindsRegistry
 
 				defer func(server *http.Server) {
 					err = server.Close()

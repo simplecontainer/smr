@@ -21,7 +21,10 @@ import (
 
 func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api := &Api{
-		User:          &authentication.User{},
+		User: &authentication.User{
+			Username: "root",
+			Domain:   "",
+		},
 		Config:        config,
 		Keys:          &keys.Keys{},
 		DnsCache:      &dns.Records{},
@@ -92,6 +95,7 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster []str
 	api.Cluster.Client = api.Manager.Http
 	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC)
 	api.Cluster.KVStore.ConfChangeC = confChangeC
+	api.Cluster.KVStore.Agent = api.Config.Agent
 
 	api.Manager.Cluster = api.Cluster
 }

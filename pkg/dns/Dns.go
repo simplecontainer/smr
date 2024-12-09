@@ -1,103 +1,73 @@
 package dns
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/miekg/dns"
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"net"
 )
 
-func New() *Records {
-	return &Records{}
+func New(agent string) *Records {
+	r := &Records{
+		ARecords: make(map[string]*ARecord),
+		Agent:    agent,
+	}
+
+	return r
 }
 
 func (r *Records) AddARecord(domain string, ip string) {
-	domain = fmt.Sprintf("%s.", domain)
+	_, ARecordexists := r.ARecords[domain]
 
-	if len(r.ARecords) > 0 {
-		_, ARecordexists := r.ARecords[domain]
-
-		if !ARecordexists {
-			tmp := r.ARecords
-			tmp[domain] = ARecord{
-				map[string][]string{
-					domain: {ip},
-				},
-				map[string][]string{
-					domain: {},
-				},
-			}
-
-			r.ARecords = tmp
-		}
-
-		_, domainexists := r.ARecords[domain].Domain[domain]
-
-		if domainexists {
-			var contains bool
-			for _, i := range r.ARecords[domain].Domain[domain] {
-				if i == ip {
-					contains = true
-				}
-			}
-
-			if !contains {
-				r.ARecords[domain].Domain[domain] = append(r.ARecords[domain].Domain[domain], ip)
-			}
-		} else {
-			tmp := ARecord{
-				map[string][]string{
-					domain: {ip},
-				},
-				map[string][]string{
-					domain: {},
-				},
-			}
-
-			r.ARecords[domain] = tmp
-		}
-	} else {
-		tmp := map[string]ARecord{
-			domain: {
-				map[string][]string{
-					domain: {ip},
-				},
-				map[string][]string{
-					domain: {},
-				},
-			},
-		}
-
-		r.ARecords = tmp
+	if !ARecordexists {
+		r.ARecords[domain] = NewARecord()
 	}
+
+	r.ARecords[domain].Append(ip)
+
+	format := f.NewFromString(fmt.Sprintf("dns.%s.%s", domain, r.Agent))
+	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
+
+	bytes, err := json.Marshal(r.ARecords[domain].IPs)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	obj.Add(format, string(bytes))
 }
 func (r *Records) RemoveARecord(domain string, ip string) error {
 	ips := r.Find(domain)
 
 	if len(ips) > 0 {
-		for i, v := range ips {
-			if v == ip {
-				ips = append(ips[:i], ips[i+1:]...)
+		_, ARecordexists := r.ARecords[domain]
+
+		if ARecordexists {
+			err := r.ARecords[domain].Remove(ip)
+
+			if err != nil {
+				return err
 			}
 		}
 
-		r.ARecords[domain].Domain[domain] = ips
+		r.ARecords[domain].Append(ip)
 
-		return nil
-	} else {
-		return errors.New(fmt.Sprintf("ip %s not found for specifed domain %s", ip, domain))
-	}
-}
+		format := f.NewFromString(fmt.Sprintf("dns.%s.%s", domain, r.Agent))
+		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
-func (r *Records) RemoveARecordQueue(domain string, ip string) error {
-	ips := r.Find(domain)
+		bytes, err := json.Marshal(r.ARecords[domain].IPs)
 
-	if len(ips) > 0 {
-		for _, v := range ips {
-			if v == ip {
-				r.ARecords[domain].DomainDelete[domain] = append(r.ARecords[domain].DomainDelete[domain], v)
-			}
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return err
 		}
+
+		obj.Add(format, string(bytes))
 
 		return nil
 	} else {
@@ -106,30 +76,41 @@ func (r *Records) RemoveARecordQueue(domain string, ip string) error {
 }
 
 func (r *Records) Find(domain string) []string {
-	arecords, exists := r.ARecords[domain]
+	_, exists := r.ARecords[domain]
 
 	if exists {
-		return arecords.Domain[domain]
+		return r.ARecords[domain].IPs
 	} else {
-		return []string{}
-	}
-}
+		format := f.NewFromString(fmt.Sprintf("dns.%s", domain))
+		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
-func (r *Records) FindDeleteQueue(domain string) []string {
-	arecords, exists := r.ARecords[domain]
+		objs, err := obj.FindMany(format)
 
-	if exists {
-		return arecords.DomainDelete[domain]
-	} else {
-		return []string{}
-	}
-}
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
 
-func (r *Records) ResetDeleteQueue(domain string) {
-	Arecords, exists := r.ARecords[domain]
+		if len(objs) > 0 {
+			records := make([]string, 0)
 
-	if exists {
-		Arecords.DomainDelete[domain] = nil
+			for _, v := range objs {
+				record := make([]string, 0)
+				err = json.Unmarshal(v.GetDefinitionByte(), &record)
+
+				fmt.Println(v.GetDefinitionString())
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+					continue
+				}
+
+				records = append(records, record...)
+			}
+
+			return records
+		} else {
+			return []string{}
+		}
 	}
 }
 

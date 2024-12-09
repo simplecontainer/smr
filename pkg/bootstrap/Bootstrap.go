@@ -30,7 +30,6 @@ func CreateDirectoryTree(projectDir string) ([]string, error) {
 	created := []string{}
 	for _, path := range static.STRUCTURE {
 		dir := fmt.Sprintf("%s/%s", projectDir, path)
-		fmt.Println(dir)
 
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			err = os.MkdirAll(dir, 0750)
