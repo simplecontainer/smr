@@ -2,17 +2,21 @@ package status
 
 import (
 	"github.com/hmdsefi/gograph"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"time"
 )
 
 type Status struct {
-	State                  *StatusState `json:"state"`
-	LastReadiness          bool
-	LastReadinessTimestamp time.Time
-	StateMachine           gograph.Graph[*StatusState] `json:"-"`
-	Reconciling            bool
-	PulledImage            uint8
-	LastUpdate             time.Time
+	State                      *StatusState               `json:"state"`
+	ChangeC                    chan distributed.Container `json:"-"`
+	LastReadiness              bool
+	LastReadinessTimestamp     time.Time
+	LastDependsSolved          bool
+	LastDependsSolvedTimestamp time.Time
+	StateMachine               gograph.Graph[*StatusState] `json:"-"`
+	Reconciling                bool
+	PulledImage                bool
+	LastUpdate                 time.Time
 }
 
 type StatusState struct {

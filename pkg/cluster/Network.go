@@ -1,82 +1,83 @@
-package objects
+package cluster
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
 )
 
-func SendRequest(client *http.Client, URL string, method string, data []byte) *contracts.ResponseOperator {
+func SendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.ResponseImplementation {
 	var req *http.Request
-	var marshaled []byte
 	var err error
 
-	if data != nil {
-		req, err = http.NewRequest(method, URL, bytes.NewBuffer(data))
+	if len(data) > 0 {
+		if err != nil {
+			return &contracts.ResponseImplementation{
+				HttpStatus:       0,
+				Explanation:      "failed to marshal data for sending request",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+			}
+		}
+
+		req, err = http.NewRequest("POST", URL, bytes.NewBuffer([]byte(data)))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, err = http.NewRequest(method, URL, nil)
+		req, err = http.NewRequest("GET", URL, nil)
 		req.Header.Set("Content-Type", "application/json")
 	}
 
 	if err != nil {
-		return &contracts.ResponseOperator{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "failed to craft request",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
-			Data:             nil,
 		}
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Get(user.Username).Http.Do(req)
 
 	if err != nil {
-		return &contracts.ResponseOperator{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "failed to connect to the smr-agent",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
-			Data:             nil,
 		}
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &contracts.ResponseOperator{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "invalid response from the smr-agent",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
-			Data:             nil,
 		}
 	}
 
-	var response contracts.ResponseOperator
+	var response contracts.ResponseImplementation
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		return &contracts.ResponseOperator{
+		return &contracts.ResponseImplementation{
 			HttpStatus:       0,
 			Explanation:      "failed to unmarshal body response from smr-agent",
-			ErrorExplanation: generateResponse(URL, method, marshaled, body),
+			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
-			Data:             nil,
 		}
 	}
 
 	return &response
-}
-
-func generateResponse(URL string, method string, data []byte, body []byte) string {
-	debug := fmt.Sprintf("URL: %s METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, method, string(data), string(body))
-	return fmt.Sprintf("failed to fetch object from the kv store: %s", debug)
 }

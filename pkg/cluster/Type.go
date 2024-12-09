@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/raft"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -8,6 +9,7 @@ import (
 type Cluster struct {
 	Node       *Node
 	Cluster    []string
+	Client     *client.Http
 	EtcdClient *clientv3.Client
 	KVStore    *raft.KVStore
 	RaftNode   *raft.RaftNode

@@ -12,6 +12,7 @@ func New(mgr *manager.Manager) *Container {
 			Manager:  mgr,
 			Client:   mgr.Http,
 			DnsCache: mgr.DnsCache,
+			User:     mgr.User,
 		},
 	}
 }

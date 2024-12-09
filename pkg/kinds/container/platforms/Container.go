@@ -1,6 +1,7 @@
 package platforms
 
 import (
+	"encoding/json"
 	"errors"
 	TDTypes "github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -9,20 +10,16 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/static"
-	"time"
+	"strconv"
 )
 
-func New(platform string, name string, config *configuration.Configuration, definition *v1.ContainerDefinition) (IContainer, error) {
-	statusObj := &status.Status{
-		State:      &status.StatusState{},
-		LastUpdate: time.Now(),
-	}
-
-	statusObj.CreateGraph()
+func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition *v1.ContainerDefinition) (IContainer, error) {
+	statusObj := status.New(ChangeC)
 
 	switch platform {
 	case static.PLATFORM_DOCKER:
@@ -38,12 +35,38 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      make(map[string]string),
 					ObjectDependencies: make([]*f.Format, 0),
-					NodeIP:             config.Node,
+					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
 					Agent:              config.Agent,
 				},
 				Status: statusObj,
 			},
 			Type: static.PLATFORM_DOCKER,
+		}, nil
+	default:
+		return nil, errors.New("container platform is not implemented")
+	}
+}
+
+func NewGhost(state map[string]interface{}) (IContainer, error) {
+	switch state["type"].(string) {
+	case static.PLATFORM_DOCKER:
+		var ghostDocker *docker.Docker
+		var ghostGeneral *General
+
+		err := json.Unmarshal(state["Platform"].([]byte), ghostDocker)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(state["General"].([]byte), ghostGeneral)
+		if err != nil {
+			return nil, err
+		}
+
+		return Container{
+			Platform: ghostDocker,
+			General:  ghostGeneral,
+			Type:     static.PLATFORM_DOCKER,
 		}, nil
 	default:
 		return nil, errors.New("container platform is not implemented")

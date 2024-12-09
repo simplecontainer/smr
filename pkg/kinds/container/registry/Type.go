@@ -1,6 +1,9 @@
 package registry
 
 import (
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"sync"
@@ -9,7 +12,10 @@ import (
 type Registry struct {
 	Containers     map[string]map[string]platforms.IContainer
 	ContainersLock sync.RWMutex
-	Indexes        map[string][]int
-	BackOffTracker map[string]map[string]int
+	Indexes        map[string][]uint64
+	BackOffTracker map[string]map[string]uint64
 	Object         map[string]objects.Object
+	ChangeC        chan distributed.Container
+	Client         *client.Http
+	User           *authentication.User
 }

@@ -65,7 +65,7 @@ func Ready(registry *registry.Registry, group string, name string, dependsOn []v
 func SolveDepends(registry *registry.Registry, myGroup string, myName string, depend *Dependency, channel chan *State) error {
 	myContainer := registry.Find(myGroup, myName)
 
-	if myContainer == nil { // || myContainer.Status.IfStateIs(status.STATUS_DEPENDS_CHECKING) {
+	if myContainer == nil {
 		depend.Cancel()
 		return errors.New("container not found")
 	}
@@ -74,7 +74,7 @@ func SolveDepends(registry *registry.Registry, myGroup string, myName string, de
 	otherName := depend.Name
 
 	if otherName == "*" {
-		for _, container := range registry.Containers[otherGroup] {
+		for _, container := range registry.FindGroup(otherGroup) {
 			if container == nil {
 				channel <- &State{
 					State: CHECKING,

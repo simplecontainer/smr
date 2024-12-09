@@ -3,6 +3,7 @@ package manager
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
@@ -14,6 +15,7 @@ import (
 type Manager struct {
 	User            *authentication.User
 	Config          *configuration.Configuration
+	Cluster         *cluster.Cluster
 	Keys            *keys.Keys
 	Kinds           *relations.RelationRegistry
 	KindsRegistry   map[string]contracts.Kind

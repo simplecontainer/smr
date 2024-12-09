@@ -18,5 +18,4 @@ type General struct {
 }
 
 const SPREAD_SPECIFIC string = "specific"
-const SPREAD_MIRROR string = "mirror"
 const SPREAD_UNIFORM string = "uniform"
