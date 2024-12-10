@@ -8,6 +8,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
+	"slices"
+	"sort"
 	"strings"
 )
 
@@ -171,6 +173,34 @@ func Uniform(replicasNumber uint64, existingIndexes []uint64, clusterSize uint64
 func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, member uint64) ([]uint64, []uint64, []uint64) {
 	var create = make([]uint64, 0)
 	var destroy = make([]uint64, 0)
+
+	if slices.Contains(nodes, member) {
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i] < nodes[j]
+		})
+
+		nodeCount := uint64(len(nodes))
+		replicasScoped := replicasNumber / nodeCount
+		normalizedNodes := make(map[uint64]uint64)
+
+		// Normalize node ID -> eg. 2,5,7 -> 1,2,3
+		for i, node := range nodes {
+			x := node - uint64(i)
+			normalizedNodes[member] = nodes[i] - x
+		}
+
+		for replicas := 1 * normalizedNodes[member]; replicas <= replicasScoped*normalizedNodes[member]; replicas++ {
+			create = append(create, replicas)
+		}
+
+		if nodeCount == normalizedNodes[member] && replicasNumber%nodeCount != 0 {
+			create = append(create, replicasNumber)
+		}
+
+		if len(create) < len(existingIndexes) {
+			destroy = existingIndexes[len(create):]
+		}
+	}
 
 	return create, destroy, existingIndexes
 }
