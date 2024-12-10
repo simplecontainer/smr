@@ -17,7 +17,13 @@ func NewDistributed(nodeID uint64, group string, name string) *DistributedReplic
 		Replicas: make(map[uint64]*ScopedReplicas),
 	}
 
-	dr.Replicas[nodeID] = &ScopedReplicas{
+	dr.Replicas[nodeID] = NewScoped()
+
+	return dr
+}
+
+func NewScoped() *ScopedReplicas {
+	return &ScopedReplicas{
 		Create: make([]R, 0),
 		Remove: make([]R, 0),
 		Numbers: Numbers{
@@ -26,8 +32,6 @@ func NewDistributed(nodeID uint64, group string, name string) *DistributedReplic
 			Existing: make([]uint64, 0),
 		},
 	}
-
-	return dr
 }
 
 func (dr *DistributedReplicas) Save(client *client.Client, user *authentication.User) error {

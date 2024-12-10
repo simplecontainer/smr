@@ -32,12 +32,16 @@ func Event(shared *shared.Shared, event *types.Events) {
 		return
 	}
 
-	switch event.Kind {
-	case "change":
-		HandleChange(shared, container)
-		break
-	default:
-		break
+	if container.IsGhost() {
+		// Handle events on distributed case!
+	} else {
+		switch event.Kind {
+		case "change":
+			HandleChange(shared, container)
+			break
+		default:
+			break
+		}
 	}
 }
 

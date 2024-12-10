@@ -523,7 +523,7 @@ func (container *Container) View(request contracts.RequestOperator) contracts.Re
 		}
 	}
 
-	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+	containerObj := container.Shared.Registry.FindLocal(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
 
 	if containerObj == nil {
 		return contracts.ResponseOperator{
@@ -560,7 +560,7 @@ func (container *Container) Restart(request contracts.RequestOperator) contracts
 		}
 	}
 
-	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
+	containerObj := container.Shared.Registry.FindLocal(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
 
 	if containerObj == nil {
 		return contracts.ResponseOperator{

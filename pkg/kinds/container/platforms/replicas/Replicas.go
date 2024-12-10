@@ -29,7 +29,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, user *authenticat
 	if len(destroy) > 0 {
 		for _, v := range destroy {
 			name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, v)
-			existingContainer := shared.Registry.Find(containerDefinition.Meta.Group, name)
+			existingContainer := shared.Registry.FindLocal(containerDefinition.Meta.Group, name)
 
 			if existingContainer != nil {
 				dr.Replicas[replicas.NodeID].Delete(existingContainer.GetGroup(), existingContainer.GetGeneratedName())
@@ -40,7 +40,7 @@ func (replicas *Replicas) HandleReplica(shared *shared.Shared, user *authenticat
 	// Create from the start to the end
 	for _, v := range create {
 		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, v)
-		existingContainer := shared.Registry.Find(containerDefinition.Meta.Group, name)
+		existingContainer := shared.Registry.FindLocal(containerDefinition.Meta.Group, name)
 
 		if existingContainer != nil {
 			var onlyReplicaChange = false
@@ -98,7 +98,7 @@ func (replicas *Replicas) GetReplica(shared *shared.Shared, user *authentication
 
 	for i := range dr.Replicas[replicas.NodeID].Numbers.Existing {
 		name, _ := shared.Registry.NameReplicas(containerDefinition.Meta.Group, containerDefinition.Meta.Name, uint64(i))
-		containerObj := shared.Registry.Find(containerDefinition.Meta.Group, name)
+		containerObj := shared.Registry.FindLocal(containerDefinition.Meta.Group, name)
 
 		if containerObj != nil {
 			containers = append(containers, R{replicas.Group, name})
@@ -112,30 +112,14 @@ func (replicas *Replicas) GetReplicaNumbers(dr *DistributedReplicas, spread v1.C
 	switch replicas.Spread.Spread {
 	case platforms.SPREAD_SPECIFIC:
 		if dr.Replicas[replicas.NodeID] == nil {
-			dr.Replicas[replicas.NodeID] = &ScopedReplicas{
-				Create: make([]R, 0),
-				Remove: make([]R, 0),
-				Numbers: Numbers{
-					Create:   make([]uint64, 0),
-					Destroy:  make([]uint64, 0),
-					Existing: make([]uint64, 0),
-				},
-			}
-
-			dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Specific(replicasNumber, existingIndexes, spread.Agents, replicas.NodeID)
+			dr.Replicas[replicas.NodeID] = NewScoped()
 		}
+
+		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Specific(replicasNumber, existingIndexes, spread.Agents, replicas.NodeID)
 		break
 	case platforms.SPREAD_UNIFORM:
 		if dr.Replicas[replicas.NodeID] == nil {
-			dr.Replicas[replicas.NodeID] = &ScopedReplicas{
-				Create: make([]R, 0),
-				Remove: make([]R, 0),
-				Numbers: Numbers{
-					Create:   make([]uint64, 0),
-					Destroy:  make([]uint64, 0),
-					Existing: make([]uint64, 0),
-				},
-			}
+			dr.Replicas[replicas.NodeID] = NewScoped()
 		}
 
 		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Uniform(replicasNumber, existingIndexes, clusterSize, replicas.NodeID)

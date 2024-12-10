@@ -9,6 +9,7 @@ type Container struct {
 	Platform IPlatform
 	General  *General
 	Type     string
+	ghost    bool
 }
 
 type General struct {

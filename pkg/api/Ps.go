@@ -13,7 +13,7 @@ func (api *Api) Ps(c *gin.Context) {
 	container, ok := api.KindsRegistry["container"]
 
 	if ok {
-		reg = container.GetShared().(*shared.Shared).Registry.Containers
+		reg = container.GetShared().(*shared.Shared).Registry.All()
 	}
 
 	if reg != nil {

@@ -62,6 +62,23 @@ func (registry *Registry) Remove(group string, name string) bool {
 	}
 }
 
+func (registry *Registry) FindLocal(group string, name string) platforms.IContainer {
+	registry.ContainersLock.RLock()
+
+	if registry.Containers[group] != nil {
+		if registry.Containers[group][name] != nil {
+			registry.ContainersLock.RUnlock()
+			return registry.Containers[group][name]
+		} else {
+			registry.ContainersLock.RUnlock()
+			return nil
+		}
+	} else {
+		registry.ContainersLock.RUnlock()
+		return nil
+	}
+}
+
 func (registry *Registry) Find(group string, name string) platforms.IContainer {
 	registry.ContainersLock.RLock()
 
@@ -93,6 +110,7 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 		obj.Find(format)
 
 		if obj.Exists() {
+			fmt.Println(obj.GetDefinitionString())
 			instance, err := platforms.NewGhost(obj.GetDefinition())
 
 			if err != nil {
@@ -127,6 +145,38 @@ func (registry *Registry) FindGroup(group string) map[string]platforms.IContaine
 			}
 
 			result[instance.GetGeneratedName()] = instance
+		}
+	}
+
+	return result
+}
+
+func (registry *Registry) All() map[string]map[string]platforms.IContainer {
+	registry.ContainersLock.RLock()
+
+	format := f.NewFromString("container.state")
+	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
+	var result = make(map[string]map[string]platforms.IContainer)
+	objs, _ := obj.FindMany(format)
+
+	if len(objs) > 0 {
+		for _, o := range objs {
+			instance, err := platforms.NewGhost(o.GetDefinition())
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+				continue
+			}
+
+			if result[instance.GetGroup()] != nil {
+				result[instance.GetGroup()][instance.GetGeneratedName()] = instance
+			} else {
+				tmp := make(map[string]platforms.IContainer)
+				tmp[instance.GetGeneratedName()] = instance
+
+				result[instance.GetGroup()] = tmp
+			}
 		}
 	}
 

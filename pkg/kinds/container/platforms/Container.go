@@ -48,29 +48,34 @@ func New(platform string, name string, config *configuration.Configuration, Chan
 }
 
 func NewGhost(state map[string]interface{}) (IContainer, error) {
-	switch state["type"].(string) {
-	case static.PLATFORM_DOCKER:
-		var ghostDocker *docker.Docker
-		var ghostGeneral *General
+	if state["Type"] != nil {
+		switch state["Type"].(string) {
+		case static.PLATFORM_DOCKER:
+			ghost := &Container{
+				Platform: &docker.Docker{},
+				General:  &General{},
+				Type:     static.PLATFORM_DOCKER,
+				ghost:    true,
+			}
 
-		err := json.Unmarshal(state["Platform"].([]byte), ghostDocker)
-		if err != nil {
-			return nil, err
+			bytes, err := json.Marshal(state)
+
+			if err != nil {
+				return nil, err
+			}
+
+			err = json.Unmarshal(bytes, &ghost)
+			if err != nil {
+				return nil, err
+			}
+
+			return ghost, nil
+		default:
+			return nil, errors.New("container platform is not implemented")
 		}
-
-		err = json.Unmarshal(state["General"].([]byte), ghostGeneral)
-		if err != nil {
-			return nil, err
-		}
-
-		return Container{
-			Platform: ghostDocker,
-			General:  ghostGeneral,
-			Type:     static.PLATFORM_DOCKER,
-		}, nil
-	default:
-		return nil, errors.New("container platform is not implemented")
 	}
+
+	return nil, errors.New("type is not defined")
 }
 
 func (c Container) Start() bool {
@@ -115,6 +120,9 @@ func (c Container) GetRuntime() *types.Runtime {
 func (c Container) GetStatus() *status.Status {
 	return c.General.Status
 }
+func (c Container) GetAgent() string {
+	return c.General.Runtime.Agent
+}
 
 func (c Container) GetDefinition() v1.ContainerDefinition {
 	return c.Platform.GetDefinition()
@@ -140,4 +148,11 @@ func (c Container) GetDomain(network string) string {
 }
 func (c Container) GetHeadlessDomain(network string) string {
 	return c.Platform.GetHeadlessDomain(network)
+}
+
+func (c Container) SetGhost(ghost bool) {
+	c.ghost = ghost
+}
+func (c Container) IsGhost() bool {
+	return c.ghost
 }

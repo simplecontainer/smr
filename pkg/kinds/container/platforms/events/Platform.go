@@ -62,7 +62,7 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 		break
 	}
 
-	containerObj := shared.Registry.Find(group, name)
+	containerObj := shared.Registry.FindLocal(group, name)
 	if containerObj == nil {
 		return
 	}
