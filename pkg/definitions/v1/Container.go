@@ -34,11 +34,11 @@ type ContainerInternal struct {
 	Volumes       []ContainerVolume    `json:"volumes"`
 	Configuration map[string]string    `json:"configuration"`
 	Resources     []ContainerResource  `json:"resources"`
-	Replicas      int                  `validate:"required" json:"replicas"`
+	Replicas      uint64               `validate:"required" json:"replicas"`
 	Capabilities  []string             `json:"capabilities"`
 	Privileged    bool                 `json:"privileged"`
 	NetworkMode   string               `json:"network_mode"`
-	Spread        string               `json:"spread"`
+	Spread        ContainerSpread      `json:"spread"`
 	Nodes         []string             `json:"nodes"`
 	Dns           []string             `json:"dns"`
 }
@@ -54,6 +54,11 @@ type ContainerReadiness struct {
 	Operator string            `json:"operator"`
 	Timeout  string            `validate:"required" json:"timeout"`
 	Body     map[string]string `json:"body"`
+}
+
+type ContainerSpread struct {
+	Spread string
+	Agents []uint64
 }
 
 type ContainerNetwork struct {

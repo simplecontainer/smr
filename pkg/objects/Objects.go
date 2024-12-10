@@ -87,30 +87,22 @@ func (obj *Object) Find(format *f.Format) error {
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
 	if response.Success {
-		for key, value := range response.Data {
+		for _, value := range response.Data {
 			if value == nil {
 				continue
 			}
 
-			if strings.Contains(key, "object") {
-				b64decoded, err := base64.StdEncoding.DecodeString(value.(string))
+			b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
+			obj.DefinitionString = string(b64decoded)
+			obj.definitionByte = b64decoded
 
-				data := make(map[string]any)
-				err = json.Unmarshal(b64decoded, &data)
+			// Best effort if no json fail silently
+			data := make(map[string]any)
+			json.Unmarshal(b64decoded, &data)
 
-				if err != nil {
-					return err
-				}
+			obj.definition = data
 
-				obj.definition = data
-				obj.definitionByte = b64decoded
-				obj.DefinitionString = value.(string)
-			} else {
-				b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
-				obj.DefinitionString = string(b64decoded)
-			}
 		}
-
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}

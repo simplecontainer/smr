@@ -22,8 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
@@ -39,9 +39,11 @@ import (
 type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
 	EtcdC       chan KV
+	ObjectsC    chan KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
+	Agent       string
 	mu          sync.RWMutex
-	mgr         *manager.Manager
+	client      *client.Http
 	kvStore     *badger.DB
 	snapshotter *snap.Snapshotter
 }
@@ -53,8 +55,8 @@ type KV struct {
 	Agent    string
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, mgr *manager.Manager, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV) *KVStore {
-	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, kvStore: badger, mgr: mgr, snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV, objectsC chan KV) *KVStore {
+	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, ObjectsC: objectsC, kvStore: badger, client: client, snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
@@ -76,7 +78,13 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, mgr *manager.M
 func (s *KVStore) Propose(k string, v string, agent string) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_OBJECT, agent}); err != nil {
+	category := static.CATEGORY_PLAIN
+
+	if strings.HasSuffix(k, ".object") {
+		category = static.CATEGORY_OBJECT
+	}
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, category, agent}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -84,8 +92,8 @@ func (s *KVStore) Propose(k string, v string, agent string) {
 }
 
 func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
-	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.mgr.Http.Clients["root"].API, k)
-	response := objects.SendRequest(s.mgr.Http.Clients["root"].Http, URL, "GET", nil)
+	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.client.Clients["root"].API, k)
+	response := objects.SendRequest(s.client.Clients["root"].Http, URL, "GET", nil)
 
 	if response.Success {
 		b64decoded, err := base64.StdEncoding.DecodeString(response.Data[k].(string))
@@ -94,13 +102,10 @@ func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
 			logger.Log.Error(err.Error())
 		} else {
 			if string(b64decoded) == v {
-				fmt.Println("not proposing since it is same in the raft")
 				return
 			}
 		}
 	}
-
-	fmt.Println("proposing since it is different")
 
 	var buf strings.Builder
 
@@ -138,20 +143,43 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 
 			s.mu.Lock()
 
-			URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.mgr.Http.Clients["root"].API, dataKv.Key)
-			response := objects.SendRequest(s.mgr.Http.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
-
-			logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
-
-			if !response.Success {
-				log.Panic(errors.New(response.ErrorExplanation))
-			}
-
 			switch dataKv.Category {
-			case static.CATEGORY_ETCD:
-				s.EtcdC <- dataKv
-				break
 			case static.CATEGORY_OBJECT:
+				if dataKv.Agent == s.Agent {
+					URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
+					response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+
+					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+					if !response.Success {
+						log.Panic(errors.New(response.ErrorExplanation))
+					}
+				} else {
+					s.ObjectsC <- dataKv
+				}
+				break
+
+			case static.CATEGORY_PLAIN:
+				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+				if !response.Success {
+					log.Panic(errors.New(response.ErrorExplanation))
+				}
+				break
+			case static.CATEGORY_ETCD:
+				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+				if !response.Success {
+					log.Panic(errors.New(response.ErrorExplanation))
+				}
+
+				s.EtcdC <- dataKv
 				break
 			}
 
@@ -190,8 +218,8 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 	s.mu.Lock()
 
 	for k, v := range store {
-		URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.mgr.Http.Clients["root"].API, k)
-		response := objects.SendRequest(s.mgr.Http.Clients["root"].Http, URL, "PUT", []byte(v))
+		URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, k)
+		response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(v))
 
 		logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", v))
 

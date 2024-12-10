@@ -76,8 +76,6 @@ func Restore(config *configuration.Configuration) (*Cluster, error) {
 	}, nil
 }
 
-func (c *Cluster) Start(body io.ReadCloser) {}
-
 func (c *Cluster) Add(node *Node) {
 	for _, url := range c.Cluster {
 		if url == node.URL {

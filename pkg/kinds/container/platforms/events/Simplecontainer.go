@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
@@ -22,7 +21,6 @@ func Event(shared *shared.Shared, event *types.Events) {
 	var container platforms.IContainer
 
 	if event == nil {
-		fmt.Println("nil event")
 		return
 	}
 
@@ -34,18 +32,22 @@ func Event(shared *shared.Shared, event *types.Events) {
 		return
 	}
 
-	switch event.Kind {
-	case "change":
-		HandleChange(shared, container)
-		break
-	default:
-		break
+	if container.IsGhost() {
+		// Handle events on distributed case!
+	} else {
+		switch event.Kind {
+		case "change":
+			HandleChange(shared, container)
+			break
+		default:
+			break
+		}
 	}
 }
 
 func HandleChange(shared *shared.Shared, container platforms.IContainer) {
 	if !reconcileIgnore(container.GetLabels()) {
-		container.GetStatus().TransitionState(container.GetGeneratedName(), status.STATUS_PREPARE)
+		container.GetStatus().TransitionState(container.GetGroup(), container.GetGeneratedName(), status.STATUS_PREPARE)
 		shared.Watcher.Find(container.GetGroupIdentifier()).ContainerQueue <- container
 	}
 }

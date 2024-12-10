@@ -23,14 +23,14 @@ Introducing objects which can be defined as YAML definition and sent to the simp
 
 These objects let you manage Docker containers with configure features:
 
-- Single Docker daemon only (Currently)
+- Single Docker daemon / Cluster of Docker daemons
+- Overlay networking using flannel
 - Integrated DNS server isolated from Docker daemon
 - GitOps: deploy objects from the GitOps repositories
-- Replication of containers
+- Replication of containers in cluster of Docker daemons
 - Reconciliation and tracking the lifecycle of the Docker containers
-- Operators to implement third-party functionalities
-- CLI client to interact with the simplecontainer manager
-- Fast learning curve - no over complication
+- CLI to interact with the simplecontainer
+- Fast learning curve - simplicty and deterministic behavior
 - Reliable dependency ordering and readiness probes
 - Recreate containers from the KV store in case of failure
 - Templating of the container objects to leverage secrets and configuration
@@ -65,7 +65,63 @@ chmod +x client
 sudo mv client /usr/local/bin/smr
 ```
 
-### Running simplecontainer exposed only on localhost
+### Running simplecontainer in cluster mode
+Simplecontainer can run in single and cluster mode. Cluster mode allows users to deploy Docker daemons on different hosts and 
+connect them via simplecontainer. Overlay network is created using flannel to enable inter-host communication.
+
+Simplecontainer is using RAFT protocol to enable distributed state using badger key-value store. 
+Etcd embedded is started also but in single mode and exposed to the localhost only without any credentials. The reason is because 
+flannel is using only etcd as the state store for the network configuration.
+
+Control-plane and RAFT communication is secured using mTLS so data is encrypted even over non-secure underlying networks.
+
+Ports exposure:
+- 0.0.0.0:1443->1443/tcp (Simplecontainer control plane)
+- 0.0.0.0:9212->9212/tcp (RAFT protocol control plane sharing state)
+- :::1443->1443/tcp (Simplecontainer control plane ipv6)
+- 127.0.0.1:2379->2379/tcp (Etcd exposed only on the localhost)
+
+#### How to run it?
+This scenario assumes there are two nodes(virtual machines) connected over non-secure internet connection.
+
+- Node 1: node1.simplecontainer.com -> Points to Node 1 IP address
+- Node 1: node2.simplecontainer.com -> Points to Node 2 IP address
+
+**Node 1**
+```bash
+#!/bin/bash
+
+export TAG=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+
+smr node run --image simplecontainermanager/smr --tag $TAG --args="create --agent smr-agent-1 --domains node1.simplecontainer.com" --agent smr-agent-1 --wait
+smr node run --image simplecontainermanager/smr --tag $TAG --args="start" --overlayport 0.0.0.0:9212 --agent smr-agent-1
+smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1
+sudo nohup smr node cluster start --node 1 --url https://node1.simplecontainer.com:9212 --cluster https://node1.simplecontainer.com:9212
+smr node cluster add --node 2 --url https://node1.simplecontainer.com:9212
+```
+
+**Interminent step**
+You need to copy CA from the Node 1 to Node 2:
+- `~/.ssh/simplecontainer/ca.crt`
+- `~/.ssh/simplecontainer/ca.key`
+
+**Node 2**
+```bash
+#!/bin/bash
+
+export TAG=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+
+smr node run --image simplecontainermanager/smr --tag $TAG --args="create --agent smr-agent-2 --domains node2.simplecontainer.com" --agent smr-agent-2 --wait
+smr node run --image simplecontainermanager/smr --tag $TAG --args="start" --overlayport 0.0.0.0:9212 --agent smr-agent-2
+smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-2
+smr node cluster start --node 2 --url https://node2.simplecontainer.com:9212 --cluster https://node2.simplecontainer.com:9212,https://node2.simplecontainer.com:9212 --join
+```
+
+Afterward, cluster is started. Badger key-value store is now distributed using RAFT protocol. 
+Flannel will start and agent will create docker network named `flannel`. Containers started are automatically connected to the flannel network when started.
+
+### Running simplecontainer in single mode
+#### Control plane exposed to localhost
 Exposing the control plane only to the localhost:
 
 ```bash
@@ -76,7 +132,7 @@ smr node run --image simplecontainermanager/smr --tag $LATEST_VERSION --args="st
 smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1 -y --wait
 ```
 
-### Running simplecontainer expoesed on the internet
+#### Control plane exposed to the internet
 Exposing the control plane to the `smr.example.com` (**Change domain to your domain**):
 
 ```bash
@@ -87,27 +143,14 @@ smr node run --image simplecontainermanager/smr --tag $LATEST_VERSION --args="st
 ```
 
 Download `$HOME/.ssh/simplecontainer/root.pem` and copy-paste it to the `$HOME/.ssh/simplecontainer/root.pem` on the
-other machine.
+external machine.
 
-From that machine run:
+From external machine run:
 ```bash
 smr context connect https://smr.example.com:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1 -y --wait
 ```
 
-### Explanation of what happens?
-
-These commands will generate a project, build a configuration file, and also it will generate certificates under $HOME/.ssh/simplecontainer. These are important and used by the client to communicate with the simplecontainer in a secure manner.
-
-The client needs this bundle to connect to the Simplecontainer API.
-```
-$ cat $HOME/.ssh/simplecontainer/root.pem
------BEGIN PRIVATE KEY-----
-MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDBNozIEBzUyvJf
-ln8CH/I1cX6W/EzX+SNh/WYD2pYiCkgKgRUdPNrua7Vf3/zPrNmAqdHyQgDIjNlr
-...
-```
-
-### Exposing over IP addresses
+#### Exposing using IP addresses
 
 Same as before smr client can be used:
 ```
@@ -225,7 +268,7 @@ traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.5 (ghost), 172.17.0.5
 ```
 
 Containers from group mysql will start first. 
-Traefik and nginx will wait till mysql is ready because of the dependency defined.
+Traefik and nginx will wait till mysql is ready because of the dependency definition and ordering.
 
 Important links
 ---------------------------

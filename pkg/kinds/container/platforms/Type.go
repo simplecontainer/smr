@@ -9,6 +9,7 @@ type Container struct {
 	Platform IPlatform
 	General  *General
 	Type     string
+	ghost    bool
 }
 
 type General struct {
@@ -18,5 +19,4 @@ type General struct {
 }
 
 const SPREAD_SPECIFIC string = "specific"
-const SPREAD_MIRROR string = "mirror"
 const SPREAD_UNIFORM string = "uniform"

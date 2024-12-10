@@ -50,9 +50,6 @@ func Ready(client *client.Http, container platforms.IContainer, user *authentica
 		State: SUCCESS,
 	}
 
-	container.GetStatus().LastReadiness = true
-	container.GetStatus().LastReadinessTimestamp = time.Now()
-
 	return true, nil
 }
 

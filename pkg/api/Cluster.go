@@ -58,6 +58,8 @@ func (api *Api) StartCluster(c *gin.Context) {
 		api.Cluster, err = cluster.New(c.Request.Body)
 	}
 
+	api.Manager.Cluster = api.Cluster
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
 			Explanation:      "",
@@ -99,6 +101,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		go api.Cluster.ListenEvents(api.Config.Agent)
 		go api.Cluster.ListenUpdates(api.Config.Agent)
+		go api.Cluster.ListenObjects(api.Config.Agent)
 
 		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
 

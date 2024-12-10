@@ -28,6 +28,7 @@ type IContainer interface {
 
 	GetRuntime() *types.Runtime
 	GetStatus() *status.Status
+	GetAgent() string
 
 	GetDefinition() v1.ContainerDefinition
 	GetLabels() map[string]string
@@ -38,6 +39,9 @@ type IContainer interface {
 
 	GetDomain(network string) string
 	GetHeadlessDomain(network string) string
+
+	IsGhost() bool
+	SetGhost(bool)
 }
 
 type IPlatform interface {

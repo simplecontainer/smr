@@ -1,6 +1,7 @@
 package platforms
 
 import (
+	"encoding/json"
 	"errors"
 	TDTypes "github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -9,20 +10,16 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/static"
-	"time"
+	"strconv"
 )
 
-func New(platform string, name string, config *configuration.Configuration, definition *v1.ContainerDefinition) (IContainer, error) {
-	statusObj := &status.Status{
-		State:      &status.StatusState{},
-		LastUpdate: time.Now(),
-	}
-
-	statusObj.CreateGraph()
+func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition *v1.ContainerDefinition) (IContainer, error) {
+	statusObj := status.New(ChangeC)
 
 	switch platform {
 	case static.PLATFORM_DOCKER:
@@ -38,7 +35,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      make(map[string]string),
 					ObjectDependencies: make([]*f.Format, 0),
-					NodeIP:             config.Node,
+					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
 					Agent:              config.Agent,
 				},
 				Status: statusObj,
@@ -48,6 +45,37 @@ func New(platform string, name string, config *configuration.Configuration, defi
 	default:
 		return nil, errors.New("container platform is not implemented")
 	}
+}
+
+func NewGhost(state map[string]interface{}) (IContainer, error) {
+	if state["Type"] != nil {
+		switch state["Type"].(string) {
+		case static.PLATFORM_DOCKER:
+			ghost := &Container{
+				Platform: &docker.Docker{},
+				General:  &General{},
+				Type:     static.PLATFORM_DOCKER,
+				ghost:    true,
+			}
+
+			bytes, err := json.Marshal(state)
+
+			if err != nil {
+				return nil, err
+			}
+
+			err = json.Unmarshal(bytes, &ghost)
+			if err != nil {
+				return nil, err
+			}
+
+			return ghost, nil
+		default:
+			return nil, errors.New("container platform is not implemented")
+		}
+	}
+
+	return nil, errors.New("type is not defined")
 }
 
 func (c Container) Start() bool {
@@ -92,6 +120,9 @@ func (c Container) GetRuntime() *types.Runtime {
 func (c Container) GetStatus() *status.Status {
 	return c.General.Status
 }
+func (c Container) GetAgent() string {
+	return c.General.Runtime.Agent
+}
 
 func (c Container) GetDefinition() v1.ContainerDefinition {
 	return c.Platform.GetDefinition()
@@ -117,4 +148,11 @@ func (c Container) GetDomain(network string) string {
 }
 func (c Container) GetHeadlessDomain(network string) string {
 	return c.Platform.GetHeadlessDomain(network)
+}
+
+func (c Container) SetGhost(ghost bool) {
+	c.ghost = ghost
+}
+func (c Container) IsGhost() bool {
+	return c.ghost
 }

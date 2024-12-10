@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -149,8 +148,6 @@ func (api *Api) Propose(c *gin.Context) {
 	var data []byte
 	data, err := io.ReadAll(c.Request.Body)
 
-	fmt.Println("Propose web!")
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 			Explanation:      "failed to store value in the key-value store",
@@ -224,7 +221,8 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, contracts.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.ResponseImplementation{
+			HttpStatus:       http.StatusOK,
 			Explanation:      "keys found",
 			ErrorExplanation: "",
 			Error:            false,
@@ -234,7 +232,8 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 			},
 		})
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.ResponseImplementation{
+			HttpStatus:       http.StatusNotFound,
 			Explanation:      "failed to retrieve keys from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
