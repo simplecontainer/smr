@@ -1,5 +1,9 @@
 package configuration
 
+import (
+	"github.com/simplecontainer/smr/pkg/node"
+)
+
 type Configuration struct {
 	Platform       string       `yaml:"platform"`
 	OverlayNetwork string       `yaml:"overlaynetwork"`
@@ -19,10 +23,10 @@ type Configuration struct {
 }
 
 type KVStore struct {
-	Cluster     []string `yaml:"cluster"`
-	Node        uint64   `yaml:"node"`
-	URL         string   `yaml:"url"`
-	JoinCluster bool     `yaml:"join"`
+	Cluster     []*node.Node `yaml:"cluster"`
+	Node        uint64       `yaml:"node"`
+	URL         string       `yaml:"url"`
+	JoinCluster bool         `yaml:"join"`
 }
 
 type Flags struct {

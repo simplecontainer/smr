@@ -5,6 +5,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -14,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -78,24 +78,30 @@ func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
 	api.Badger = dbSecrets
 }
 
-func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster []string, join string) {
+func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *cluster.Cluster, join string) error {
 	proposeC := make(chan string)
 	confChangeC := make(chan raftpb.ConfChange)
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
-	joinBool, _ := strconv.ParseBool(join)
-
 	api.Cluster.RaftNode = &raft.RaftNode{}
-	commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster, joinBool, getSnapshot, proposeC, confChangeC)
+	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC)
 
+	var err error
 	etcdC := make(chan raft.KV)
 	objectC := make(chan raft.KV)
 
 	api.Cluster.Client = api.Manager.Http
-	api.Cluster.KVStore = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC)
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC)
+
+	if err != nil {
+		return err
+	}
+
 	api.Cluster.KVStore.ConfChangeC = confChangeC
 	api.Cluster.KVStore.Agent = api.Config.Agent
 
 	api.Manager.Cluster = api.Cluster
+
+	return nil
 }

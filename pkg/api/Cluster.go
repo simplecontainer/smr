@@ -1,34 +1,63 @@
 package api
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/node"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
-	"github.com/simplecontainer/smr/pkg/static"
-	"github.com/spf13/viper"
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.uber.org/zap"
 	"io"
 	"log"
-	"net"
 	"net/http"
-	"net/url"
 	"os/signal"
-	"strings"
+	"strconv"
 	"syscall"
 	"time"
 )
 
+var starting = false
+
 func (api *Api) StartCluster(c *gin.Context) {
+	if starting {
+		c.JSON(http.StatusConflict, contracts.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: "cluster is in the process of starting on this node",
+			Error:            true,
+			Success:          false,
+			Data: map[string]any{
+				"agent": api.Config.Agent,
+			},
+		})
+
+		return
+	} else {
+		if api.Cluster != nil && api.Cluster.Started {
+			c.JSON(http.StatusConflict, contracts.ResponseOperator{
+				Explanation:      "",
+				ErrorExplanation: "cluster is already started on this node",
+				Error:            true,
+				Success:          false,
+				Data: map[string]any{
+					"agent": api.Config.Agent,
+				},
+			})
+
+			return
+		}
+	}
+
+	starting = true
+
 	CAPool := x509.NewCertPool()
 	CAPool.AddCert(api.Keys.CA.Certificate)
 
@@ -52,16 +81,11 @@ func (api *Api) StartCluster(c *gin.Context) {
 		Certificates: []tls.Certificate{serverTLSCert},
 	}
 
-	if viper.GetBool("restore") {
-		api.Cluster, err = cluster.Restore(api.Config)
-	} else {
-		api.Cluster, err = cluster.New(c.Request.Body)
-	}
-
-	api.Manager.Cluster = api.Cluster
+	var data []byte
+	data, err = io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
 			Explanation:      "",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -71,6 +95,200 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		return
 	}
+
+	var request map[string]string
+	err = json.Unmarshal(data, &request)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	api.Cluster = cluster.New()
+
+	currentNode := api.Cluster.Cluster.NewNode(request["node"])
+
+	if request["join"] != "" {
+		// Add new node to the existing cluster
+		d, _ := json.Marshal(map[string]string{"node": request["node"]})
+		response := cluster.SendRequest(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster/node", request["join"]), string(d))
+
+		if response.Error {
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		// Ask join: what is the cluster?
+		response = cluster.SendRequest(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster", request["join"]), "")
+
+		if response.Success {
+			var bytes []byte
+			var peers map[string][]*node.Node
+
+			bytes, err = json.Marshal(response.Data)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+					Explanation:      "",
+					ErrorExplanation: err.Error(),
+					Error:            true,
+					Success:          false,
+					Data:             nil,
+				})
+
+				return
+			}
+
+			err = json.Unmarshal(bytes, &peers)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+					Explanation:      "",
+					ErrorExplanation: err.Error(),
+					Error:            true,
+					Success:          false,
+					Data:             nil,
+				})
+
+				return
+			}
+
+			for _, n := range peers["cluster"] {
+				api.Cluster.Cluster.Add(n)
+
+				if n.URL == currentNode.URL {
+					api.Cluster.Node = n
+				}
+			}
+		} else {
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+	} else {
+		// If not joining generate node yourself
+		api.Cluster.Node = currentNode
+		api.Cluster.Cluster.Add(currentNode)
+	}
+
+	api.Manager.Cluster = api.Cluster
+
+	var server *embed.Etcd
+	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	select {
+	case <-server.Server.ReadyNotify():
+		fmt.Println("etcd server started - continue with starting raft")
+		api.Cluster.EtcdClient = cluster.NewEtcdClient()
+
+		signal.Notify(api.Keys.Reloader.ReloadC, syscall.SIGHUP)
+
+		err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, c.Param("join"))
+
+		if err != nil {
+			server.Server.Stop()
+
+			c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+				Explanation:      "",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+
+			return
+		}
+
+		api.SaveClusterConfiguration()
+
+		go api.Cluster.ListenEvents(api.Config.Agent)
+		go api.Cluster.ListenUpdates(api.Config.Agent)
+		go api.Cluster.ListenObjects(api.Config.Agent)
+
+		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+				Explanation:      "",
+				ErrorExplanation: "flannel overlay network failed to start",
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+
+			return
+		}
+
+		api.Cluster.Started = true
+
+		c.JSON(http.StatusOK, contracts.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: "everything went ok",
+			Error:            false,
+			Success:          true,
+			Data: map[string]any{
+				"agent": api.Config.Agent,
+			},
+		})
+
+		return
+	case <-time.After(60 * time.Second):
+		server.Server.Stop() // trigger a shutdown
+		log.Printf("etcd server took too long to start!")
+
+		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+			Explanation:      "",
+			ErrorExplanation: "etcd server took too long to start",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+	}
+}
+func (api *Api) RestoreCluster(c *gin.Context) {
+	CAPool := x509.NewCertPool()
+	CAPool.AddCert(api.Keys.CA.Certificate)
+
+	var PEMCertificate []byte
+	var PEMPrivateKey []byte
+
+	var err error
+
+	PEMCertificate, err = keys.PEMEncode(keys.CERTIFICATE, api.Keys.Server.CertificateBytes)
+	PEMPrivateKey, err = keys.PEMEncode(keys.PRIVATE_KEY, api.Keys.Server.PrivateKeyBytes)
+
+	serverTLSCert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
+	if err != nil {
+		logger.Log.Fatal("error opening certificate and key file for control connection", zap.String("error", err.Error()))
+		return
+	}
+
+	tlsConfig := &tls.Config{
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    CAPool,
+		Certificates: []tls.Certificate{serverTLSCert},
+	}
+
+	api.Cluster, err = cluster.Restore(api.Config)
+	api.Manager.Cluster = api.Cluster
 
 	var server *embed.Etcd
 	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
@@ -96,7 +314,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		signal.Notify(api.Keys.Reloader.ReloadC, syscall.SIGHUP)
 
-		api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster.Cluster, c.Param("join"))
+		api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, c.Param("join"))
 		api.SaveClusterConfiguration()
 
 		go api.Cluster.ListenEvents(api.Config.Agent)
@@ -138,7 +356,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 		})
 	}
 }
-
 func (api *Api) GetCluster(c *gin.Context) {
 	c.JSON(http.StatusOK, contracts.ResponseOperator{
 		Explanation:      "",
@@ -146,169 +363,43 @@ func (api *Api) GetCluster(c *gin.Context) {
 		Error:            false,
 		Success:          true,
 		Data: map[string]any{
-			"cluster": api.Cluster.Cluster,
+			"cluster": api.Cluster.Cluster.Nodes,
 		},
 	})
 }
-
-func (api *Api) EtcdPut(c *gin.Context) {
-	timeout, err := time.ParseDuration("20s")
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-
-	var body []byte
-	body, err = io.ReadAll(c.Request.Body)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
-		cancel()
-		return
-	}
-
-	_, err = api.Cluster.EtcdClient.Put(ctx, c.Param("key"), string(body))
-	cancel()
-
-	c.JSON(http.StatusOK, contracts.ResponseOperator{
+func (api *Api) WaitCluster(c *gin.Context) {
+	c.JSON(http.StatusOK, contracts.ResponseImplementation{
+		HttpStatus:       http.StatusOK,
 		Explanation:      "",
-		ErrorExplanation: "all goodies",
+		ErrorExplanation: "",
 		Error:            false,
-		Success:          true,
-		Data: map[string]any{
-			"cluster": api.Cluster.Cluster,
+		Success:          false,
+		Data: map[string]string{
+			"ready": strconv.FormatBool(api.Cluster.Started),
 		},
 	})
-}
-func (api *Api) EtcdDelete(c *gin.Context) {}
 
-func (api *Api) AddNode(c *gin.Context) {
-	node, err := cluster.NewNodeRequest(c.Request.Body)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-	}
-
-	api.Cluster.Add(node)
-
-	var url *url.URL
-
-	for _, n := range api.Cluster.Cluster {
-		url, err = client.ParseHostURL(n)
-		tmp := strings.Split(url.Host, ":")
-
-		if net.ParseIP(tmp[0]) != nil {
-			api.Config.IPs = append(api.Config.IPs, tmp[0])
-		} else {
-			api.Config.Domains = append(api.Config.Domains, tmp[0])
-		}
-	}
-
-	logger.Log.Info("regenerating server certificate to support cluster nodes")
-
-	err = api.Keys.GenerateClient(api.Config.Domains, api.Config.IPs, "root")
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-		return
-	}
-
-	err = api.Keys.GenerateServer(api.Config.Domains, api.Config.IPs)
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-		return
-	}
-
-	err = api.Keys.Clients["root"].Write(static.SMR_SSH_HOME, "root")
-	if err != nil {
-		logger.Log.Error(err.Error())
-		return
-	}
-
-	err = api.Keys.Server.Write(static.SMR_SSH_HOME)
-	if err != nil {
-		logger.Log.Error(err.Error())
-		return
-	}
-
-	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
-		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  node.NodeID,
-		Context: []byte(node.URL),
-	}
-
-	api.SaveClusterConfiguration()
-
-	c.JSON(http.StatusOK, contracts.ResponseOperator{
-		Explanation:      "",
-		ErrorExplanation: "everything went ok",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	})
-}
-func (api *Api) RemoveNode(c *gin.Context) {
-	node, err := cluster.NewNodeRequest(c.Request.Body)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-	}
-
-	api.Cluster.Remove(node)
-
-	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
-		Type:   raftpb.ConfChangeRemoveNode,
-		NodeID: node.NodeID,
-	}
-
-	api.SaveClusterConfiguration()
-
-	c.JSON(http.StatusOK, contracts.ResponseOperator{
-		Explanation:      "",
-		ErrorExplanation: "everything went ok",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	})
+	return
 }
 
 func (api *Api) SaveClusterConfiguration() {
 	api.Config.KVStore.Node = api.Cluster.Node.NodeID
 	api.Config.KVStore.URL = api.Cluster.Node.URL
-	api.Config.KVStore.Cluster = api.Cluster.Cluster
+	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 
 	err := startup.Save(api.Config)
 	if err != nil {
+		logger.Log.Error(err.Error())
+	}
+
+	format := f.NewFromString("smr.cluster")
+	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
+
+	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)
+
+	if err == nil {
+		obj.Add(format, string(bytes))
+	} else {
 		logger.Log.Error(err.Error())
 	}
 }

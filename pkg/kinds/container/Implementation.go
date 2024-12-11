@@ -389,7 +389,7 @@ func generateReplicaNamesAndGroups(shared *shared.Shared, user *authentication.U
 		NodeID:          shared.Manager.Config.KVStore.Node,
 	}
 
-	dr, err := r.HandleReplica(shared, user, shared.Manager.Cluster.Cluster, containerDefinition, changelog)
+	dr, err := r.HandleReplica(shared, user, shared.Manager.Cluster.Cluster.ToString(), containerDefinition, changelog)
 
 	return dr, err
 }
@@ -403,7 +403,7 @@ func GetReplicaNamesAndGroups(shared *shared.Shared, user *authentication.User, 
 		NodeID:          shared.Manager.Config.KVStore.Node,
 	}
 
-	containers, err := r.GetReplica(shared, user, containerDefinition, shared.Manager.Cluster.Cluster)
+	containers, err := r.GetReplica(shared, user, containerDefinition, shared.Manager.Cluster.Cluster.ToString())
 
 	return containers, err
 }

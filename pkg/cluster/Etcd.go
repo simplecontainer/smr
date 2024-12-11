@@ -40,7 +40,7 @@ func (c *Cluster) StartSingleNodeEtcd(config *configuration.Configuration) (e *e
 	return embed.StartEtcd(cfg)
 }
 func (c *Cluster) ConfigureFlannel(network string) error {
-	timeout, err := time.ParseDuration("20s")
+	timeout, err := time.ParseDuration("10s")
 
 	if err != nil {
 		return err

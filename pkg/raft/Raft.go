@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/node"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/raft/v3"
 	"log"
@@ -77,8 +78,8 @@ var defaultSnapshotCount uint64 = 10000
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange) (<-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
+func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
+	confChangeC <-chan raftpb.ConfChange) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *Commit)
 	errorC := make(chan error)
 
@@ -88,7 +89,7 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 		commitC:     commitC,
 		errorC:      errorC,
 		id:          int(id),
-		Peers:       peers,
+		Peers:       peers.ToString(),
 		join:        join,
 		waldir:      fmt.Sprintf("/home/smr-agent/smr/smr/persistent/smr-%d", id),
 		snapdir:     fmt.Sprintf("/home/smr-agent/smr/smr/persistent/smr-%d-snap", id),
@@ -107,7 +108,7 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 
 	go raftnode.startRaft(keys)
 
-	return commitC, errorC, raftnode.snapshotterReady
+	return raftnode, commitC, errorC, raftnode.snapshotterReady
 }
 
 func (rc *RaftNode) saveSnap(snap raftpb.Snapshot) error {
@@ -533,7 +534,7 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys) {
 	server.TLSConfig = &tls.Config{}
 	server.TLSConfig.GetCertificate = keys.Reloader.GetCertificateFunc()
 
-	server.ServeTLS(ln, "", "")
+	err = server.ServeTLS(ln, "", "")
 
 	if err != nil {
 		panic(err)
@@ -555,11 +556,4 @@ func (rc *RaftNode) IsIDRemoved(_ uint64) bool   { return false }
 func (rc *RaftNode) ReportUnreachable(id uint64) { rc.node.ReportUnreachable(id) }
 func (rc *RaftNode) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	rc.node.ReportSnapshot(id, status)
-}
-func (rc *RaftNode) NodeReady() <-chan raft.Ready {
-	if rc.node != nil {
-		return rc.node.Ready()
-	}
-
-	return nil
 }

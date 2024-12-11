@@ -55,24 +55,24 @@ type KV struct {
 	Agent    string
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV, objectsC chan KV) *KVStore {
+func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV, objectsC chan KV) (*KVStore, error) {
 	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, ObjectsC: objectsC, kvStore: badger, client: client, snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 
 	if snapshot != nil {
 		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
 		if err = s.recoverFromSnapshot(snapshot.Data); err != nil {
-			log.Panic(err)
+			return nil, err
 		}
 	}
 
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
-	return s
+	return s, nil
 }
 
 func (s *KVStore) Propose(k string, v string, agent string) {
