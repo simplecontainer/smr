@@ -79,7 +79,7 @@ Ports exposed:
 
 #### How to run it?
 
-> [!INFO]
+> [!IMPORTANT]
 > The smrmgr script must be run on the host directly.
 
 This scenario assumes there are two nodes(virtual machines) connected over non-secure internet connection.
@@ -132,7 +132,7 @@ smrmgr start -a smr-agent-1 -d smr.example.com -p 1.1.1.1
 ```
 
 
-> [!INFO]
+> [!IMPORTANT]
 > Only domains and IPs listed in the smrmgr can verify against the simplecontainer agent.
 
 Contexts and control plane
@@ -140,7 +140,7 @@ Contexts and control plane
 
 To access the simplecontainer control plane via local or public network, context needs to be added with the appropriate mtls bundle generated.
 
-> [!INFO]
+> [!IMPORTANT]
 > Context for the localhost on the same machine is automatically done if using smrmgr.
 
 One can manually add the context to the client or another machine:
