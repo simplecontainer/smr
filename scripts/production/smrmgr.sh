@@ -117,6 +117,14 @@ Wait(){
   smr node wait --agent "${AGENT}"
 }
 
+Export(){
+  echo "Exporting context"
+}
+
+Import(){
+  echo "Importing context"
+}
+
 Download(){
   which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" && exit
   echo "Downloading smr binary and installing it to the /usr/local/bin/smr"
@@ -139,16 +147,21 @@ COMMAND=${1}
 echo $COMMAND
 
 case "$COMMAND" in
-    "download")
+    "install")
       shift
       Download "$@";;
-
     "start")
       shift
       Start "$@";;
     "wait")
      shift
      Wait "$@";;
+    "import")
+     shift
+     Import "$@";;
+    "export")
+     shift
+     Export "$@";;
     *)
       echo "Unknown command: $COMMAND" ;;
 esac

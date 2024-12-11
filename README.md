@@ -40,7 +40,7 @@ These objects let you deploy container on local/remote Docker daemon. The simple
 Installation
 --------------------------
 
-### smrmgr
+### (Bash) smrmgr
 The smrmgr is bash script for management of the simplecontainer. It is used for:
 - Downloading and installing client
 - Starting the node in single or cluster mode
@@ -54,9 +54,9 @@ sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
 ```
 
-### smr
+### (CLI) smr
 The smr is client used to communicate to the local/external simplecontainer agents running on nodes.
-The smrmgr automatically downloads the client and places it `/usr/local/bin/smr`.
+The smrmgr automatically downloads the client and places it under `/usr/local/bin/smr`.
 
 To manually install, start and manage simplecontainer nodes download the client from the releases:
 
@@ -89,28 +89,29 @@ This scenario assumes there are two nodes(virtual machines) connected over non-s
 - Node 1: node2.simplecontainer.com -> Points to Node 2 IP address
 
 **Node 1**
+Requirements: 
+- smgrmgr already installed.
+- Docker daemon running on the Node 1
+
 ```bash
-sudo smrmgr start -a smr-agent-1 -d smr1.example.com -i 1 -n https://node1.example.com -o 0.0.0.0:9212 -c https://node1.example.com:9212
+sudo smrmgr start -a smr-agent-1 -d smr1.example.com -n https://node1.example.com
 sudo smrmgr export smr-agent-1
 # Copy the exported context of the smr-agent-1
 ```
 
 **Node 2**
+Requirements:
+- smgrmgr already installed.
+- Docker daemon running on the Node 1
+
 ```bash
 sudo smrmgr import smr-agent-1 < {{ PASTE HERE EXPORTED CONTEXT OF smr-agent-1 }}
-sudo smrmgr start -a smr-agent-2 -j smr-agent-1 -d smr2.example.com -i 2 -n https://node2.example.com -o 0.0.0.0:9212 -c https://node1.example.com:9212,https:node2.example.com:9212
+sudo smrmgr start -a smr-agent-2 -d smr2.example.com -n https://node2.example.com -j https://node1.example.com:1443
 ```
 
 Afterward, cluster is started. Badger key-value store is now distributed using RAFT protocol. Flannel will start and agent will create docker network named `cluster`. Containers started are automatically connected to the flannel network when started.
 
 ### Running simplecontainer in single mode
-#### How to run it? (Exposed control plane to the localhost only)
-Exposing the control plane only to the localhost:
-
-```bash
-smrmgr start -a smr-agent-1 -e localhost:1443
-```
-
 #### How to run it? (Exposed control plane to the internet/network using domain)
 Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
 
@@ -125,11 +126,18 @@ smr context import smr-agent-1 < {{ PASTE HERE EXPORTED CONTEXT OF smr-agent-1 }
 smr ps
 ```
 
+#### How to run it? (Exposed control plane to the localhost only)
+Exposing the control plane only to the localhost:
+
+```bash
+smrmgr start -a smr-agent-1 -e localhost:1443
+```
+
 #### How to run it? (Exposed control plane to the internet/network using IP)
 
 Same as before smr client can be used:
 ```
-smrmgr start -a smr-agent-1 -d smr.example.com -p 1.1.1.1
+smrmgr start -a smr-agent-1 -d smr.example.com -i 1.1.1.1
 ```
 
 
