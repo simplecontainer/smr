@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/helpers"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
@@ -62,7 +63,7 @@ func Create() {
 				}, api.Config.IPs...)
 
 				api.Config.KVStore = &configuration.KVStore{
-					Cluster:     strings.Split(viper.GetString("cluster"), ","),
+					Cluster:     []*node.Node{},
 					Node:        uint64(viper.GetInt("node")),
 					URL:         viper.GetString("url"),
 					JoinCluster: viper.GetBool("join"),

@@ -1,9 +1,5 @@
 #!/bin/bash
 
-export AGENT_DOMAIN="https://localhost:1443"
-export REPOSITORY="simeplcontainermanager/smr"
-export TAG=$(curl -s https://raw.githubusercontent.com/simplecontainer/smr/main/version)
-
 HelpStart(){
   echo """Usage:
 
@@ -22,23 +18,28 @@ HelpStart(){
 }
 
 Start(){
+  PRODUCTION=1
   AGENT=""
   DOMAIN=""
   IP=""
-  NODE_ID=""
   NODE_URL=""
-  CLUSTER=""
-  OVERLAY="0.0.0.0:9212"
+  NODE_PORT="9212"
+  CONN_STRING=""
+  CLIENT_ARGS="--overlayport 0.0.0.0:9212"
   MODE="cluster"
   JOIN=""
   CONTROL_PLANE="0.0.0.0:1443"
+  REPOSITORY="simeplcontainermanager/smr"
+  TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
 
-  while getopts ":ehmadijnco:" option; do
+  while getopts ":c:e:h:m:a:d:i:j:n:r:p:x:t:z:" option; do
      case $option in
-        e) #Expose control plane
-           CONTROL_PLANE=$OPTARG;;
-        h) #Display help
+        h) # Display help
            HelpStart && exit;;
+        c) # Control plane client connect string
+           CONN_STRING=$OPTARG;;
+        e) # Expose control plane
+           CONTROL_PLANE=$OPTARG;;
         m) #Set mode
            MODE=$OPTARG;;
         j) #Set join
@@ -47,48 +48,73 @@ Start(){
            AGENT=$OPTARG;;
         d) # Set domain
            DOMAIN=$OPTARG;;
-        p) # Set ip
+        t) # Set tag
+           TAG=$OPTARG;;
+        i) # Set ip
            IP=$OPTARG;;
-        i) # Set Node ID
-           NODE_ID=$OPTARG;;
         n) # Set Node URL
            NODE_URL=$OPTARG;;
-        c) # Set cluster
-           CLUSTER=$OPTARG;;
-        o) # Set overlay
-           OVERLAY=$OPTARG;;
-        *) # Default -> Show help
-           HelpStart && exit;;
+        p) # Set node port
+           NODE_PORT=$OPTARG;;
+        r) # Set repository
+           REPOSITORY=$OPTARG;;
+        x) # Set client additional args
+           CLIENT_ARGS=$OPTARG;;
+        z) # Production or not
+           PRODUCTION=$OPTARG;;
+        *) # Invalid option
+          echo "Invalid option";;
      esac
   done
 
+  echo "Agent name: $AGENT"
+  echo "Node URL: $NODE_URL"
+  echo "Domain: $DOMAIN"
+  echo "Additional arguments: $CLIENT_ARGS"
+  echo "Join: $JOIN"
+
   if [[ ${AGENT} != "" ]]; then
     if [[ ${MODE} == "cluster" ]]; then
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domains ${DOMAIN}" --ip "${IP}" --agent "${AGENT}" --wait
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" --overlayport "${OVERLAY}" --agent "${AGENT}"
+      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
+      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"
 
-      smr context connect $AGENT_DOMAIN "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --y
+      smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y
+
+      if [[ $PRODUCTION == "0" ]]; then
+        NODE_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
+      fi
 
       if [[ ${JOIN} == "" ]]; then
-        sudo nohup smr node cluster start --node "${NODE_ID}" --url "${NODE_URL}" --cluster "${CLUSTER}"
+        sudo nohup smr node cluster start --node "${NODE_URL}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
       else
-        smr context switch "${JOIN}" --y
-        smr smr node cluster add --node "${NODE_ID}" --url "${NODE_URL}"
-
-        smr context switch "${AGENT}" --y
-        sudo nohup smr node cluster start --node "${NODE_ID}" --url "${NODE_URL}" --cluster "${CLUSTER}" --join
+        sudo nohup smr node cluster start --node "${NODE_URL}" --join ${JOIN} 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
       fi
 
       echo "The simplecontainer is started in cluster mode."
     else
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domain ${DOMAIN} --ip ${IP}" --agent "${AGENT}" --wait
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" "${CONTROL_PLANE}" --agent "${AGENT}"
+      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --agent "${AGENT}"
 
       echo "The simplecontainer is started in single mode."
     fi
   else
     HelpStart
   fi
+}
+
+Wait(){
+  AGENT=""
+
+  while getopts ":e:h:m:a:d:i:j:n:r:p:x:t:" option; do
+     case $option in
+        a) # Set agent
+           PRODUCTION=$OPTARG;;
+        *) # Invalid option
+          echo "Invalid option";;
+     esac
+  done
+
+  smr node wait --agent "${AGENT}"
 }
 
 Download(){
@@ -110,14 +136,19 @@ Download(){
 }
 
 COMMAND=${1}
+echo $COMMAND
 
 case "$COMMAND" in
-    "install")
-        Download;;
+    "download")
+      shift
+      Download "$@";;
 
     "start")
-      Start;;
-
+      shift
+      Start "$@";;
+    "wait")
+     shift
+     Wait "$@";;
     *)
-        echo "Unknown command: $command" ;;
+      echo "Unknown command: $COMMAND" ;;
 esac

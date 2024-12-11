@@ -233,10 +233,10 @@ func Start() {
 				router.GET("/version", api.Version)
 				router.GET("/restore", api.Restore)
 
-				router.POST("/cluster/start/:join", api.StartCluster)
+				router.GET("/cluster", api.GetCluster)
+				router.POST("/cluster/start", api.StartCluster)
 				router.POST("/cluster/node", api.AddNode)
 				router.DELETE("/cluster/node/:node", api.RemoveNode)
-				router.GET("/cluster", api.GetCluster)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)

@@ -8,7 +8,7 @@ Quick start
 
 This is a quick start tutorial for getting a simple container up and running.
 
-## Description
+## Introduction
 A simple container manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
 
 Introducing objects which can be defined as YAML definition and sent to the simplecontainer manager to produce Docker container via reconciliation:
@@ -21,19 +21,20 @@ Introducing objects which can be defined as YAML definition and sent to the simp
 - CertKey
 - HttpAuth
 
-These objects let you manage Docker containers with configure features:
+These objects let you deploy container on local/remote Docker daemon. The simplecontainer introduces next features:
 
 - Single Docker daemon / Cluster of Docker daemons
 - Overlay networking using flannel
 - Integrated DNS server isolated from Docker daemon
-- GitOps: deploy objects from the GitOps repositories
+- GitOps: deploy objects from the Git repositories using GitOps approach
 - Replication of containers in cluster of Docker daemons
 - Reconciliation and tracking the lifecycle of the Docker containers
 - CLI to interact with the simplecontainer
-- Fast learning curve - simplicty and deterministic behavior
-- Reliable dependency ordering and readiness probes
+- Fast learning curve - simplicity and deterministic behavior
+- Reliable dependency ordering using readiness probes
 - Recreate containers from the KV store in case of failure
 - Templating of the container objects to leverage secrets and configuration
+- Secrets, Configuration and Resources objects for external configuration
 
 
 Installation
@@ -141,7 +142,7 @@ Contexts and control plane
 To access the simplecontainer control plane via local or public network, context needs to be added with the appropriate mtls bundle generated.
 
 > [!IMPORTANT]
-> Context for the localhost on the same machine is automatically done if using smrmgr.
+> Context for the localhost on the same machine is automatically imported if using smrmgr.
 
 One can manually add the context to the client or another machine:
 ```bash
