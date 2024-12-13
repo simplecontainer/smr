@@ -133,7 +133,7 @@ Import(){
 }
 
 Download(){
-  which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" && exit
+  which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
   echo "Downloading smr binary and installing it to the /usr/local/bin/smr"
   ARCH=$(uname -p)
 
