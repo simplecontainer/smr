@@ -24,7 +24,7 @@ Start(){
   IP=""
   NODE_URL=""
   NODE_PORT="9212"
-  CONN_STRING=""
+  CONN_STRING="https://localhost:1443"
   CLIENT_ARGS="--overlayport 0.0.0.0:9212"
   MODE="cluster"
   JOIN=""
