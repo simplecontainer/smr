@@ -48,7 +48,7 @@ The smrmgr is bash script for management of the simplecontainer. It is used for:
 - Various options and configuration simplified
 
 ```bash
-curl -s https://raw.githubusercontent.com/simplecontainer/smr/production/smrmgr.sh -o smrmgr
+curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
 chmod +x smrmgr
 sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
