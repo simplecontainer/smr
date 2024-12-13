@@ -29,7 +29,7 @@ Start(){
   MODE="cluster"
   JOIN=""
   CONTROL_PLANE="0.0.0.0:1443"
-  REPOSITORY="simeplcontainermanager/smr"
+  REPOSITORY="simplecontainermanager/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
 
   while getopts ":c:e:h:m:a:d:i:j:n:r:p:x:t:z:" option; do
