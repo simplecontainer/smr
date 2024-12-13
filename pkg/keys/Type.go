@@ -1,7 +1,7 @@
 package keys
 
 import (
-	"crypto/rsa"
+	"crypto/ecdsa"
 	"crypto/x509"
 )
 
@@ -13,7 +13,7 @@ type Keys struct {
 }
 
 type CA struct {
-	PrivateKey       *rsa.PrivateKey
+	PrivateKey       *ecdsa.PrivateKey
 	Certificate      *x509.Certificate
 	PrivateKeyPath   string
 	CertificatePath  string
@@ -23,7 +23,7 @@ type CA struct {
 }
 
 type Server struct {
-	PrivateKey       *rsa.PrivateKey
+	PrivateKey       *ecdsa.PrivateKey
 	Certificate      *x509.Certificate
 	PrivateKeyPath   string
 	CertificatePath  string
@@ -33,7 +33,7 @@ type Server struct {
 }
 
 type Client struct {
-	PrivateKey       *rsa.PrivateKey
+	PrivateKey       *ecdsa.PrivateKey
 	Certificate      *x509.Certificate
 	PrivateKeyPath   string
 	CertificatePath  string

@@ -16,6 +16,9 @@ run_cluster:
 run_private:
 	./development/docker_run_private.sh
 
+exportimport:
+	./development/export_import.sh
+
 logs:
 	docker logs -f smr-agent
 

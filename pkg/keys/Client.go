@@ -1,8 +1,9 @@
 package keys
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -25,7 +26,7 @@ func (client *Client) Generate(ca *CA, domains []string, ips []net.IP, CN string
 
 	client.Sni = client.Sni + 1
 
-	client.PrivateKey, err = rsa.GenerateKey(rand.Reader, 4096)
+	client.PrivateKey, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func (client *Client) Read(directory string, username string) error {
 		return err
 	}
 
-	client.PrivateKey = PrivateKeyTmp.(*rsa.PrivateKey)
+	client.PrivateKey = PrivateKeyTmp.(*ecdsa.PrivateKey)
 
 	client.PrivateKeyBytes, err = x509.MarshalPKCS8PrivateKey(client.PrivateKey)
 

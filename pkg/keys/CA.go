@@ -1,8 +1,9 @@
 package keys
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
@@ -40,7 +41,7 @@ func (ca *CA) Generate() error {
 
 	var err error
 
-	ca.PrivateKey, err = rsa.GenerateKey(rand.Reader, 4096)
+	ca.PrivateKey, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 
 	if err != nil {
 		return err
@@ -130,7 +131,7 @@ func (ca *CA) Read(directory string) error {
 		return err
 	}
 
-	ca.PrivateKey = PrivateKeyTmp.(*rsa.PrivateKey)
+	ca.PrivateKey = PrivateKeyTmp.(*ecdsa.PrivateKey)
 
 	ca.PrivateKeyBytes, err = x509.MarshalPKCS8PrivateKey(ca.PrivateKey)
 

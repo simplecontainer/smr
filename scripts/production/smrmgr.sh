@@ -118,11 +118,18 @@ Wait(){
 }
 
 Export(){
-  echo "Exporting context"
+  smr context export <<< $1
 }
 
 Import(){
-  echo "Importing context"
+  KEY=""
+
+  while read line
+  do
+    KEY=$line
+  done < /dev/stdin
+
+  smr context import "${1}" <<< "${KEY}"
 }
 
 Download(){
@@ -144,7 +151,6 @@ Download(){
 }
 
 COMMAND=${1}
-echo $COMMAND
 
 case "$COMMAND" in
     "install")

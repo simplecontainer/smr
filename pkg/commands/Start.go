@@ -229,9 +229,11 @@ func Start() {
 				}
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+				router.GET("/connect", api.Connect)
+				router.GET("/restore", api.Restore)
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
-				router.GET("/restore", api.Restore)
 
 				router.GET("/cluster", api.GetCluster)
 				router.POST("/cluster/start", api.StartCluster)
