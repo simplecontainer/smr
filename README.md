@@ -95,8 +95,8 @@ Requirements:
 
 ```bash
 sudo smrmgr start -a smr-agent-1 -d smr1.example.com -n https://node1.example.com
-sudo smrmgr export smr-agent-1
-# Copy the exported context of the smr-agent-1
+sudo smrmgr export # Copy OUTPUT
+cat $HOME/smr/smr/contexts/$(smr context).key # Copy KEY
 ```
 
 **Node 2**
@@ -105,7 +105,7 @@ Requirements:
 - Docker daemon running on the Node 1
 
 ```bash
-sudo smrmgr import smr-agent-1 < {{ PASTE HERE EXPORTED CONTEXT OF smr-agent-1 }}
+sudo smrmgr import {{ PASTE OUTPUT }} <<< {{ PASTE KEY }}
 sudo smrmgr start -a smr-agent-2 -d smr2.example.com -n https://node2.example.com -j https://node1.example.com:1443
 ```
 
