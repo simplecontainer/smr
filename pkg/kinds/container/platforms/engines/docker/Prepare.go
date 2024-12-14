@@ -21,8 +21,8 @@ func (container *Docker) PrepareNetwork(client *client.Http, user *authenticatio
 	for _, network := range container.Networks.Networks {
 		runtime.Configuration[fmt.Sprintf("%s_hostname", network.Reference.Name)] = container.GetDomain(network.Reference.Name)
 
-		obj := objects.New(client.Get(user.Username), user)
-		obj.Add(f.NewFromString(fmt.Sprintf("network.%s.%s.dns", container.Group, container.GeneratedName)), container.GetDomain(network.Reference.Name))
+		//obj := objects.New(client.Get(user.Username), user)
+		//obj.Add(f.NewFromString(fmt.Sprintf("network.%s.%s.dns", container.Group, container.GeneratedName)), container.GetDomain(network.Reference.Name))
 	}
 
 	return nil

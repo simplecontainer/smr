@@ -7,7 +7,7 @@ import (
 )
 
 func (api *Api) Health(c *gin.Context) {
-	c.JSON(http.StatusOK, &contracts.ResponseImplementation{
+	c.JSON(http.StatusOK, &contracts.Response{
 		HttpStatus:       http.StatusOK,
 		Explanation:      "agent is healthy",
 		ErrorExplanation: "",

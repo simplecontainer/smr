@@ -78,11 +78,11 @@ Start(){
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"
 
-      smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y
-
       if [[ $PRODUCTION == "0" ]]; then
         NODE_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
       fi
+
+      smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y
 
       if [[ ${JOIN} == "" ]]; then
         sudo nohup smr node cluster start --node "${NODE_URL}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &

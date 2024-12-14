@@ -16,7 +16,6 @@ package raft
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
@@ -96,14 +95,10 @@ func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
 	response := objects.SendRequest(s.client.Clients["root"].Http, URL, "GET", nil)
 
 	if response.Success {
-		b64decoded, err := base64.StdEncoding.DecodeString(response.Data[k].(string))
+		bytes, _ := response.Data.MarshalJSON()
 
-		if err != nil {
-			logger.Log.Error(err.Error())
-		} else {
-			if string(b64decoded) == v {
-				return
-			}
+		if string(bytes) == v {
+			return
 		}
 	}
 

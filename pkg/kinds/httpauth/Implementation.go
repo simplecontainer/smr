@@ -3,7 +3,6 @@ package httpauth
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -22,9 +21,9 @@ func (httpauth *Httpauth) Start() error {
 func (httpauth *Httpauth) GetShared() interface{} {
 	return httpauth.Shared
 }
-func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -36,7 +35,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (con
 	valid, err := httpauth.Definition.Validate()
 
 	if !valid {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -69,7 +68,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (con
 			err = obj.Update(format, jsonStringFromRequest)
 
 			if err != nil {
-				return contracts.ResponseImplementation{
+				return contracts.Response{
 					HttpStatus:       http.StatusInternalServerError,
 					Explanation:      "",
 					ErrorExplanation: err.Error(),
@@ -82,7 +81,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (con
 		err = obj.Add(format, jsonStringFromRequest)
 
 		if err != nil {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "",
 				ErrorExplanation: err.Error(),
@@ -100,10 +99,10 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (con
 		//	Kind:  KIND,
 		//	Group: httpauth.Meta.Group,
 		//	Name:  httpauth.Meta.Name,
-		//	Data:  nil,
+		//	Data: "",
 		//}
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       200,
 			Explanation:      "object is same as the one on the server",
 			ErrorExplanation: "",
@@ -112,7 +111,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (con
 		}, errors.New("object is same on the server")
 	}
 
-	return contracts.ResponseImplementation{
+	return contracts.Response{
 		HttpStatus:       200,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",
@@ -120,9 +119,9 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (con
 		Success:          true,
 	}, nil
 }
-func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -151,7 +150,7 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       418,
 			Explanation:      "object is drifted from the definition",
 			ErrorExplanation: "",
@@ -161,7 +160,7 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 	}
 
 	if obj.ChangeDetected() {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       418,
 			Explanation:      "object is drifted from the definition",
 			ErrorExplanation: "",
@@ -169,7 +168,7 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 			Success:          true,
 		}, nil
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       200,
 			Explanation:      "object in sync",
 			ErrorExplanation: "",
@@ -178,9 +177,9 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 		}, nil
 	}
 }
-func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -209,7 +208,7 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (co
 			format = f.New("httpauth", httpauth.Definition.Meta.Group, httpauth.Definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       200,
 				Explanation:      "deleted resource successfully",
 				ErrorExplanation: "",
@@ -217,7 +216,7 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (co
 				Success:          false,
 			}, err
 		} else {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       500,
 				Explanation:      "failed to delete resource",
 				ErrorExplanation: err.Error(),
@@ -226,7 +225,7 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (co
 			}, err
 		}
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       404,
 			Explanation:      "object not found",
 			ErrorExplanation: "",
@@ -236,7 +235,7 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (co
 	}
 }
 
-func (httpauth *Httpauth) Run(operation string, args ...interface{}) contracts.ResponseOperator {
+func (httpauth *Httpauth) Run(operation string, request contracts.Control) contracts.Response {
 	reflected := reflect.TypeOf(httpauth)
 	reflectedValue := reflect.ValueOf(httpauth)
 
@@ -244,177 +243,19 @@ func (httpauth *Httpauth) Run(operation string, args ...interface{}) contracts.R
 		method := reflected.Method(i)
 
 		if operation == method.Name {
-			inputs := make([]reflect.Value, len(args))
-
-			for i, _ := range args {
-				inputs[i] = reflect.ValueOf(args[i])
-			}
-
+			inputs := []reflect.Value{reflect.ValueOf(request)}
 			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
 
-			return returnValue[0].Interface().(contracts.ResponseOperator)
+			return returnValue[0].Interface().(contracts.Response)
 		}
 	}
 
-	return contracts.ResponseOperator{
+	return contracts.Response{
 		HttpStatus:       400,
 		Explanation:      "server doesn't support requested functionality",
 		ErrorExplanation: "implementation is missing",
 		Error:            true,
 		Success:          false,
 		Data:             nil,
-	}
-}
-func (httpauth *Httpauth) ListSupported(args ...interface{}) contracts.ResponseOperator {
-	reflected := reflect.TypeOf(httpauth)
-
-	supportedOperations := map[string]any{}
-	supportedOperations["SupportedOperations"] = []string{}
-
-OUTER:
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-		for _, forbiddenOperator := range invalidOperators {
-			if forbiddenOperator == method.Name {
-				continue OUTER
-			}
-		}
-
-		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             supportedOperations,
-	}
-}
-func (httpauth *Httpauth) List(request contracts.RequestOperator) contracts.ResponseOperator {
-	data := make(map[string]any)
-
-	format := f.New(KIND, "", "", "")
-
-	obj := objects.New(httpauth.Shared.Client.Get(request.User.Username), request.User)
-	objs, err := obj.FindMany(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	for k, v := range objs {
-		data[k] = v.GetDefinition()
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "list of the httpauth objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             data,
-	}
-}
-func (httpauth *Httpauth) Get(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
-
-	obj := objects.New(httpauth.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "gitops definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	definitionObject := obj.GetDefinition()
-
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "gitops object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             definition,
-	}
-}
-func (httpauth *Httpauth) Remove(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
-	format := f.NewFromString(GroupIdentifier)
-
-	obj := objects.New(httpauth.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "httpauth definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	removed, err := obj.Remove(format)
-
-	if !removed {
-		return contracts.ResponseOperator{
-			HttpStatus:       500,
-			Explanation:      "httpauth definition is not deleted",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	} else {
-		return contracts.ResponseOperator{
-			HttpStatus:       200,
-			Explanation:      "httpauth definition is deleted and removed from server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             nil,
-		}
 	}
 }

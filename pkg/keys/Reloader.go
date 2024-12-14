@@ -28,12 +28,16 @@ func NewKeypairReloader(certPath, keyPath string) (*keypairReloader, error) {
 	}
 	result.cert = &cert
 	go func() {
-		for range result.ReloadC {
-			if err = result.maybeReload(); err != nil {
-				log.Printf("Keeping old TLS certificate because the new one could not be loaded: %v", err)
-			}
+		for {
+			select {
+			case <-result.ReloadC:
 
-			log.Printf("Reloaded TLS certificates")
+				if err = result.maybeReload(); err != nil {
+					log.Printf("Keeping old TLS certificate because the new one could not be loaded: %v", err)
+				}
+
+				log.Printf("Reloaded TLS certificates")
+			}
 		}
 	}()
 	return result, nil

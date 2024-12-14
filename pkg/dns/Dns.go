@@ -97,8 +97,6 @@ func (r *Records) Find(domain string) []string {
 				record := make([]string, 0)
 				err = json.Unmarshal(v.GetDefinitionByte(), &record)
 
-				fmt.Println(v.GetDefinitionString())
-
 				if err != nil {
 					logger.Log.Error(err.Error())
 					continue

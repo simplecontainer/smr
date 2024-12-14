@@ -13,6 +13,12 @@ rm -rf ~/.smr-agent-1
 rm -rf ~/.smr-agent-2
 
 ../production/smrmgr.sh start -a smr-agent-1 -c https://localhost:1443 -p 9212 -m cluster -x '--overlayport 0.0.0.0:9212' -r smr -t $TAG -z 0
-
 CLUSTER_DOMAIN_1="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-agent-1):1443"
+
+EXPORTED_CONTEXT=$(../production/smrmgr.sh export $CLUSTER_DOMAIN_1)
+../production/smrmgr.sh import $EXPORTED_CONTEXT <<< $(cat $HOME/smr/smr/contexts/smr-agent-1.key)
+
+sleep 5
+smr import fetch
+
 ../production/smrmgr.sh start -a smr-agent-2 -c https://localhost:1444 -p 9213 -m cluster -x '--hostport 1444 --etcdport 2380 --overlayport 0.0.0.0:9213' -r smr -t $TAG -j $CLUSTER_DOMAIN_1 -z 0

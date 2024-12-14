@@ -110,7 +110,6 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 		obj.Find(format)
 
 		if obj.Exists() {
-			fmt.Println(obj.GetDefinitionString())
 			instance, err := platforms.NewGhost(obj.GetDefinition())
 
 			if err != nil {
@@ -162,6 +161,7 @@ func (registry *Registry) All() map[string]map[string]platforms.IContainer {
 
 	if len(objs) > 0 {
 		for _, o := range objs {
+			fmt.Println(o.GetDefinition())
 			instance, err := platforms.NewGhost(o.GetDefinition())
 
 			if err != nil {

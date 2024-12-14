@@ -14,7 +14,7 @@ func (api *Api) Delete(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -26,7 +26,7 @@ func (api *Api) Delete(c *gin.Context) {
 
 		err = json.Unmarshal(jsonData, &data)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+			c.JSON(http.StatusBadRequest, contracts.Response{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid definition sent",
 				ErrorExplanation: err.Error(),
@@ -44,7 +44,7 @@ func (api *Api) ImplementationWrapperDelete(user *authentication.User, kind stri
 	kindObj, ok := api.KindsRegistry[kind]
 
 	if !ok {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      fmt.Sprintf("internal implementation is not present on the server: %s", kind),
 			ErrorExplanation: err.Error(),
@@ -55,11 +55,11 @@ func (api *Api) ImplementationWrapperDelete(user *authentication.User, kind stri
 		return
 	}
 
-	var response contracts.ResponseImplementation
+	var response contracts.Response
 	response, err = kindObj.Delete(user, jsonData)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      "internal implementation malfunctioned on the server",
 			ErrorExplanation: err.Error(),

@@ -1,10 +1,12 @@
 package contracts
 
-type ResponseImplementation struct {
+import "encoding/json"
+
+type Response struct {
 	HttpStatus       int
 	Explanation      string
 	ErrorExplanation string
 	Error            bool
 	Success          bool
-	Data             interface{}
+	Data             json.RawMessage
 }

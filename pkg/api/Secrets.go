@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/network"
 	"io"
 	"net/http"
 	"strings"
@@ -18,14 +19,14 @@ import (
 //	@Tags			database
 //	@Produce		json
 //	@Param			key	path		string	true	"RandomKey"
-//	@Success		200	{object}	contracts.ResponseOperator
-//	@Failure		400	{object}	contracts.ResponseOperator
-//	@Failure		404	{object}	contracts.ResponseOperator
-//	@Failure		500	{object}	contracts.ResponseOperator
+//	@Success		200	{object}	contracts.Response
+//	@Failure		400	{object}	contracts.Response
+//	@Failure		404	{object}	contracts.Response
+//	@Failure		500	{object}	contracts.Response
 //	@Router			/database/{key} [get]
 func (api *Api) SecretsGet(c *gin.Context) {
 	if !strings.HasPrefix(c.Param("secret"), "secret.") {
-		c.JSON(http.StatusBadRequest, contracts.ResponseOperator{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			Explanation:      "secret not found",
 			ErrorExplanation: "",
 			Error:            true,
@@ -41,7 +42,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 
 		item, err := txn.Get([]byte(c.Param("secret")))
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "secret not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -54,7 +55,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 
 		value, err = item.ValueCopy(nil)
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "secret not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -65,14 +66,12 @@ func (api *Api) SecretsGet(c *gin.Context) {
 			return nil
 		}
 
-		c.JSON(http.StatusOK, contracts.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "found secret in the secret store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data: map[string]any{
-				c.Param("secret"): value,
-			},
+			Data:             network.ToJson(value),
 		})
 
 		return nil
@@ -81,7 +80,7 @@ func (api *Api) SecretsGet(c *gin.Context) {
 	if err != nil {
 		logger.Log.Error(err.Error())
 
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to read from the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -100,10 +99,10 @@ func (api *Api) SecretsGet(c *gin.Context) {
 //	@Produce		json
 //	@Param			key		path		string	true	"RandomKey"
 //	@Param			value	body		Kv		true	"value"
-//	@Success		200		{object}	contracts.ResponseOperator
-//	@Failure		400		{object}	contracts.ResponseOperator
-//	@Failure		404		{object}	contracts.ResponseOperator
-//	@Failure		500		{object}	contracts.ResponseOperator
+//	@Success		200		{object}	contracts.Response
+//	@Failure		400		{object}	contracts.Response
+//	@Failure		404		{object}	contracts.Response
+//	@Failure		500		{object}	contracts.Response
 //	@Router			/database/{key} [post]
 func (api *Api) SecretsSet(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
@@ -112,7 +111,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 		valueSent := Kv{}
 
 		if err = json.Unmarshal(jsonData, &valueSent); err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "failed to store secret in the secret store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -129,7 +128,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 		})
 
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "failed to store secret in the secret store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -137,18 +136,16 @@ func (api *Api) SecretsSet(c *gin.Context) {
 				Data:             nil,
 			})
 		} else {
-			c.JSON(http.StatusOK, contracts.ResponseOperator{
+			c.JSON(http.StatusOK, contracts.Response{
 				Explanation:      "secret stored in the secret store",
 				ErrorExplanation: "",
 				Error:            false,
 				Success:          true,
-				Data: map[string]any{
-					c.Param("secret"): valueSent.Value,
-				},
+				Data:             network.ToJson(valueSent.Value),
 			})
 		}
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to store secret in the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -164,10 +161,10 @@ func (api *Api) SecretsSet(c *gin.Context) {
 //	@Description	get all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	contracts.ResponseOperator
-//	@Failure		400	{object}	contracts.ResponseOperator
-//	@Failure		404	{object}	contracts.ResponseOperator
-//	@Failure		500	{object}	contracts.ResponseOperator
+//	@Success		200	{object}	contracts.Response
+//	@Failure		400	{object}	contracts.Response
+//	@Failure		404	{object}	contracts.Response
+//	@Failure		500	{object}	contracts.Response
 //	@Router			/database/keys [get]
 func (api *Api) SecretsGetKeys(c *gin.Context) {
 	var keys []string
@@ -190,17 +187,15 @@ func (api *Api) SecretsGetKeys(c *gin.Context) {
 	})
 
 	if err == nil {
-		c.JSON(http.StatusOK, contracts.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "succesfully retrieved secrets from the secret store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data: map[string]any{
-				"keys": keys,
-			},
+			Data:             network.ToJson(keys),
 		})
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to retrieve secrets from the secret store",
 			ErrorExplanation: err.Error(),
 			Error:            true,

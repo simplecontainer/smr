@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,29 +19,29 @@ import (
 
 func New(client *client.Client, user *authentication.User) *Object {
 	return &Object{
-		Changelog:        diff.Changelog{},
-		client:           client,
-		definition:       map[string]any{},
-		DefinitionString: "",
-		definitionByte:   make([]byte, 0),
-		exists:           false,
-		changed:          false,
-		Created:          time.Now(),
-		Updated:          time.Now(),
-		User:             user,
+		Changelog:  diff.Changelog{},
+		client:     client,
+		Definition: map[string]any{},
+		String:     "",
+		Byte:       make([]byte, 0),
+		exists:     false,
+		changed:    false,
+		Created:    time.Now(),
+		Updated:    time.Now(),
+		User:       user,
 	}
 }
 
 func (obj *Object) GetDefinitionString() string {
-	return obj.DefinitionString
+	return obj.String
 }
 
 func (obj *Object) GetDefinition() map[string]any {
-	return obj.definition
+	return obj.Definition
 }
 
 func (obj *Object) GetDefinitionByte() []byte {
-	return obj.definitionByte
+	return obj.Byte
 }
 
 func (obj *Object) Add(format *f.Format, data string) error {
@@ -87,21 +86,19 @@ func (obj *Object) Find(format *f.Format) error {
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
 	if response.Success {
-		for _, value := range response.Data {
-			if value == nil {
-				continue
-			}
+		// Retrieving bytes - response is base64 encoded -> decode it first
+		//decoded, _ := base64.StdEncoding.DecodeString(response.Data)
 
-			b64decoded, _ := base64.StdEncoding.DecodeString(value.(string))
-			obj.DefinitionString = string(b64decoded)
-			obj.definitionByte = b64decoded
+		obj.Byte, _ = response.Data.MarshalJSON()
 
-			// Best effort if no json fail silently
-			data := make(map[string]any)
-			json.Unmarshal(b64decoded, &data)
+		fmt.Println(obj.Byte)
 
-			obj.definition = data
+		obj.String = string(obj.Byte)
 
+		err := json.Unmarshal(obj.Byte, &obj.Definition)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
 		}
 	} else {
 		return errors.New(response.ErrorExplanation)
@@ -122,19 +119,23 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 	logger.Log.Debug("object find many", zap.String("URL", URL))
 
 	if response.Success {
-		if response.Data["keys"] != nil {
-			keys := response.Data["keys"].([]interface{})
+		if response.Data != nil {
+			var keys []string
 
-			for _, value := range keys {
+			bytes, _ := response.Data.MarshalJSON()
+
+			json.Unmarshal(bytes, &keys)
+
+			for _, key := range keys {
 				objTmp := New(obj.client, obj.User)
-				err := objTmp.Find(f.NewFromString(value.(string)))
+				err := objTmp.Find(f.NewFromString(key))
 
 				if err != nil {
 					fmt.Println(err)
 				}
 
-				if !strings.HasSuffix(value.(string), ".auth") {
-					objects[value.(string)] = objTmp
+				if !strings.HasSuffix(key, ".auth") {
+					objects[key] = objTmp
 				}
 			}
 		}
@@ -184,10 +185,10 @@ func (obj *Object) Diff(definition string) bool {
 
 	var changelog diff.Changelog
 
-	if reflect.DeepEqual(obj.definition, data) {
+	if reflect.DeepEqual(obj.Definition, data) {
 		obj.changed = false
 	} else {
-		changelog, _ = diff.Diff(obj.definition, data)
+		changelog, _ = diff.Diff(obj.Definition, data)
 		obj.Changelog = changelog
 		obj.changed = true
 	}

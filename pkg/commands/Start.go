@@ -159,49 +159,6 @@ func Start() {
 
 				v1 := router.Group("/api/v1")
 				{
-					users := v1.Group("/user")
-					{
-						users.POST("/:username/:domain/:externalIP", api.CreateUser)
-					}
-
-					logs := v1.Group("/logs")
-					{
-						//logs.GET("/", api.Agent)
-						logs.GET(":kind/:group/:identifier", api.Logs)
-					}
-
-					definitions := v1.Group("/definitions")
-					{
-						definitions.GET("/", api.Definitions)
-						definitions.GET("/:definition", api.Definition)
-					}
-
-					dns := v1.Group("/dns")
-					{
-						dns.GET("/", api.ListDns)
-						dns.GET("/:dns", api.ListDns)
-					}
-
-					operators := v1.Group("/operators")
-					{
-						operators.GET(":group", api.ListSupported)
-						operators.GET(":group/:operator", api.RunOperators)
-						operators.POST(":group/:operator", api.RunOperators)
-					}
-
-					objects := v1.Group("/")
-					{
-						objects.POST("apply", api.Apply)
-						objects.POST("apply/:kind", api.Apply)
-						objects.POST("compare", api.Compare)
-						objects.POST("delete", api.Delete)
-					}
-
-					containers := v1.Group("/")
-					{
-						containers.GET("ps", api.Ps)
-					}
-
 					database := v1.Group("database")
 					{
 						database.POST("create/*key", api.DatabaseSet)
@@ -214,9 +171,27 @@ func Start() {
 						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
 					}
 
-					etcd := v1.Group("etcd")
+					definitions := v1.Group("/definitions")
 					{
-						etcd.PUT("/etcd/update/*key", api.EtcdPut)
+						definitions.GET("/", api.Definitions)
+						definitions.GET("/:definition", api.Definition)
+					}
+
+					kinds := v1.Group("/")
+					{
+						kinds.POST("apply", api.Apply)
+						kinds.POST("apply/:kind", api.Apply)
+						kinds.POST("compare", api.Compare)
+						kinds.POST("delete", api.Delete)
+					}
+
+					operators := v1.Group("/control")
+					{
+						operators.GET(":kind", api.ListSupported)
+						operators.GET(":kind/:operation/:group/:name", api.RunControl)
+						operators.POST(":kind/:operation/:group/:name", api.RunControl)
+						operators.PUT(":kind/:operation/:group/:name", api.RunControl)
+						operators.DELETE(":kind/:operation/:group/:name", api.RunControl)
 					}
 
 					secrets := v1.Group("secrets")
@@ -226,11 +201,39 @@ func Start() {
 						secrets.POST("create/:secret", api.SecretsSet)
 						secrets.PUT("update/:secret", api.SecretsSet)
 					}
+
+					containers := v1.Group("/")
+					{
+						containers.GET("ps", api.Ps)
+					}
+
+					logs := v1.Group("/logs")
+					{
+						//logs.GET("/", api.Agent)
+						logs.GET(":kind/:group/:identifier", api.Logs)
+					}
+
+					dns := v1.Group("/dns")
+					{
+						dns.GET("/", api.ListDns)
+						dns.GET("/:dns", api.ListDns)
+					}
+
+					users := v1.Group("/user")
+					{
+						users.POST("/:username/:domain/:externalIP", api.CreateUser)
+					}
+
+					etcd := v1.Group("etcd")
+					{
+						etcd.PUT("/etcd/update/*key", api.EtcdPut)
+					}
 				}
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-				router.GET("/connect", api.Connect)
+				router.GET("/ca", api.CA)
+				router.GET("/connect", api.Health)
 				router.GET("/restore", api.Restore)
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
