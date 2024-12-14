@@ -185,10 +185,10 @@ func Start() {
 						kinds.POST("delete", api.Delete)
 					}
 
-					operators := v1.Group("/operators")
+					operators := v1.Group("/control")
 					{
 						operators.GET(":kind", api.ListSupported)
-						operators.GET(":kind/:operator", api.RunControl)
+						operators.GET(":kind/:operation", api.RunControl)
 						operators.GET(":kind/:operation/:group/:name", api.RunControl)
 						operators.POST(":kind/:operation/:group/:name", api.RunControl)
 						operators.PUT(":kind/:operation/:group/:name", api.RunControl)
