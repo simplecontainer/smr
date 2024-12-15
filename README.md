@@ -3,13 +3,13 @@
 Quick start
 ===========
 
-> [!WARNING]
+> [!IMPORTANT]
 > The project is not stable yet. Releases and major changes are introduced often. 
 
-This is a quick start tutorial for getting a simple container up and running.
+This is a quick start tutorial for getting a simplecontainer up and running.
 
 ## Introduction
-A simple container manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
+The simplecontainer manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
 
 Introducing objects which can be defined as YAML definition and sent to the simplecontainer manager to produce Docker container via reconciliation:
 
@@ -23,19 +23,18 @@ Introducing objects which can be defined as YAML definition and sent to the simp
 
 These objects let you deploy container on local/remote Docker daemon. The simplecontainer introduces next features:
 
-- Single Docker daemon / Cluster of Docker daemons
-- Overlay networking using flannel
+- Cluster of Docker daemons or single Docker daemons
+- Overlay networking for containers using flannel
 - Integrated DNS server isolated from Docker daemon
 - GitOps: deploy objects from the Git repositories using GitOps approach
 - Replication of containers in cluster of Docker daemons
 - Reconciliation and tracking the lifecycle of the Docker containers
-- CLI to interact with the simplecontainer
-- Fast learning curve - simplicity and deterministic behavior
 - Reliable dependency ordering using readiness probes
 - Recreate containers from the KV store in case of failure
 - Templating of the container objects to leverage secrets and configuration
 - Secrets, Configuration and Resources objects for external configuration
-
+- CLI to interact with the simplecontainer
+- Fast learning curve - simplicity and deterministic behavior
 
 Installation
 --------------------------
@@ -106,7 +105,7 @@ Requirements:
 
 ```bash
 smrmgr import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
-smrmgr import ca
+smr context fetch
 
 smrmgr start -a smr-agent-2 -d smr2.example.com -n https://node2.example.com -j https://node1.example.com:1443
 ```
@@ -119,12 +118,13 @@ Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be o
 ]()
 ```bash
 smrmgr start -a smr-agent-1 -d smr.example.com
-smr context export smr-agent-1
+smr context export smr-agent-1 <<< https://smr.example.com:1443
+cat $HOME/smr/smr/contexts/$(smr context).key # Copy KEY
 ```
 
 From external machine run:
 ```bash
-smr context import smr-agent-1 < {{ PASTE HERE EXPORTED CONTEXT OF smr-agent-1 }}
+smr context import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
 smr ps
 ```
 
