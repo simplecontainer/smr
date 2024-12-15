@@ -94,8 +94,10 @@ Requirements:
 
 ```bash
 smrmgr start -a smr-agent-1 -d smr1.example.com -n node1.example.com
-smrmgr export node1.example.com # Copy CONTEXT
-cat $HOME/smr/smr/contexts/$(smr context).key # Copy KEY
+# Copy the content of the export
+smrmgr export https://node1.example.com:1443
+# Copy the decryption key
+cat $HOME/smr/smr/contexts/$(smr context).key
 ```
 
 **Node 2 (And any other nodes joining cluster)**
@@ -113,12 +115,11 @@ smrmgr start -a smr-agent-2 -d smr2.example.com -n node2.example.com -j node1.ex
 Afterward, cluster is started. Badger key-value store is now distributed using RAFT protocol. Flannel will start and agent will create docker network named `cluster`. Containers started are automatically connected to the flannel network when started.
 
 ### Running simplecontainer in single mode
-[#### How to run it? (Exposed control plane to the internet/network using domain)
+#### How to run it? (Exposed control plane to the internet/network using domain)
 Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
-]()
 ```bash
 smrmgr start -a smr-agent-1 -d smr.example.com
-smr context export smr-agent-1 <<< https://smr.example.com:1443
+smr context export <<< https://smr.example.com:1443
 cat $HOME/smr/smr/contexts/$(smr context).key # Copy KEY
 ```
 
