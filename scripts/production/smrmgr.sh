@@ -82,7 +82,16 @@ Start(){
         NODE_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
       fi
 
-      smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y
+
+      while :
+      do
+      	if [[ $(smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y) ]] then
+      	  echo "Failed to connect to siplecontainer, trying again in 1 second"
+          sleep 1
+      	else
+      	   break
+      	fi
+      done
 
       if [[ ${JOIN} == "" ]]; then
         sudo nohup smr node cluster start --node "${NODE_URL}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
