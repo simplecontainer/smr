@@ -86,7 +86,7 @@ Start(){
 
       while :
       do
-      	if [[ $(smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y) == 0 ]] then
+      	if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/root.pem" --context "${AGENT}" --wait --y; then
       	  break
       	else
       	  echo "Failed to connect to siplecontainer, trying again in 1 second"
