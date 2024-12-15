@@ -80,8 +80,9 @@ Start(){
 
       if [[ $PRODUCTION == "0" ]]; then
         NODE_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
+      else
+        NODE_URL="https://${NODE_URL}:${NODE_PORT}"
       fi
-
 
       while :
       do
@@ -96,7 +97,7 @@ Start(){
       if [[ ${JOIN} == "" ]]; then
         sudo nohup smr node cluster start --node "${NODE_URL}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
       else
-        sudo nohup smr node cluster start --node "${NODE_URL}" --join ${JOIN} 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
+        sudo nohup smr node cluster start --node "${NODE_URL}" --join "https://${JOIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
       fi
 
       echo "The simplecontainer is started in cluster mode."

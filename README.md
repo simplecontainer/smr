@@ -93,8 +93,8 @@ Requirements:
 - Docker daemon running on the Node 1
 
 ```bash
-smrmgr start -a smr-agent-1 -d smr1.example.com -n https://node1.example.com
-smrmgr export https://node1.example.com # Copy CONTEXT
+smrmgr start -a smr-agent-1 -d smr1.example.com -n node1.example.com
+smrmgr export node1.example.com # Copy CONTEXT
 cat $HOME/smr/smr/contexts/$(smr context).key # Copy KEY
 ```
 
@@ -107,7 +107,7 @@ Requirements:
 smrmgr import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
 smr context fetch
 
-smrmgr start -a smr-agent-2 -d smr2.example.com -n https://node2.example.com -j https://node1.example.com:1443
+smrmgr start -a smr-agent-2 -d smr2.example.com -n node2.example.com -j node1.example.com:1443
 ```
 
 Afterward, cluster is started. Badger key-value store is now distributed using RAFT protocol. Flannel will start and agent will create docker network named `cluster`. Containers started are automatically connected to the flannel network when started.
