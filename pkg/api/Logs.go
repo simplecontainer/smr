@@ -32,7 +32,7 @@ func (api *Api) Logs(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.Response{
 			Explanation:      "",
 			ErrorExplanation: err.Error(),
 			Error:            true,

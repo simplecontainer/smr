@@ -1,10 +1,11 @@
 package api
 
 import (
-	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
+	"github.com/simplecontainer/smr/pkg/network"
 	"net/http"
 )
 
@@ -16,24 +17,21 @@ func (api *Api) Ps(c *gin.Context) {
 		reg = container.GetShared().(*shared.Shared).Registry.All()
 	}
 
-	if reg != nil {
-		data, err := json.Marshal(reg)
-		result := make(map[string]interface{})
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, result)
-			return
-		}
-
-		err = json.Unmarshal(data, &result)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err)
-		}
-
-		c.JSON(http.StatusOK, result)
+	if len(reg) > 0 {
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             network.ToJson(reg),
+		})
 	} else {
-		result := make(map[string]interface{})
-		c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             nil,
+		})
 	}
 }

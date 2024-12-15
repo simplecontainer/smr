@@ -106,7 +106,7 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 		snapshotterReady: make(chan *snap.Snapshotter, 1),
 	}
 
-	go raftnode.startRaft(keys)
+	go raftnode.startRaft(keys, TLSConfig)
 
 	return raftnode, commitC, errorC, raftnode.snapshotterReady
 }
@@ -267,7 +267,7 @@ func (rc *RaftNode) writeError(err error) {
 	rc.node.Stop()
 }
 
-func (rc *RaftNode) startRaft(keys *keys.Keys) {
+func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	if !fileutil.Exist(rc.snapdir) {
 		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
 			panic(fmt.Sprintf("smr: cannot create dir for snapshot (%v)", err))
@@ -310,14 +310,11 @@ func (rc *RaftNode) startRaft(keys *keys.Keys) {
 		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
 		ErrorC:      make(chan error),
 		TLSInfo: transport.TLSInfo{
-			CertFile:       keys.Server.CertificatePath,
-			KeyFile:        keys.Server.PrivateKeyPath,
 			ClientCertAuth: true,
-			ClientCertFile: keys.Clients["root"].CertificatePath,
-			ClientKeyFile:  keys.Clients["root"].PrivateKeyPath,
 			TrustedCAFile:  keys.CA.CertificatePath,
 			HandshakeFailure: func(conn *tls.Conn, err error) {
 				fmt.Println(err.Error())
+				fmt.Println(conn)
 			},
 		},
 	}
@@ -333,7 +330,7 @@ func (rc *RaftNode) startRaft(keys *keys.Keys) {
 		}
 	}
 
-	go rc.serveRaft(keys)
+	go rc.serveRaft(keys, tlsConfig)
 	go rc.serveChannels()
 }
 
@@ -515,7 +512,7 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	return ms
 }
 
-func (rc *RaftNode) serveRaft(keys *keys.Keys) {
+func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers[rc.id-1]))
 	url, err := url.Parse(rc.Peers[rc.id-1])
 	if err != nil {
@@ -532,7 +529,7 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys) {
 	}
 
 	server.TLSConfig = &tls.Config{}
-	server.TLSConfig.GetCertificate = keys.Reloader.GetCertificateFunc()
+	server.TLSConfig.GetCertificate = tlsConfig.GetCertificate
 
 	err = server.ServeTLS(ln, "", "")
 

@@ -8,18 +8,19 @@ import (
 )
 
 type Object struct {
+	Byte       []byte
+	String     string
+	Definition map[string]interface{}
+
 	Changelog diff.Changelog
 	Raw       bool
 	client    *client.Client
 
-	definition       map[string]any
-	DefinitionString string
-	definitionByte   []byte
-	changed          bool
-	exists           bool
-	restoring        bool
-	Owner            string
-	Created          time.Time
-	Updated          time.Time
-	User             *authentication.User
+	changed   bool
+	exists    bool
+	restoring bool
+	Owner     string
+	Created   time.Time
+	Updated   time.Time
+	User      *authentication.User
 }

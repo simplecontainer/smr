@@ -1,5 +1,7 @@
 package relations
 
+import "encoding/json"
+
 func NewDefinitionRelationRegistry() *RelationRegistry {
 	defs := RelationRegistry{}
 	defs.Relations = make(map[string][]string)
@@ -19,4 +21,8 @@ func (defRegistry *RelationRegistry) GetDependencies(kind string) []string {
 	} else {
 		return []string{}
 	}
+}
+
+func (defRegistry *RelationRegistry) ToJson() ([]byte, error) {
+	return json.Marshal(defRegistry)
 }

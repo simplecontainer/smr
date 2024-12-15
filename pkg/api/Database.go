@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/network"
 	"io"
 	"net/http"
 	"strings"
@@ -17,10 +18,10 @@ import (
 //	@Tags			database
 //	@Produce		json
 //	@Param			key	path		string	true	"RandomKey"
-//	@Success		200	{object}	  contracts.ResponseOperator
-//	@Failure		400	{object}	  contracts.ResponseOperator
-//	@Failure		404	{object}	  contracts.ResponseOperator
-//	@Failure		500	{object}	  contracts.ResponseOperator
+//	@Success		200	{object}	  contracts.Response
+//	@Failure		400	{object}	  contracts.Response
+//	@Failure		404	{object}	  contracts.Response
+//	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key} [get]
 func (api *Api) DatabaseGet(c *gin.Context) {
 	api.BadgerSync.RLock()
@@ -32,7 +33,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 
 		item, err := txn.Get([]byte(key))
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "key not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -45,7 +46,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 
 		value, err = item.ValueCopy(nil)
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "key not found",
 				ErrorExplanation: "",
 				Error:            true,
@@ -56,14 +57,12 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 			return nil
 		}
 
-		c.JSON(http.StatusOK, contracts.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "found key in the key-value store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data: map[string]any{
-				key: value,
-			},
+			Data:             value,
 		})
 
 		return nil
@@ -74,7 +73,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 	if err != nil {
 		logger.Log.Error(err.Error())
 
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to read from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -93,14 +92,16 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 //	@Produce		json
 //	@Param			key		path		string	true	"RandomKey"
 //	@Param			value	body		Kv		true	"value"
-//	@Success		200		{object}	  contracts.ResponseOperator
-//	@Failure		400		{object}	  contracts.ResponseOperator
-//	@Failure		404		{object}	  contracts.ResponseOperator
-//	@Failure		500		{object}	  contracts.ResponseOperator
+//	@Success		200		{object}	  contracts.Response
+//	@Failure		400		{object}	  contracts.Response
+//	@Failure		404		{object}	  contracts.Response
+//	@Failure		500		{object}	  contracts.Response
 //	@Router			/database/{key} [post]
 func (api *Api) DatabaseSet(c *gin.Context) {
 	var data []byte
-	data, err := io.ReadAll(c.Request.Body)
+	var err error
+
+	data, err = io.ReadAll(c.Request.Body)
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
@@ -115,7 +116,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 		api.BadgerSync.Unlock()
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+			c.JSON(http.StatusInternalServerError, contracts.Response{
 				Explanation:      "failed to store value in the key-value store",
 				ErrorExplanation: err.Error(),
 				Error:            true,
@@ -123,18 +124,16 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 				Data:             nil,
 			})
 		} else {
-			c.JSON(http.StatusOK, contracts.ResponseOperator{
+			c.JSON(http.StatusOK, contracts.Response{
 				Explanation:      "value stored in the key value store",
 				ErrorExplanation: "",
 				Error:            false,
 				Success:          true,
-				Data: map[string]any{
-					key: string(data),
-				},
+				Data:             data,
 			})
 		}
 	} else {
-		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.Response{
 			Explanation:      "failed to store value in the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -145,11 +144,10 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 }
 
 func (api *Api) Propose(c *gin.Context) {
-	var data []byte
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.Response{
 			Explanation:      "failed to store value in the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -161,7 +159,7 @@ func (api *Api) Propose(c *gin.Context) {
 	}
 
 	if api.Cluster.KVStore == nil {
-		c.JSON(http.StatusInternalServerError, contracts.ResponseOperator{
+		c.JSON(http.StatusInternalServerError, contracts.Response{
 			Explanation:      "key-value store is not started yet",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -175,14 +173,12 @@ func (api *Api) Propose(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 	api.Cluster.KVStore.Propose(key, string(data), api.Config.Agent)
 
-	c.JSON(http.StatusOK, contracts.ResponseImplementation{
+	c.JSON(http.StatusOK, contracts.Response{
 		Explanation:      "value stored in the key value store",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
-		Data: map[string]any{
-			key: string(data),
-		},
+		Data:             data,
 	})
 }
 
@@ -192,22 +188,22 @@ func (api *Api) Propose(c *gin.Context) {
 //	@Description	get all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	  contracts.ResponseOperator
-//	@Failure		400	{object}	  contracts.ResponseOperator
-//	@Failure		404	{object}	  contracts.ResponseOperator
-//	@Failure		500	{object}	  contracts.ResponseOperator
+//	@Success		200	{object}	  contracts.Response
+//	@Failure		400	{object}	  contracts.Response
+//	@Failure		404	{object}	  contracts.Response
+//	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key}/{prefix} [get]
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	var keys []string
 
-	prefix := strings.TrimPrefix(c.Param("prefix"), "/")
+	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
 	api.BadgerSync.RLock()
 
 	err := api.Badger.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := []byte(prefix)
+
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
@@ -221,18 +217,16 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, contracts.ResponseImplementation{
+		c.JSON(http.StatusOK, contracts.Response{
 			HttpStatus:       http.StatusOK,
 			Explanation:      "keys found",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data: map[string]any{
-				"keys": keys,
-			},
+			Data:             network.ToJson(keys),
 		})
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseImplementation{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			HttpStatus:       http.StatusNotFound,
 			Explanation:      "failed to retrieve keys from the key-value store",
 			ErrorExplanation: err.Error(),
@@ -249,10 +243,10 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 //	@Description	get all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	  contracts.ResponseOperator
-//	@Failure		400	{object}	  contracts.ResponseOperator
-//	@Failure		404	{object}	  contracts.ResponseOperator
-//	@Failure		500	{object}	  contracts.ResponseOperator
+//	@Success		200	{object}	  contracts.Response
+//	@Failure		400	{object}	  contracts.Response
+//	@Failure		404	{object}	  contracts.Response
+//	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/keys [get]
 func (api *Api) DatabaseGetKeys(c *gin.Context) {
 	var keys []string
@@ -277,17 +271,15 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, contracts.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "succesfully retrieved keys from the key-value store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data: map[string]any{
-				"keys": keys,
-			},
+			Data:             network.ToJson(keys),
 		})
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to retrieve keys from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
@@ -303,15 +295,15 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 //	@Description	remove all keys by prefix in the key-value store
 //	@Tags			database
 //	@Produce		json
-//	@Success		200	{object}	  contracts.ResponseOperator
-//	@Failure		400	{object}	  contracts.ResponseOperator
-//	@Failure		404	{object}	  contracts.ResponseOperator
-//	@Failure		500	{object}	  contracts.ResponseOperator
+//	@Success		200	{object}	  contracts.Response
+//	@Failure		400	{object}	  contracts.Response
+//	@Failure		404	{object}	  contracts.Response
+//	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/keys [delete]
 func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 	var keys []string
 
-	prefix := strings.TrimPrefix(c.Param("prefix"), "/")
+	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
 	api.BadgerSync.Lock()
 
@@ -324,7 +316,6 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 
 		var err error
 
-		prefix := []byte(prefix)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			err = txn.Delete(it.Item().KeyCopy(nil))
 
@@ -340,24 +331,20 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 	api.BadgerSync.Unlock()
 
 	if err == nil {
-		c.JSON(http.StatusOK, contracts.ResponseOperator{
+		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "succesfully removed keys from the key-value store",
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data: map[string]any{
-				"keys": keys,
-			},
+			Data:             network.ToJson(keys),
 		})
 	} else {
-		c.JSON(http.StatusNotFound, contracts.ResponseOperator{
+		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to remove keys from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
-			Data: map[string]any{
-				"keys": keys,
-			},
+			Data:             network.ToJson(keys),
 		})
 	}
 }

@@ -63,11 +63,11 @@ func (container *Container) Start() error {
 func (container *Container) GetShared() interface{} {
 	return container.Shared
 }
-func (container *Container) Apply(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (container *Container) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request := NewRequest()
 
 	if err := json.Unmarshal(jsonData, request.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -79,7 +79,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 	_, err := request.Definition.Validate()
 
 	if err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -111,7 +111,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 		dr, err = generateReplicaNamesAndGroups(container.Shared, user, obj.ChangeDetected(), request.Definition, obj.Changelog)
 
 		if err != nil {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "failed to update object",
 				ErrorExplanation: err.Error(),
@@ -124,7 +124,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 			err = obj.Update(format, jsonStringFromRequest)
 
 			if err != nil {
-				return contracts.ResponseImplementation{
+				return contracts.Response{
 					HttpStatus:       http.StatusInternalServerError,
 					Explanation:      "failed to update object",
 					ErrorExplanation: err.Error(),
@@ -137,7 +137,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 		dr, err = generateReplicaNamesAndGroups(container.Shared, user, obj.ChangeDetected(), request.Definition, obj.Changelog)
 
 		if err != nil {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "failed to update object",
 				ErrorExplanation: err.Error(),
@@ -149,7 +149,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 		err = obj.Add(format, jsonStringFromRequest)
 
 		if err != nil {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "failed to add object",
 				ErrorExplanation: err.Error(),
@@ -224,7 +224,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 	} else {
 		logger.Log.Error(err.Error())
 
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "failed to add container",
 			ErrorExplanation: err.Error(),
@@ -233,7 +233,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 		}, nil
 	}
 
-	return contracts.ResponseImplementation{
+	return contracts.Response{
 		HttpStatus:       200,
 		Explanation:      "everything went well: good job!",
 		ErrorExplanation: "",
@@ -241,8 +241,8 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte) (c
 		Success:          true,
 	}, nil
 }
-func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
-	return contracts.ResponseImplementation{
+func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+	return contracts.Response{
 		HttpStatus:       200,
 		Explanation:      "object in sync",
 		ErrorExplanation: "",
@@ -250,11 +250,11 @@ func (container *Container) Compare(user *authentication.User, jsonData []byte) 
 		Success:          true,
 	}, nil
 }
-func (container *Container) Delete(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (container *Container) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request := NewRequest()
 
 	if err := json.Unmarshal(jsonData, request.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -297,7 +297,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 					reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
 				}
 
-				return contracts.ResponseImplementation{
+				return contracts.Response{
 					HttpStatus:       200,
 					Explanation:      "container is deleted",
 					ErrorExplanation: "",
@@ -305,7 +305,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 					Success:          true,
 				}, nil
 			} else {
-				return contracts.ResponseImplementation{
+				return contracts.Response{
 					HttpStatus:       404,
 					Explanation:      "",
 					ErrorExplanation: "container is not found on the server",
@@ -314,7 +314,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 				}, nil
 			}
 		} else {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       404,
 				Explanation:      "",
 				ErrorExplanation: "container is not found on the server",
@@ -323,7 +323,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 			}, nil
 		}
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       404,
 			Explanation:      "",
 			ErrorExplanation: "container is not found on the server",
@@ -332,7 +332,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte) (
 		}, nil
 	}
 }
-func (container *Container) Run(operation string, args ...interface{}) contracts.ResponseOperator {
+func (container *Container) Run(operation string, request contracts.Control) contracts.Response {
 	reflected := reflect.TypeOf(container)
 	reflectedValue := reflect.ValueOf(container)
 
@@ -340,19 +340,14 @@ func (container *Container) Run(operation string, args ...interface{}) contracts
 		method := reflected.Method(i)
 
 		if operation == method.Name {
-			inputs := make([]reflect.Value, len(args))
-
-			for i, _ := range args {
-				inputs[i] = reflect.ValueOf(args[i])
-			}
-
+			inputs := []reflect.Value{reflect.ValueOf(request)}
 			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
 
-			return returnValue[0].Interface().(contracts.ResponseOperator)
+			return returnValue[0].Interface().(contracts.Response)
 		}
 	}
 
-	return contracts.ResponseOperator{
+	return contracts.Response{
 		HttpStatus:       400,
 		Explanation:      "server doesn't support requested functionality",
 		ErrorExplanation: "implementation is missing",
@@ -406,232 +401,4 @@ func GetReplicaNamesAndGroups(shared *shared.Shared, user *authentication.User, 
 	containers, err := r.GetReplica(shared, user, containerDefinition, shared.Manager.Cluster.Cluster.ToString())
 
 	return containers, err
-}
-
-func (container *Container) ListSupported(args ...interface{}) contracts.ResponseOperator {
-	reflected := reflect.TypeOf(container)
-
-	supportedOperations := map[string]any{}
-	supportedOperations["SupportedOperations"] = []string{}
-
-OUTER:
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-		for _, forbiddenOperator := range invalidOperators {
-			if forbiddenOperator == method.Name {
-				continue OUTER
-			}
-		}
-
-		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             supportedOperations,
-	}
-}
-
-func (container *Container) List(request contracts.RequestOperator) contracts.ResponseOperator {
-	data := make(map[string]any)
-
-	format := f.New(KIND, "", "", "")
-
-	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
-	objs, err := obj.FindMany(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	for k, v := range objs {
-		data[k] = v.GetDefinition()
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "list of the certkey objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             data,
-	}
-}
-func (container *Container) Get(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
-
-	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "container definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	definitionObject := obj.GetDefinition()
-
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "container object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             definition,
-	}
-}
-func (container *Container) View(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	containerObj := container.Shared.Registry.FindLocal(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
-
-	if containerObj == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "container not found in the registry",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	var definition = make(map[string]any)
-	definition[containerObj.GetGeneratedName()] = containerObj
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "container object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             definition,
-	}
-}
-func (container *Container) Restart(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	containerObj := container.Shared.Registry.FindLocal(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
-
-	if containerObj == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "container not found in the registry",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
-	container.Shared.Watcher.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "container object is restarted",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
-}
-func (container *Container) Remove(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	format := f.New("container", request.Data["group"].(string), request.Data["identifier"].(string), "object")
-
-	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-	if err != nil {
-		panic(err)
-	}
-
-	if !obj.Exists() {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "object not found on the server",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}
-	}
-
-	_, err = container.Delete(request.User, obj.GetDefinitionByte())
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "failed to delete containers",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       http.StatusOK,
-		Explanation:      "action completed successfully",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-	}
 }

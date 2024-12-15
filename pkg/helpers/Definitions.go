@@ -34,7 +34,6 @@ func Definitions(defintion string) ([]byte, error) {
 	case "network":
 		out, err = yaml.Marshal(v1.NetworkDefinition{})
 		break
-
 	}
 
 	return out, err

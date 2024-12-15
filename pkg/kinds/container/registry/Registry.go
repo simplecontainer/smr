@@ -110,7 +110,6 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 		obj.Find(format)
 
 		if obj.Exists() {
-			fmt.Println(obj.GetDefinitionString())
 			instance, err := platforms.NewGhost(obj.GetDefinition())
 
 			if err != nil {

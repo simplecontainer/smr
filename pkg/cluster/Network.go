@@ -10,13 +10,13 @@ import (
 	"net/http"
 )
 
-func SendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.ResponseImplementation {
+func SendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.Response {
 	var req *http.Request
 	var err error
 
 	if len(data) > 0 {
 		if err != nil {
-			return &contracts.ResponseImplementation{
+			return &contracts.Response{
 				HttpStatus:       0,
 				Explanation:      "failed to marshal data for sending request",
 				ErrorExplanation: err.Error(),
@@ -33,7 +33,7 @@ func SendRequest(client *client.Http, user *authentication.User, URL string, dat
 	}
 
 	if err != nil {
-		return &contracts.ResponseImplementation{
+		return &contracts.Response{
 			HttpStatus:       0,
 			Explanation:      "failed to craft request",
 			ErrorExplanation: err.Error(),
@@ -45,7 +45,7 @@ func SendRequest(client *client.Http, user *authentication.User, URL string, dat
 	resp, err := client.Get(user.Username).Http.Do(req)
 
 	if err != nil {
-		return &contracts.ResponseImplementation{
+		return &contracts.Response{
 			HttpStatus:       0,
 			Explanation:      "failed to connect to the smr-agent",
 			ErrorExplanation: err.Error(),
@@ -57,7 +57,7 @@ func SendRequest(client *client.Http, user *authentication.User, URL string, dat
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &contracts.ResponseImplementation{
+		return &contracts.Response{
 			HttpStatus:       0,
 			Explanation:      "invalid response from the smr-agent",
 			ErrorExplanation: err.Error(),
@@ -66,11 +66,11 @@ func SendRequest(client *client.Http, user *authentication.User, URL string, dat
 		}
 	}
 
-	var response contracts.ResponseImplementation
+	var response contracts.Response
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		return &contracts.ResponseImplementation{
+		return &contracts.Response{
 			HttpStatus:       0,
 			Explanation:      "failed to unmarshal body response from smr-agent",
 			ErrorExplanation: err.Error(),

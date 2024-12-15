@@ -1,6 +1,8 @@
 package internal
 
-import v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+import (
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+)
 
 type Resources struct {
 	Resources []*Resource

@@ -8,7 +8,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -30,11 +29,11 @@ func (containers *Containers) Start() error {
 func (containers *Containers) GetShared() interface{} {
 	return containers.Shared
 }
-func (containers *Containers) Apply(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (containers *Containers) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -46,7 +45,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 	valid, err := containersDefinition.Validate()
 
 	if !valid {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -77,7 +76,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 			err = obj.Update(format, jsonStringFromRequest)
 
 			if err != nil {
-				return contracts.ResponseImplementation{
+				return contracts.Response{
 					HttpStatus:       http.StatusInternalServerError,
 					Explanation:      "failed to update object",
 					ErrorExplanation: err.Error(),
@@ -90,7 +89,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 		err = obj.Add(format, jsonStringFromRequest)
 
 		if err != nil {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "failed to add object",
 				ErrorExplanation: err.Error(),
@@ -118,7 +117,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 			containers.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
 			reconcile.Container(containers.Shared, user, containersFromDefinition)
 		} else {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusOK,
 				Explanation:      "containers object is same as the one on the server",
 				ErrorExplanation: "",
@@ -136,7 +135,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 		reconcile.Container(containers.Shared, user, containersFromDefinition)
 	}
 
-	return contracts.ResponseImplementation{
+	return contracts.Response{
 		HttpStatus:       http.StatusOK,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",
@@ -144,11 +143,11 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 		Success:          true,
 	}, nil
 }
-func (containers *Containers) Compare(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (containers *Containers) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -175,7 +174,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       418,
 			Explanation:      "object is drifted from the definition",
 			ErrorExplanation: "",
@@ -185,7 +184,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 	}
 
 	if obj.ChangeDetected() {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       418,
 			Explanation:      "object is drifted from the definition",
 			ErrorExplanation: "",
@@ -193,7 +192,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 			Success:          true,
 		}, nil
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       200,
 			Explanation:      "object in sync",
 			ErrorExplanation: "",
@@ -202,11 +201,11 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 		}, nil
 	}
 }
-func (containers *Containers) Delete(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (containers *Containers) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -228,7 +227,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte)
 	err = obj.Find(format)
 
 	if !obj.Exists() {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       404,
 			Explanation:      "",
 			ErrorExplanation: "object not found on the server",
@@ -240,7 +239,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte)
 	_, err = obj.Remove(format)
 
 	if err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       500,
 			Explanation:      "object removal failed",
 			ErrorExplanation: err.Error(),
@@ -268,7 +267,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte)
 		}
 	}
 
-	return contracts.ResponseImplementation{
+	return contracts.Response{
 		HttpStatus:       200,
 		Explanation:      "action completed successfully",
 		ErrorExplanation: "",
@@ -277,7 +276,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte)
 	}, nil
 }
 
-func (containers *Containers) Run(operation string, args ...interface{}) contracts.ResponseOperator {
+func (containers *Containers) Run(operation string, request contracts.Control) contracts.Response {
 	reflected := reflect.TypeOf(containers)
 	reflectedValue := reflect.ValueOf(containers)
 
@@ -285,164 +284,19 @@ func (containers *Containers) Run(operation string, args ...interface{}) contrac
 		method := reflected.Method(i)
 
 		if operation == method.Name {
-			inputs := make([]reflect.Value, len(args))
-
-			for i, _ := range args {
-				inputs[i] = reflect.ValueOf(args[i])
-			}
-
+			inputs := []reflect.Value{reflect.ValueOf(request)}
 			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
 
-			return returnValue[0].Interface().(contracts.ResponseOperator)
+			return returnValue[0].Interface().(contracts.Response)
 		}
 	}
 
-	return contracts.ResponseOperator{
+	return contracts.Response{
 		HttpStatus:       400,
 		Explanation:      "server doesn't support requested functionality",
 		ErrorExplanation: "implementation is missing",
 		Error:            true,
 		Success:          false,
-		Data:             nil,
-	}
-}
-func (containers *Containers) ListSupported(args ...interface{}) contracts.ResponseOperator {
-	reflected := reflect.TypeOf(containers)
-
-	supportedOperations := map[string]any{}
-	supportedOperations["SupportedOperations"] = []string{}
-
-OUTER:
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-		for _, forbiddenOperator := range invalidOperators {
-			if forbiddenOperator == method.Name {
-				continue OUTER
-			}
-		}
-
-		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             supportedOperations,
-	}
-}
-func (containers *Containers) List(request contracts.RequestOperator) contracts.ResponseOperator {
-	data := make(map[string]any)
-
-	format := f.New(KIND, "", "", "")
-
-	obj := objects.New(containers.Shared.Client.Get(request.User.Username), request.User)
-	objs, err := obj.FindMany(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	for k, v := range objs {
-		data[k] = v.GetDefinition()
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "list of the certkey objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             data,
-	}
-}
-func (containers *Containers) Get(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
-
-	obj := objects.New(containers.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "container definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	definitionObject := obj.GetDefinition()
-
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "container object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             definition,
-	}
-}
-func (containers *Containers) View(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	registry := containers.Shared.Manager.KindsRegistry["container"].GetShared().(shared.Shared)
-	container := registry.Registry.Find(fmt.Sprintf("%s", request.Data["group"]), fmt.Sprintf("%s", request.Data["identifier"]))
-
-	if container == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "container not found in the registry",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	var definition = make(map[string]any)
-	definition[container.GetGeneratedName()] = container
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "container object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
 		Data:             nil,
 	}
 }

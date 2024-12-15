@@ -14,25 +14,29 @@ func (api *Api) Apply(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
 		})
+
+		return
 	} else {
 		data := make(map[string]interface{})
-
 		err = json.Unmarshal(jsonData, &data)
+
 		if err != nil {
-			c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+			c.JSON(http.StatusBadRequest, contracts.Response{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid definition sent",
 				ErrorExplanation: err.Error(),
 				Error:            true,
 				Success:          false,
 			})
+
+			return
 		}
 
 		if data != nil {
@@ -44,7 +48,7 @@ func (api *Api) Apply(c *gin.Context) {
 				if data["kind"] != nil {
 					kind = data["kind"].(string)
 				} else {
-					c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+					c.JSON(http.StatusBadRequest, contracts.Response{
 						HttpStatus:       http.StatusBadRequest,
 						Explanation:      "",
 						ErrorExplanation: "invalid definition sent - kind is not defined",
@@ -58,7 +62,7 @@ func (api *Api) Apply(c *gin.Context) {
 
 			api.ImplementationWrapperApply(authentication.NewUser(c.Request.TLS), kind, jsonData, c)
 		} else {
-			c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+			c.JSON(http.StatusBadRequest, contracts.Response{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      "invalid definition sent",
 				ErrorExplanation: err.Error(),
@@ -74,7 +78,7 @@ func (api *Api) ImplementationWrapperApply(user *authentication.User, kind strin
 	kindObj, ok := api.KindsRegistry[kind]
 
 	if !ok {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      fmt.Sprintf("kind is not present on the server: %s", kind),
 			ErrorExplanation: err.Error(),
@@ -85,11 +89,11 @@ func (api *Api) ImplementationWrapperApply(user *authentication.User, kind strin
 		return
 	}
 
-	var response contracts.ResponseImplementation
+	var response contracts.Response
 	response, err = kindObj.Apply(user, jsonData)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      err.Error(),
 			ErrorExplanation: err.Error(),

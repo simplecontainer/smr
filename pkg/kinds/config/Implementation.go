@@ -24,9 +24,9 @@ func (config *Config) Start() error {
 func (config *Config) GetShared() interface{} {
 	return config.Shared
 }
-func (config *Config) Apply(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (config *Config) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -38,7 +38,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte) (contrac
 	valid, err := config.Definition.Validate()
 
 	if !valid {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid definition sent",
 			ErrorExplanation: err.Error(),
@@ -71,7 +71,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte) (contrac
 			err = obj.Update(format, jsonStringFromRequest)
 
 			if err != nil {
-				return contracts.ResponseImplementation{
+				return contracts.Response{
 					HttpStatus:       http.StatusInternalServerError,
 					Explanation:      "",
 					ErrorExplanation: err.Error(),
@@ -84,7 +84,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte) (contrac
 		err = obj.Add(format, jsonStringFromRequest)
 
 		if err != nil {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       http.StatusInternalServerError,
 				Explanation:      "",
 				ErrorExplanation: err.Error(),
@@ -110,7 +110,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte) (contrac
 			Message: "detected configuration update, reconcile container",
 		}
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       200,
 			Explanation:      "object is same as the one on the server",
 			ErrorExplanation: "",
@@ -119,7 +119,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte) (contrac
 		}, errors.New("object is same on the server")
 	}
 
-	return contracts.ResponseImplementation{
+	return contracts.Response{
 		HttpStatus:       200,
 		Explanation:      "everything went smoothly: good job!",
 		ErrorExplanation: "",
@@ -127,9 +127,9 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte) (contrac
 		Success:          true,
 	}, nil
 }
-func (config *Config) Compare(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (config *Config) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -158,7 +158,7 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       418,
 			Explanation:      "object is drifted from the definition",
 			ErrorExplanation: "",
@@ -168,7 +168,7 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 	}
 
 	if obj.ChangeDetected() {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       418,
 			Explanation:      "object is drifted from the definition",
 			ErrorExplanation: "",
@@ -176,7 +176,7 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 			Success:          true,
 		}, nil
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       200,
 			Explanation:      "object in sync",
 			ErrorExplanation: "",
@@ -185,9 +185,9 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 		}, nil
 	}
 }
-func (config *Config) Delete(user *authentication.User, jsonData []byte) (contracts.ResponseImplementation, error) {
+func (config *Config) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
 			ErrorExplanation: "invalid configuration sent: json is not valid",
@@ -216,7 +216,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte) (contra
 			format = f.New("configuration", config.Definition.Meta.Group, config.Definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       200,
 				Explanation:      "deleted resource successfully",
 				ErrorExplanation: "",
@@ -224,7 +224,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte) (contra
 				Success:          false,
 			}, err
 		} else {
-			return contracts.ResponseImplementation{
+			return contracts.Response{
 				HttpStatus:       500,
 				Explanation:      "failed to delete resource",
 				ErrorExplanation: err.Error(),
@@ -233,7 +233,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte) (contra
 			}, err
 		}
 	} else {
-		return contracts.ResponseImplementation{
+		return contracts.Response{
 			HttpStatus:       404,
 			Explanation:      "object not found",
 			ErrorExplanation: "",
@@ -242,7 +242,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte) (contra
 		}, err
 	}
 }
-func (config *Config) Run(operation string, args ...interface{}) contracts.ResponseOperator {
+func (config *Config) Run(operation string, request contracts.Control) contracts.Response {
 	reflected := reflect.TypeOf(config)
 	reflectedValue := reflect.ValueOf(config)
 
@@ -250,178 +250,19 @@ func (config *Config) Run(operation string, args ...interface{}) contracts.Respo
 		method := reflected.Method(i)
 
 		if operation == method.Name {
-			inputs := make([]reflect.Value, len(args))
-
-			for i, _ := range args {
-				inputs[i] = reflect.ValueOf(args[i])
-			}
-
+			inputs := []reflect.Value{reflect.ValueOf(request)}
 			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
 
-			return returnValue[0].Interface().(contracts.ResponseOperator)
+			return returnValue[0].Interface().(contracts.Response)
 		}
 	}
 
-	return contracts.ResponseOperator{
+	return contracts.Response{
 		HttpStatus:       400,
 		Explanation:      "server doesn't support requested functionality",
 		ErrorExplanation: "implementation is missing",
 		Error:            true,
 		Success:          false,
 		Data:             nil,
-	}
-}
-
-func (config *Config) ListSupported(args ...interface{}) contracts.ResponseOperator {
-	reflected := reflect.TypeOf(config)
-
-	supportedOperations := map[string]any{}
-	supportedOperations["SupportedOperations"] = []string{}
-
-OUTER:
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-		for _, forbiddenOperator := range invalidOperators {
-			if forbiddenOperator == method.Name {
-				continue OUTER
-			}
-		}
-
-		supportedOperations["SupportedOperations"] = append(supportedOperations["SupportedOperations"].([]string), method.Name)
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             supportedOperations,
-	}
-}
-func (config *Config) List(request contracts.RequestOperator) contracts.ResponseOperator {
-	data := make(map[string]any)
-
-	format := f.New(KIND, "", "", "")
-
-	obj := objects.New(config.Shared.Client.Get(request.User.Username), request.User)
-	objs, err := obj.FindMany(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	for k, v := range objs {
-		data[k] = v.GetDefinition()
-	}
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "list of the certkey objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             data,
-	}
-}
-func (config *Config) Get(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Data["group"], request.Data["identifier"], "object"))
-
-	obj := objects.New(config.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "configuration definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	definitionObject := obj.GetDefinition()
-
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
-
-	return contracts.ResponseOperator{
-		HttpStatus:       200,
-		Explanation:      "certkey object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             definition,
-	}
-}
-func (config *Config) Remove(request contracts.RequestOperator) contracts.ResponseOperator {
-	if request.Data == nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       400,
-			Explanation:      "send some data",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Data["group"], request.Data["identifier"])
-	format := f.NewFromString(GroupIdentifier)
-
-	obj := objects.New(config.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-
-	if err != nil {
-		return contracts.ResponseOperator{
-			HttpStatus:       404,
-			Explanation:      "configuration definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	}
-
-	removed, err := obj.Remove(format)
-
-	if !removed {
-		return contracts.ResponseOperator{
-			HttpStatus:       500,
-			Explanation:      "configuration definition is not deleted",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
-	} else {
-		return contracts.ResponseOperator{
-			HttpStatus:       200,
-			Explanation:      "configuration definition is deleted and removed from server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             nil,
-		}
 	}
 }

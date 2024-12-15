@@ -20,7 +20,7 @@ func (api *Api) CreateUser(c *gin.Context) {
 		httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[c.Param("username")])
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, contracts.ResponseImplementation{
+			c.JSON(http.StatusInternalServerError, contracts.Response{
 				HttpStatus:       http.StatusBadRequest,
 				Explanation:      fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))),
 				ErrorExplanation: err.Error(),
@@ -36,7 +36,7 @@ func (api *Api) CreateUser(c *gin.Context) {
 			Http: httpClient,
 		})
 
-		c.JSON(http.StatusOK, contracts.ResponseImplementation{
+		c.JSON(http.StatusOK, contracts.Response{
 			HttpStatus:       http.StatusOK,
 			Explanation:      fmt.Sprintf("user created, run: cat %s", strings.Replace(path, "/home/smr-agent", "$HOME", 1)),
 			ErrorExplanation: "",
@@ -44,7 +44,7 @@ func (api *Api) CreateUser(c *gin.Context) {
 			Success:          false,
 		})
 	} else {
-		c.JSON(http.StatusBadRequest, contracts.ResponseImplementation{
+		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))),
 			ErrorExplanation: err.Error(),
