@@ -99,9 +99,11 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 
 				if err != nil {
 					logger.Log.Error(err.Error())
+					registry.ContainersLock.RUnlock()
 					return nil
 				}
 
+				registry.ContainersLock.RUnlock()
 				return instance
 			}
 
@@ -116,9 +118,12 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 
 			if err != nil {
 				logger.Log.Error(err.Error())
+
+				registry.ContainersLock.RUnlock()
 				return nil
 			}
 
+			registry.ContainersLock.RUnlock()
 			return instance
 		}
 
@@ -181,6 +186,7 @@ func (registry *Registry) All() map[string]map[string]platforms.IContainer {
 		}
 	}
 
+	registry.ContainersLock.RUnlock()
 	return result
 }
 
