@@ -100,6 +100,9 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		for _, client := range api.Manager.Http.Clients {
 			for _, domain := range client.Domains {
+				fmt.Println(domain)
+				fmt.Println(URL.Hostname())
+
 				if domain == URL.Hostname() {
 					user = &authentication.User{
 						Username: client.Username,
@@ -130,10 +133,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 			return
 		}
-
-		fmt.Println(api.Manager.Http.Clients[user.Username])
-		fmt.Println(api.Manager.Http.Clients)
-		fmt.Println(user)
 
 		d, _ := json.Marshal(map[string]string{"node": request["node"]})
 		response := cluster.SendRequest(api.Manager.Http, user, fmt.Sprintf("%s/cluster/node", request["join"]), string(d))
