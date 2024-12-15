@@ -35,6 +35,7 @@ func (registry *Registry) Sync(container distributed.Container) {
 
 		if err != nil {
 			logger.Log.Error(err.Error())
+			registry.ContainersLock.Unlock()
 			return
 		}
 
