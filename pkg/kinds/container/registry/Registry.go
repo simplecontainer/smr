@@ -29,6 +29,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 }
 
 func (registry *Registry) Sync(container distributed.Container) {
+	registry.ContainersLock.Lock()
 	if registry.Containers[container.Group] != nil && registry.Containers[container.Group][container.Name] != nil {
 		bytes, err := json.Marshal(registry.Containers[container.Group][container.Name])
 
@@ -42,6 +43,7 @@ func (registry *Registry) Sync(container distributed.Container) {
 
 		obj.Add(format, string(bytes))
 	}
+	registry.ContainersLock.Unlock()
 }
 
 func (registry *Registry) Remove(group string, name string) bool {

@@ -228,7 +228,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		api.Cluster.Regenerate(api.Config, api.Keys)
 		api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-		err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, c.Param("join"))
+		err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
 
 		if err != nil {
 			server.Server.Stop()

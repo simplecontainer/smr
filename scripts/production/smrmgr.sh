@@ -151,10 +151,10 @@ Download(){
     ARCH="amd64"
   fi
 
-  LATEST_VERSION=$(curl -sL https://raw.githubusercontent.com/simplecontainer/client/main/version)
+  VERSION=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/client/main/version)}
   PLATFORM="linux-${ARCH}"
 
-  curl -Lo client https://github.com/simplecontainer/client/releases/download/$LATEST_VERSION/client-$PLATFORM
+  curl -Lo client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
   chmod +x client
 
   sudo mv client /usr/local/bin/smr
