@@ -49,6 +49,7 @@ func Start() {
 					Username: api.Config.Agent,
 					Domain:   "localhost:1443",
 				}
+				api.Manager.User = api.User
 
 				var found error
 
