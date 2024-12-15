@@ -114,7 +114,7 @@ func Start() {
 					os.Exit(1)
 				}
 
-				for username, c := range api.Keys.Clients {
+				for username, _ := range api.Keys.Clients {
 					var httpClient *http.Client
 					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients["root"])
 					if err != nil {
@@ -123,7 +123,7 @@ func Start() {
 
 					api.Manager.Http.Append(username, &client.Client{
 						Http: httpClient,
-						API:  fmt.Sprintf("%s:1443", c.Certificate.DNSNames[0]),
+						API:  fmt.Sprintf("%s:1443", "localhost"),
 					})
 				}
 
