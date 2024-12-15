@@ -86,13 +86,7 @@ func (obj *Object) Find(format *f.Format) error {
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
 	if response.Success {
-		// Retrieving bytes - response is base64 encoded -> decode it first
-		//decoded, _ := base64.StdEncoding.DecodeString(response.Data)
-
 		obj.Byte, _ = response.Data.MarshalJSON()
-
-		fmt.Println(obj.Byte)
-
 		obj.String = string(obj.Byte)
 
 		err := json.Unmarshal(obj.Byte, &obj.Definition)
@@ -131,7 +125,7 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 				err := objTmp.Find(f.NewFromString(key))
 
 				if err != nil {
-					fmt.Println(err)
+					return objects, err
 				}
 
 				if !strings.HasSuffix(key, ".auth") {

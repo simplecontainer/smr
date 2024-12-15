@@ -92,6 +92,8 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	if request["join"] != "" {
 		// Add new node to the existing cluster
+		fmt.Println("ASKING TO JOIN")
+
 		d, _ := json.Marshal(map[string]string{"node": request["node"]})
 		response := cluster.SendRequest(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster/node", request["join"]), string(d))
 

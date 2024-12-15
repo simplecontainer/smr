@@ -161,7 +161,6 @@ func (registry *Registry) All() map[string]map[string]platforms.IContainer {
 
 	if len(objs) > 0 {
 		for _, o := range objs {
-			fmt.Println(o.GetDefinition())
 			instance, err := platforms.NewGhost(o.GetDefinition())
 
 			if err != nil {
