@@ -91,8 +91,8 @@ func (s *KVStore) Propose(k string, v string, agent string) {
 }
 
 func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
-	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.client.Clients["root"].API, k)
-	response := objects.SendRequest(s.client.Clients["root"].Http, URL, "GET", nil)
+	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.client.Clients[s.Agent].API, k)
+	response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "GET", nil)
 
 	if response.Success {
 		bytes, _ := response.Data.MarshalJSON()
@@ -141,8 +141,8 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 			switch dataKv.Category {
 			case static.CATEGORY_OBJECT:
 				if dataKv.Agent == s.Agent {
-					URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
-					response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+					URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
+					response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
 					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
@@ -155,8 +155,8 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				break
 
 			case static.CATEGORY_PLAIN:
-				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
-				response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
 				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
@@ -164,9 +164,10 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 					log.Panic(errors.New(response.ErrorExplanation))
 				}
 				break
+
 			case static.CATEGORY_ETCD:
-				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, dataKv.Key)
-				response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(dataKv.Val))
+				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
 				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
@@ -213,8 +214,8 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 	s.mu.Lock()
 
 	for k, v := range store {
-		URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients["root"].API, k)
-		response := objects.SendRequest(s.client.Clients["root"].Http, URL, "PUT", []byte(v))
+		URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, k)
+		response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(v))
 
 		logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", v))
 

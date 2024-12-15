@@ -7,17 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
-	"github.com/simplecontainer/smr/pkg/logger"
 	middleware "github.com/simplecontainer/smr/pkg/middlewares"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"strconv"
@@ -46,9 +45,14 @@ func Start() {
 				api.Keys = keys.NewKeys()
 				api.Manager.Keys = api.Keys
 
+				api.User = &authentication.User{
+					Username: api.Config.Agent,
+					Domain:   "localhost:1443",
+				}
+
 				var found error
 
-				found = api.Keys.CAExists(static.SMR_SSH_HOME, "root")
+				found = api.Keys.CAExists(static.SMR_SSH_HOME, api.Config.Agent)
 
 				if found != nil {
 					err = api.Keys.GenerateCA()
@@ -63,7 +67,7 @@ func Start() {
 					}
 				}
 
-				found = api.Keys.ServerExists(static.SMR_SSH_HOME, "root")
+				found = api.Keys.ServerExists(static.SMR_SSH_HOME, api.Config.Agent)
 
 				if found != nil {
 					err = api.Keys.GenerateServer(api.Config.Domains, api.Config.IPs)
@@ -72,18 +76,18 @@ func Start() {
 						panic(err)
 					}
 
-					err = api.Keys.GenerateClient(api.Config.Domains, api.Config.IPs, "root")
+					err = api.Keys.GenerateClient(api.Config.Domains, api.Config.IPs, api.Config.Agent)
 
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Server.Write(static.SMR_SSH_HOME)
+					err = api.Keys.Server.Write(static.SMR_SSH_HOME, api.Config.Agent)
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Clients["root"].Write(static.SMR_SSH_HOME, "root")
+					err = api.Keys.Clients[api.Config.Agent].Write(static.SMR_SSH_HOME, api.Config.Agent)
 					if err != nil {
 						panic(err)
 					}
@@ -94,7 +98,7 @@ func Start() {
 					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
 					fmt.Println("/*********************************************************************/")
 
-					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, "root", api.Keys.Clients["root"])
+					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.Agent, api.Keys.Clients[api.Config.Agent])
 
 					if err != nil {
 						panic(err)
@@ -114,26 +118,27 @@ func Start() {
 					os.Exit(1)
 				}
 
-				for username, _ := range api.Keys.Clients {
+				for username, c := range api.Keys.Clients {
 					var httpClient *http.Client
-					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients["root"])
+					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[username])
+
 					if err != nil {
 						panic(err)
 					}
 
 					api.Manager.Http.Append(username, &client.Client{
-						Http: httpClient,
-						API:  fmt.Sprintf("%s:1443", "localhost"),
+						Http:     httpClient,
+						Username: username,
+						API:      fmt.Sprintf("%s:1443", c.Certificate.DNSNames[0]),
+						Domains:  c.Certificate.DNSNames,
+						IPs:      c.Certificate.IPAddresses,
 					})
 				}
 
-				api.DnsCache = dns.New(api.Config.Agent)
+				api.DnsCache = dns.New(api.Config.Agent, api.Manager.Http, api.User)
 				api.DnsCache.Client = api.Manager.Http
-				api.DnsCache.User = api.User
 
 				api.Manager.DnsCache = api.DnsCache
-
-				fmt.Println(api.Manager.DnsCache)
 
 				mdns.HandleFunc(".", api.HandleDns)
 
@@ -247,23 +252,12 @@ func Start() {
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)
 
-				var PEMCertificate []byte
-				var PEMPrivateKey []byte
-
-				PEMCertificate, err = keys.PEMEncode(keys.CERTIFICATE, api.Keys.Server.CertificateBytes)
-				PEMPrivateKey, err = keys.PEMEncode(keys.PRIVATE_KEY, api.Keys.Server.PrivateKeyBytes)
-
-				serverTLSCert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
-				if err != nil {
-					logger.Log.Fatal("error opening certificate and key file for control connection", zap.String("error", err.Error()))
-					return
-				}
-
 				tlsConfig := &tls.Config{
-					ClientAuth:   tls.RequireAndVerifyClientCert,
-					ClientCAs:    CAPool,
-					Certificates: []tls.Certificate{serverTLSCert},
+					ClientAuth: tls.RequireAndVerifyClientCert,
+					ClientCAs:  CAPool,
 				}
+
+				tlsConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
 
 				api.SetupEncryptedDatabase(api.Keys.Server.PrivateKeyBytes[:32])
 

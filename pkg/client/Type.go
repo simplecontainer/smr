@@ -1,12 +1,18 @@
 package client
 
-import "net/http"
+import (
+	"net"
+	"net/http"
+)
 
 type Http struct {
 	Clients map[string]*Client
 }
 
 type Client struct {
-	Http *http.Client
-	API  string
+	Http     *http.Client
+	Username string
+	API      string
+	IPs      []net.IP
+	Domains  []string
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -20,6 +21,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os/signal"
 	"syscall"
 	"time"
@@ -91,11 +93,50 @@ func (api *Api) StartCluster(c *gin.Context) {
 	currentNode := api.Cluster.Cluster.NewNode(request["node"])
 
 	if request["join"] != "" {
-		// Add new node to the existing cluster
-		fmt.Println("ASKING TO JOIN")
+		user := &authentication.User{}
+
+		var URL *url.URL
+		URL, err = url.Parse(request["join"])
+
+		for _, client := range api.Manager.Http.Clients {
+			for _, domain := range client.Domains {
+				if domain == URL.Hostname() {
+					user = &authentication.User{
+						Username: client.Username,
+						Domain:   domain,
+					}
+				}
+			}
+
+			for _, ip := range client.IPs {
+				if ip.String() == URL.Hostname() {
+					user = &authentication.User{
+						Username: client.Username,
+						Domain:   ip.String(),
+					}
+				}
+			}
+		}
+
+		if user == nil {
+			c.JSON(http.StatusBadRequest, contracts.Response{
+				HttpStatus:       http.StatusBadRequest,
+				Explanation:      "user not found for remote agent",
+				ErrorExplanation: "",
+				Error:            false,
+				Success:          false,
+				Data:             nil,
+			})
+
+			return
+		}
+
+		fmt.Println(api.Manager.Http.Clients[user.Username])
+		fmt.Println(api.Manager.Http.Clients)
+		fmt.Println(user)
 
 		d, _ := json.Marshal(map[string]string{"node": request["node"]})
-		response := cluster.SendRequest(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster/node", request["join"]), string(d))
+		response := cluster.SendRequest(api.Manager.Http, user, fmt.Sprintf("%s/cluster/node", request["join"]), string(d))
 
 		if response.Error {
 			c.JSON(http.StatusBadRequest, response)

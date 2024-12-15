@@ -17,8 +17,8 @@ func NewUser(TLSRequest *tls.ConnectionState) *User {
 	return user
 }
 
-func (user *User) CreateUser(k *keys.Keys, username string, domain string, externalIP string) (string, error) {
-	if user.Username == "root" && user.Domain == "localhost" {
+func (user *User) CreateUser(k *keys.Keys, agent string, username string, domain string, externalIP string) (string, error) {
+	if user.Username == agent && user.Domain == "localhost" {
 		exists := k.ClientExists(static.SMR_SSH_HOME, filepath.Clean(username))
 		usernameClean := filepath.Clean(username)
 

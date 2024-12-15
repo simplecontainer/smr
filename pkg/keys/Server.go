@@ -75,7 +75,7 @@ func (server *Server) Generate(ca *CA, domains []string, ips []net.IP, CN string
 
 	return nil
 }
-func (server *Server) Write(directory string) error {
+func (server *Server) Write(directory string, agent string) error {
 	err := os.MkdirAll(directory, os.ModePerm)
 
 	if err != nil {
@@ -94,8 +94,8 @@ func (server *Server) Write(directory string) error {
 		return err
 	}
 
-	server.CertificatePath = fmt.Sprintf("%s/server.crt", directory)
-	server.PrivateKeyPath = fmt.Sprintf("%s/server.key", directory)
+	server.CertificatePath = fmt.Sprintf("%s/%s-server.crt", directory, agent)
+	server.PrivateKeyPath = fmt.Sprintf("%s/%s-server.key", directory, agent)
 
 	err = os.WriteFile(server.CertificatePath, PemCertificate, 0644)
 
@@ -111,9 +111,9 @@ func (server *Server) Write(directory string) error {
 
 	return nil
 }
-func (server *Server) Read(directory string) error {
-	server.CertificatePath = fmt.Sprintf("%s/server.crt", directory)
-	server.PrivateKeyPath = fmt.Sprintf("%s/server.key", directory)
+func (server *Server) Read(directory string, agent string) error {
+	server.CertificatePath = fmt.Sprintf("%s/%s-server.crt", directory, agent)
+	server.PrivateKeyPath = fmt.Sprintf("%s/%s-server.key", directory, agent)
 
 	PemCertificate, err := os.ReadFile(server.CertificatePath)
 	if err != nil {

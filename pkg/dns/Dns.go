@@ -5,16 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/miekg/dns"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"net"
 )
 
-func New(agent string) *Records {
+func New(agent string, client *client.Http, user *authentication.User) *Records {
 	r := &Records{
 		ARecords: make(map[string]*ARecord),
 		Agent:    agent,
+		Client:   client,
+		User:     user,
 	}
 
 	return r

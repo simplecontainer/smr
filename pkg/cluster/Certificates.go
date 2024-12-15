@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"fmt"
 	"github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -34,7 +35,7 @@ func (cluster *Cluster) Regenerate(config *configuration.Configuration, keys *ke
 
 	logger.Log.Info("regenerating server certificate to support cluster nodes")
 
-	err = keys.GenerateClient(config.Domains, config.IPs, "root")
+	err = keys.GenerateClient(config.Domains, config.IPs, config.Agent)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
@@ -48,15 +49,17 @@ func (cluster *Cluster) Regenerate(config *configuration.Configuration, keys *ke
 		return
 	}
 
-	err = keys.Clients["root"].Write(static.SMR_SSH_HOME, "root")
+	err = keys.Clients[config.Agent].Write(static.SMR_SSH_HOME, config.Agent)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	err = keys.Server.Write(static.SMR_SSH_HOME)
+	err = keys.Server.Write(static.SMR_SSH_HOME, config.Agent)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
+
+	fmt.Println("regenerated certificates")
 }

@@ -61,8 +61,8 @@ func (keys *Keys) CAExists(directory string, username string) error {
 	return keys.CA.Read(directory)
 }
 
-func (keys *Keys) ServerExists(directory string, username string) error {
-	return keys.Server.Read(directory)
+func (keys *Keys) ServerExists(directory string, agent string) error {
+	return keys.Server.Read(directory, agent)
 }
 
 func (keys *Keys) ClientExists(directory string, username string) error {

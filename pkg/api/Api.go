@@ -21,10 +21,7 @@ import (
 
 func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	api := &Api{
-		User: &authentication.User{
-			Username: "root",
-			Domain:   "",
-		},
+		User:          &authentication.User{},
 		Config:        config,
 		Keys:          &keys.Keys{},
 		DnsCache:      &dns.Records{},

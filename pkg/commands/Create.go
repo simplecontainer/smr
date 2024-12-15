@@ -47,7 +47,7 @@ func Create() {
 				api.Config.Domains = strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean)
 				api.Config.IPs = strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean)
 				api.Config.OptRoot = "/opt/smr"
-				api.Config.CommonName = "root"
+				api.Config.CommonName = api.Config.Agent
 				api.Config.HostHome = hostHomeDir
 				api.Config.Node = hostname
 

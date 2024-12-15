@@ -67,11 +67,9 @@ func (c *Cluster) ListenEvents(agent string) {
 				for _, event := range watchResp.Events {
 					switch event.Type {
 					case mvccpb.PUT:
-						fmt.Println(fmt.Sprintf("proposing put changes: %s", agent))
 						c.KVStore.ProposeEtcd(string(event.Kv.Key), string(event.Kv.Value), agent)
 						break
 					case mvccpb.DELETE:
-						fmt.Println(fmt.Sprintf("proposing delete changes: %s", agent))
 						c.KVStore.ProposeEtcd(string(event.Kv.Key), "", agent)
 						break
 					}
