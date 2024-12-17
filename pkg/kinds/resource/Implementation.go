@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
+	"strings"
 )
 
 func (resource *Resource) Start() error {
@@ -249,9 +250,9 @@ func (resource *Resource) Run(operation string, request contracts.Control) contr
 	for i := 0; i < reflected.NumMethod(); i++ {
 		method := reflected.Method(i)
 
-		if operation == method.Name {
+		if operation == strings.ToLower(method.Name) {
 			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
+			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
 
 			return returnValue[0].Interface().(contracts.Response)
 		}

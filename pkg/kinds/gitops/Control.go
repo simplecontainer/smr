@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-var supportedControlOperations = []string{"List", "Get", "Remove"}
+var supportedControlOperations = []string{"List", "Get", "Remove", "Refresh", "Sync"}
 
 func (gitops *Gitops) ListSupported(request contracts.Control) contracts.Response {
 	return contracts.Response{

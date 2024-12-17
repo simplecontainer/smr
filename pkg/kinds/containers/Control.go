@@ -9,7 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 )
 
-var supportedControlOperations = []string{"List", "Get", "Remove"}
+var supportedControlOperations = []string{"List", "Get", "View"}
 
 func (containers *Containers) ListSupported(request contracts.Control) contracts.Response {
 	return contracts.Response{

@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-var supportedControlOperations = []string{"List", "Get", "Remove"}
+var supportedControlOperations = []string{"List", "Get", "Remove", "View", "Restart"}
 
 func (container *Container) ListSupported(request contracts.Control) contracts.Response {
 	return contracts.Response{

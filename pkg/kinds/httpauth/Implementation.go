@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
+	"strings"
 )
 
 func (httpauth *Httpauth) Start() error {
@@ -244,7 +245,7 @@ func (httpauth *Httpauth) Run(operation string, request contracts.Control) contr
 
 		if operation == method.Name {
 			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(operation).Call(inputs)
+			returnValue := reflectedValue.MethodByName(strings.ToTitle(operation)).Call(inputs)
 
 			return returnValue[0].Interface().(contracts.Response)
 		}

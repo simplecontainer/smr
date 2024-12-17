@@ -6,7 +6,17 @@ Quick start
 > [!IMPORTANT]
 > The project is not stable yet. Releases and major changes are introduced often. 
 
-This is a quick start tutorial for getting a simplecontainer up and running.
+Would you like to do docker apply to various remote daemons, like you can do for k8s? Well:
+
+```cgo
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definition.yaml
+smr ps
+NODE             GROUP    NAME     DOCKER NAME        IMAGE           IP                   PORTS  DEPS  ENGINE STATE      SMR STATE        
+smr-agent-2 (2)  example  busybox  example-busybox-1  busybox:latest  172.17.0.4 (bridge)  -      -     running (docker)  running (1m18s)  
+smr-agent-2 (2)  example  busybox  example-busybox-2  busybox:latest  172.17.0.5 (bridge)  -      -     running (docker)  running (1m18s)  
+```
+
+Voila! This is a quick start tutorial for how you can do just that.
 
 ## What is simplecontainer?
 ### Architecture
@@ -27,7 +37,7 @@ Introducing objects which can be defined as YAML definition and sent to the simp
 
 These objects let you deploy containers on local/remote Docker daemon. The simplecontainer introduces the following:
 
-- Cluster of Docker daemons or single Docker daemons
+- Cluster of Docker daemons or single Docker daemon
 - Overlay networking for containers using flannel
 - Integrated DNS server isolated from Docker daemon
 - GitOps: deploy objects from the Git repositories using GitOps approach
@@ -164,7 +174,7 @@ smrmgr start -a smr-agent-1 -e localhost:1443
 It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
 ```bash
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definition.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/gitops/apps/gitops-plain.yaml
 ```
 
 Applying this definition will create GitOps object on the simplecontainer.
