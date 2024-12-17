@@ -226,11 +226,11 @@ Output:
 Run the next commands:
 ```bash
 smr secret create secret.mysql.mysql.password 123456789
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/mysql-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/mysql-envs.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/nginx-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/traefik-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/simple-dependency-readiness/containers.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/mysql-config.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/mysql-envs.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/nginx-config.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/traefik-config.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/containers.yaml
 ```
 
 This example demonstrates:
