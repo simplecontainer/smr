@@ -50,15 +50,16 @@ type ContainerDependsOn struct {
 }
 
 type ContainerReadiness struct {
-	Name     string            `validate:"required" json:"name"`
-	Operator string            `json:"operator"`
-	Timeout  string            `validate:"required" json:"timeout"`
-	Body     map[string]string `json:"body"`
+	Name    string   `validate:"required" json:"name"`
+	Type    string   `json:"type"`
+	URL     string   `json:"url"`
+	Command []string `json:"command"`
+	Timeout string   `validate:"required" json:"timeout"`
 }
 
 type ContainerSpread struct {
-	Spread string
-	Agents []uint64
+	Spread string   `json:"spread"`
+	Agents []uint64 `json:"agents"`
 }
 
 type ContainerNetwork struct {

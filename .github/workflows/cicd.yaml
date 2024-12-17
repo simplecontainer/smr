@@ -8,6 +8,8 @@ on:
       - 'README.md'
       - 'scripts/**'
       - 'LICENSE'
+      - '.github/resources'
+      - '.gitignore'
 
 jobs:
   build:

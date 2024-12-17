@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -14,7 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
 	"regexp"
@@ -31,7 +29,13 @@ func Ready(client *client.Http, container platforms.IContainer, user *authentica
 		}
 
 		readiness.Function = func() error {
-			return SolveReadiness(client, user, container, logger, readiness, channel)
+			err = SolveReadiness(client, user, container, logger, readiness, channel)
+
+			if err != nil {
+				logger.Info(err.Error())
+			}
+
+			return err
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), readiness.Ctx)
@@ -66,7 +70,7 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
-	for index, value := range readiness.Body {
+	for index, value := range readiness.Command {
 		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
 		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
@@ -76,13 +80,13 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 			if format.IsValid() && format.Kind == "secret" {
 				continue
 			} else {
-				readiness.Body[index] = strings.Replace(readiness.Body[index], matches[0][0], container.GetRuntime().Configuration[format.Group], 1)
+				readiness.Command[index] = strings.Replace(readiness.Command[index], matches[0][0], container.GetRuntime().Configuration[format.Group], 1)
 			}
 		}
 	}
 
-	var bodyUnpack map[string]string
-	bodyUnpack, err = secrets.UnpackSecretsReadiness(client, user, readiness.Body)
+	var commandUnpack []string
+	commandUnpack, err = secrets.UnpackSecretsReadiness(client, user, readiness.Command)
 
 	if err != nil {
 		cancel()
@@ -90,13 +94,12 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 	}
 
 	return &Readiness{
-		Name:       readiness.Name,
-		Operator:   readiness.Operator,
-		Timeout:    readiness.Timeout,
-		Body:       readiness.Body,
-		BodyUnpack: bodyUnpack,
-		Ctx:        ctx,
-		Cancel:     cancel,
+		Name:    readiness.Name,
+		URL:     readiness.URL,
+		Command: commandUnpack,
+		Timeout: readiness.Timeout,
+		Ctx:     ctx,
+		Cancel:  cancel,
 	}, nil
 }
 
@@ -109,31 +112,49 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 		State: CHECKING,
 	}
 
-	format := f.NewFromString(readiness.Name)
-	URL := fmt.Sprintf("https://%s/api/v1/operators/%s/%s", static.SMR_AGENT_URL, format.Kind, readiness.Operator)
-
-	jsonBytes, err := json.Marshal(readiness.BodyUnpack)
-
-	logger.Info("readiness probe", zap.String("URL", URL), zap.String("data", string(jsonBytes)))
-
-	var req *http.Request
-
-	req, err = http.NewRequest("POST", URL, bytes.NewBuffer(jsonBytes))
-
-	if err != nil {
-		return errors.New("readiness request creation failed")
+	if readiness.URL != "" {
+		readiness.Type = TYPE_URL
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	if len(readiness.Command) > 0 {
+		readiness.Type = TYPE_COMMAND
+	}
 
-	resp, err := client.Get(user.Username).Http.Do(req)
-	if err != nil {
-		return errors.New("readiness request failed")
-	} else {
-		if resp.StatusCode == http.StatusOK {
+	switch readiness.Type {
+	case TYPE_URL:
+		jsonBytes, err := json.Marshal(readiness.BodyUnpack)
+
+		logger.Info("readiness probe", zap.String("URL", readiness.URL), zap.String("data", string(jsonBytes)))
+
+		var req *http.Request
+
+		req, err = http.NewRequest("POST", readiness.URL, bytes.NewBuffer(jsonBytes))
+
+		if err != nil {
+			return errors.New("readiness request creation failed")
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Get(user.Username).Http.Do(req)
+		if err != nil {
+			return errors.New("readiness request failed")
+		} else {
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			} else {
+				return errors.New("readiness request failed")
+			}
+		}
+	case TYPE_COMMAND:
+		result := container.Exec(readiness.Command)
+
+		if result.Exit == 0 {
 			return nil
 		} else {
 			return errors.New("readiness request failed")
 		}
+	default:
+		return nil
 	}
 }

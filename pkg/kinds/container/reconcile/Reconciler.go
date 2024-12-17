@@ -407,7 +407,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 				containerObj.Stop()
 				Wait(func() error {
-					c, err := containerObj.Get()
+					c, err = containerObj.Get()
 
 					if err != nil {
 						return nil

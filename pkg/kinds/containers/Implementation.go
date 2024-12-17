@@ -29,7 +29,7 @@ func (containers *Containers) Start() error {
 func (containers *Containers) GetShared() interface{} {
 	return containers.Shared
 }
-func (containers *Containers) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (containers *Containers) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
@@ -108,14 +108,14 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 				containersFromDefinition = reconcile.NewWatcher(*containersDefinition, containers.Shared.Manager)
 				containersFromDefinition.Logger.Info("containers object created")
 
-				go reconcile.HandleTickerAndEvents(containers.Shared, user, containersFromDefinition)
+				go reconcile.HandleTickerAndEvents(containers.Shared, user, containersFromDefinition, agent)
 			} else {
 				containersFromDefinition.Definition = *containersDefinition
 				containersFromDefinition.Logger.Info("containers object modified")
 			}
 
 			containers.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
-			reconcile.Container(containers.Shared, user, containersFromDefinition)
+			reconcile.Container(containers.Shared, user, containersFromDefinition, agent)
 		} else {
 			return contracts.Response{
 				HttpStatus:       http.StatusOK,
@@ -129,10 +129,10 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte) 
 		containersFromDefinition = reconcile.NewWatcher(*containersDefinition, containers.Shared.Manager)
 		containersFromDefinition.Logger.Info("containers object created")
 
-		go reconcile.HandleTickerAndEvents(containers.Shared, user, containersFromDefinition)
+		go reconcile.HandleTickerAndEvents(containers.Shared, user, containersFromDefinition, agent)
 
 		containers.Shared.Watcher.AddOrUpdate(GroupIdentifier, containersFromDefinition)
-		reconcile.Container(containers.Shared, user, containersFromDefinition)
+		reconcile.Container(containers.Shared, user, containersFromDefinition, agent)
 	}
 
 	return contracts.Response{
@@ -201,7 +201,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 		}, nil
 	}
 }
-func (containers *Containers) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (containers *Containers) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	containersDefinition := &v1.ContainersDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {
@@ -261,9 +261,8 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte)
 		obj.Find(format)
 
 		if obj.Exists() {
-			// 50 cent
-			//pl := plugins.GetPlugin(containers.Shared.Manager.Config.OptRoot, "container.so")
-			//pl.Delete(user, obj.GetDefinitionByte())
+			def, _ := definition.ToJsonStringWithKind()
+			go containers.Shared.Manager.KindsRegistry["container"].Delete(user, []byte(def), agent)
 		}
 	}
 

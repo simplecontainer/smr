@@ -24,7 +24,7 @@ func (config *Config) Start() error {
 func (config *Config) GetShared() interface{} {
 	return config.Shared
 }
-func (config *Config) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (config *Config) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
@@ -185,7 +185,7 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 		}, nil
 	}
 }
-func (config *Config) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (config *Config) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,

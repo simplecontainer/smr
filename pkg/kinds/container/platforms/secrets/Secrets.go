@@ -35,19 +35,19 @@ func UnpackSecretsResources(client *client.Http, user *authentication.User, reso
 	return resourceParsed, nil
 }
 
-func UnpackSecretsReadiness(client *client.Http, user *authentication.User, body map[string]string) (map[string]string, error) {
-	bodyParsed := make(map[string]string, 0)
+func UnpackSecretsReadiness(client *client.Http, user *authentication.User, command []string) ([]string, error) {
+	commandParsed := make([]string, 0)
 	obj := objects.New(client.Get(user.Username), user)
 
-	for k, v := range body {
+	for _, v := range command {
 		parsed, err := template.ParseSecretTemplate(obj, v)
 
 		if err != nil {
 			return nil, err
 		}
 
-		bodyParsed[k] = parsed
+		commandParsed = append(commandParsed, parsed)
 	}
 
-	return bodyParsed, nil
+	return commandParsed, nil
 }

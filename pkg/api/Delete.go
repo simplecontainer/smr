@@ -55,8 +55,14 @@ func (api *Api) ImplementationWrapperDelete(user *authentication.User, kind stri
 		return
 	}
 
+	agent := api.Config.Agent
+
+	if c.Param("agent") != "" {
+		agent = c.Param("agent")
+	}
+
 	var response contracts.Response
-	response, err = kindObj.Delete(user, jsonData)
+	response, err = kindObj.Delete(user, jsonData, agent)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, contracts.Response{

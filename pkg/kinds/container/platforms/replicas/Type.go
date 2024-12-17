@@ -1,29 +1,34 @@
 package replicas
 
 import (
+	"github.com/r3labs/diff/v3"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 )
 
 type Replicas struct {
-	Group           string
-	GeneratedIndex  uint64
-	ExistingIndexes []uint64
-	Replicas        uint64
-	Changed         bool
-	Spread          v1.ContainerSpread
 	NodeID          uint64
+	Definition      *v1.ContainerDefinition
+	Shared          *shared.Shared
+	Distributed     *Distributed
+	Agent           string
+	ChangeLog       diff.Changelog
+	Spread          v1.ContainerSpread
+	ExistingIndexes []uint64
 }
 
-type DistributedReplicas struct {
+type Distributed struct {
 	Group    string
 	Name     string
+	Spread   string
 	Replicas map[uint64]*ScopedReplicas
 }
 
 type ScopedReplicas struct {
-	Create  []R
-	Remove  []R
-	Numbers Numbers
+	Create   []R
+	Remove   []R
+	Existing []R
+	Numbers  Numbers
 }
 
 type Numbers struct {

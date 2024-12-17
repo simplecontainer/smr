@@ -4,9 +4,10 @@ import "context"
 
 type Readiness struct {
 	Name       string
-	Operator   string
+	URL        string
+	Command    []string
+	Type       string
 	Timeout    string
-	Body       map[string]string
 	Solved     bool
 	BodyUnpack map[string]string  `json:"-"`
 	Function   func() error       `json:"-"`
@@ -21,6 +22,9 @@ type ReadinessState struct {
 const CHECKING = 0
 const SUCCESS = 1
 const FAILED = 2
+
+const TYPE_URL = "url"
+const TYPE_COMMAND = "command"
 
 type ReadinessResult struct {
 	Data string

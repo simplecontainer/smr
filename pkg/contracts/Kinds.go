@@ -6,9 +6,9 @@ import (
 
 type Kind interface {
 	Start() error
-	Apply(*authentication.User, []byte) (Response, error)
+	Apply(*authentication.User, []byte, string) (Response, error)
 	Compare(*authentication.User, []byte) (Response, error)
-	Delete(*authentication.User, []byte) (Response, error)
+	Delete(*authentication.User, []byte, string) (Response, error)
 	GetShared() interface{}
 	Run(string, Control) Response
 }

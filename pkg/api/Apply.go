@@ -89,8 +89,14 @@ func (api *Api) ImplementationWrapperApply(user *authentication.User, kind strin
 		return
 	}
 
+	agent := api.Config.Agent
+
+	if c.Param("agent") != "" {
+		agent = c.Param("agent")
+	}
+
 	var response contracts.Response
-	response, err = kindObj.Apply(user, jsonData)
+	response, err = kindObj.Apply(user, jsonData, agent)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, contracts.Response{

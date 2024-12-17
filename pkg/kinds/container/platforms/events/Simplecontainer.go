@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
@@ -33,6 +34,7 @@ func Event(shared *shared.Shared, event *types.Events) {
 	}
 
 	if container.IsGhost() {
+		fmt.Println("")
 		// Handle events on distributed case!
 	} else {
 		switch event.Kind {

@@ -32,7 +32,7 @@ func (gitops *Gitops) Start() error {
 func (gitops *Gitops) GetShared() interface{} {
 	return gitops.Shared
 }
-func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	var gitopsDefinition = &v1.GitopsDefinition{}
 
 	if err := json.Unmarshal(jsonData, &gitopsDefinition); err != nil {
@@ -210,7 +210,7 @@ func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contr
 		}, nil
 	}
 }
-func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	containersDefinition := &v1.GitopsDefinition{}
 
 	if err := json.Unmarshal(jsonData, &containersDefinition); err != nil {

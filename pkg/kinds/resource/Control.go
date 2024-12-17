@@ -40,8 +40,10 @@ func (resource *Resource) List(request contracts.Control) contracts.Response {
 		}
 	}
 
+	fmt.Println(objs)
+
 	for k, v := range objs {
-		data[k] = v.GetDefinition()
+		data[k] = v.GetDefinitionString()
 	}
 
 	return contracts.Response{
