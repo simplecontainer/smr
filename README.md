@@ -8,7 +8,10 @@ Quick start
 
 This is a quick start tutorial for getting a simplecontainer up and running.
 
-## Introduction
+## What is simplecontainer?
+### Architecture
+![simplecontainer manager](.github/resources/arch.drawio.png
+### Introduction
 The simplecontainer manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
 
 Introducing objects which can be defined as YAML definition and sent to the simplecontainer manager to produce Docker container via reconciliation:
@@ -155,7 +158,7 @@ Exposing the control plane only to the localhost:
 smrmgr start -a smr-agent-1 -e localhost:1443
 ```
 
-## Running Docker containers using GitOps
+## Running Docker containers (GitOps approach)
 
 It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
 
@@ -218,7 +221,7 @@ Output:
 }
 ```
 
-## Running containers (Plain way)
+## Running containers (Applying definitions approach)
 
 Run the next commands:
 ```bash
@@ -248,6 +251,7 @@ traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.5 (ghost), 172.17.0.5
 ```
 
 Containers from group mysql will start first. 
+
 Traefik and nginx will wait till mysql is ready because of the dependency definition and ordering.
 
 Important links
