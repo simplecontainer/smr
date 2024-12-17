@@ -25,7 +25,7 @@ func (network *Network) GetShared() interface{} {
 	return network.Shared
 }
 
-func (network *Network) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	var networkDefinition v1.NetworkDefinition
 
 	if err := json.Unmarshal(jsonData, &networkDefinition); err != nil {
@@ -185,7 +185,7 @@ func (network *Network) Compare(user *authentication.User, jsonData []byte) (con
 	}
 }
 
-func (network *Network) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (network *Network) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &network.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,

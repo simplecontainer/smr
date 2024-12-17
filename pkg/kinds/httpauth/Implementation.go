@@ -21,7 +21,7 @@ func (httpauth *Httpauth) Start() error {
 func (httpauth *Httpauth) GetShared() interface{} {
 	return httpauth.Shared
 }
-func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
@@ -177,7 +177,7 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 		}, nil
 	}
 }
-func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,

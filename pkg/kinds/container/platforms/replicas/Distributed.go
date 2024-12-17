@@ -10,8 +10,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 )
 
-func NewDistributed(nodeID uint64, group string, name string) *DistributedReplicas {
-	dr := &DistributedReplicas{
+func NewDistributed(nodeID uint64, group string, name string) *Distributed {
+	dr := &Distributed{
 		Group:    group,
 		Name:     name,
 		Replicas: make(map[uint64]*ScopedReplicas),
@@ -34,7 +34,7 @@ func NewScoped() *ScopedReplicas {
 	}
 }
 
-func (dr *DistributedReplicas) Save(client *client.Client, user *authentication.User) error {
+func (dr *Distributed) Save(client *client.Client, user *authentication.User) error {
 	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
 	obj := objects.New(client, user)
 
@@ -48,12 +48,19 @@ func (dr *DistributedReplicas) Save(client *client.Client, user *authentication.
 	return nil
 }
 
-func (dr *DistributedReplicas) Clear(node uint64) {
+func (dr *Distributed) Remove(client *client.Client, user *authentication.User) (bool, error) {
+	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
+	obj := objects.New(client, user)
+
+	return obj.Remove(format)
+}
+
+func (dr *Distributed) Clear(node uint64) {
 	dr.Replicas[node].Create = make([]R, 0)
 	dr.Replicas[node].Remove = make([]R, 0)
 }
 
-func (dr *DistributedReplicas) Load(client *client.Client, user *authentication.User) error {
+func (dr *Distributed) Load(client *client.Client, user *authentication.User) error {
 	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
 	obj := objects.New(client, user)
 
@@ -72,10 +79,10 @@ func (dr *DistributedReplicas) Load(client *client.Client, user *authentication.
 	}
 }
 
-func (dr *DistributedReplicas) ToJson() ([]byte, error) {
+func (dr *Distributed) ToJson() ([]byte, error) {
 	return json.Marshal(dr)
 }
 
-func (dr *DistributedReplicas) FromJson(data []byte) error {
+func (dr *Distributed) FromJson(data []byte) error {
 	return json.Unmarshal(data, dr)
 }

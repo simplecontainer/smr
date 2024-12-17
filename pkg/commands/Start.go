@@ -187,6 +187,7 @@ func Start() {
 					{
 						kinds.POST("apply", api.Apply)
 						kinds.POST("apply/:kind", api.Apply)
+						kinds.POST("apply/:kind/:agent", api.Apply)
 						kinds.POST("compare", api.Compare)
 						kinds.POST("delete", api.Delete)
 					}

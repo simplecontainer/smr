@@ -158,7 +158,7 @@ func (container *Container) Remove(request contracts.Control) contracts.Response
 		}
 	}
 
-	_, err = container.Delete(request.User, obj.GetDefinitionByte())
+	_, err = container.Delete(request.User, obj.GetDefinitionByte(), container.Shared.Manager.Config.Agent)
 
 	if err != nil {
 		return contracts.Response{

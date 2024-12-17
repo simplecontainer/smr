@@ -21,7 +21,7 @@ Introducing objects which can be defined as YAML definition and sent to the simp
 - CertKey
 - HttpAuth
 
-These objects let you deploy container on local/remote Docker daemon. The simplecontainer introduces next features:
+These objects let you deploy containers on local/remote Docker daemon. The simplecontainer introduces the following:
 
 - Cluster of Docker daemons or single Docker daemons
 - Overlay networking for containers using flannel
@@ -39,7 +39,7 @@ These objects let you deploy container on local/remote Docker daemon. The simple
 Installation
 --------------------------
 
-### (Bash) smrmgr
+### Using smrmgr
 The smrmgr is bash script for management of the simplecontainer. It is used for:
 - Downloading and installing client
 - Starting the node in single or cluster mode
@@ -53,7 +53,7 @@ sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
 ```
 
-### (CLI) smr
+### Using smr
 The smr is client used to communicate to the local/external simplecontainer agents running on nodes.
 The smrmgr automatically downloads the client and places it under `/usr/local/bin/smr`.
 
@@ -61,13 +61,23 @@ To manually install, start and manage simplecontainer nodes download the client 
 
 https://github.com/simplecontainer/client/releases
 
-Explore `/scripts/production/smrmgr.sh` to see how you can utilize smr client for the configuring and starting simplecontainer nodes.
+```bash
+LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
+PLATFORM=linux-amd64
+curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
+sudo mv client /usr/local/bin/smr
+```
 
-### Running simplecontainer in cluster mode
+Explore `/scripts/production/smrmgr.sh` to see how you can utilize smr client to configure and start simplecontainer nodes.
+
+## Running simplecontainer
+The simplecontainer can be started in a single node or cluster mode.
+
+### Cluster mode
 Simplecontainer can run in single and cluster mode. Cluster mode allows users to deploy Docker daemons on different hosts and connect them via simplecontainer. An overlay network is created using flannel to enable inter-host communication.
 
 Simplecontainer uses RAFT protocol to enable distributed state using the Badger key-value store.
-Etcd embedded is also started in single mode and exposed to localhost only without credentials. This is because Flannel uses only Etcd as the state store for the network configuration.
+Etcd embedded is also started in single mode and exposed to localhost only without credentials. Flannel uses only Etcd as the state store for the network configuration.
 
 Control-plane and RAFT communication is secured using mTLS so data is encrypted even over non-secure underlying networks.
 
@@ -82,10 +92,10 @@ Ports exposed:
 > [!IMPORTANT]
 > The smrmgr script must be run on the host directly.
 
-This scenario assumes there are two nodes(virtual machines) connected over non-secure internet connection.
+This scenario assumes there are two nodes(virtual machines) connected over a non-secure internet connection.
 
-- Node 1: node1.simplecontainer.com -> Points to Node 1 IP address
-- Node 1: node2.simplecontainer.com -> Points to Node 2 IP address
+- `Node 1`: `node1.simplecontainer.com` -> `Points to Node 1 IP address`
+- `Node 2`: `node2.simplecontainer.com` -> `Points to Node 2 IP address`
 
 **Node 1**
 Requirements: 
@@ -102,80 +112,48 @@ cat $HOME/smr/smr/contexts/$(smr context).key
 
 **Node 2 (And any other nodes joining cluster)**
 Requirements:
-- smgrmgr already installed.
-- Docker daemon running on the Node 1
+- The smgrmgr already installed
+- The docker daemon running on the Node 2
 
 ```bash
 smrmgr import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
 smr context fetch
-
 smrmgr start -a smr-agent-2 -d smr2.example.com -n node2.example.com -j node1.example.com:1443
 ```
 
-Afterward, cluster is started. Badger key-value store is now distributed using RAFT protocol. Flannel will start and agent will create docker network named `cluster`. Containers started are automatically connected to the flannel network when started.
+Afterward, the cluster is started. Badger key-value store is now distributed using RAFT protocol. Flannel will start and the agent will create a docker network named cluster. 
 
-### Running simplecontainer in single mode
-#### How to run it? (Exposed control plane to the internet/network using domain)
+To connect containers with cluster network in the container definition specify that you want the container to connect to the cluster network.
+
+### Single node mode
+The simplecontainer can also be run as a single node without clustering enabled and additional overhead if it is not mandatory to have multiple nodes, high availability, and disaster recovery in place for the application.
+
+The control plane can be exposed:
+- On the localhost only to prevent control plane communication from being done outside localhost
+- On the 0.0.0.0:1443 which means all interfaces that include all endpoints localhost or from another network.
+
+#### How to run it? (Control plane exposed to all networks)
 Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
 ```bash
 smrmgr start -a smr-agent-1 -d smr.example.com
+# Copy the content of the export
 smr context export <<< https://smr.example.com:1443
-cat $HOME/smr/smr/contexts/$(smr context).key # Copy KEY
+# Copy the decryption key
+cat $HOME/smr/smr/contexts/$(smr context).key
 ```
 
-From external machine run:
+On the external machine run:
 ```bash
 smr context import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
 smr ps
 ```
 
-#### How to run it? (Exposed control plane to the localhost only)
+#### How to run it? (Control plane exposed to the localhost only)
 Exposing the control plane only to the localhost:
 
 ```bash
 smrmgr start -a smr-agent-1 -e localhost:1443
 ```
-
-#### How to run it? (Exposed control plane to the internet/network using IP)
-
-Same as before smr client can be used:
-```
-smrmgr start -a smr-agent-1 -d smr.example.com -i 1.1.1.1
-```
-
-
-> [!IMPORTANT]
-> Only domains and IPs listed in the smrmgr can verify against the simplecontainer agent.
-
-Contexts and control plane
---------------------------
-
-To access the simplecontainer control plane via local or public network, context needs to be added with the appropriate mtls bundle generated.
-
-> [!IMPORTANT]
-> Context for the localhost on the same machine is automatically imported if using smrmgr.
-
-One can manually add the context to the client or another machine:
-```bash
-# Manually adding context
-smr context connect https://localhost:1443 $HOME/.ssh/simplecontainer/root.pem --context smr-agent-1
-{"level":"info","ts":1720694421.2032707,"caller":"context/Connect.go:40","msg":"authenticated against the smr-agent"}
-```
-
-Or import context which was exported from another agent to the client or another machine:
-```bash
-# Importing context
-smr context import smr-agent-1 < {{ PASTE HERE EXPORTED CONTEXT OF smr-agent-1 }}
-```
-
-Afterward, smr can speak with nodes via control plane.
-
-```bash
-smr ps
-GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  DOCKER STATE  SMR STATE
-```
-
-Access to the control plane of the simplecontainer is configured successfully if you get similar output.
 
 ## Running Docker containers using GitOps
 
@@ -274,7 +252,7 @@ Traefik and nginx will wait till mysql is ready because of the dependency defini
 
 Important links
 ---------------------------
-- https://github.com/simplecosntainer/smr
+- https://github.com/simplecontainer/smr
 - https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
 - https://simplecontainer.qdnqn.com

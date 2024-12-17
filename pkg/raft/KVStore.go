@@ -147,7 +147,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
 					if !response.Success {
-						log.Panic(errors.New(response.ErrorExplanation))
+						logger.Log.Error(errors.New(response.ErrorExplanation).Error())
 					}
 				} else {
 					s.ObjectsC <- dataKv
@@ -161,7 +161,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
 				if !response.Success {
-					log.Panic(errors.New(response.ErrorExplanation))
+					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
 				}
 				break
 
@@ -172,7 +172,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
 				if !response.Success {
-					log.Panic(errors.New(response.ErrorExplanation))
+					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
 				}
 
 				s.EtcdC <- dataKv
@@ -220,6 +220,8 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 		logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", v))
 
 		if !response.Success {
+			s.mu.Unlock()
+
 			return errors.New(response.ErrorExplanation)
 		}
 	}

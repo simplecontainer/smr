@@ -61,57 +61,43 @@ func (registry *Registry) Remove(group string, name string) bool {
 		}
 
 		registry.ContainersLock.Unlock()
+
+		format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", group, name))
+		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
+		obj.Remove(format)
+
 		return true
 	}
 }
 
 func (registry *Registry) FindLocal(group string, name string) platforms.IContainer {
 	registry.ContainersLock.RLock()
+	defer registry.ContainersLock.RUnlock()
 
 	if registry.Containers[group] != nil {
 		if registry.Containers[group][name] != nil {
-			registry.ContainersLock.RUnlock()
 			return registry.Containers[group][name]
 		} else {
-			registry.ContainersLock.RUnlock()
 			return nil
 		}
 	} else {
-		registry.ContainersLock.RUnlock()
 		return nil
 	}
 }
 
 func (registry *Registry) Find(group string, name string) platforms.IContainer {
-	registry.ContainersLock.RLock()
-
 	format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", group, name))
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-	if registry.Containers[group] != nil {
-		if registry.Containers[group][name] != nil {
-			registry.ContainersLock.RUnlock()
-			return registry.Containers[group][name]
-		} else {
-			obj.Find(format)
+	registry.ContainersLock.RLock()
 
-			if obj.Exists() {
-				instance, err := platforms.NewGhost(obj.GetDefinition())
-
-				if err != nil {
-					logger.Log.Error(err.Error())
-					registry.ContainersLock.RUnlock()
-					return nil
-				}
-
-				registry.ContainersLock.RUnlock()
-				return instance
-			}
-
-			registry.ContainersLock.RUnlock()
-			return nil
-		}
+	if registry.Containers[group] != nil && registry.Containers[group][name] != nil {
+		registry.ContainersLock.RUnlock()
+		return registry.Containers[group][name]
 	} else {
+		registry.ContainersLock.RUnlock()
+
 		obj.Find(format)
 
 		if obj.Exists() {
@@ -119,23 +105,17 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 
 			if err != nil {
 				logger.Log.Error(err.Error())
-
-				registry.ContainersLock.RUnlock()
 				return nil
 			}
 
-			registry.ContainersLock.RUnlock()
 			return instance
 		}
 
-		registry.ContainersLock.RUnlock()
 		return nil
 	}
 }
 
 func (registry *Registry) FindGroup(group string) map[string]platforms.IContainer {
-	registry.ContainersLock.RLock()
-
 	format := f.NewFromString(fmt.Sprintf("container.state.%s", group))
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
@@ -151,7 +131,15 @@ func (registry *Registry) FindGroup(group string) map[string]platforms.IContaine
 				continue
 			}
 
-			result[instance.GetGeneratedName()] = instance
+			if result[instance.GetGeneratedName()] == nil {
+				tmp := map[string]platforms.IContainer{
+					instance.GetGeneratedName(): instance,
+				}
+
+				result = tmp
+			} else {
+				result[instance.GetGeneratedName()] = instance
+			}
 		}
 	}
 
@@ -159,8 +147,6 @@ func (registry *Registry) FindGroup(group string) map[string]platforms.IContaine
 }
 
 func (registry *Registry) All() map[string]map[string]platforms.IContainer {
-	registry.ContainersLock.RLock()
-
 	format := f.NewFromString("container.state")
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
@@ -187,7 +173,6 @@ func (registry *Registry) All() map[string]map[string]platforms.IContainer {
 		}
 	}
 
-	registry.ContainersLock.RUnlock()
 	return result
 }
 
@@ -233,7 +218,9 @@ func (registry *Registry) BackOffReset(group string, name string) {
 }
 
 func (registry *Registry) GetIndexes(group string, name string) []uint64 {
+	registry.ContainersLock.RLock()
 	containers := registry.Containers[group]
+	registry.ContainersLock.RUnlock()
 
 	var indexes = make([]uint64, 0)
 

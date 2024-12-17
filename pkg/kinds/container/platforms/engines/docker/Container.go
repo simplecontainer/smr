@@ -65,6 +65,7 @@ func New(name string, config *configuration.Configuration, definition *v1.Contai
 		Env:           definition.Spec.Container.Envs,
 		Entrypoint:    definition.Spec.Container.Entrypoint,
 		Args:          definition.Spec.Container.Args,
+		Configuration: definition.Spec.Container.Configuration,
 		NetworkMode:   definition.Spec.Container.NetworkMode,
 		Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
 		Ports:         internal.NewPorts(definition.Spec.Container.Ports),

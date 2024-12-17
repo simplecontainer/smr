@@ -20,7 +20,7 @@ func (certkey *Certkey) Start() error {
 func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
-func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &certkey.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
@@ -160,7 +160,7 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 		}, nil
 	}
 }
-func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &certkey.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,

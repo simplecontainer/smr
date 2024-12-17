@@ -26,7 +26,7 @@ func (resource *Resource) GetShared() interface{} {
 	return resource.Shared
 }
 
-func (resource *Resource) Apply(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &resource.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
@@ -51,7 +51,13 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte) (con
 
 	err = json.Unmarshal(jsonData, &resource)
 	if err != nil {
-		panic(err)
+		return contracts.Response{
+			HttpStatus:       http.StatusBadRequest,
+			Explanation:      "invalid configuration sent: json is not valid",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
 	}
 
 	var format *f.Format
@@ -178,7 +184,7 @@ func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (c
 	}
 }
 
-func (resource *Resource) Delete(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (resource *Resource) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	if err := json.Unmarshal(jsonData, &resource.Definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
