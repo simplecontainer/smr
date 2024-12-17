@@ -10,7 +10,7 @@ This is a quick start tutorial for getting a simplecontainer up and running.
 
 ## What is simplecontainer?
 ### Architecture
-![simplecontainer manager](.github/resources/arch.drawio.png
+![simplecontainer manager](.github/resources/arch.drawio.png)
 ### Introduction
 The simplecontainer manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
 
