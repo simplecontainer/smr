@@ -211,10 +211,14 @@ func Start() {
 
 					secrets := v1.Group("secrets")
 					{
-						secrets.GET("get/:secret", api.SecretsGet)
-						secrets.GET("keys", api.SecretsGetKeys)
-						secrets.POST("create/:secret", api.SecretsSet)
-						secrets.PUT("update/:secret", api.SecretsSet)
+						secrets.POST("create/*key", api.DatabaseSet)
+						secrets.PUT("update/*key", api.DatabaseSet)
+						secrets.POST("propose/*key", api.Propose)
+						secrets.PUT("propose/*key", api.Propose)
+						secrets.GET("get/*key", api.DatabaseGetBase64)
+						secrets.GET("keys", api.DatabaseGetKeys)
+						secrets.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
+						secrets.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
 					}
 
 					containers := v1.Group("/")

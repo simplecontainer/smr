@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -28,42 +29,21 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
-	err := api.Badger.View(func(txn *badger.Txn) error {
-		var value []byte
+	var value []byte
 
+	err := api.Badger.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.Response{
-				Explanation:      "key not found",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return nil
+			return err
 		}
 
-		value, err = item.ValueCopy(nil)
+		var valueCopy []byte
+		valueCopy, err = item.ValueCopy(nil)
 		if err != nil {
-			c.JSON(http.StatusNotFound, contracts.Response{
-				Explanation:      "key not found",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return nil
+			return err
 		}
 
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "found key in the key-value store",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             value,
-		})
+		value = valueCopy
 
 		return nil
 	})
@@ -71,14 +51,78 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 	api.BadgerSync.RUnlock()
 
 	if err != nil {
-		logger.Log.Error(err.Error())
-
 		c.JSON(http.StatusNotFound, contracts.Response{
 			Explanation:      "failed to read from the key-value store",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
 			Data:             nil,
+		})
+	} else {
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "found key in the key-value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             value,
+		})
+	}
+}
+
+// DatabaseGetBase64 godoc
+//
+//	@Summary		Get value from the key-value store
+//	@Description	get string by key from the key-value store
+//	@Tags			database
+//	@Produce		json
+//	@Param			key	path		string	true	"RandomKey"
+//	@Success		200	{object}	  contracts.Response
+//	@Failure		400	{object}	  contracts.Response
+//	@Failure		404	{object}	  contracts.Response
+//	@Failure		500	{object}	  contracts.Response
+//	@Router			/database/{key} [get]
+func (api *Api) DatabaseGetBase64(c *gin.Context) {
+	api.BadgerSync.RLock()
+
+	key := strings.TrimPrefix(c.Param("key"), "/")
+	var value []byte
+
+	err := api.Badger.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		var valueCopy []byte
+		valueCopy, err = item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+
+		value = valueCopy
+
+		return nil
+	})
+
+	api.BadgerSync.RUnlock()
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, contracts.Response{
+			Explanation:      "failed to read from the key-value store",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+	} else {
+		bytes, _ := json.Marshal(value)
+
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "found key in the key-value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             bytes,
 		})
 	}
 }
