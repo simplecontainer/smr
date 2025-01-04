@@ -8,7 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 )
 
-var supportedControlOperations = []string{"List", "Get", "Remove"}
+var supportedControlOperations = []string{"List", "Get", "Remove", "Edit"}
 
 func (certkey *Certkey) ListSupported(request contracts.Control) contracts.Response {
 	return contracts.Response{

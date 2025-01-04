@@ -77,13 +77,27 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client
 func (s *KVStore) Propose(k string, v string, agent string) {
 	var buf strings.Builder
 
-	category := static.CATEGORY_PLAIN
-
-	if strings.HasSuffix(k, ".object") {
-		category = static.CATEGORY_OBJECT
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_PLAIN, agent}); err != nil {
+		log.Fatal(err)
 	}
 
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, category, agent}); err != nil {
+	s.proposeC <- buf.String()
+}
+
+func (s *KVStore) ProposeObject(k string, v string, agent string) {
+	var buf strings.Builder
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_OBJECT, agent}); err != nil {
+		log.Fatal(err)
+	}
+
+	s.proposeC <- buf.String()
+}
+
+func (s *KVStore) ProposeSecret(k string, v string, agent string) {
+	var buf strings.Builder
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_SECRET, agent}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -161,8 +175,20 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
 
 				if !response.Success {
-					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+					logger.Log.Error(response.ErrorExplanation)
 				}
+				break
+
+			case static.CATEGORY_SECRET:
+				URL := fmt.Sprintf("https://%s/api/v1/secrets/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
+				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
+
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+
+				if !response.Success {
+					logger.Log.Error(response.ErrorExplanation)
+				}
+
 				break
 
 			case static.CATEGORY_ETCD:

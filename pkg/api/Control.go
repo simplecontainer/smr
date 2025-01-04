@@ -101,16 +101,15 @@ func (api *Api) RunControl(c *gin.Context) {
 }
 
 func (api *Api) ListSupported(c *gin.Context) {
-	kind := cleanPath(c.Param("group"))
+	kind := cleanPath(c.Param("kind"))
 
-	var err error
 	kindObj, ok := api.KindsRegistry[kind]
 
 	if !ok {
 		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
 			Explanation:      "operator is not present on the server",
-			ErrorExplanation: err.Error(),
+			ErrorExplanation: "operator is not present on the server",
 			Error:            true,
 			Success:          false,
 			Data:             nil,
@@ -126,6 +125,7 @@ func (api *Api) ListSupported(c *gin.Context) {
 
 	operatorResponse := kindObj.Run("ListSupported", request)
 	c.JSON(http.StatusOK, operatorResponse)
+
 	return
 }
 

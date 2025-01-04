@@ -26,7 +26,7 @@ func NewEtcdClient() *clientv3.Client {
 	return cli
 }
 
-func (c *Cluster) StartSingleNodeEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
+func (cluster *Cluster) StartSingleNodeEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 	cfg := embed.NewConfig()
 	cfg.Dir = fmt.Sprintf("%s/persistent/etcd", config.Environment.PROJECTDIR)
 
@@ -39,7 +39,7 @@ func (c *Cluster) StartSingleNodeEtcd(config *configuration.Configuration) (e *e
 
 	return embed.StartEtcd(cfg)
 }
-func (c *Cluster) ConfigureFlannel(network string) error {
+func (cluster *Cluster) ConfigureFlannel(network string) error {
 	timeout, err := time.ParseDuration("10s")
 
 	if err != nil {
@@ -47,7 +47,7 @@ func (c *Cluster) ConfigureFlannel(network string) error {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	_, err = c.EtcdClient.Put(ctx, "/coreos.com/network/config", fmt.Sprintf("{\"Network\": \"%s\", \"Backend\": {\"Type\": \"vxlan\"}}", network))
+	_, err = cluster.EtcdClient.Put(ctx, "/coreos.com/network/config", fmt.Sprintf("{\"Network\": \"%s\", \"Backend\": {\"Type\": \"vxlan\"}}", network))
 	cancel()
 
 	if err != nil {
@@ -56,9 +56,9 @@ func (c *Cluster) ConfigureFlannel(network string) error {
 
 	return nil
 }
-func (c *Cluster) ListenEvents(agent string) {
+func (cluster *Cluster) ListenEvents(agent string) {
 	ctx, _ := context.WithCancel(context.Background())
-	watcher := c.EtcdClient.Watch(ctx, "/coreos.com", clientv3.WithPrefix())
+	watcher := cluster.EtcdClient.Watch(ctx, "/coreos.com", clientv3.WithPrefix())
 
 	for {
 		select {
@@ -67,10 +67,10 @@ func (c *Cluster) ListenEvents(agent string) {
 				for _, event := range watchResp.Events {
 					switch event.Type {
 					case mvccpb.PUT:
-						c.KVStore.ProposeEtcd(string(event.Kv.Key), string(event.Kv.Value), agent)
+						cluster.KVStore.ProposeEtcd(string(event.Kv.Key), string(event.Kv.Value), agent)
 						break
 					case mvccpb.DELETE:
-						c.KVStore.ProposeEtcd(string(event.Kv.Key), "", agent)
+						cluster.KVStore.ProposeEtcd(string(event.Kv.Key), "", agent)
 						break
 					}
 				}
@@ -81,22 +81,22 @@ func (c *Cluster) ListenEvents(agent string) {
 	}
 }
 
-func (c *Cluster) ListenUpdates(agent string) {
+func (cluster *Cluster) ListenUpdates(agent string) {
 	for {
 		select {
-		case data, ok := <-c.KVStore.EtcdC:
+		case data, ok := <-cluster.KVStore.EtcdC:
 			if ok {
 				if data.Agent != agent {
 					ctx, _ := context.WithCancel(context.Background())
 
-					val, err := c.EtcdClient.Get(ctx, data.Key)
+					val, err := cluster.EtcdClient.Get(ctx, data.Key)
 
 					if err != nil {
 						logger.Log.Error(err.Error())
 					}
 
 					if len(val.Kvs) == 0 || string(val.Kvs[len(val.Kvs)-1].Value) != data.Val {
-						_, err = c.EtcdClient.Put(ctx, data.Key, data.Val)
+						_, err = cluster.EtcdClient.Put(ctx, data.Key, data.Val)
 
 						if err != nil {
 							logger.Log.Error(err.Error())

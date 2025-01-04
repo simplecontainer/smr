@@ -80,8 +80,8 @@ func (api *Api) ImplementationWrapperApply(user *authentication.User, kind strin
 	if !ok {
 		c.JSON(http.StatusBadRequest, contracts.Response{
 			HttpStatus:       http.StatusBadRequest,
-			Explanation:      fmt.Sprintf("kind is not present on the server: %s", kind),
-			ErrorExplanation: err.Error(),
+			Explanation:      "",
+			ErrorExplanation: fmt.Sprintf("kind is not present on the server: %s", kind),
 			Error:            true,
 			Success:          false,
 		})

@@ -24,6 +24,7 @@ const SMR_LOCAL_DOMAIN string = "private"
 
 const PLATFORM_DOCKER = "docker"
 
-const CATEGORY_OBJECT = "badger"
+const CATEGORY_OBJECT = "object"
 const CATEGORY_ETCD = "etcd"
 const CATEGORY_PLAIN = "plain"
+const CATEGORY_SECRET = "secret"

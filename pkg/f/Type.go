@@ -6,4 +6,5 @@ type Format struct {
 	Identifier string
 	Key        string
 	Elems      int
+	Category   string
 }

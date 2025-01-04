@@ -176,8 +176,8 @@ func Start() {
 					{
 						database.POST("create/*key", api.DatabaseSet)
 						database.PUT("update/*key", api.DatabaseSet)
-						database.POST("propose/*key", api.Propose)
-						database.PUT("propose/*key", api.Propose)
+						database.POST("propose/:type/*key", api.Propose)
+						database.PUT("propose/:type/*key", api.Propose)
 						database.GET("get/*key", api.DatabaseGet)
 						database.GET("keys", api.DatabaseGetKeys)
 						database.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
@@ -211,10 +211,10 @@ func Start() {
 
 					secrets := v1.Group("secrets")
 					{
-						secrets.POST("create/*key", api.DatabaseSet)
-						secrets.PUT("update/*key", api.DatabaseSet)
-						secrets.POST("propose/*key", api.Propose)
-						secrets.PUT("propose/*key", api.Propose)
+						secrets.POST("create/*key", api.DatabaseSetBase64)
+						secrets.PUT("update/*key", api.DatabaseSetBase64)
+						secrets.POST("propose/:type/*key", api.Propose)
+						secrets.PUT("propose/:type/*key", api.Propose)
 						secrets.GET("get/*key", api.DatabaseGetBase64)
 						secrets.GET("keys", api.DatabaseGetKeys)
 						secrets.GET("keys/*prefix", api.DatabaseGetKeysPrefix)

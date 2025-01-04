@@ -267,7 +267,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 
 	return contracts.Response{
 		HttpStatus:       200,
-		Explanation:      "object in sync",
+		Explanation:      "object is marked for deletion",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,

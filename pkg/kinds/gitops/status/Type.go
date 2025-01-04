@@ -8,7 +8,7 @@ import (
 
 type Status struct {
 	State                  *StatusState `json:"state"`
-	PreviousState          *StatusState `json:"state"`
+	PreviousState          *StatusState `json:"previousState"`
 	LastReadiness          bool
 	LastReadinessTimestamp time.Time
 	StateMachine           gograph.Graph[*StatusState] `json:"-"`
@@ -19,8 +19,8 @@ type Status struct {
 }
 
 type StatusState struct {
-	State    string
-	category int8
+	State    string `json:"state"`
+	category int8   `json:"category"`
 }
 
 const CATEGORY_PRERUN = 0

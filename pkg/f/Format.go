@@ -2,6 +2,7 @@ package f
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/static"
 	"strings"
 )
 
@@ -25,6 +26,7 @@ func NewFromString(f string) *Format {
 		Identifier: strings.TrimSpace(elements[2]),
 		Key:        strings.TrimSpace(elements[3]),
 		Elems:      nonEmptyCount,
+		Category:   DetermineCategory(strings.TrimSpace(elements[3])),
 	}
 
 	if format.IsValid() {
@@ -113,4 +115,15 @@ func (format *Format) ToBytes() []byte {
 	}
 
 	return []byte(output)
+}
+
+func DetermineCategory(key string) string {
+	switch key {
+	case static.CATEGORY_SECRET:
+		return static.CATEGORY_SECRET
+	case static.CATEGORY_OBJECT:
+		return static.CATEGORY_OBJECT
+	default:
+		return static.CATEGORY_PLAIN
+	}
 }

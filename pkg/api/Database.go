@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 	"net/http"
 	"strings"
@@ -187,6 +188,54 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 	}
 }
 
+func (api *Api) DatabaseSetBase64(c *gin.Context) {
+	var data []byte
+	var err error
+
+	data, err = io.ReadAll(c.Request.Body)
+
+	key := strings.TrimPrefix(c.Param("key"), "/")
+
+	if err == nil {
+		api.BadgerSync.Lock()
+
+		err = api.Badger.Update(func(txn *badger.Txn) error {
+			err = txn.Set([]byte(key), data)
+			return err
+		})
+
+		api.BadgerSync.Unlock()
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, contracts.Response{
+				Explanation:      "failed to store value in the key-value store",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+		} else {
+			bytes, _ := json.Marshal(data)
+
+			c.JSON(http.StatusOK, contracts.Response{
+				Explanation:      "value stored in the key value store",
+				ErrorExplanation: "",
+				Error:            false,
+				Success:          true,
+				Data:             bytes,
+			})
+		}
+	} else {
+		c.JSON(http.StatusInternalServerError, contracts.Response{
+			Explanation:      "failed to store value in the key-value store",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+	}
+}
+
 func (api *Api) Propose(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
@@ -215,14 +264,60 @@ func (api *Api) Propose(c *gin.Context) {
 	}
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
-	api.Cluster.KVStore.Propose(key, string(data), api.Config.Node)
 
-	c.JSON(http.StatusOK, contracts.Response{
-		Explanation:      "value stored in the key value store",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             data,
+	switch c.Param("type") {
+	case static.CATEGORY_PLAIN:
+		api.Cluster.KVStore.Propose(key, string(data), api.Config.Node)
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "value stored in the key value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             data,
+		})
+		return
+	case static.CATEGORY_OBJECT:
+		api.Cluster.KVStore.ProposeObject(key, string(data), api.Config.Node)
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "value stored in the key value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             data,
+		})
+		return
+	case static.CATEGORY_SECRET:
+		api.Cluster.KVStore.ProposeSecret(key, string(data), api.Config.Node)
+
+		bytes, _ := json.Marshal(data)
+
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "value stored in the key value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             bytes,
+		})
+		return
+	case static.CATEGORY_ETCD:
+		api.Cluster.KVStore.ProposeEtcd(key, string(data), api.Config.Node)
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "value stored in the key value store",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+			Data:             data,
+		})
+		return
+	}
+
+	api.Cluster.KVStore.ProposeObject(key, string(data), api.Config.Node)
+	c.JSON(http.StatusBadRequest, contracts.Response{
+		Explanation:      "",
+		ErrorExplanation: "invalid category selected for the propose",
+		Error:            true,
+		Success:          false,
+		Data:             nil,
 	})
 }
 

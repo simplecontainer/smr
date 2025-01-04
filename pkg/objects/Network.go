@@ -73,6 +73,7 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 		}
 	}
 
+	response.HttpStatus = resp.StatusCode
 	return &response
 }
 

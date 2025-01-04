@@ -11,6 +11,7 @@ type Object struct {
 	Byte       []byte
 	String     string
 	Definition map[string]interface{}
+	Category   string
 
 	Changelog diff.Changelog
 	Raw       bool
