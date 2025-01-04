@@ -90,7 +90,8 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			gitopsWatcher.Logger.Info(fmt.Sprintf("%s failed to solve gitops references", name))
 			gitopsWatcher.Logger.Error(err.Error())
 			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_GIT)
-			Loop(gitopsWatcher)
+
+			return
 		}
 
 		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
