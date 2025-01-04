@@ -129,6 +129,10 @@ func Start() {
 						panic(err)
 					}
 
+					if APIEndpoint == api.Config.GetDomainOrIP() {
+						APIEndpoint = "localhost"
+					}
+
 					api.Manager.Http.Append(username, &client.Client{
 						Http:     httpClient,
 						Username: username,

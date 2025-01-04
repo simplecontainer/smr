@@ -85,7 +85,8 @@ Start(){
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
 
       if [[ ${?} != 0 ]]; then
-        echo "Failed to create startup configuration - check the logs"
+        echo "Smr returned non-zero exit code - check the logs of the node controller container"
+        exit
       fi
 
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"

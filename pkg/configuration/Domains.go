@@ -13,6 +13,7 @@ func (domains *Domains) Add(domain string) {
 
 	domains.Members = append(domains.Members, domain)
 }
+
 func (domains *Domains) Remove(domain string) {
 	for i, d := range domains.Members {
 		if d == domain {
