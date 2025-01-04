@@ -129,7 +129,7 @@ func Start() {
 						panic(err)
 					}
 
-					if APIEndpoint == api.Config.GetDomainOrIP() {
+					if username == api.Config.Node {
 						APIEndpoint = "localhost"
 					}
 
