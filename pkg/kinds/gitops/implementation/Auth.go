@@ -8,20 +8,24 @@ import (
 )
 
 func (gitops *Gitops) GetAuth() (transport.AuthMethod, error) {
-	var auth transport.AuthMethod = nil
-	var err error = nil
-
 	if gitops.AuthInternal.HttpAuth != nil {
-		auth = &gitHttp.BasicAuth{
+		return &gitHttp.BasicAuth{
 			Username: gitops.AuthInternal.HttpAuth.Username,
 			Password: gitops.AuthInternal.HttpAuth.Password,
-		}
+		}, nil
 	}
 
 	if gitops.AuthInternal.CertKey != nil {
 		b64decoded, _ := base64.StdEncoding.DecodeString(gitops.AuthInternal.CertKey.PrivateKey)
-		auth, err = ssh.NewPublicKeys(ssh.DefaultUsername, b64decoded, gitops.AuthInternal.CertKey.PrivateKeyPassword)
+		auth, err := ssh.NewPublicKeys(ssh.DefaultUsername, b64decoded, gitops.AuthInternal.CertKey.PrivateKeyPassword)
+		auth.HostKeyCallback, err = ssh.NewKnownHostsCallback()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return auth, nil
 	}
 
-	return auth, err
+	return nil, nil
 }

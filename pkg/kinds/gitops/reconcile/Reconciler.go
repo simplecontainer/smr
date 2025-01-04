@@ -106,7 +106,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			gitopsWatcher.Logger.Info(fmt.Sprintf("%s failed to generate auth for the git repository", name))
 			gitopsWatcher.Logger.Error(err.Error())
 			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_GIT)
-			Loop(gitopsWatcher)
 
 			return
 		}

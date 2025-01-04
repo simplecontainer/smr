@@ -39,7 +39,7 @@ func (registry *Registry) Sync(container distributed.Container) {
 			return
 		}
 
-		format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", container.Group, container.Name))
+		format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", container.Group, container.Name))
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		obj.Add(format, string(bytes))
@@ -62,7 +62,7 @@ func (registry *Registry) Remove(group string, name string) bool {
 
 		registry.ContainersLock.Unlock()
 
-		format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", group, name))
+		format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", group, name))
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		obj.Remove(format)
@@ -87,7 +87,7 @@ func (registry *Registry) FindLocal(group string, name string) platforms.IContai
 }
 
 func (registry *Registry) Find(group string, name string) platforms.IContainer {
-	format := f.NewFromString(fmt.Sprintf("container.state.%s.%s", group, name))
+	format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", group, name))
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.ContainersLock.RLock()
@@ -116,7 +116,7 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 }
 
 func (registry *Registry) FindGroup(group string) map[string]platforms.IContainer {
-	format := f.NewFromString(fmt.Sprintf("container.state.%s", group))
+	format := f.NewFromString(fmt.Sprintf("state.container.%s", group))
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result map[string]platforms.IContainer
@@ -147,7 +147,7 @@ func (registry *Registry) FindGroup(group string) map[string]platforms.IContaine
 }
 
 func (registry *Registry) All() map[string]map[string]platforms.IContainer {
-	format := f.NewFromString("container.state")
+	format := f.NewFromString("state.container")
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result = make(map[string]map[string]platforms.IContainer)

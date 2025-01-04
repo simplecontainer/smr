@@ -15,7 +15,8 @@ COPY smr-$TARGETOS-$TARGETARCH/smr /opt/smr/smr
 RUN chmod +x /opt/smr/smr && \
     chown -R smr-agent /opt/smr/smr && \
     chown -R smr-agent /home/smr-agent && \
-    chown -R smr-agent /home/smr-agent/.ssh
+    chown -R smr-agent /home/smr-agent/.ssh && \
+    touch /home/smr-agent/.ssh/known_hosts
 
 RUN apk add busybox-extras
 
