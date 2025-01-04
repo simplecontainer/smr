@@ -358,7 +358,6 @@ func (container *Container) Run(operation string, request contracts.Control) con
 	}
 }
 
-// TODO: refactor
 func FetchContainersFromRegistry(registry *registry.Registry, containers []replicas.R) []platforms.IContainer {
 	var order []platforms.IContainer
 

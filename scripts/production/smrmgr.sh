@@ -8,21 +8,19 @@ HelpStart(){
 
  Options:
  -a: Agent domain
- -m: Mode: single or cluster
- -d: Domain where agent is exposed used for certificates
- -i: Node ID; Should be increased monotonically
- -n: Node URL
+ -m: Mode: standalone or cluster
+ -d: Domain of agent
+ -n: Node URL - if node URL is different than domain of agent
  -c: Cluster URLs
  -o: Overlay port default is 0.0.0.0:9212
 """
 }
 
 Start(){
-  PRODUCTION=1
   AGENT=""
   DOMAIN=""
   IP=""
-  NODE_URL=""
+  NODE_DOMAIN=""
   NODE_PORT="9212"
   CONN_STRING="https://localhost:1443"
   CLIENT_ARGS="--overlayport 0.0.0.0:9212"
@@ -53,35 +51,49 @@ Start(){
         i) # Set ip
            IP=$OPTARG;;
         n) # Set Node URL
-           NODE_URL=$OPTARG;;
+           NODE_DOMAIN=$OPTARG;;
         p) # Set node port
            NODE_PORT=$OPTARG;;
         r) # Set repository
            REPOSITORY=$OPTARG;;
         x) # Set client additional args
            CLIENT_ARGS=$OPTARG;;
-        z) # Production or not
-           PRODUCTION=$OPTARG;;
         *) # Invalid option
           echo "Invalid option";;
      esac
   done
 
+  if [[ $DOMAIN != "" ]]; then
+    if [[ $NODE_DOMAIN == "" ]]; then
+      NODE_DOMAIN=$DOMAIN
+    fi
+  fi
+
+  if [[ $DOMAIN == "" && $NODE_DOMAIN == "" ]]; then
+    DOMAIN="localhost"
+    NODE_DOMAIN="localhost"
+  fi
+
   echo "Agent name: $AGENT"
-  echo "Node URL: $NODE_URL"
+  echo "Node URL: $NODE_DOMAIN"
   echo "Domain: $DOMAIN"
   echo "Additional arguments: $CLIENT_ARGS"
   echo "Join: $JOIN"
 
   if [[ ${AGENT} != "" ]]; then
     if [[ ${MODE} == "cluster" ]]; then
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
+      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
+
+      if [[ ${?} != 0 ]]; then
+        echo "Failed to create startup configuration - check the logs"
+      fi
+
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"
 
-      if [[ $PRODUCTION == "0" ]]; then
-        NODE_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
+      if [[ $NODE_DOMAIN == "localhost" ]]; then
+        NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
       else
-        NODE_URL="https://${NODE_URL}:${NODE_PORT}"
+        NODE_DOMAIN="https://${NODE_DOMAIN}:${NODE_PORT}"
       fi
 
       while :
@@ -95,9 +107,9 @@ Start(){
       done
 
       if [[ ${JOIN} == "" ]]; then
-        sudo nohup smr node cluster start --node "${NODE_URL}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
       else
-        sudo nohup smr node cluster start --node "${NODE_URL}" --join "https://${JOIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
+        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
       fi
 
       echo "The simplecontainer is started in cluster mode."
@@ -105,26 +117,13 @@ Start(){
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domain ${DOMAIN} --ip ${IP}" --agent "${AGENT}" --wait
       smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --agent "${AGENT}"
 
+      sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+
       echo "The simplecontainer is started in single mode."
     fi
   else
     HelpStart
   fi
-}
-
-Wait(){
-  AGENT=""
-
-  while getopts ":e:h:m:a:d:i:j:n:r:p:x:t:" option; do
-     case $option in
-        a) # Set agent
-           PRODUCTION=$OPTARG;;
-        *) # Invalid option
-          echo "Invalid option";;
-     esac
-  done
-
-  smr node wait --agent "${AGENT}"
 }
 
 Export(){

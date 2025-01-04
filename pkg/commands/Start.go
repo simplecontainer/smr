@@ -46,14 +46,14 @@ func Start() {
 				api.Manager.Keys = api.Keys
 
 				api.User = &authentication.User{
-					Username: api.Config.Agent,
+					Username: api.Config.Node,
 					Domain:   "localhost:1443",
 				}
 				api.Manager.User = api.User
 
 				var found error
 
-				found = api.Keys.CAExists(static.SMR_SSH_HOME, api.Config.Agent)
+				found = api.Keys.CAExists(static.SMR_SSH_HOME, api.Config.Node)
 
 				if found != nil {
 					err = api.Keys.GenerateCA()
@@ -68,27 +68,27 @@ func Start() {
 					}
 				}
 
-				found = api.Keys.ServerExists(static.SMR_SSH_HOME, api.Config.Agent)
+				found = api.Keys.ServerExists(static.SMR_SSH_HOME, api.Config.Node)
 
 				if found != nil {
-					err = api.Keys.GenerateServer(api.Config.Domains, api.Config.IPs)
+					err = api.Keys.GenerateServer(api.Config.Certificates.Domains, api.Config.Certificates.IPs)
 
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.GenerateClient(api.Config.Domains, api.Config.IPs, api.Config.Agent)
+					err = api.Keys.GenerateClient(api.Config.Certificates.Domains, api.Config.Certificates.IPs, api.Config.Node)
 
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Server.Write(static.SMR_SSH_HOME, api.Config.Agent)
+					err = api.Keys.Server.Write(static.SMR_SSH_HOME, api.Config.Node)
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Clients[api.Config.Agent].Write(static.SMR_SSH_HOME, api.Config.Agent)
+					err = api.Keys.Clients[api.Config.Node].Write(static.SMR_SSH_HOME, api.Config.Node)
 					if err != nil {
 						panic(err)
 					}
@@ -99,7 +99,7 @@ func Start() {
 					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
 					fmt.Println("/*********************************************************************/")
 
-					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.Agent, api.Keys.Clients[api.Config.Agent])
+					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.Node, api.Keys.Clients[api.Config.Node])
 
 					if err != nil {
 						panic(err)
@@ -119,9 +119,11 @@ func Start() {
 					os.Exit(1)
 				}
 
+				var httpClient *http.Client
+				var APIEndpoint string
+
 				for username, c := range api.Keys.Clients {
-					var httpClient *http.Client
-					httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[username])
+					httpClient, APIEndpoint, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[username])
 
 					if err != nil {
 						panic(err)
@@ -130,13 +132,13 @@ func Start() {
 					api.Manager.Http.Append(username, &client.Client{
 						Http:     httpClient,
 						Username: username,
-						API:      fmt.Sprintf("%s:1443", c.Certificate.DNSNames[0]),
+						API:      fmt.Sprintf("%s:%s", APIEndpoint, api.Config.HostPort.Port),
 						Domains:  c.Certificate.DNSNames,
 						IPs:      c.Certificate.IPAddresses,
 					})
 				}
 
-				api.DnsCache = dns.New(api.Config.Agent, api.Manager.Http, api.User)
+				api.DnsCache = dns.New(api.Config.Node, api.Manager.Http, api.User)
 				api.DnsCache.Client = api.Manager.Http
 
 				api.Manager.DnsCache = api.DnsCache
@@ -162,6 +164,7 @@ func Start() {
 
 				router := gin.New()
 				router.Use(middleware.TLSAuth())
+				router.Use(api.ClusterCheck())
 
 				v1 := router.Group("/api/v1")
 				{
@@ -217,7 +220,7 @@ func Start() {
 
 					logs := v1.Group("/logs")
 					{
-						//logs.GET("/", api.Agent)
+						//logs.GET("/", api.Node)
 						logs.GET(":kind/:group/:identifier", api.Logs)
 					}
 
@@ -245,6 +248,7 @@ func Start() {
 				router.GET("/restore", api.Restore)
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+				router.GET("/metrics", api.Metrics())
 
 				router.GET("/cluster", api.GetCluster)
 				router.POST("/cluster/start", api.StartCluster)
@@ -264,7 +268,7 @@ func Start() {
 				api.SetupEncryptedDatabase(api.Keys.Server.PrivateKeyBytes[:32])
 
 				server := http.Server{
-					Addr:      ":1443",
+					Addr:      fmt.Sprintf("%s:%s", api.Config.HostPort.Host, api.Config.HostPort.Port),
 					Handler:   router,
 					TLSConfig: tlsConfig,
 				}

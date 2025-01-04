@@ -132,7 +132,7 @@ func (replicas *Replicas) GetReplicaNumbers(dr *Distributed, spread v1.Container
 		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Uniform(replicasNumber, existingIndexes, clusterSize, replicas.NodeID)
 		break
 	default:
-		if replicas.Agent != replicas.Shared.Manager.Config.Agent {
+		if replicas.Agent != replicas.Shared.Manager.Config.Node {
 			dr.Replicas[replicas.NodeID].Numbers.Create = []uint64{}
 			dr.Replicas[replicas.NodeID].Numbers.Destroy = []uint64{}
 			dr.Replicas[replicas.NodeID].Numbers.Existing = []uint64{}

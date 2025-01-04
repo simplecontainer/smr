@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
+	"net"
 	"os"
 	"strings"
 )
@@ -40,27 +41,26 @@ func Create() {
 
 				api.Config.Platform = viper.GetString("platform")
 				api.Config.OverlayNetwork = viper.GetString("overlay")
-				api.Config.Port = viper.GetInt("port")
-				api.Config.Agent = viper.GetString("agent")
+				api.Config.HostPort.Host, api.Config.HostPort.Port, err = net.SplitHostPort(viper.GetString("port"))
+
+				if err != nil {
+					panic(err)
+				}
+
+				api.Config.Node = viper.GetString("agent")
 				api.Config.Target = viper.GetString("target")
 				api.Config.Root = api.Config.Environment.PROJECTDIR
-				api.Config.Domains = strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean)
-				api.Config.IPs = strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean)
-				api.Config.OptRoot = "/opt/smr"
-				api.Config.CommonName = api.Config.Agent
+				api.Config.Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
+				api.Config.Certificates.IPs = configuration.NewIPs(strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean))
 				api.Config.HostHome = hostHomeDir
 				api.Config.Node = hostname
 
 				// Internal domains needed
-				api.Config.Domains = append([]string{
-					"localhost",
-					fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN),
-				}, api.Config.Domains...)
+				api.Config.Certificates.Domains.Add("localhost")
+				api.Config.Certificates.Domains.Add(fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN))
 
 				// Internal IPs needed
-				api.Config.IPs = append([]string{
-					"127.0.0.1",
-				}, api.Config.IPs...)
+				api.Config.Certificates.IPs.Add("127.0.0.1")
 
 				api.Config.KVStore = &configuration.KVStore{
 					Cluster:     []*node.Node{},

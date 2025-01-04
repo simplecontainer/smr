@@ -1,5 +1,7 @@
 package configuration
 
 func NewConfig() *Configuration {
-	return &Configuration{}
+	return &Configuration{
+		Certificates: &Certificates{},
+	}
 }

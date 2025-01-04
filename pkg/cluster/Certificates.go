@@ -27,35 +27,35 @@ func (cluster *Cluster) Regenerate(config *configuration.Configuration, keys *ke
 		tmp := strings.Split(url.Host, ":")
 
 		if net.ParseIP(tmp[0]) != nil {
-			config.IPs = append(config.IPs, tmp[0])
+			config.Certificates.IPs.Add(tmp[0])
 		} else {
-			config.Domains = append(config.Domains, tmp[0])
+			config.Certificates.Domains.Add(tmp[0])
 		}
 	}
 
 	logger.Log.Info("regenerating server certificate to support cluster nodes")
 
-	err = keys.GenerateClient(config.Domains, config.IPs, config.Agent)
+	err = keys.GenerateClient(config.Certificates.Domains, config.Certificates.IPs, config.Node)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	err = keys.GenerateServer(config.Domains, config.IPs)
+	err = keys.GenerateServer(config.Certificates.Domains, config.Certificates.IPs)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	err = keys.Clients[config.Agent].Write(static.SMR_SSH_HOME, config.Agent)
+	err = keys.Clients[config.Node].Write(static.SMR_SSH_HOME, config.Node)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	err = keys.Server.Write(static.SMR_SSH_HOME, config.Agent)
+	err = keys.Server.Write(static.SMR_SSH_HOME, config.Node)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return

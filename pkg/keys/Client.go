@@ -8,9 +8,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"math/big"
-	"net"
 	"os"
 	"time"
 )
@@ -21,7 +20,7 @@ func NewClient() *Client {
 	}
 }
 
-func (client *Client) Generate(ca *CA, domains []string, ips []net.IP, CN string) error {
+func (client *Client) Generate(ca *CA, domains *configuration.Domains, ips *configuration.IPs, CN string) error {
 	var err error
 
 	client.Sni = client.Sni + 1
@@ -51,8 +50,8 @@ func (client *Client) Generate(ca *CA, domains []string, ips []net.IP, CN string
 			Organization: []string{"simplecontainer"},
 			CommonName:   CN,
 		},
-		DNSNames:     append(domains, []string{fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}...),
-		IPAddresses:  append(ips, net.IPv6loopback),
+		DNSNames:     domains.ToStringSlice(),
+		IPAddresses:  ips.ToIPNetSlice(),
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
 		SubjectKeyId: SubjectKeyIdentifier[:],

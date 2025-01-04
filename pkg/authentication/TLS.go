@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/static"
-	"net"
 	"path/filepath"
 )
 
@@ -23,11 +23,12 @@ func (user *User) CreateUser(k *keys.Keys, agent string, username string, domain
 		usernameClean := filepath.Clean(username)
 
 		if exists == nil {
-			newClient := keys.Client{}
-			err := newClient.Generate(
+			client := keys.NewClient()
+
+			err := client.Generate(
 				k.CA,
-				[]string{domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)},
-				[]net.IP{net.ParseIP(externalIP), net.IPv6loopback},
+				configuration.NewDomains([]string{domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}),
+				configuration.NewIPs([]string{externalIP}),
 				username,
 			)
 
@@ -35,19 +36,19 @@ func (user *User) CreateUser(k *keys.Keys, agent string, username string, domain
 				return "", err
 			}
 
-			err = newClient.Write(static.SMR_SSH_HOME, usernameClean)
+			err = client.Write(static.SMR_SSH_HOME, usernameClean)
 
 			if err != nil {
 				return "", err
 			}
 
-			err = k.GeneratePemBundle(static.SMR_SSH_HOME, usernameClean, &newClient)
+			err = k.GeneratePemBundle(static.SMR_SSH_HOME, usernameClean, client)
 
 			if err != nil {
 				return "", err
 			}
 
-			k.AppendClient(usernameClean, &newClient)
+			k.AppendClient(usernameClean, client)
 
 			return fmt.Sprintf("%s/%s.pem", static.SMR_SSH_HOME, usernameClean), nil
 		} else {

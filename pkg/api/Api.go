@@ -96,7 +96,7 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	}
 
 	api.Cluster.KVStore.ConfChangeC = confChangeC
-	api.Cluster.KVStore.Agent = api.Config.Agent
+	api.Cluster.KVStore.Agent = api.Config.Node
 
 	api.Manager.Cluster = api.Cluster
 

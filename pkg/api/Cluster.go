@@ -10,19 +10,16 @@ import (
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"go.etcd.io/etcd/server/v3/embed"
-	"go.uber.org/zap"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"os/signal"
 	"syscall"
 	"time"
 )
@@ -37,7 +34,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			Error:            true,
 			Success:          false,
 			Data: network.ToJson(map[string]any{
-				"agent": api.Config.Agent,
+				"agent": api.Config.Node,
 			}),
 		})
 
@@ -50,7 +47,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 				Error:            true,
 				Success:          false,
 				Data: network.ToJson(map[string]any{
-					"agent": api.Config.Agent,
+					"agent": api.Config.Node,
 				}),
 			})
 
@@ -100,9 +97,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		for _, client := range api.Manager.Http.Clients {
 			for _, domain := range client.Domains {
-				fmt.Println(domain)
-				fmt.Println(URL.Hostname())
-
 				if domain == URL.Hostname() {
 					user = &authentication.User{
 						Username: client.Username,
@@ -244,11 +238,16 @@ func (api *Api) StartCluster(c *gin.Context) {
 			return
 		}
 
+		api.Config.KVStore.Node = api.Cluster.Node.NodeID
+		api.Config.KVStore.URL = api.Cluster.Node.URL
+		api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+		api.Config.KVStore.JoinCluster = request["join"] != ""
+
 		api.SaveClusterConfiguration()
 
-		go api.Cluster.ListenEvents(api.Config.Agent)
-		go api.Cluster.ListenUpdates(api.Config.Agent)
-		go api.Cluster.ListenObjects(api.Config.Agent)
+		go api.Cluster.ListenEvents(api.Config.Node)
+		go api.Cluster.ListenUpdates(api.Config.Node)
+		go api.Cluster.ListenObjects(api.Config.Node)
 
 		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
 
@@ -272,7 +271,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			Error:            false,
 			Success:          true,
 			Data: network.ToJson(map[string]string{
-				"agent": api.Config.Agent,
+				"agent": api.Config.Node,
 			}),
 		})
 
@@ -290,97 +289,9 @@ func (api *Api) StartCluster(c *gin.Context) {
 		})
 	}
 }
-func (api *Api) RestoreCluster(c *gin.Context) {
-	CAPool := x509.NewCertPool()
-	CAPool.AddCert(api.Keys.CA.Certificate)
 
-	var PEMCertificate []byte
-	var PEMPrivateKey []byte
+func (api *Api) RestoreCluster(c *gin.Context) {}
 
-	var err error
-
-	PEMCertificate, err = keys.PEMEncode(keys.CERTIFICATE, api.Keys.Server.CertificateBytes)
-	PEMPrivateKey, err = keys.PEMEncode(keys.PRIVATE_KEY, api.Keys.Server.PrivateKeyBytes)
-
-	serverTLSCert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
-	if err != nil {
-		logger.Log.Fatal("error opening certificate and key file for control connection", zap.String("error", err.Error()))
-		return
-	}
-
-	tlsConfig := &tls.Config{
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    CAPool,
-		Certificates: []tls.Certificate{serverTLSCert},
-	}
-
-	api.Cluster, err = cluster.Restore(api.Config)
-	api.Manager.Cluster = api.Cluster
-
-	var server *embed.Etcd
-	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
-		return
-	}
-
-	select {
-	case <-server.Server.ReadyNotify():
-		fmt.Println("etcd server started - continue with starting raft")
-		api.Cluster.EtcdClient = cluster.NewEtcdClient()
-
-		signal.Notify(api.Keys.Reloader.ReloadC, syscall.SIGHUP)
-
-		api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, c.Param("join"))
-		api.SaveClusterConfiguration()
-
-		go api.Cluster.ListenEvents(api.Config.Agent)
-		go api.Cluster.ListenUpdates(api.Config.Agent)
-		go api.Cluster.ListenObjects(api.Config.Agent)
-
-		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: "flannel overlay network failed to start",
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "everything went ok",
-			Error:            false,
-			Success:          true,
-			Data: network.ToJson(map[string]string{
-				"agent": api.Config.Agent,
-			}),
-		})
-	case <-time.After(60 * time.Second):
-		server.Server.Stop() // trigger a shutdown
-		log.Printf("Server took too long to start!")
-
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "etcd server took too long to start",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-	}
-}
 func (api *Api) GetCluster(c *gin.Context) {
 	c.JSON(http.StatusOK, contracts.Response{
 		Explanation:      "",
@@ -394,10 +305,6 @@ func (api *Api) GetCluster(c *gin.Context) {
 }
 
 func (api *Api) SaveClusterConfiguration() {
-	api.Config.KVStore.Node = api.Cluster.Node.NodeID
-	api.Config.KVStore.URL = api.Cluster.Node.URL
-	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-
 	err := startup.Save(api.Config)
 	if err != nil {
 		logger.Log.Error(err.Error())

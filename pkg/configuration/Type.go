@@ -5,21 +5,22 @@ import (
 )
 
 type Configuration struct {
-	Platform       string       `yaml:"platform"`
-	OverlayNetwork string       `yaml:"overlaynetwork"`
-	Agent          string       `yaml:"agent"`
-	Port           int          `yaml:"port"`
-	KVStore        *KVStore     `yaml:"kvstore"`
-	Target         string       `default:"development" yaml:"target"`
-	Root           string       `yaml:"root"`
-	OptRoot        string       `yaml:"optroot"`
-	Domains        []string     `yaml:"domains"`
-	IPs            []string     `yaml:"ips"`
-	CommonName     string       `yaml:"CN"`
-	HostHome       string       `yaml:"hostHome"`
-	Node           string       `yaml:"node"`
-	Environment    *Environment `yaml:"-"`
-	Flags          Flags        `yaml:"-"`
+	Platform       string        `yaml:"platform"`
+	OverlayNetwork string        `yaml:"overlaynetwork"`
+	Node           string        `yaml:"node"`
+	HostPort       HostPort      `yaml:"hostport"`
+	KVStore        *KVStore      `yaml:"kvstore"`
+	Target         string        `default:"development" yaml:"target"`
+	Root           string        `yaml:"root"`
+	Certificates   *Certificates `yaml:"certificates"`
+	HostHome       string        `yaml:"home"`
+	Environment    *Environment  `yaml:"-"`
+	Flags          Flags         `yaml:"-"`
+}
+
+type HostPort struct {
+	Host string `yaml:"host"`
+	Port string `yaml:"port"`
 }
 
 type KVStore struct {
@@ -27,6 +28,19 @@ type KVStore struct {
 	Node        uint64       `yaml:"node"`
 	URL         string       `yaml:"url"`
 	JoinCluster bool         `yaml:"join"`
+}
+
+type Certificates struct {
+	Domains *Domains `yaml:"domains"`
+	IPs     *IPs     `yaml:"ips"`
+}
+
+type IPs struct {
+	Members []string `yaml:"members"`
+}
+
+type Domains struct {
+	Members []string `yaml:"members"`
 }
 
 type Flags struct {

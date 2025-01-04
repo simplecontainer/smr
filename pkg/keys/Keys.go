@@ -3,8 +3,8 @@ package keys
 import (
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"io/fs"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,31 +30,19 @@ func (keys *Keys) GenerateCA() error {
 	return keys.CA.Generate()
 }
 
-func (keys *Keys) GenerateServer(domains []string, ips []string) error {
+func (keys *Keys) GenerateServer(domains *configuration.Domains, ips *configuration.IPs) error {
 	hostname, err := os.Hostname()
 
 	if err != nil {
 		hostname = "simplecontainer"
 	}
 
-	var ip []net.IP = make([]net.IP, 0)
-
-	for _, IP := range ips {
-		ip = append(ip, net.ParseIP(IP))
-	}
-
-	return keys.Server.Generate(keys.CA, domains, ip, hostname)
+	return keys.Server.Generate(keys.CA, domains, ips, hostname)
 }
 
-func (keys *Keys) GenerateClient(domains []string, ips []string, username string) error {
-	var ip []net.IP = make([]net.IP, 0)
-
-	for _, IP := range ips {
-		ip = append(ip, net.ParseIP(IP))
-	}
-
+func (keys *Keys) GenerateClient(domains *configuration.Domains, ips *configuration.IPs, username string) error {
 	keys.Clients[username] = NewClient()
-	return keys.Clients[username].Generate(keys.CA, domains, ip, username)
+	return keys.Clients[username].Generate(keys.CA, domains, ips, username)
 }
 
 func (keys *Keys) CAExists(directory string, username string) error {

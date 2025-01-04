@@ -13,11 +13,11 @@ import (
 
 func (api *Api) CreateUser(c *gin.Context) {
 	user := authentication.NewUser(c.Request.TLS)
-	path, err := user.CreateUser(api.Keys, api.Config.Agent, c.Param("username"), c.Param("domain"), c.Param("externalIP"))
+	path, err := user.CreateUser(api.Keys, api.Config.Node, c.Param("username"), c.Param("domain"), c.Param("externalIP"))
 
 	if err == nil {
 		var httpClient *http.Client
-		httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[c.Param("username")])
+		httpClient, _, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[c.Param("username")])
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -32,7 +32,7 @@ func (api *Api) CreateUser(c *gin.Context) {
 		}
 
 		api.Manager.Http.Append(c.Param("username"), &client.Client{
-			API:  fmt.Sprintf("%s:1443", c.Param("domain")),
+			API:  fmt.Sprintf("%s:%s", c.Param("domain"), api.Config.HostPort.Port),
 			Http: httpClient,
 		})
 

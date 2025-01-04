@@ -3,6 +3,7 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"net/http"
 )
@@ -19,7 +20,7 @@ func (http *Http) Append(username string, client *Client) {
 	http.Clients[username] = client
 }
 
-func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, error) {
+func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, string, error) {
 	var PEMCertificate []byte = make([]byte, 0)
 	var PEMPrivateKey []byte = make([]byte, 0)
 
@@ -30,11 +31,23 @@ func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, error) 
 
 	cert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	CAPool := x509.NewCertPool()
 	CAPool.AddCert(ca.Certificate)
+
+	var endpoint = ""
+
+	if len(client.Certificate.DNSNames) == 0 {
+		if len(client.Certificate.IPAddresses) == 0 {
+			return nil, "", errors.New("certificate doesn't contain any domains or ip addresess which it is valid for")
+		}
+
+		endpoint = client.Certificate.IPAddresses[0].String()
+	} else {
+		endpoint = client.Certificate.DNSNames[0]
+	}
 
 	return &http.Client{
 		Transport: &http.Transport{
@@ -43,5 +56,5 @@ func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, error) 
 				Certificates: []tls.Certificate{cert},
 			},
 		},
-	}, nil
+	}, endpoint, nil
 }

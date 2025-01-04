@@ -171,7 +171,7 @@ func (api *Api) Propose(c *gin.Context) {
 	}
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
-	api.Cluster.KVStore.Propose(key, string(data), api.Config.Agent)
+	api.Cluster.KVStore.Propose(key, string(data), api.Config.Node)
 
 	c.JSON(http.StatusOK, contracts.Response{
 		Explanation:      "value stored in the key value store",

@@ -36,7 +36,7 @@ func New(platform string, name string, config *configuration.Configuration, Chan
 					Configuration:      make(map[string]string),
 					ObjectDependencies: make([]*f.Format, 0),
 					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
-					Agent:              config.Agent,
+					Agent:              config.Node,
 				},
 				Status: statusObj,
 			},
