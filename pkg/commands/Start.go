@@ -96,7 +96,7 @@ func Start() {
 					fmt.Println("/*********************************************************************/")
 					fmt.Println("/* Certificate is generated for the use by the smr client!           */")
 					fmt.Println("/* It is located in the .ssh directory in home of the running user!  */")
-					fmt.Println("/* cat $HOME/.ssh/simplecontainer/root.pem                           */")
+					fmt.Println("/* ls $HOME/.ssh/simplecontainer                                     */")
 					fmt.Println("/*********************************************************************/")
 
 					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.Node, api.Keys.Clients[api.Config.Node])
