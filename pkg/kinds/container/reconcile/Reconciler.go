@@ -379,11 +379,11 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 			containerWatcher.Logger.Info("container prepared")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)
+			ReconcileLoop(containerWatcher)
 		} else {
 			containerWatcher.Logger.Info(err.Error())
+			containerWatcher.Container.GetStatus().Reconciling = false
 		}
-
-		containerWatcher.Container.GetStatus().Reconciling = false
 		break
 
 	case status.STATUS_KILL:
