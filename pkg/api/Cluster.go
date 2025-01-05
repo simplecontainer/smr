@@ -290,7 +290,146 @@ func (api *Api) StartCluster(c *gin.Context) {
 	}
 }
 
-func (api *Api) RestoreCluster(c *gin.Context) {}
+func (api *Api) RestoreCluster(c *gin.Context) {
+	if starting {
+		c.JSON(http.StatusConflict, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: "cluster is in the process of starting on this node",
+			Error:            true,
+			Success:          false,
+			Data: network.ToJson(map[string]any{
+				"agent": api.Config.Node,
+			}),
+		})
+
+		return
+	} else {
+		if api.Cluster != nil && api.Cluster.Started {
+			c.JSON(http.StatusConflict, contracts.Response{
+				Explanation:      "",
+				ErrorExplanation: "cluster is already started on this node",
+				Error:            true,
+				Success:          false,
+				Data: network.ToJson(map[string]any{
+					"agent": api.Config.Node,
+				}),
+			})
+
+			return
+		}
+	}
+
+	starting = true
+	var err error
+
+	api.Cluster, err = cluster.Restore(api.Config)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	api.Manager.Cluster = api.Cluster
+
+	var server *embed.Etcd
+	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+
+		return
+	}
+
+	select {
+	case <-server.Server.ReadyNotify():
+		fmt.Println("etcd server started - continue with starting raft")
+		api.Cluster.EtcdClient = cluster.NewEtcdClient()
+
+		CAPool := x509.NewCertPool()
+		CAPool.AddCert(api.Keys.CA.Certificate)
+
+		tlsConfig := &tls.Config{
+			ClientAuth:     tls.RequireAndVerifyClientCert,
+			ClientCAs:      CAPool,
+			GetCertificate: api.Keys.Reloader.GetCertificateFunc(),
+		}
+
+		api.Cluster.Regenerate(api.Config, api.Keys)
+		api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+
+		err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, "")
+
+		if err != nil {
+			server.Server.Stop()
+
+			c.JSON(http.StatusInternalServerError, contracts.Response{
+				Explanation:      "",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+
+			return
+		}
+
+		go api.Cluster.ListenEvents(api.Config.Node)
+		go api.Cluster.ListenUpdates(api.Config.Node)
+		go api.Cluster.ListenObjects(api.Config.Node)
+
+		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, contracts.Response{
+				Explanation:      "",
+				ErrorExplanation: "flannel overlay network failed to start",
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+
+			return
+		}
+
+		api.Cluster.Started = true
+
+		c.JSON(http.StatusOK, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: "everything went ok",
+			Error:            false,
+			Success:          true,
+			Data: network.ToJson(map[string]string{
+				"agent": api.Config.Node,
+			}),
+		})
+
+		return
+	case <-time.After(60 * time.Second):
+		server.Server.Stop() // trigger a shutdown
+		log.Printf("etcd server took too long to start!")
+
+		c.JSON(http.StatusInternalServerError, contracts.Response{
+			Explanation:      "",
+			ErrorExplanation: "etcd server took too long to start",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		})
+	}
+}
 
 func (api *Api) GetCluster(c *gin.Context) {
 	c.JSON(http.StatusOK, contracts.Response{

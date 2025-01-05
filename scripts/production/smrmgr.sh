@@ -16,7 +16,7 @@ HelpStart(){
 """
 }
 
-Start(){
+Manager(){
   AGENT=""
   DOMAIN=""
   IP=""
@@ -29,38 +29,47 @@ Start(){
   CONTROL_PLANE="0.0.0.0:1443"
   REPOSITORY="simplecontainermanager/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+  RESTART=false
+  UPGRADE=false
+  ALLYES=false
 
-  while getopts ":c:e:h:m:a:d:i:j:n:r:p:x:t:z:" option; do
-     case $option in
-        h) # Display help
-           HelpStart && exit;;
-        c) # Control plane client connect string
-           CONN_STRING=$OPTARG;;
-        e) # Expose control plane
-           CONTROL_PLANE=$OPTARG;;
-        m) #Set mode
-           MODE=$OPTARG;;
-        j) #Set join
-           JOIN=$OPTARG;;
-        a) # Set agent
-           AGENT=$OPTARG;;
-        d) # Set domain
-           DOMAIN=$OPTARG;;
-        t) # Set tag
-           TAG=$OPTARG;;
-        i) # Set ip
-           IP=$OPTARG;;
-        n) # Set Node URL
-           NODE_DOMAIN=$OPTARG;;
-        p) # Set node port
-           NODE_PORT=$OPTARG;;
-        r) # Set repository
-           REPOSITORY=$OPTARG;;
-        x) # Set client additional args
-           CLIENT_ARGS=$OPTARG;;
-        *) # Invalid option
-          echo "Invalid option";;
-     esac
+  while getopts ":a:c:d:e:h:i:j:m:n:p:r:s:t:u:x:y:z:" option; do
+    case $option in
+      a) # Set agent
+         AGENT=$OPTARG;;
+      c) # Control plane client connect string
+         CONN_STRING=$OPTARG;;
+      d) # Set domain
+         DOMAIN=$OPTARG;;
+      e) # Expose control plane
+         CONTROL_PLANE=$OPTARG;;
+      h) # Display help
+         HelpStart && exit;;
+      i) # Set ip
+         IP=$OPTARG;;
+      j) #Set join
+         JOIN=$OPTARG;;
+      m) #Set mode
+         MODE=$OPTARG;;
+      n) # Set Node URL
+         NODE_DOMAIN=$OPTARG;;
+      p) # Set node port
+         NODE_PORT=$OPTARG;;
+      r) # Set repository
+         REPOSITORY=$OPTARG;;
+      t) # Set tag
+         TAG=$OPTARG;;
+      u) # Set upgrade true/false
+         UPGRADE=$OPTARG;;
+      s) # Set restart true/false
+         RESTART=$OPTARG;;
+      x) # Set client additional args
+         CLIENT_ARGS=$OPTARG;;
+      y) #SSet all yes answer
+         ALLYES=$OPTARG;;
+      *) # Invalid option
+        echo "Invalid option";;
+   esac
   done
 
   if [[ $DOMAIN != "" ]]; then
@@ -75,55 +84,89 @@ Start(){
   fi
 
   echo "Agent name: $AGENT"
-  echo "Node URL: $NODE_DOMAIN"
-  echo "Domain: $DOMAIN"
+  echo "Node: $NODE_DOMAIN"
   echo "Additional arguments: $CLIENT_ARGS"
-  echo "Join: $JOIN"
+  echo "Restart: $RESTART"
+  echo "Upgrade: $UPGRADE"
 
-  if [[ ${AGENT} != "" ]]; then
-    if [[ ${MODE} == "cluster" ]]; then
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
+  if [[ $JOIN != "" ]]; then
+    echo "Join: $JOIN"
+  fi
 
-      if [[ ${?} != 0 ]]; then
-        echo "Smr returned non-zero exit code - check the logs of the node controller container"
-        exit
-      fi
+  if [[ "${UPGRADE}" == true || "${RESTART}" == true ]]; then
+    read -p "This action will stop simplecontainer node and restart it from config file [Yy/Nn]? " -n 1 -r
+    echo
 
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"
+    if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
+        IMAGETAG=$(smr node inspect --agent smr-agent-1 | jq '.Config.Image' | tr -d /\"//)
+        arrIN=(${IMAGETAG//:/ })
 
-      if [[ $NODE_DOMAIN == "localhost" ]]; then
-        NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
-      else
-        NODE_DOMAIN="https://${NODE_DOMAIN}:${NODE_PORT}"
-      fi
+        smr node stop --agent "${AGENT}" $CLIENT_ARGS --wait
 
-      while :
-      do
-      	if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${AGENT}.pem" --context "${AGENT}" --wait --y; then
-      	  break
-      	else
-      	  echo "Failed to connect to siplecontainer, trying again in 1 second"
-          sleep 1
-      	fi
-      done
+        if [[ $RESTART == "true" ]]; then
+          smr node run --image "${arrIN[0]}" --tag "${arrIN[1]}" --args="start --restore true" $CLIENT_ARGS --agent "${AGENT}"
+        else
+          smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start --restore true" $CLIENT_ARGS --agent "${AGENT}"
+        fi
 
-      if [[ ${JOIN} == "" ]]; then
-        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
-      else
-        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
-      fi
+        while :
+        do
+          if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${AGENT}.pem" --context "${AGENT}" --wait --y; then
+            break
+          else
+            echo "Failed to connect to siplecontainer, trying again in 1 second"
+            sleep 1
+          fi
+        done
 
-      echo "The simplecontainer is started in cluster mode."
-    else
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domain ${DOMAIN} --ip ${IP}" --agent "${AGENT}" --wait
-      smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --agent "${AGENT}"
-
-      sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
-
-      echo "The simplecontainer is started in single mode."
+        sudo nohup smr node cluster restore 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
     fi
   else
-    HelpStart
+    if [[ ${AGENT} != "" ]]; then
+      if [[ ${MODE} == "cluster" ]]; then
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
+
+        if [[ ${?} != 0 ]]; then
+          echo "Simplecontainer returned non-zero exit code - check the logs of the node controller container"
+          exit
+        fi
+
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"
+
+        if [[ $NODE_DOMAIN == "localhost" ]]; then
+          NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
+        else
+          NODE_DOMAIN="https://${NODE_DOMAIN}:${NODE_PORT}"
+        fi
+
+        while :
+        do
+          if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${AGENT}.pem" --context "${AGENT}" --wait --y; then
+            break
+          else
+            echo "Failed to connect to siplecontainer, trying again in 1 second"
+            sleep 1
+          fi
+        done
+
+        if [[ ${JOIN} == "" ]]; then
+          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+        else
+          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
+        fi
+
+        echo "The simplecontainer is started in cluster mode."
+      else
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domain ${DOMAIN} --ip ${IP}" --agent "${AGENT}" --wait
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --agent "${AGENT}"
+
+        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+
+        echo "The simplecontainer is started in single mode."
+      fi
+    else
+      HelpStart
+    fi
   fi
 }
 
@@ -168,7 +211,13 @@ case "$COMMAND" in
       Download "$@";;
     "start")
       shift
-      Start "$@";;
+      Manager "$@";;
+    "restart")
+      shift
+      Manager "-s" "true" "$@";;
+    "upgrade")
+      shift
+      Manager "-u" "true" "$@";;
     "wait")
      shift
      Wait "$@";;

@@ -21,8 +21,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
-	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"strconv"
 	"time"
@@ -101,7 +102,7 @@ func IsDaemonRunning() {
 	}
 }
 
-func (container *Docker) Start() bool {
+func (container *Docker) Start() error {
 	if c, _ := container.Get(); c != nil && c.State == "exited" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -116,18 +117,12 @@ func (container *Docker) Start() bool {
 			}
 		}(cli)
 
-		err = cli.ContainerStart(ctx, container.DockerID, TDContainer.StartOptions{})
-
-		if err != nil {
-			return false
-		}
-
-		return true
+		return cli.ContainerStart(ctx, container.DockerID, TDContainer.StartOptions{})
 	} else {
-		return false
+		return errors.New("container is nil or already started")
 	}
 }
-func (container *Docker) Stop() bool {
+func (container *Docker) Stop(signal string) error {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -143,21 +138,35 @@ func (container *Docker) Stop() bool {
 		}(cli)
 
 		duration := 10
-		err = cli.ContainerStop(ctx, container.DockerID, TDContainer.StopOptions{
-			Signal:  "SIGTERM",
+		return cli.ContainerStop(ctx, c.ID, TDContainer.StopOptions{
+			Signal:  signal,
 			Timeout: &duration,
 		})
-
-		if err != nil {
-			return false
-		}
-
-		return true
 	} else {
-		return false
+		return errors.New("container is nil when trying to stop it")
 	}
 }
-func (container *Docker) Restart() bool {
+func (container *Docker) Kill(signal string) error {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
+		ctx := context.Background()
+		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+		if err != nil {
+			panic(err)
+		}
+
+		defer func(cli *IDClient.Client) {
+			err = cli.Close()
+			if err != nil {
+				return
+			}
+		}(cli)
+
+		return cli.ContainerKill(ctx, c.ID, signal)
+	} else {
+		return errors.New("container is nil or not running when trying to kill it")
+	}
+}
+func (container *Docker) Restart() error {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -173,18 +182,12 @@ func (container *Docker) Restart() bool {
 		}(cli)
 
 		duration := 10
-		err = cli.ContainerRestart(ctx, container.DockerID, TDContainer.StopOptions{
+		return cli.ContainerRestart(ctx, container.DockerID, TDContainer.StopOptions{
 			Signal:  "SIGTERM",
 			Timeout: &duration,
 		})
-
-		if err != nil {
-			return false
-		}
-
-		return true
 	} else {
-		return false
+		return errors.New("container is nil or not running when trying to restart it")
 	}
 }
 func (container *Docker) Delete() error {
@@ -335,7 +338,7 @@ func (container *Docker) Get() (*TDTypes.Container, error) {
 
 	return &dockerContainer, nil
 }
-func (container *Docker) Run(environment *configuration.Environment, client *client.Http, dnsCache *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
+func (container *Docker) Run(config *configuration.Configuration, client *client.Http, dnsCache *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
 	c, _ := container.Get()
 
 	if c == nil || c.State == "exited" {
@@ -395,7 +398,7 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 		DNS := []string{}
 
 		if len(container.Definition.Spec.Container.Dns) == 0 {
-			DNS = append(DNS, []string{environment.AGENTIP, "127.0.0.1"}...)
+			DNS = append(DNS, []string{config.Environment.AGENTIP, "127.0.0.1"}...)
 		} else {
 			DNS = append(DNS, container.Definition.Spec.Container.Dns...)
 		}
@@ -435,7 +438,7 @@ func (container *Docker) Run(environment *configuration.Environment, client *cli
 		}
 
 		if container.NetworkMode != "host" {
-			err = container.AttachToNetworks()
+			err = container.AttachToNetworks(config.Node)
 
 			if err != nil {
 				return nil, err
@@ -476,7 +479,7 @@ func (container *Docker) Prepare(client *client.Http, user *authentication.User,
 	return nil
 }
 
-func (container *Docker) AttachToNetworks() error {
+func (container *Docker) AttachToNetworks(agentContainerName string) error {
 	var dockerContainer *TDTypes.Container
 	var err error
 
@@ -495,8 +498,10 @@ func (container *Docker) AttachToNetworks() error {
 		return err
 	}
 
+	logger.Log.Debug("trying to find agent container", zap.String("agent", agentContainerName))
+
 	var agent TDTypes.Container
-	agent, err = DockerGet(viper.GetString("agent"))
+	agent, err = DockerGet(agentContainerName)
 
 	if err != nil {
 		return errors.New("failed to find agent container")

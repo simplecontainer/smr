@@ -57,7 +57,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(created, pendingDelete)
 	status.StateMachine.AddEdge(cloning, pendingDelete)
 	status.StateMachine.AddEdge(invaliddefinitions, pendingDelete)
-
+	status.StateMachine.AddEdge(invalidgit, pendingDelete)
 }
 
 func (status *Status) SetState(state string) error {

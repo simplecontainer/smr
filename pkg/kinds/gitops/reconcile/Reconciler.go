@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"go.uber.org/zap"
 	"time"
@@ -26,7 +27,7 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 		panic(err)
 	}
 
-	watcher := &watcher.Gitops{
+	return &watcher.Gitops{
 		Gitops: gitopsObj,
 		BackOff: watcher.BackOff{
 			BackOff: false,
@@ -41,8 +42,6 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 		Ticker:      time.NewTicker(interval),
 		Logger:      loggerObj,
 	}
-
-	return watcher
 }
 
 func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
@@ -53,10 +52,13 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 			close(gitopsWatcher.GitopsQueue)
 
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
+			logger.Log.Debug("gitops watcher deleted")
+
 			return
 		case <-gitopsWatcher.GitopsQueue:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
 			go Gitops(shared, gitopsWatcher)
+
 			break
 		case <-gitopsWatcher.Ticker.C:
 			if !gitopsWatcher.Gitops.Status.Reconciling && gitopsWatcher.Gitops.Status.GetCategory() != status.CATEGORY_END {
@@ -183,7 +185,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 					Loop(gitopsWatcher)
 					return
-
 				}
 
 				gitopsWatcher.Gitops.Status.LastSyncedCommit = gitopsWatcher.Gitops.Commit.ID()

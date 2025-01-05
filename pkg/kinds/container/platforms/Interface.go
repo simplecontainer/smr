@@ -12,18 +12,19 @@ import (
 )
 
 type IContainer interface {
-	Start() bool
-	Stop() bool
-	Restart() bool
+	Start() error
+	Stop(signal string) error
+	Kill(signal string) error
+	Restart() error
 	Delete() error
 	Rename(newName string) error
 	Exec(command []string) types.ExecResult
 
 	Get() (*TDTypes.Container, error)
-	Run(*configuration.Environment, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
+	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User) error
 
-	AttachToNetworks() error
+	AttachToNetworks(string) error
 	UpdateDns(dnsCache *dns.Records)
 
 	GetRuntime() *types.Runtime
@@ -45,18 +46,19 @@ type IContainer interface {
 }
 
 type IPlatform interface {
-	Start() bool
-	Stop() bool
-	Restart() bool
+	Start() error
+	Stop(signal string) error
+	Kill(signal string) error
+	Restart() error
 	Delete() error
 	Rename(newName string) error
 	Exec(command []string) types.ExecResult
 
 	Get() (*TDTypes.Container, error)
-	Run(*configuration.Environment, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
+	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error
 
-	AttachToNetworks() error
+	AttachToNetworks(string) error
 	UpdateDns(dnsCache *dns.Records)
 	GenerateLabels() map[string]string
 

@@ -40,6 +40,7 @@ func (status *Status) CreateGraph() {
 	prepareFailed := gograph.NewVertex(&StatusState{STATUS_INVALID_CONFIGURATION, CATEGORY_END})
 
 	kill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
+	forceKill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
 	pendingDelete := gograph.NewVertex(&StatusState{STATUS_PENDING_DELETE, CATEGORY_END})
 
 	status.StateMachine.AddEdge(created, prepare)
@@ -107,7 +108,11 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(readinessFailed, created)
 
 	status.StateMachine.AddEdge(kill, dead)
+	status.StateMachine.AddEdge(kill, forceKill)
 	status.StateMachine.AddEdge(kill, pendingDelete)
+
+	status.StateMachine.AddEdge(forceKill, dead)
+	status.StateMachine.AddEdge(forceKill, pendingDelete)
 
 	status.StateMachine.AddEdge(backoff, pendingDelete)
 	status.StateMachine.AddEdge(backoff, created)

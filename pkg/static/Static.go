@@ -28,3 +28,6 @@ const CATEGORY_OBJECT = "object"
 const CATEGORY_ETCD = "etcd"
 const CATEGORY_PLAIN = "plain"
 const CATEGORY_SECRET = "secret"
+
+const SIGTERM = "SIGTERM"
+const SIGKILL = "SIGKILL"

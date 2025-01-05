@@ -1,7 +1,6 @@
 package replicas
 
 import (
-	"fmt"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -26,8 +25,6 @@ func NewReplica(shared *shared.Shared, agent string, definition *v1.ContainerDef
 }
 
 func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []string) (*Distributed, error) {
-	fmt.Println(clstr)
-
 	dr := NewDistributed(replicas.NodeID, replicas.Definition.Meta.Group, replicas.Definition.Meta.Name)
 	err := dr.Load(replicas.Shared.Client.Get(user.Username), user)
 
@@ -181,24 +178,15 @@ func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, m
 	var create = make([]uint64, 0)
 	var destroy = make([]uint64, 0)
 
-	fmt.Println(nodes)
-	fmt.Println(member)
-
 	if slices.Contains(nodes, member) {
-		fmt.Println("CONTAINS ME")
 		sort.Slice(nodes, func(i, j int) bool {
 			return nodes[i] < nodes[j]
 		})
-
-		fmt.Println(nodes)
 
 		nodeCount := uint64(len(nodes))
 		replicasScoped := replicasNumber / nodeCount
 		normalizedNodes := make(map[uint64]uint64)
 		normalizedMember := uint64(0)
-
-		fmt.Println(nodeCount)
-		fmt.Println(replicasScoped)
 
 		for i, node := range nodes {
 			x := node - uint64(i)
@@ -208,9 +196,6 @@ func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, m
 				normalizedMember = uint64(i)
 			}
 		}
-
-		fmt.Println(normalizedNodes)
-		fmt.Println(normalizedMember)
 
 		for replicas := 1 * normalizedNodes[normalizedMember]; replicas <= replicasScoped*normalizedNodes[normalizedMember]; replicas++ {
 			create = append(create, replicas)

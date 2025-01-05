@@ -260,6 +260,7 @@ func Start() {
 
 				router.GET("/cluster", api.GetCluster)
 				router.POST("/cluster/start", api.StartCluster)
+				router.POST("/cluster/restore", api.RestoreCluster)
 				router.POST("/cluster/node", api.AddNode)
 				router.DELETE("/cluster/node/:node", api.RemoveNode)
 

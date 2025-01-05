@@ -78,13 +78,16 @@ func NewGhost(state map[string]interface{}) (IContainer, error) {
 	return nil, errors.New("type is not defined")
 }
 
-func (c Container) Start() bool {
+func (c Container) Start() error {
 	return c.Platform.Start()
 }
-func (c Container) Stop() bool {
-	return c.Platform.Stop()
+func (c Container) Stop(signal string) error {
+	return c.Platform.Stop(signal)
 }
-func (c Container) Restart() bool {
+func (c Container) Kill(signal string) error {
+	return c.Platform.Kill(signal)
+}
+func (c Container) Restart() error {
 	return c.Platform.Restart()
 }
 func (c Container) Delete() error {
@@ -100,15 +103,15 @@ func (c Container) Exec(command []string) types.ExecResult {
 func (c Container) Get() (*TDTypes.Container, error) {
 	return c.Platform.Get()
 }
-func (c Container) Run(environment *configuration.Environment, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
-	return c.Platform.Run(environment, http, records, user)
+func (c Container) Run(config *configuration.Configuration, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
+	return c.Platform.Run(config, http, records, user)
 }
 func (c Container) Prepare(client *client.Http, user *authentication.User) error {
 	return c.Platform.Prepare(client, user, c.General.Runtime)
 }
 
-func (c Container) AttachToNetworks() error {
-	return c.Platform.AttachToNetworks()
+func (c Container) AttachToNetworks(agentContainerName string) error {
+	return c.Platform.AttachToNetworks(agentContainerName)
 }
 func (c Container) UpdateDns(cache *dns.Records) {
 	c.Platform.UpdateDns(cache)

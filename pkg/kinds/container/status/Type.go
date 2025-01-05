@@ -50,4 +50,5 @@ const STATUS_INVALID_CONFIGURATION string = "invalid_configuration"
 
 const STATUS_START string = "start"
 const STATUS_KILL string = "kill"
+const STATUS_FORCE_KILL string = "force_kill"
 const STATUS_PENDING_DELETE string = "pending_delete"

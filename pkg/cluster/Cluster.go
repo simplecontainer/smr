@@ -19,10 +19,8 @@ func New() *Cluster {
 func Restore(config *configuration.Configuration) (*Cluster, error) {
 	cluster := node.NewNodes()
 
-	for i, c := range config.KVStore.Cluster {
-		if c.URL == "" {
-			cluster.Nodes = append(cluster.Nodes[:i], cluster.Nodes[i+1:]...)
-		}
+	for _, c := range config.KVStore.Cluster {
+		cluster.Add(c)
 	}
 
 	if len(cluster.Nodes) == 0 {

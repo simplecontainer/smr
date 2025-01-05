@@ -13,7 +13,7 @@ func (cluster *Cluster) ListenObjects(agent string) {
 		select {
 		case data, ok := <-cluster.KVStore.ObjectsC:
 			if ok {
-				// Kind is encoded in the key
+				// Kind should be encoded in the key
 				split := strings.Split(data.Key, ".")
 				kind := split[0]
 
@@ -22,8 +22,6 @@ func (cluster *Cluster) ListenObjects(agent string) {
 				if !response.Success {
 					if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
 						logger.Log.Error(errors.New(response.ErrorExplanation).Error())
-					} else {
-						logger.Log.Info(fmt.Sprintf(response.ErrorExplanation))
 					}
 				}
 				break

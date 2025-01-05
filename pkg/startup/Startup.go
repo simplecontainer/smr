@@ -70,7 +70,6 @@ func SetFlags() {
 	flag.String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
-	flag.Bool("verbose", false, "Verbose output")
 
 	flag.String("agent", "", "Node container name")
 	flag.String("cluster", "", "SMR Cluster")

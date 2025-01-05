@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
@@ -13,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"time"
 )
@@ -189,7 +191,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if dockerState != "running" {
 			containerWatcher.Logger.Info("container attempt to start")
-			_, err = containerObj.Run(shared.Manager.Config.Environment, shared.Client, shared.DnsCache, containerWatcher.User)
+			_, err = containerObj.Run(shared.Manager.Config, shared.Client, shared.DnsCache, containerWatcher.User)
 
 			if err == nil {
 				containerWatcher.Logger.Info("container started")
@@ -208,7 +210,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		} else {
 			containerWatcher.Logger.Info("container is already running")
 
-			err = containerObj.AttachToNetworks()
+			err = containerObj.AttachToNetworks(shared.Manager.Config.Node)
 
 			if err != nil {
 				containerWatcher.Logger.Error("container and smr-agent failed to attach to all networks!")
@@ -284,7 +286,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		switch dockerState.State {
 		case "running":
 			// shhhhh go to sleep
-			containerWatcher.Logger.Info("container is running")
+			containerWatcher.Logger.Debug("container is running")
 			containerObj.GetStatus().Reconciling = false
 			return
 		case "exited":
@@ -375,8 +377,14 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	case status.STATUS_KILL:
 		containerWatcher.Logger.Info("attempt to shutdown gracefully")
 
-		go containerObj.Stop()
-		Wait(func() error {
+		go func() {
+			err := containerObj.Stop(static.SIGTERM)
+			if err != nil {
+				containerWatcher.Logger.Error(err.Error())
+			}
+		}()
+
+		err := Wait(func() error {
 			c, err := containerObj.Get()
 
 			if err != nil {
@@ -385,11 +393,43 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 			if c != nil && c.State == "exited" {
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
-				return nil
 			} else {
 				return errors.New("container is not yet in exited state")
 			}
+
+			return nil
 		})
+
+		if err != nil {
+			containerWatcher.Logger.Info("graceful shutdown failed - forcing kill")
+
+			go func() {
+				err = containerObj.Kill(static.SIGKILL)
+				if err != nil {
+					containerWatcher.Logger.Error(err.Error())
+				}
+			}()
+			err = Wait(func() error {
+				var c *types.Container
+				c, err = containerObj.Get()
+
+				if err != nil {
+					return err
+				}
+
+				if c != nil && c.State == "exited" {
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+				} else {
+					return errors.New("container is not yet in exited state")
+				}
+
+				return nil
+			})
+		}
+
+		if err != nil {
+			containerWatcher.Logger.Error("failed to stop container - will try again")
+		}
 
 		ReconcileLoop(containerWatcher)
 		break
@@ -405,20 +445,11 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			if c.State == "running" {
 				containerWatcher.Logger.Info("starting graceful termination, timeout 30s")
 
-				containerObj.Stop()
-				Wait(func() error {
-					c, err = containerObj.Get()
+				err = containerObj.Stop(static.SIGTERM)
 
-					if err != nil {
-						return nil
-					}
-
-					if c != nil && c.State == "exited" {
-						return nil
-					} else {
-						return errors.New("container is not yet in exited state")
-					}
-				})
+				if err != nil {
+					containerWatcher.Logger.Error(err.Error())
+				}
 			}
 
 			err = containerObj.Delete()
@@ -456,16 +487,11 @@ func GetState(containerWatcher *watcher.Container) string {
 	return ""
 }
 
-func Wait(f func() error) {
+func Wait(f func() error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
 
-	err := backoff.Retry(f, backOff)
-	if err != nil {
-		return
-	}
-
-	return
+	return backoff.Retry(f, backOff)
 }
