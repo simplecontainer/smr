@@ -114,7 +114,7 @@ func (container *Container) View(request contracts.Control) contracts.Response {
 	}
 }
 func (container *Container) Restart(request contracts.Control) contracts.Response {
-	containerObj := container.Shared.Registry.FindLocal(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
+	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
 
 	if containerObj == nil {
 		return contracts.Response{

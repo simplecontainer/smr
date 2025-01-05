@@ -18,6 +18,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
@@ -454,6 +455,8 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 }
 
 func (container *Docker) Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+	runtime.ObjectDependencies = make([]*f.Format, 0)
+
 	err := container.PrepareNetwork(client, user, runtime)
 
 	if err != nil {
