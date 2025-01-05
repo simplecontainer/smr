@@ -14,8 +14,9 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 	for _, fileInfo := range definitionsOrdered {
 		fileName := fileInfo["name"]
 
-		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, fileName))
+		logger.Info("syncing object", zap.String("object", fileName))
 
+		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, fileName))
 		response := gitops.sendRequest(client, user, "https://localhost:1443/api/v1/apply", definition)
 
 		if !response.Success {

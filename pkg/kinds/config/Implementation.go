@@ -7,6 +7,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
@@ -26,7 +27,8 @@ func (config *Config) GetShared() interface{} {
 	return config.Shared
 }
 func (config *Config) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
+	var definition v1.ConfigurationDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -36,7 +38,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 		}, err
 	}
 
-	valid, err := config.Definition.Validate()
+	valid, err := definition.Validate()
 
 	if !valid {
 		return contracts.Response{
@@ -58,12 +60,12 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 
 	var format *f.Format
 
-	format = f.New("configuration", config.Definition.Meta.Group, config.Definition.Meta.Name, "object")
+	format = f.New("configuration", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = config.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	logger.Log.Debug("server received configuration object", zap.String("definition", jsonStringFromRequest))
 
@@ -96,18 +98,18 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	}
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		for key, _ := range config.Definition.Spec.Data {
-			format = f.New("configuration", config.Definition.Meta.Group, config.Definition.Meta.Name, key)
+		for key, _ := range definition.Spec.Data {
+			format = f.New("configuration", definition.Meta.Group, definition.Meta.Name, key)
 
 			if format.Identifier != "*" {
-				format.Identifier = fmt.Sprintf("%s-%s", config.Shared.Manager.Config.Environment.PROJECT, config.Definition.Meta.Name)
+				format.Identifier = fmt.Sprintf("%s-%s", config.Shared.Manager.Config.Environment.PROJECT, definition.Meta.Name)
 			}
 		}
 
 		config.Shared.Manager.KindsRegistry["container"].GetShared().(*shared.Shared).Watcher.EventChannel <- &types.Events{
 			Kind:    KIND,
-			Group:   config.Definition.Meta.Group,
-			Name:    config.Definition.Meta.Name,
+			Group:   definition.Meta.Group,
+			Name:    definition.Meta.Name,
 			Message: "detected configuration update, reconcile container",
 		}
 	} else {
@@ -129,7 +131,8 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	}, nil
 }
 func (config *Config) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
+	var definition v1.ConfigurationDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -149,12 +152,12 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 
 	var format *f.Format
 
-	format = f.New("configuration", config.Definition.Meta.Group, config.Definition.Meta.Name, "object")
+	format = f.New("configuration", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = config.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
@@ -187,7 +190,8 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 	}
 }
 func (config *Config) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &config.Definition); err != nil {
+	var definition v1.ConfigurationDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -205,7 +209,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte, agent s
 
 	mapstructure.Decode(data["configuration"], &config)
 
-	format := f.New("configuration", config.Definition.Meta.Group, config.Definition.Meta.Name, "object")
+	format := f.New("configuration", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
@@ -214,7 +218,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte, agent s
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("configuration", config.Definition.Meta.Group, config.Definition.Meta.Name, "")
+			format = f.New("configuration", definition.Meta.Group, definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return contracts.Response{

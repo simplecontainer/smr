@@ -27,9 +27,9 @@ func (network *Network) GetShared() interface{} {
 }
 
 func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var networkDefinition v1.NetworkDefinition
+	var definition v1.NetworkDefinition
 
-	if err := json.Unmarshal(jsonData, &networkDefinition); err != nil {
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -39,7 +39,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 		}, err
 	}
 
-	valid, err := networkDefinition.Validate()
+	valid, err := definition.Validate()
 
 	if !valid {
 		return contracts.Response{
@@ -57,16 +57,16 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 		panic(err)
 	}
 
-	mapstructure.Decode(data["network"], &networkDefinition)
+	mapstructure.Decode(data["network"], &definition)
 
 	var format *f.Format
-	format = f.New("network", networkDefinition.Meta.Group, networkDefinition.Meta.Name, "object")
+	format = f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = networkDefinition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	logger.Log.Debug("server received network object", zap.String("definition", jsonStringFromRequest))
 
@@ -128,7 +128,8 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 }
 
 func (network *Network) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &network.Definition); err != nil {
+	var definition v1.NetworkDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -148,12 +149,12 @@ func (network *Network) Compare(user *authentication.User, jsonData []byte) (con
 
 	var format *f.Format
 
-	format = f.New("network", network.Definition.Meta.Group, network.Definition.Meta.Name, "object")
+	format = f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = network.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
@@ -187,7 +188,8 @@ func (network *Network) Compare(user *authentication.User, jsonData []byte) (con
 }
 
 func (network *Network) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &network.Definition); err != nil {
+	var definition v1.NetworkDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -205,7 +207,7 @@ func (network *Network) Delete(user *authentication.User, jsonData []byte, agent
 
 	mapstructure.Decode(data["network"], &network)
 
-	format := f.New("network", network.Definition.Meta.Group, network.Definition.Meta.Name, "object")
+	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
@@ -214,7 +216,7 @@ func (network *Network) Delete(user *authentication.User, jsonData []byte, agent
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("network", network.Definition.Meta.Group, network.Definition.Meta.Name, "")
+			format = f.New("network", definition.Meta.Group, definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return contracts.Response{

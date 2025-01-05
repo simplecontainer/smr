@@ -7,6 +7,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
@@ -28,7 +29,8 @@ func (resource *Resource) GetShared() interface{} {
 }
 
 func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &resource.Definition); err != nil {
+	var definition v1.ResourceDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -38,7 +40,7 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 		}, err
 	}
 
-	valid, err := resource.Definition.Validate()
+	valid, err := definition.Validate()
 
 	if !valid {
 		return contracts.Response{
@@ -63,12 +65,12 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 
 	var format *f.Format
 
-	format = f.New("resource", resource.Definition.Meta.Group, resource.Definition.Meta.Name, "object")
+	format = f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = resource.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	logger.Log.Debug("server received resource object", zap.String("definition", jsonStringFromRequest))
 
@@ -103,8 +105,8 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 	if obj.ChangeDetected() || !obj.Exists() {
 		resource.Shared.Manager.KindsRegistry["container"].GetShared().(*shared.Shared).Watcher.EventChannel <- &types.Events{
 			Kind:    KIND,
-			Group:   resource.Definition.Meta.Group,
-			Name:    resource.Definition.Meta.Name,
+			Group:   definition.Meta.Group,
+			Name:    definition.Meta.Name,
 			Message: "detected resource update, reconcile container",
 		}
 	} else {
@@ -127,7 +129,8 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 }
 
 func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &resource.Definition); err != nil {
+	var definition v1.ResourceDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -147,12 +150,12 @@ func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (c
 
 	var format *f.Format
 
-	format = f.New("resource", resource.Definition.Meta.Group, resource.Definition.Meta.Name, "object")
+	format = f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = resource.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
@@ -186,7 +189,8 @@ func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (c
 }
 
 func (resource *Resource) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &resource.Definition); err != nil {
+	var definition v1.ResourceDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -204,7 +208,7 @@ func (resource *Resource) Delete(user *authentication.User, jsonData []byte, age
 
 	mapstructure.Decode(data["spec"], &resource)
 
-	format := f.New("resource", resource.Definition.Meta.Group, resource.Definition.Meta.Name, "object")
+	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
@@ -213,7 +217,7 @@ func (resource *Resource) Delete(user *authentication.User, jsonData []byte, age
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("httpauth", resource.Definition.Meta.Group, resource.Definition.Meta.Name, "")
+			format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return contracts.Response{

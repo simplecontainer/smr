@@ -63,7 +63,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			go Container(shared, containerWatcher)
 			break
 		case <-containerWatcher.Ticker.C:
-			if !containerWatcher.Container.GetStatus().Reconciling && containerWatcher.Container.GetStatus().GetCategory() != status.CATEGORY_END {
+			if containerWatcher.Container.GetStatus().GetCategory() != status.CATEGORY_END {
 				go Container(shared, containerWatcher)
 			} else {
 				containerWatcher.Ticker.Stop()
@@ -134,7 +134,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)
 		} else {
 			containerWatcher.Logger.Info(err.Error())
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_INVALID_CONFIGURATION)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING)
 		}
 
 		ReconcileLoop(containerWatcher)
@@ -205,7 +205,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				}()
 			} else {
 				containerWatcher.Logger.Info("container start failed", zap.Error(err))
-				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_INVALID_CONFIGURATION)
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING)
 			}
 		} else {
 			containerWatcher.Logger.Info("container is already running")
@@ -370,8 +370,20 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		ReconcileLoop(containerWatcher)
 		break
-	case status.STATUS_INVALID_CONFIGURATION:
+	case status.STATUS_PENDING:
 		containerWatcher.Logger.Info("container invalid configuration")
+		err := containerObj.Prepare(shared.Client, containerWatcher.User)
+
+		if err == nil {
+			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().Spec.Container.Dependencies, containerWatcher.DependencyChan)
+
+			containerWatcher.Logger.Info("container prepared")
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)
+		} else {
+			containerWatcher.Logger.Info(err.Error())
+		}
+
+		containerWatcher.Container.GetStatus().Reconciling = false
 		break
 
 	case status.STATUS_KILL:

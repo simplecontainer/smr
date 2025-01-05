@@ -2,16 +2,14 @@ package config
 
 import (
 	"github.com/simplecontainer/smr/pkg/client"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"net/http"
 )
 
 type Config struct {
-	Started    bool
-	Shared     *Shared
-	Client     *http.Client
-	Definition v1.ConfigurationDefinition
+	Started bool
+	Shared  *Shared
+	Client  *http.Client
 }
 
 type Shared struct {

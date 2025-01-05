@@ -60,7 +60,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 		obj := objects.New(client.Get(user.Username), user)
 		err = obj.Find(format)
 
-		if err != nil {
+		if !obj.Exists() {
 			return errors.New(fmt.Sprintf("failed to fetch resource from the kv store %s", format.ToString()))
 		}
 

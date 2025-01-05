@@ -6,6 +6,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -23,7 +24,8 @@ func (httpauth *Httpauth) GetShared() interface{} {
 	return httpauth.Shared
 }
 func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
+	var definition v1.HttpAuthDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -33,7 +35,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 		}, err
 	}
 
-	valid, err := httpauth.Definition.Validate()
+	valid, err := definition.Validate()
 
 	if !valid {
 		return contracts.Response{
@@ -55,12 +57,12 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 
 	var format *f.Format
 
-	format = f.New("httpauth", httpauth.Definition.Meta.Group, httpauth.Definition.Meta.Name, "object")
+	format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = httpauth.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	logger.Log.Debug("server received httpauth object", zap.String("definition", jsonStringFromRequest))
 
@@ -121,7 +123,8 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 	}, nil
 }
 func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
+	var definition v1.HttpAuthDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -141,12 +144,12 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 
 	var format *f.Format
 
-	format = f.New("httpauth", httpauth.Definition.Meta.Group, httpauth.Definition.Meta.Name, "object")
+	format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = httpauth.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
@@ -179,7 +182,8 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 	}
 }
 func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &httpauth.Definition); err != nil {
+	var definition v1.HttpAuthDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -195,9 +199,9 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, age
 		panic(err)
 	}
 
-	mapstructure.Decode(data["httpauth"], &httpauth.Definition)
+	mapstructure.Decode(data["httpauth"], &definition)
 
-	format := f.New("httpauth", httpauth.Definition.Meta.Group, httpauth.Definition.Meta.Name, "object")
+	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
@@ -206,7 +210,7 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, age
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("httpauth", httpauth.Definition.Meta.Group, httpauth.Definition.Meta.Name, "")
+			format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return contracts.Response{

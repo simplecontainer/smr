@@ -46,9 +46,8 @@ const STATUS_BACKOFF string = "backoff"
 
 const STATUS_DEPENDS_FAILED string = "depends_failed"
 const STATUS_READINESS_FAILED string = "readiness_failed"
-const STATUS_INVALID_CONFIGURATION string = "invalid_configuration"
+const STATUS_PENDING string = "pending"
 
 const STATUS_START string = "start"
 const STATUS_KILL string = "kill"
-const STATUS_FORCE_KILL string = "force_kill"
 const STATUS_PENDING_DELETE string = "pending_delete"

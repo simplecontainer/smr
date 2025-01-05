@@ -42,41 +42,35 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime map[str
 
 			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
 			break
-		default:
-			switch pf.Kind {
-			case "configuration":
-				cf := f.NewFromString(pf.ToString())
-				cf.Key = "object"
+		case "configuration":
+			cf := f.NewFromString(pf.ToString())
+			cf.Key = "object"
 
-				err := obj.Find(cf)
+			err := obj.Find(cf)
 
-				if !obj.Exists() {
-					return template, nil, errors.New(fmt.Sprintf("object doesn't exists: %s", pf.ToString()))
-				}
-
-				dependencyMap = append(dependencyMap, cf)
-
-				configuration := v1.ConfigurationDefinition{}
-
-				err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
-
-				if err != nil {
-					return template, nil, err
-				}
-
-				_, ok := configuration.Spec.Data[pf.Key]
-
-				if !ok {
-					return template, nil, errors.New(
-						fmt.Sprintf("missing field in the configuration resource: %s", pf.Key),
-					)
-				}
-
-				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), configuration.Spec.Data[pf.Key], -1)
-				break
-			default:
-				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), placeholder, -1)
+			if !obj.Exists() {
+				return template, nil, errors.New(fmt.Sprintf("object doesn't exists: %s", pf.ToString()))
 			}
+
+			dependencyMap = append(dependencyMap, cf)
+
+			configuration := v1.ConfigurationDefinition{}
+
+			err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
+
+			if err != nil {
+				return template, nil, err
+			}
+
+			_, ok := configuration.Spec.Data[pf.Key]
+
+			if !ok {
+				return template, nil, errors.New(
+					fmt.Sprintf("missing field in the configuration resource: %s", pf.Key),
+				)
+			}
+
+			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), configuration.Spec.Data[pf.Key], -1)
 			break
 		}
 	}

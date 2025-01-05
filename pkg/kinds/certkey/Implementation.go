@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -22,7 +23,8 @@ func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
 func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &certkey.Definition); err != nil {
+	var definition v1.CertKeyDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -32,7 +34,7 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 		}, err
 	}
 
-	valid, err := certkey.Definition.Validate()
+	valid, err := definition.Validate()
 
 	if !valid {
 		return contracts.Response{
@@ -45,13 +47,13 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 	}
 
 	var format *f.Format
-	format = f.New("certkey", certkey.Definition.Meta.Group, certkey.Definition.Meta.Name, "object")
+	format = f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, err = certkey.Definition.ToJsonString()
+	jsonStringFromRequest, err = definition.ToJsonString()
 
 	logger.Log.Debug("server received certkey object", zap.String("definition", jsonStringFromRequest))
 
@@ -112,7 +114,8 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 	}, nil
 }
 func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &certkey.Definition); err != nil {
+	var definition v1.CertKeyDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -124,12 +127,12 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 
 	var format *f.Format
 
-	format = f.New("certkey", certkey.Definition.Meta.Group, certkey.Definition.Meta.Name, "object")
+	format = f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 	obj.Find(format)
 
 	var jsonStringFromRequest string
-	jsonStringFromRequest, _ = certkey.Definition.ToJsonString()
+	jsonStringFromRequest, _ = definition.ToJsonString()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
@@ -162,7 +165,8 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 	}
 }
 func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	if err := json.Unmarshal(jsonData, &certkey.Definition); err != nil {
+	var definition v1.CertKeyDefinition
+	if err := json.Unmarshal(jsonData, &definition); err != nil {
 		return contracts.Response{
 			HttpStatus:       400,
 			Explanation:      "invalid configuration sent: json is not valid",
@@ -172,7 +176,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 		}, err
 	}
 
-	format := f.New("certkey", certkey.Definition.Meta.Group, certkey.Definition.Meta.Name, "object")
+	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 	obj.Find(format)
@@ -181,7 +185,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 		deleted, err := obj.Remove(format)
 
 		if deleted {
-			format = f.New("certkey", certkey.Definition.Meta.Group, certkey.Definition.Meta.Name, "")
+			format = f.New("certkey", definition.Meta.Group, definition.Meta.Name, "")
 			deleted, err = obj.Remove(format)
 
 			return contracts.Response{

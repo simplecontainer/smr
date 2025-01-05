@@ -93,7 +93,7 @@ func (obj *Object) Find(format *f.Format) error {
 		err := json.Unmarshal(obj.Byte, &obj.Definition)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			return err
 		}
 	} else {
 		return errors.New(response.ErrorExplanation)
