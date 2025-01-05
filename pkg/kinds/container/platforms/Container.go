@@ -3,6 +3,7 @@ package platforms
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -161,5 +162,13 @@ func (c Container) IsGhost() bool {
 }
 
 func (c Container) ToJson() ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(c)
+			fmt.Println(c.General)
+			fmt.Println("Recovered from panic:", r)
+		}
+	}()
+
 	return json.Marshal(c)
 }
