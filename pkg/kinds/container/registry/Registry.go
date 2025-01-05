@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -31,8 +30,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 func (registry *Registry) Sync(container distributed.Container) {
 	registry.ContainersLock.Lock()
 	if registry.Containers[container.Group] != nil && registry.Containers[container.Group][container.Name] != nil {
-		containerObj := registry.Containers[container.Group][container.Name]
-		bytes, err := json.Marshal(containerObj)
+		bytes, err := registry.Containers[container.Group][container.Name].ToJson()
 
 		if err != nil {
 			logger.Log.Error(err.Error())

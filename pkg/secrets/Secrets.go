@@ -89,12 +89,6 @@ func (obj *Object) Find(format *f.Format) error {
 	if response.Success {
 		obj.Byte, _ = response.Data.MarshalJSON()
 		obj.String = string(obj.Byte)
-
-		err := json.Unmarshal(obj.Byte, &obj.Definition)
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}

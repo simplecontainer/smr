@@ -159,3 +159,7 @@ func (c Container) SetGhost(ghost bool) {
 func (c Container) IsGhost() bool {
 	return c.ghost
 }
+
+func (c Container) ToJson() ([]byte, error) {
+	return json.Marshal(c)
+}

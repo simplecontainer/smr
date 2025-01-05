@@ -43,6 +43,8 @@ type IContainer interface {
 
 	IsGhost() bool
 	SetGhost(bool)
+
+	ToJson() ([]byte, error)
 }
 
 type IPlatform interface {
