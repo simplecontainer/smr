@@ -100,7 +100,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		break
 	case status.STATUS_CLONING_GIT:
 		auth, err := gitopsWatcher.Gitops.GetAuth()
-		gitopsWatcher.Logger.Info(fmt.Sprintf("pulling latest changes from the repository: %s", gitopsWatcher.Gitops.RepoURL))
+		gitopsWatcher.Logger.Debug(fmt.Sprintf("pulling latest changes from the repository: %s", gitopsWatcher.Gitops.RepoURL))
 
 		if err != nil {
 			gitopsWatcher.Logger.Info(fmt.Sprintf("%s failed to generate auth for the git repository", name))
@@ -114,7 +114,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 		if err != nil {
 			if err.Error() == implementation.POLLING_INTERVAL_ERROR {
-				gitopsWatcher.Logger.Info("pulling latest changes will occur after polling interval")
+				gitopsWatcher.Logger.Debug("pulling latest changes will occur after polling interval")
 			} else {
 				gitopsWatcher.Logger.Info(fmt.Sprintf("%s failed to pull latest changes", name))
 				gitopsWatcher.Logger.Error(err.Error())
@@ -122,7 +122,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 				Loop(gitopsWatcher)
 			}
 		} else {
-			gitopsWatcher.Logger.Info(fmt.Sprintf("pulled latest changes from the repository: %s", gitopsWatcher.Gitops.RepoURL))
+			gitopsWatcher.Logger.Debug(fmt.Sprintf("pulled latest changes from the repository: %s", gitopsWatcher.Gitops.RepoURL))
 		}
 
 		sync := false

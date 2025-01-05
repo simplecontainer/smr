@@ -45,6 +45,9 @@ func (api *Api) AddNode(c *gin.Context) {
 		Context: []byte(newNode.URL),
 	}
 
+	api.Config.KVStore.Node = api.Cluster.Node.NodeID
+	api.Config.KVStore.URL = api.Cluster.Node.URL
+	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 	api.SaveClusterConfiguration()
 
 	c.JSON(http.StatusOK, contracts.Response{

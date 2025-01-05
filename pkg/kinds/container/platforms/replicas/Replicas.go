@@ -1,6 +1,7 @@
 package replicas
 
 import (
+	"fmt"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -25,6 +26,8 @@ func NewReplica(shared *shared.Shared, agent string, definition *v1.ContainerDef
 }
 
 func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []string) (*Distributed, error) {
+	fmt.Println(clstr)
+
 	dr := NewDistributed(replicas.NodeID, replicas.Definition.Meta.Group, replicas.Definition.Meta.Name)
 	err := dr.Load(replicas.Shared.Client.Get(user.Username), user)
 
@@ -116,33 +119,30 @@ func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) 
 }
 
 func (replicas *Replicas) GetReplicaNumbers(dr *Distributed, spread v1.ContainerSpread, replicasNumber uint64, existingIndexes []uint64, clusterSize uint64) ([]uint64, []uint64, []uint64) {
-	switch replicas.Spread.Spread {
+	switch replicas.Definition.Spec.Container.Spread.Spread {
 	case platforms.SPREAD_SPECIFIC:
 		if dr.Replicas[replicas.NodeID] == nil {
 			dr.Replicas[replicas.NodeID] = NewScoped()
 		}
 
-		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Specific(replicasNumber, existingIndexes, spread.Agents, replicas.NodeID)
-		break
+		return Specific(replicasNumber, existingIndexes, spread.Agents, replicas.NodeID)
 	case platforms.SPREAD_UNIFORM:
 		if dr.Replicas[replicas.NodeID] == nil {
 			dr.Replicas[replicas.NodeID] = NewScoped()
 		}
 
-		dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Uniform(replicasNumber, existingIndexes, clusterSize, replicas.NodeID)
-		break
+		return Uniform(replicasNumber, existingIndexes, clusterSize, replicas.NodeID)
 	default:
 		if replicas.Agent != replicas.Shared.Manager.Config.Node {
-			dr.Replicas[replicas.NodeID].Numbers.Create = []uint64{}
-			dr.Replicas[replicas.NodeID].Numbers.Destroy = []uint64{}
-			dr.Replicas[replicas.NodeID].Numbers.Existing = []uint64{}
+			return Empty()
 		} else {
-			dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = Default(replicasNumber, existingIndexes)
+			return Default(replicasNumber, existingIndexes)
 		}
-		break
 	}
+}
 
-	return dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing
+func Empty() ([]uint64, []uint64, []uint64) {
+	return []uint64{}, []uint64{}, []uint64{}
 }
 
 func Default(replicasNumber uint64, existingIndexes []uint64) ([]uint64, []uint64, []uint64) {
@@ -181,17 +181,24 @@ func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, m
 	var create = make([]uint64, 0)
 	var destroy = make([]uint64, 0)
 
-	if slices.Contains(nodes, member) {
-		// true
+	fmt.Println(nodes)
+	fmt.Println(member)
 
+	if slices.Contains(nodes, member) {
+		fmt.Println("CONTAINS ME")
 		sort.Slice(nodes, func(i, j int) bool {
 			return nodes[i] < nodes[j]
 		})
+
+		fmt.Println(nodes)
 
 		nodeCount := uint64(len(nodes))
 		replicasScoped := replicasNumber / nodeCount
 		normalizedNodes := make(map[uint64]uint64)
 		normalizedMember := uint64(0)
+
+		fmt.Println(nodeCount)
+		fmt.Println(replicasScoped)
 
 		for i, node := range nodes {
 			x := node - uint64(i)
@@ -201,6 +208,9 @@ func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, m
 				normalizedMember = uint64(i)
 			}
 		}
+
+		fmt.Println(normalizedNodes)
+		fmt.Println(normalizedMember)
 
 		for replicas := 1 * normalizedNodes[normalizedMember]; replicas <= replicasScoped*normalizedNodes[normalizedMember]; replicas++ {
 			create = append(create, replicas)
