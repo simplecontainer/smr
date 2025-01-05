@@ -13,7 +13,7 @@ type Configuration struct {
 	Target         string        `default:"development" yaml:"target"`
 	Root           string        `yaml:"root"`
 	Certificates   *Certificates `yaml:"certificates"`
-	HostHome       string        `yaml:"home"`
+	HostHome       string        `yaml:"hostHome"`
 	Environment    *Environment  `yaml:"-"`
 	Flags          Flags         `yaml:"-"`
 }
