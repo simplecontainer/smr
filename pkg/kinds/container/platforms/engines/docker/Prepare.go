@@ -32,6 +32,7 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 
 	obj := objects.New(client.Get(user.Username), user)
 
+	// Scan configuration and parse all placeholders and append it to the runtime so that rest of the gang can use it
 	container.Configuration.Map.Range(func(key, value any) bool {
 		var parsed string
 		parsed, runtime.ObjectDependencies, err = template.ParseTemplate(obj, value.(string), nil)
@@ -40,7 +41,7 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 			return false
 		}
 
-		container.Configuration.Map.Store(key, parsed)
+		runtime.Configuration.Map.Store(key, parsed)
 
 		return true
 	})
@@ -54,11 +55,16 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 }
 
 func (container *Docker) PrepareResources(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
-	// Clear resource volumes and generate new ones
+	fmt.Println("Preparing resources")
+
 	err := container.Volumes.RemoveResources()
 	if err != nil {
+		fmt.Println(err)
+		fmt.Println("Failed to delete old files")
 		return err
 	}
+
+	fmt.Println("deleted old files")
 
 	for k, v := range container.Resources.Resources {
 		format := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
@@ -92,6 +98,10 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 
 			return true
 		})
+
+		if err != nil {
+			return err
+		}
 
 		var tmpFile *os.File
 		tmpFile, err = os.CreateTemp("/tmp", container.Name)

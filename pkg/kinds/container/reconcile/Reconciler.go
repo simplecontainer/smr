@@ -40,6 +40,7 @@ func NewWatcher(containerObj platforms.IContainer, mgr *manager.Manager, user *a
 		Ctx:            ctx,
 		Cancel:         fn,
 		Ticker:         time.NewTicker(interval),
+		Retry:          0,
 		Logger:         loggerObj,
 		User:           user,
 	}
@@ -205,7 +206,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				}()
 			} else {
 				containerWatcher.Logger.Info("container start failed", zap.Error(err))
-				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING)
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_RUNTIME_PENDING)
 			}
 		} else {
 			containerWatcher.Logger.Info("container is already running")
@@ -386,6 +387,18 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		}
 		break
 
+	case status.STATUS_RUNTIME_PENDING:
+		containerWatcher.Logger.Info("container engine runtime returned error - will retry till conditions met")
+		containerWatcher.Retry += 1
+
+		if containerWatcher.Retry > 12 {
+			containerWatcher.Retry = 0
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+		}
+
+		containerWatcher.Container.GetStatus().Reconciling = false
+		break
+
 	case status.STATUS_KILL:
 		containerWatcher.Logger.Info("attempt to shutdown gracefully")
 
@@ -396,7 +409,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			}
 		}()
 
-		err := Wait(func() error {
+		err := Wait(10*time.Second, func() error {
 			c, err := containerObj.Get()
 
 			if err != nil {
@@ -421,7 +434,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 					containerWatcher.Logger.Error(err.Error())
 				}
 			}()
-			err = Wait(func() error {
+			err = Wait(10*time.Second, func() error {
 				var c *types.Container
 				c, err = containerObj.Get()
 
@@ -499,8 +512,8 @@ func GetState(containerWatcher *watcher.Container) string {
 	return ""
 }
 
-func Wait(f func() error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func Wait(timeout time.Duration, f func() error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)

@@ -18,17 +18,22 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 
 	var parsed string = template
 
+	fmt.Println(placeholders)
+
 	for _, placeholder := range placeholders {
 		pf := f.NewFromString(placeholder)
 
 		switch pf.Kind {
 		case "secret":
+			// Ignore since secret unpacking is done on container runtime
 			continue
 		case "container":
 			stripedIndex := strings.Replace(placeholder, "container.", "", 1)
 
 			var value any
-			var ok bool
+			var ok = false
+
+			fmt.Println(stripedIndex)
 
 			if runtime == nil {
 				ok = false
@@ -38,6 +43,7 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 
 			if ok {
 				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), value.(string), -1)
+				fmt.Println("XXXXXXXXXX")
 			} else {
 				return template, nil, errors.New(fmt.Sprintf("container runtime configuration is missing: %s", placeholder))
 			}
@@ -52,6 +58,8 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
 			break
 		case "configuration":
+			fmt.Println(placeholder)
+
 			cf := f.NewFromString(pf.ToString())
 			cf.Key = "object"
 
@@ -79,7 +87,7 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 				)
 			}
 
-			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), configuration.Spec.Data[pf.Key], -1)
+			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.Key], -1)
 			break
 		}
 	}
@@ -100,7 +108,7 @@ func ParseSecretTemplate(obj objects.ObjectInterface, value string) (string, err
 				return value, errors.New(fmt.Sprintf("missing secret %s", placeholder))
 			}
 
-			value = strings.Replace(value, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), 1)
+			value = strings.Replace(value, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
 		}
 	}
 

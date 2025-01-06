@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -87,8 +88,10 @@ func (obj *Object) Find(format *f.Format) error {
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
 	if response.Success {
-		obj.Byte, _ = response.Data.MarshalJSON()
-		obj.String = string(obj.Byte)
+		b64decoded, _ := base64.StdEncoding.DecodeString(strings.Trim(string(response.Data), "\""))
+
+		obj.Byte = b64decoded
+		obj.String = string(b64decoded)
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}

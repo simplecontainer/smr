@@ -38,6 +38,7 @@ func (status *Status) CreateGraph() {
 	dependsFailed := gograph.NewVertex(&StatusState{STATUS_DEPENDS_FAILED, CATEGORY_PRERUN})
 	readinessFailed := gograph.NewVertex(&StatusState{STATUS_READINESS_FAILED, CATEGORY_WHILERUN})
 	pending := gograph.NewVertex(&StatusState{STATUS_PENDING, CATEGORY_PRERUN})
+	runtimePending := gograph.NewVertex(&StatusState{STATUS_RUNTIME_PENDING, CATEGORY_WHILERUN})
 
 	kill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
 	forceKill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
@@ -68,7 +69,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(start, readinessChecking)
 	status.StateMachine.AddEdge(start, dead)
 	status.StateMachine.AddEdge(start, pendingDelete)
-	status.StateMachine.AddEdge(start, pending)
+	status.StateMachine.AddEdge(start, runtimePending)
 	status.StateMachine.AddEdge(start, created)
 
 	status.StateMachine.AddEdge(readinessChecking, readinessReady)
@@ -98,6 +99,11 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(pending, created)
 	status.StateMachine.AddEdge(pending, prepare)
 	status.StateMachine.AddEdge(pending, dependsChecking)
+
+	status.StateMachine.AddEdge(runtimePending, pendingDelete)
+	status.StateMachine.AddEdge(runtimePending, created)
+	status.StateMachine.AddEdge(runtimePending, prepare)
+	status.StateMachine.AddEdge(runtimePending, dependsChecking)
 
 	status.StateMachine.AddEdge(dependsFailed, prepare)
 	status.StateMachine.AddEdge(dependsFailed, backoff)

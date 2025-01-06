@@ -19,9 +19,11 @@ func (cluster *Cluster) ListenObjects(agent string) {
 
 				response := SendRequest(cluster.Client, &authentication.User{Username: cluster.KVStore.Agent, Domain: "localhost:1443"}, fmt.Sprintf("https://localhost:1443/api/v1/apply/%s/%s", kind, data.Agent), data.Val)
 
-				if !response.Success {
-					if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
-						logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+				if response != nil {
+					if !response.Success {
+						if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
+							logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+						}
 					}
 				}
 				break

@@ -25,6 +25,7 @@ type Container struct {
 	Ctx            context.Context                `json:"-" `
 	Cancel         context.CancelFunc             `json:"-"`
 	Ticker         *time.Ticker                   `json:"-"`
+	Retry          int                            `json:"-"`
 	Logger         *zap.Logger
 	User           *authentication.User `json:"-"`
 }
