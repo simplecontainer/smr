@@ -1,6 +1,9 @@
 package types
 
-import "github.com/simplecontainer/smr/pkg/f"
+import (
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/smaps"
+)
 
 const EVENT_NETWORK_CONNECT = "conn"
 const EVENT_NETWORK_DISCONNECT = "disscon"
@@ -13,7 +16,7 @@ type Runtime struct {
 	Id                 string
 	State              string
 	Ready              bool
-	Configuration      map[string]string
+	Configuration      *smaps.Smap
 	Owner              Owner
 	ObjectDependencies []*f.Format
 	NodeIP             string

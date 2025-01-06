@@ -11,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/template"
 	"os"
 	"regexp"
@@ -19,7 +20,7 @@ import (
 
 func (container *Docker) PrepareNetwork(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
 	for _, network := range container.Networks.Networks {
-		runtime.Configuration[fmt.Sprintf("%s_hostname", network.Reference.Name)] = container.GetDomain(network.Reference.Name)
+		runtime.Configuration.Map.Store(fmt.Sprintf("%s_hostname", network.Reference.Name), container.GetDomain(network.Reference.Name))
 	}
 
 	return nil
@@ -31,15 +32,18 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 
 	obj := objects.New(client.Get(user.Username), user)
 
-	container.Lock.Lock()
-	for i, _ := range container.Configuration {
-		runtime.Configuration[i], runtime.ObjectDependencies, err = template.ParseTemplate(obj, container.Configuration[i], map[string]string{})
+	container.Configuration.Map.Range(func(key, value any) bool {
+		var parsed string
+		parsed, runtime.ObjectDependencies, err = template.ParseTemplate(obj, value.(string), nil)
 
 		if err != nil {
-			return err
+			return false
 		}
-	}
-	container.Lock.Unlock()
+
+		container.Configuration.Map.Store(key, parsed)
+
+		return true
+	})
 
 	if err != nil {
 		return err
@@ -74,16 +78,20 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
-		container.Lock.Lock()
-		container.Resources.Resources[k].Docker.Data = resourceObject.Spec.Data
+		container.Resources.Resources[k].Docker.Data = smaps.NewFromMap(resourceObject.Spec.Data)
 
-		for i, _ := range container.Resources.Resources[k].Docker.Data {
-			container.Resources.Resources[k].Docker.Data[i], _, err = template.ParseTemplate(obj, container.Resources.Resources[k].Docker.Data[i], runtime.Configuration)
+		container.Resources.Resources[k].Docker.Data.Map.Range(func(key, value any) bool {
+			var parsed string
+			parsed, _, err = template.ParseTemplate(obj, value.(string), runtime.Configuration)
+
+			container.Resources.Resources[k].Docker.Data.Map.Store(key, parsed)
 
 			if err != nil {
-				return err
+				return false
 			}
-		}
+
+			return true
+		})
 
 		var tmpFile *os.File
 		tmpFile, err = os.CreateTemp("/tmp", container.Name)
@@ -92,16 +100,14 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
-		val, ok := container.Resources.Resources[k].Docker.Data[v.Reference.Key]
-
-		container.Lock.Unlock()
+		val, ok := container.Resources.Resources[k].Docker.Data.Map.Load(v.Reference.Key)
 
 		if !ok {
 			return errors.New(fmt.Sprintf("key %s doesnt exist in resource %s", v.Reference.Key, v.Reference.Name))
 		}
 
 		var resource string
-		resource, err = secrets.UnpackSecretsResources(client, user, val)
+		resource, err = secrets.UnpackSecretsResources(client, user, val.(string))
 
 		if err != nil {
 			return err
@@ -133,22 +139,26 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 }
 
 func (container *Docker) PrepareLabels(runtime *types.Runtime) {
-	for index, _ := range container.Labels {
+	container.Labels.Map.Range(func(key, value any) bool {
 		regexDetectBigBrackets := regexp.MustCompile(`{{([^{\n}]*)}}`)
-		matches := regexDetectBigBrackets.FindAllStringSubmatch(index, -1)
+		matches := regexDetectBigBrackets.FindAllStringSubmatch(key.(string), -1)
 
 		if len(matches) > 0 {
 			trimmedMatch := strings.TrimSpace(matches[0][1])
 			SplitByDot := strings.SplitN(trimmedMatch, ".", 2)
 
-			if len(SplitByDot) > 1 && runtime.Configuration[SplitByDot[1]] != "" {
-				newIndex := strings.Replace(index, matches[0][0], runtime.Configuration[SplitByDot[1]], 1)
-				container.Labels[newIndex] = container.Labels[index]
+			runtimeValue, ok := runtime.Configuration.Map.Load(SplitByDot[1])
 
-				delete(container.Labels, index)
+			if len(SplitByDot) > 1 && ok && runtimeValue != "" {
+				newIndex := strings.Replace(key.(string), matches[0][0], runtimeValue.(string), 1)
+
+				container.Labels.Map.Store(newIndex, value)
+				container.Labels.Map.Delete(key)
 			}
 		}
-	}
+
+		return true
+	})
 }
 
 func (container *Docker) PrepareEnvs(runtime *types.Runtime) {
@@ -161,8 +171,10 @@ func (container *Docker) PrepareEnvs(runtime *types.Runtime) {
 
 			trimmedIndex := strings.TrimSpace(SplitByDot[1])
 
-			if len(SplitByDot) > 1 && runtime.Configuration[trimmedIndex] != "" {
-				container.Env[index] = strings.Replace(container.Env[index], matches[0][0], runtime.Configuration[trimmedIndex], 1)
+			runtimeValue, ok := runtime.Configuration.Map.Load(trimmedIndex)
+
+			if len(SplitByDot) > 1 && ok && runtimeValue != "" {
+				container.Env[index] = strings.Replace(container.Env[index], matches[0][0], runtimeValue.(string), 1)
 			}
 		}
 	}
@@ -180,7 +192,11 @@ func (container *Docker) PrepareReadiness(runtime *types.Runtime) {
 				if format.IsValid() && format.Kind == "secret" {
 					continue
 				} else {
-					container.Readiness.Readinesses[indexReadiness].Docker.Body[index] = strings.Replace(container.Readiness.Readinesses[indexReadiness].Docker.Body[index], matches[0][0], runtime.Configuration[format.Group], 1)
+					container.Lock.Lock()
+					runtimeValue, _ := runtime.Configuration.Map.Load(format.Group)
+
+					container.Readiness.Readinesses[indexReadiness].Docker.Body[index] = strings.Replace(container.Readiness.Readinesses[indexReadiness].Docker.Body[index], matches[0][0], runtimeValue.(string), 1)
+					container.Lock.Unlock()
 				}
 			}
 		}

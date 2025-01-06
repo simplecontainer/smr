@@ -3,7 +3,6 @@ package docker
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
@@ -13,6 +12,7 @@ import (
 	IDClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -23,6 +23,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -32,6 +33,7 @@ import (
 )
 
 func New(name string, config *configuration.Configuration, definition *v1.ContainerDefinition) (*Docker, error) {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	definitionEncoded, err := json.Marshal(definition)
 
 	if err != nil {
@@ -60,15 +62,16 @@ func New(name string, config *configuration.Configuration, definition *v1.Contai
 	container := &Docker{
 		Name:          definition.Meta.Name,
 		GeneratedName: name,
-		Labels:        definition.Meta.Labels,
+		Labels:        smaps.NewFromMap(definition.Meta.Labels),
 		Group:         definition.Meta.Group,
 		Image:         definition.Spec.Container.Image,
 		Tag:           definition.Spec.Container.Tag,
 		Replicas:      definition.Spec.Container.Replicas,
+		Lock:          sync.RWMutex{},
 		Env:           definition.Spec.Container.Envs,
 		Entrypoint:    definition.Spec.Container.Entrypoint,
 		Args:          definition.Spec.Container.Args,
-		Configuration: definition.Spec.Container.Configuration,
+		Configuration: smaps.NewFromMap(definition.Spec.Container.Configuration),
 		NetworkMode:   definition.Spec.Container.NetworkMode,
 		Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
 		Ports:         internal.NewPorts(definition.Spec.Container.Ports),
@@ -578,25 +581,30 @@ func (container *Docker) UpdateDns(dnsCache *dns.Records) {
 func (container *Docker) GenerateLabels() map[string]string {
 	now := time.Now()
 
-	if len(container.Labels) > 0 {
-		container.Labels["managed"] = "smr"
-		container.Labels["group"] = container.Group
-		container.Labels["name"] = container.GeneratedName
-		container.Labels["last-update"] = strconv.FormatInt(now.Unix(), 10)
+	if container.Labels.Members > 0 {
+		container.Labels.Add("managed", "smr")
+		container.Labels.Add("group", container.Group)
+		container.Labels.Add("name", container.GeneratedName)
 	} else {
-		labels := map[string]string{
+		container.Labels = smaps.NewFromMap(map[string]string{
 			"managed":     "smr",
 			"group":       container.Group,
 			"name":        container.GeneratedName,
 			"last-update": strconv.FormatInt(now.Unix(), 10),
-		}
-
-		container.Labels = labels
+		})
 	}
 
-	return container.Labels
+	labels := make(map[string]string)
+
+	container.Labels.Map.Range(func(key, value any) bool {
+		labels[key.(string)] = value.(string)
+		return true
+	})
+
+	return labels
 }
 
-func (container *Docker) GetLock() *sync.RWMutex {
-	return container.Lock
+func (container *Docker) ToJson() ([]byte, error) {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	return json.Marshal(container)
 }

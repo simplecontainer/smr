@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -15,9 +16,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"strconv"
-	"sync"
 )
 
 func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition *v1.ContainerDefinition) (IContainer, error) {
@@ -31,11 +32,11 @@ func New(platform string, name string, config *configuration.Configuration, Chan
 			return nil, err
 		}
 
-		return Container{
+		return &Container{
 			Platform: dockerPlatform,
 			General: &General{
 				Runtime: &types.Runtime{
-					Configuration:      make(map[string]string),
+					Configuration:      smaps.New(),
 					ObjectDependencies: make([]*f.Format, 0),
 					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
 					Agent:              config.Node,
@@ -60,6 +61,7 @@ func NewGhost(state map[string]interface{}) (IContainer, error) {
 				ghost:    true,
 			}
 
+			var json = jsoniter.ConfigCompatibleWithStandardLibrary
 			bytes, err := json.Marshal(state)
 
 			if err != nil {
@@ -68,6 +70,7 @@ func NewGhost(state map[string]interface{}) (IContainer, error) {
 
 			err = json.Unmarshal(bytes, &ghost)
 			if err != nil {
+				fmt.Println(string(bytes))
 				return nil, err
 			}
 
@@ -80,103 +83,110 @@ func NewGhost(state map[string]interface{}) (IContainer, error) {
 	return nil, errors.New("type is not defined")
 }
 
-func (c Container) Start() error {
+func (c *Container) Start() error {
 	return c.Platform.Start()
 }
-func (c Container) Stop(signal string) error {
+func (c *Container) Stop(signal string) error {
 	return c.Platform.Stop(signal)
 }
-func (c Container) Kill(signal string) error {
+func (c *Container) Kill(signal string) error {
 	return c.Platform.Kill(signal)
 }
-func (c Container) Restart() error {
+func (c *Container) Restart() error {
 	return c.Platform.Restart()
 }
-func (c Container) Delete() error {
+func (c *Container) Delete() error {
 	return c.Platform.Delete()
 }
-func (c Container) Rename(newName string) error {
+func (c *Container) Rename(newName string) error {
 	return c.Platform.Rename(newName)
 }
-func (c Container) Exec(command []string) types.ExecResult {
+func (c *Container) Exec(command []string) types.ExecResult {
 	return c.Platform.Exec(command)
 }
 
-func (c Container) Get() (*TDTypes.Container, error) {
+func (c *Container) Get() (*TDTypes.Container, error) {
 	return c.Platform.Get()
 }
-func (c Container) Run(config *configuration.Configuration, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
+func (c *Container) Run(config *configuration.Configuration, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
 	return c.Platform.Run(config, http, records, user)
 }
-func (c Container) Prepare(client *client.Http, user *authentication.User) error {
+func (c *Container) Prepare(client *client.Http, user *authentication.User) error {
 	return c.Platform.Prepare(client, user, c.General.Runtime)
 }
 
-func (c Container) AttachToNetworks(agentContainerName string) error {
+func (c *Container) AttachToNetworks(agentContainerName string) error {
 	return c.Platform.AttachToNetworks(agentContainerName)
 }
-func (c Container) UpdateDns(cache *dns.Records) {
+func (c *Container) UpdateDns(cache *dns.Records) {
 	c.Platform.UpdateDns(cache)
 }
 
-func (c Container) GetRuntime() *types.Runtime {
+func (c *Container) GetRuntime() *types.Runtime {
 	return c.General.Runtime
 }
-func (c Container) GetStatus() *status.Status {
+func (c *Container) GetStatus() *status.Status {
 	return c.General.Status
 }
-func (c Container) GetAgent() string {
+func (c *Container) GetAgent() string {
 	return c.General.Runtime.Agent
 }
 
-func (c Container) GetDefinition() v1.ContainerDefinition {
+func (c *Container) GetDefinition() v1.ContainerDefinition {
 	return c.Platform.GetDefinition()
 }
-func (c Container) GetLabels() map[string]string {
+func (c *Container) GetLabels() map[string]string {
 	return c.General.Labels
 }
-func (c Container) GetGeneratedName() string {
+func (c *Container) GetGeneratedName() string {
 	return c.Platform.GetGeneratedName()
 }
-func (c Container) GetName() string {
+func (c *Container) GetName() string {
 	return c.Platform.GetName()
 }
-func (c Container) GetGroup() string {
+func (c *Container) GetGroup() string {
 	return c.Platform.GetGroup()
 }
-func (c Container) GetGroupIdentifier() string {
+func (c *Container) GetGroupIdentifier() string {
 	return c.Platform.GetGroupIdentifier()
 }
-func (c Container) GetLock() *sync.RWMutex {
-	return c.GetLock()
-}
 
-func (c Container) GetDomain(network string) string {
+func (c *Container) GetDomain(network string) string {
 	return c.Platform.GetDomain(network)
 }
-func (c Container) GetHeadlessDomain(network string) string {
+func (c *Container) GetHeadlessDomain(network string) string {
 	return c.Platform.GetHeadlessDomain(network)
 }
 
-func (c Container) SetGhost(ghost bool) {
+func (c *Container) SetGhost(ghost bool) {
 	c.ghost = ghost
 }
-func (c Container) IsGhost() bool {
+func (c *Container) IsGhost() bool {
 	return c.ghost
 }
 
-func (c Container) ToJson() ([]byte, error) {
-	c.GetLock().Lock()
+func (c *Container) ToJson() ([]byte, error) {
+	var output = make(map[string]json.RawMessage)
+	var err error
 
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(c)
-			fmt.Println(c.General)
-			fmt.Println("Recovered from panic:", r)
-		}
+	output["Platform"], err = c.Platform.ToJson()
 
-		c.GetLock().Unlock()
-	}()
+	if err != nil {
+		return nil, err
+	}
 
-	return json.Marshal(c)
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	output["General"], err = json.Marshal(c.General)
+
+	if err != nil {
+		return nil, err
+	}
+
+	output["Type"], err = json.Marshal(c.Type)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(output)
 }

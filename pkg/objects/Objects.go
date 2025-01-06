@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -90,6 +91,7 @@ func (obj *Object) Find(format *f.Format) error {
 		obj.Byte, _ = response.Data.MarshalJSON()
 		obj.String = string(obj.Byte)
 
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		err := json.Unmarshal(obj.Byte, &obj.Definition)
 
 		if err != nil {

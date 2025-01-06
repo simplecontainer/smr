@@ -2,10 +2,12 @@ package network
 
 import (
 	"encoding/json"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/logger"
 )
 
 func ToJson(data interface{}) json.RawMessage {
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	var marshaled []byte
 
 	switch v := data.(type) {

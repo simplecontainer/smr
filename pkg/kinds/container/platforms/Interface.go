@@ -9,7 +9,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
-	"sync"
 )
 
 type IContainer interface {
@@ -38,7 +37,6 @@ type IContainer interface {
 	GetName() string
 	GetGroup() string
 	GetGroupIdentifier() string
-	GetLock() *sync.RWMutex
 
 	GetDomain(network string) string
 	GetHeadlessDomain(network string) string
@@ -59,7 +57,6 @@ type IPlatform interface {
 	Exec(command []string) types.ExecResult
 
 	Get() (*TDTypes.Container, error)
-	GetLock() *sync.RWMutex
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error
 
@@ -74,4 +71,6 @@ type IPlatform interface {
 	GetGroupIdentifier() string
 	GetDomain(networkName string) string
 	GetHeadlessDomain(networkName string) string
+
+	ToJson() ([]byte, error)
 }

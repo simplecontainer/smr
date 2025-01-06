@@ -2,6 +2,7 @@ package internal
 
 import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/smaps"
 )
 
 type Resources struct {
@@ -21,7 +22,7 @@ type ResourceReference struct {
 }
 
 type ResourceDocker struct {
-	Data map[string]string
+	Data *smaps.Smap
 }
 
 func NewResources(resources []v1.ContainerResource) *Resources {
@@ -45,7 +46,7 @@ func NewResource(resource v1.ContainerResource) *Resource {
 			MountPoint: resource.MountPoint,
 		},
 		Docker: ResourceDocker{
-			Data: make(map[string]string, 0),
+			Data: smaps.New(),
 		},
 	}
 }

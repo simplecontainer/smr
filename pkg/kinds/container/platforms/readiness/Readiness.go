@@ -80,7 +80,8 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 			if format.IsValid() && format.Kind == "secret" {
 				continue
 			} else {
-				readiness.Command[index] = strings.Replace(readiness.Command[index], matches[0][0], container.GetRuntime().Configuration[format.Group], 1)
+				runtimeValue, _ := container.GetRuntime().Configuration.Map.Load(format.Group)
+				readiness.Command[index] = strings.Replace(readiness.Command[index], matches[0][0], runtimeValue.(string), 1)
 			}
 		}
 	}

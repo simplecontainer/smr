@@ -7,11 +7,12 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	"regexp"
 	"strings"
 )
 
-func ParseTemplate(obj objects.ObjectInterface, template string, runtime map[string]string) (string, []*f.Format, error) {
+func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.Smap) (string, []*f.Format, error) {
 	var dependencyMap = make([]*f.Format, 0)
 	placeholders := GetTemplatePlaceholders(template)
 
@@ -25,10 +26,18 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime map[str
 			continue
 		case "container":
 			stripedIndex := strings.Replace(placeholder, "container.", "", 1)
-			_, ok := runtime[stripedIndex]
+
+			var value any
+			var ok bool
+
+			if runtime == nil {
+				ok = false
+			} else {
+				value, ok = runtime.Map.Load(stripedIndex)
+			}
 
 			if ok {
-				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), runtime[stripedIndex], -1)
+				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), value.(string), -1)
 			} else {
 				return template, nil, errors.New(fmt.Sprintf("container runtime configuration is missing: %s", placeholder))
 			}

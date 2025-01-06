@@ -3,6 +3,7 @@ package docker
 import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	"sync"
 )
 
@@ -11,13 +12,13 @@ type Docker struct {
 	DockerState   string
 	Name          string
 	GeneratedName string
-	Labels        map[string]string
+	Labels        *smaps.Smap
 	Group         string
 	Image         string
 	Tag           string
 	Replicas      uint64
-	Configuration map[string]string
-	Lock          *sync.RWMutex
+	Configuration *smaps.Smap
+	Lock          sync.RWMutex `json:"-"`
 	Env           []string
 	Entrypoint    []string
 	Args          []string
