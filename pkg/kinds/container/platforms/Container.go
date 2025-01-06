@@ -3,7 +3,6 @@ package platforms
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -70,7 +69,6 @@ func NewGhost(state map[string]interface{}) (IContainer, error) {
 
 			err = json.Unmarshal(bytes, &ghost)
 			if err != nil {
-				fmt.Println(string(bytes))
 				return nil, err
 			}
 

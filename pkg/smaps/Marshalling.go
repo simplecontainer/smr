@@ -17,7 +17,7 @@ func (smap *Smap) MarshalJSON() ([]byte, error) {
 }
 
 func (smap *Smap) UnmarshalJSON(bytes []byte) error {
-	var tmpMap map[interface{}]interface{}
+	var tmpMap map[string]interface{}
 
 	if err := json.Unmarshal(bytes, &tmpMap); err != nil {
 		return err
@@ -26,5 +26,6 @@ func (smap *Smap) UnmarshalJSON(bytes []byte) error {
 	for key, value := range tmpMap {
 		smap.Map.Store(key, value)
 	}
+
 	return nil
 }
