@@ -31,6 +31,7 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 
 	obj := objects.New(client.Get(user.Username), user)
 
+	container.Lock.Lock()
 	for i, _ := range container.Configuration {
 		runtime.Configuration[i], runtime.ObjectDependencies, err = template.ParseTemplate(obj, container.Configuration[i], map[string]string{})
 
@@ -38,6 +39,7 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 			return err
 		}
 	}
+	container.Lock.Unlock()
 
 	if err != nil {
 		return err
@@ -72,6 +74,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
+		container.Lock.Lock()
 		container.Resources.Resources[k].Docker.Data = resourceObject.Spec.Data
 
 		for i, _ := range container.Resources.Resources[k].Docker.Data {
@@ -90,6 +93,8 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 		}
 
 		val, ok := container.Resources.Resources[k].Docker.Data[v.Reference.Key]
+
+		container.Lock.Unlock()
 
 		if !ok {
 			return errors.New(fmt.Sprintf("key %s doesnt exist in resource %s", v.Reference.Key, v.Reference.Name))

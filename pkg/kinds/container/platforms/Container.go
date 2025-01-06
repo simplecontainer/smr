@@ -17,6 +17,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/static"
 	"strconv"
+	"sync"
 )
 
 func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition *v1.ContainerDefinition) (IContainer, error) {
@@ -146,6 +147,9 @@ func (c Container) GetGroup() string {
 func (c Container) GetGroupIdentifier() string {
 	return c.Platform.GetGroupIdentifier()
 }
+func (c Container) GetLock() *sync.RWMutex {
+	return c.GetLock()
+}
 
 func (c Container) GetDomain(network string) string {
 	return c.Platform.GetDomain(network)
@@ -162,12 +166,16 @@ func (c Container) IsGhost() bool {
 }
 
 func (c Container) ToJson() ([]byte, error) {
+	c.GetLock().Lock()
+
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(c)
 			fmt.Println(c.General)
 			fmt.Println("Recovered from panic:", r)
 		}
+
+		c.GetLock().Unlock()
 	}()
 
 	return json.Marshal(c)

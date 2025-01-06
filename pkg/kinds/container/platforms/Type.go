@@ -3,6 +3,7 @@ package platforms
 import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"sync"
 )
 
 type Container struct {
@@ -10,6 +11,7 @@ type Container struct {
 	General  *General
 	Type     string
 	ghost    bool
+	Lock     sync.RWMutex
 }
 
 type General struct {

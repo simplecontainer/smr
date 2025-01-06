@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 	"io/ioutil"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -594,4 +595,8 @@ func (container *Docker) GenerateLabels() map[string]string {
 	}
 
 	return container.Labels
+}
+
+func (container *Docker) GetLock() *sync.RWMutex {
+	return container.Lock
 }

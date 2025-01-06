@@ -3,6 +3,7 @@ package docker
 import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
+	"sync"
 )
 
 type Docker struct {
@@ -16,6 +17,7 @@ type Docker struct {
 	Tag           string
 	Replicas      uint64
 	Configuration map[string]string
+	Lock          *sync.RWMutex
 	Env           []string
 	Entrypoint    []string
 	Args          []string
