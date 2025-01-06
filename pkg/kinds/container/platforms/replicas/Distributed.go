@@ -44,7 +44,7 @@ func (dr *Distributed) Save(client *client.Client, user *authentication.User) er
 		return err
 	}
 
-	obj.Update(format, string(data))
+	obj.Update(format, data)
 	return nil
 }
 

@@ -2,7 +2,6 @@ package objects
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"

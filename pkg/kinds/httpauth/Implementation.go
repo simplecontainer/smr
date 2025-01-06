@@ -61,10 +61,10 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
-	logger.Log.Debug("server received httpauth object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received httpauth object", zap.String("definition", string(jsonStringFromRequest)))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -148,8 +148,8 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)

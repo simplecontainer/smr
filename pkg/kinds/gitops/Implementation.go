@@ -72,10 +72,10 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = gitopsDefinition.ToJson()
 
-	logger.Log.Debug("server received gitops object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received gitops object", zap.String("definition", string(jsonStringFromRequest)))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -178,8 +178,8 @@ func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contr
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = gitopsDefinition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = gitopsDefinition.ToJson()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)

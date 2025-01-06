@@ -65,10 +65,10 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
-	logger.Log.Debug("server received network object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received network object", zap.String("definition", string(jsonStringFromRequest)))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -153,8 +153,8 @@ func (network *Network) Compare(user *authentication.User, jsonData []byte) (con
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)

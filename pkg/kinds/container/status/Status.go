@@ -108,6 +108,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(dependsFailed, prepare)
 	status.StateMachine.AddEdge(dependsFailed, backoff)
 	status.StateMachine.AddEdge(dependsFailed, pendingDelete)
+	status.StateMachine.AddEdge(dependsFailed, dead)
 	status.StateMachine.AddEdge(dependsFailed, created)
 
 	status.StateMachine.AddEdge(readinessFailed, kill)

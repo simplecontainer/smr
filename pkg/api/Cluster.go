@@ -455,7 +455,7 @@ func (api *Api) SaveClusterConfiguration() {
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)
 
 	if err == nil {
-		obj.Add(format, string(bytes))
+		obj.Add(format, bytes)
 	} else {
 		logger.Log.Error(err.Error())
 	}

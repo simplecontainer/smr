@@ -41,7 +41,7 @@ func (registry *Registry) Sync(container distributed.Container) {
 		format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", container.Group, container.Name))
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		obj.Add(format, string(bytes))
+		obj.Add(format, bytes)
 	}
 	registry.ContainersLock.Unlock()
 }

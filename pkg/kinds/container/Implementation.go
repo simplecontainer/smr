@@ -104,10 +104,10 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = request.Definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = request.Definition.ToJson()
 
-	logger.Log.Debug("server received container object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received container object", zap.String("definition", string(jsonStringFromRequest)))
 
 	var dr *replicas.Distributed
 

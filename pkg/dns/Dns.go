@@ -1,9 +1,9 @@
 package dns
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -12,6 +12,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"net"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func New(agent string, client *client.Http, user *authentication.User) *Records {
 	r := &Records{
@@ -43,7 +45,7 @@ func (r *Records) AddARecord(domain string, ip string) {
 		return
 	}
 
-	obj.Add(format, string(bytes))
+	obj.Add(format, bytes)
 }
 func (r *Records) RemoveARecord(domain string, ip string) error {
 	ips := r.Find(domain)
@@ -71,7 +73,7 @@ func (r *Records) RemoveARecord(domain string, ip string) error {
 			return err
 		}
 
-		obj.Add(format, string(bytes))
+		obj.Add(format, bytes)
 
 		return nil
 	} else {

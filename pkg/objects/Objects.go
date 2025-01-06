@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
@@ -18,6 +17,8 @@ import (
 )
 
 //go:generate mockgen -source=Interface.go -destination=mock/Interface.go
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func New(client *client.Client, user *authentication.User) *Object {
 	return &Object{
@@ -46,11 +47,11 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Add(format *f.Format, data string) error {
+func (obj *Object) Add(format *f.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.Category, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
+	response := SendRequest(obj.client.Http, URL, "POST", data)
 
-	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", data))
+	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
 		URL = fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s.auth", obj.client.API, static.CATEGORY_PLAIN, format.ToString())
@@ -68,11 +69,11 @@ func (obj *Object) Add(format *f.Format, data string) error {
 	}
 }
 
-func (obj *Object) Update(format *f.Format, data string) error {
+func (obj *Object) Update(format *f.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.Category, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "PUT", []byte(data))
+	response := SendRequest(obj.client.Http, URL, "PUT", data)
 
-	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", data))
+	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
 		return nil
@@ -91,11 +92,10 @@ func (obj *Object) Find(format *f.Format) error {
 		obj.Byte, _ = response.Data.MarshalJSON()
 		obj.String = string(obj.Byte)
 
-		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		err := json.Unmarshal(obj.Byte, &obj.Definition)
 
 		if err != nil {
-			return err
+			logger.Log.Debug("failed to unmarshal json from object find to map[string]interface{}", zap.String("data", obj.String))
 		}
 	} else {
 		return errors.New(response.ErrorExplanation)
@@ -120,12 +120,16 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 			var keys []string
 
 			bytes, _ := response.Data.MarshalJSON()
+			err := json.Unmarshal(bytes, &keys)
 
-			json.Unmarshal(bytes, &keys)
+			if err != nil {
+				fmt.Println("FAIL HERE")
+				return nil, err
+			}
 
 			for _, key := range keys {
 				objTmp := New(obj.client, obj.User)
-				err := objTmp.Find(f.NewFromString(key))
+				err = objTmp.Find(f.NewFromString(key))
 
 				if err != nil {
 					return objects, err
@@ -172,9 +176,9 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 	}
 }
 
-func (obj *Object) Diff(definition string) bool {
+func (obj *Object) Diff(definition []byte) bool {
 	data := make(map[string]any)
-	err := json.Unmarshal([]byte(definition), &data)
+	err := json.Unmarshal(definition, &data)
 
 	if err != nil {
 		return true

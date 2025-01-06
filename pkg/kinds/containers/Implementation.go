@@ -67,10 +67,10 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte, 
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = containersDefinition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = containersDefinition.ToJson()
 
-	logger.Log.Debug("server received containers object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received containers object", zap.String("definition", string(jsonStringFromRequest)))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -169,8 +169,8 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = containersDefinition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = containersDefinition.ToJson()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)

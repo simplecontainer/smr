@@ -52,10 +52,10 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
-	logger.Log.Debug("server received certkey object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received certkey object", zap.String("definition", string(jsonStringFromRequest)))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -131,8 +131,8 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 	obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, _ = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, _ = definition.ToJson()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)

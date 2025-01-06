@@ -64,10 +64,10 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
-	logger.Log.Debug("server received configuration object", zap.String("definition", jsonStringFromRequest))
+	logger.Log.Debug("server received configuration object", zap.String("definition", string(jsonStringFromRequest)))
 
 	if obj.Exists() {
 		if obj.Diff(jsonStringFromRequest) {
@@ -156,8 +156,8 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 	err = obj.Find(format)
 
-	var jsonStringFromRequest string
-	jsonStringFromRequest, err = definition.ToJsonString()
+	var jsonStringFromRequest []byte
+	jsonStringFromRequest, err = definition.ToJson()
 
 	if obj.Exists() {
 		obj.Diff(jsonStringFromRequest)
