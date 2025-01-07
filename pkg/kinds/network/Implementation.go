@@ -70,32 +70,16 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 
 	logger.Log.Debug("server received network object", zap.String("definition", string(jsonStringFromRequest)))
 
-	if obj.Exists() {
-		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(format, jsonStringFromRequest)
+	err = obj.AddLocal(format, jsonStringFromRequest)
 
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "",
-					ErrorExplanation: err.Error(),
-					Error:            true,
-					Success:          false,
-				}, err
-			}
-		}
-	} else {
-		err = obj.Add(format, jsonStringFromRequest)
-
-		if err != nil {
-			return contracts.Response{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
+	if err != nil {
+		return contracts.Response{
+			HttpStatus:       http.StatusInternalServerError,
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
 	}
 
 	var networkObj *implementation.Network
