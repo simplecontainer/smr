@@ -25,17 +25,10 @@ Voila! This is a quick start tutorial for how you can do just that.
 ### Introduction
 The simplecontainer manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
 
-Introducing objects which can be defined as YAML definition and sent to the simplecontainer manager to produce Docker container via reconciliation:
+**It runs as container on top of container engine: docker supported only currently. It requires privilleges over container engine socket.
+Afterward, it exposes API for container manipulation and orchestration.**
 
-- Containers
-- Container
-- Configuration
-- Resource
-- Gitops
-- CertKey
-- HttpAuth
-
-These objects let you deploy containers on local/remote Docker daemon. The simplecontainer introduces the following:
+The simplecontainer introduces the following:
 
 - Cluster of Docker daemons or single Docker daemon
 - Overlay networking for containers using flannel (encrypted using wireguard by default)
@@ -173,6 +166,19 @@ Exposing the control plane only to the localhost:
 ```bash
 smrmgr start -a smr-agent-1 -e localhost:1443
 ```
+
+## How to manipulate containers?
+The simplecontainer introduces objects which can be defined as YAML definition and sent to the simplecontainer manager to produce containers on the engine via reconciliation:
+
+- Containers
+- Container
+- Configuration
+- Resource
+- Gitops
+- CertKey
+- HttpAuth
+
+These objects let you deploy containers on local/remote Docker daemon.
 
 ## Running Docker containers (GitOps approach)
 
