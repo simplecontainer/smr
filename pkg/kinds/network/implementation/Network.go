@@ -33,32 +33,26 @@ func (network *Network) Create() error {
 		return err
 	}
 
-	var cli *dockerClient.Client
-	cli, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv)
+	if !found {
+		var cli *dockerClient.Client
+		cli, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 
-	if found {
-		err = cli.NetworkRemove(context.Background(), network.Name)
+		if err != nil {
+			logger.Log.Fatal(err.Error())
+		}
+
+		newNetwork := types.NetworkCreate{IPAM: &dockerNetwork.IPAM{
+			Driver: "default",
+			Config: []dockerNetwork.IPAMConfig{dockerNetwork.IPAMConfig{
+				Subnet: network.IPV4AddressPool,
+			}},
+		}}
+
+		_, err = cli.NetworkCreate(context.Background(), network.Name, newNetwork)
 
 		if err != nil {
 			return err
 		}
-	}
-
-	if err != nil {
-		logger.Log.Fatal(err.Error())
-	}
-
-	newNetwork := types.NetworkCreate{IPAM: &dockerNetwork.IPAM{
-		Driver: "default",
-		Config: []dockerNetwork.IPAMConfig{dockerNetwork.IPAMConfig{
-			Subnet: network.IPV4AddressPool,
-		}},
-	}}
-
-	_, err = cli.NetworkCreate(context.Background(), network.Name, newNetwork)
-
-	if err != nil {
-		return err
 	}
 
 	return nil
