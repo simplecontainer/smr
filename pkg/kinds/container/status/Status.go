@@ -103,6 +103,8 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(runtimePending, pendingDelete)
 	status.StateMachine.AddEdge(runtimePending, created)
+	status.StateMachine.AddEdge(runtimePending, dead)
+	status.StateMachine.AddEdge(runtimePending, kill)
 	status.StateMachine.AddEdge(runtimePending, prepare)
 	status.StateMachine.AddEdge(runtimePending, dependsChecking)
 

@@ -2,7 +2,6 @@ package reconcile
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -55,6 +54,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			close(containerWatcher.ReadinessChan)
 			close(containerWatcher.DependencyChan)
 
+			shared.Registry.Remove(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
 			shared.Watcher.Remove(containerWatcher.Container.GetGroupIdentifier())
 
 			return
@@ -106,10 +106,10 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		break
 	case status.STATUS_RECREATED:
 		containerState := GetState(containerWatcher)
-		containerObj.GetStatus().Recreated = true
 
 		switch containerState {
 		case "running":
+			containerObj.GetStatus().Recreated = true
 			containerWatcher.Logger.Info("container recreated but already running - next restart of container will pickup changes")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_RUNNING)
 			break
@@ -119,7 +119,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			break
 		default:
 			containerWatcher.Logger.Info("container recreated")
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
 		}
 
 		ReconcileLoop(containerWatcher)
@@ -187,6 +187,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		break
 	case status.STATUS_START:
 		containerState := GetState(containerWatcher)
+		containerObj.GetStatus().Recreated = false
 		var err error = nil
 
 		if containerState != "running" {
@@ -238,34 +239,55 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			case readinessResult := <-containerWatcher.ReadinessChan:
 				containerState := GetState(containerWatcher)
 
-				if containerState != "running" {
+				switch containerState {
+				case "created":
+					// No OP do check again
+					break
+				case "exited":
 					ContinueReconciliation = true
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+					containerWatcher.Logger.Info("container died while readiness checking")
+					break
+				case "dead":
+					ContinueReconciliation = true
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+					containerWatcher.Logger.Info("container died while readiness checking")
+					break
+				case "removing":
+					ContinueReconciliation = true
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+					containerWatcher.Logger.Info("container died while readiness checking")
+					break
+				case "removed":
+					ContinueReconciliation = true
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+					containerWatcher.Logger.Info("container died while readiness checking")
 					break
 				}
 
-				switch readinessResult.State {
-				case dependency.CHECKING:
-					containerWatcher.Logger.Info("checking readiness")
-					break
-				case dependency.SUCCESS:
-					containerWatcher.Logger.Info("readiness check success")
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READY)
+				if containerState == "running" {
+					switch readinessResult.State {
+					case dependency.CHECKING:
+						containerWatcher.Logger.Info("checking readiness")
+						break
+					case dependency.SUCCESS:
+						containerWatcher.Logger.Info("readiness check success")
+						containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READY)
 
-					ContinueReconciliation = true
-					break
-				case dependency.FAILED:
-					containerWatcher.Logger.Info("readiness check failed")
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READINESS_FAILED)
+						ContinueReconciliation = true
+						break
+					case dependency.FAILED:
+						containerWatcher.Logger.Info("readiness check failed")
+						containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READINESS_FAILED)
 
-					ContinueReconciliation = true
-					break
+						ContinueReconciliation = true
+						break
+					}
 				}
 			}
 		}
 
 		ReconcileLoop(containerWatcher)
-
 		break
 	case status.STATUS_READY:
 		containerObj.GetStatus().LastReadiness = true
@@ -315,11 +337,21 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		containerStateEngine, err := containerObj.GetContainerState()
 
 		if err != nil {
-			containerWatcher.Logger.Info(err.Error())
-			break
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
+			ReconcileLoop(containerWatcher)
+
+			return
 		}
 
 		switch containerStateEngine {
+		case "created":
+			containerWatcher.Logger.Info("container couldn't be created")
+			shared.Registry.BackOffTracking(containerObj.GetGroup(), containerObj.GetGeneratedName())
+
+			containerObj.Delete()
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
+			ReconcileLoop(containerWatcher)
+			break
 		case "exited":
 			containerWatcher.Logger.Info("container is dead")
 			shared.Registry.BackOffTracking(containerObj.GetGroup(), containerObj.GetGeneratedName())
@@ -330,6 +362,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				shared.Registry.BackOffReset(containerObj.GetGroup(), containerObj.GetGeneratedName())
 
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_BACKOFF)
+				ReconcileLoop(containerWatcher)
 			} else {
 				containerWatcher.Logger.Info("deleting dead container")
 
@@ -339,21 +372,25 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				}
 
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
+				ReconcileLoop(containerWatcher)
 			}
 			break
-		case "created":
-			containerWatcher.Logger.Info("container couldn't be created")
-			shared.Registry.BackOffTracking(containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-			containerObj.Delete()
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
-			break
-		default:
-			containerWatcher.Logger.Info("container not dead retry again", zap.String("current-state", containerStateEngine))
+		case "dead":
+			containerWatcher.Logger.Info("container dead - cleanup", zap.String("current-state", containerStateEngine))
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+			ReconcileLoop(containerWatcher)
+
+			break
+		case "removing":
+			// No OP
+			break
+		case "removed":
+			containerWatcher.Logger.Info("container removed - cleanup", zap.String("current-state", containerStateEngine))
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+			ReconcileLoop(containerWatcher)
+			break
 		}
 
-		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_BACKOFF:
 		containerWatcher.Logger.Info("container is in backoff state")
@@ -392,67 +429,79 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if containerWatcher.Retry > 12 {
 			containerWatcher.Retry = 0
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+		} else {
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
 		}
 
 		containerWatcher.Container.GetStatus().Reconciling = false
 		break
 
 	case status.STATUS_KILL:
-		containerWatcher.Logger.Info("attempt to shutdown gracefully")
-
-		go func() {
-			err := containerObj.Stop(static.SIGTERM)
-			if err != nil {
-				containerWatcher.Logger.Error(err.Error())
-			}
-		}()
-
-		err := Wait(10*time.Second, func() error {
-			containerStateEngine, err := containerObj.GetContainerState()
-
-			if err != nil {
-				return nil
-			}
-
-			if containerStateEngine == "exited" {
-				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
-			} else {
-				return errors.New("container is not yet in exited state")
-			}
-
-			return nil
-		})
+		containerStateEngine, err := containerObj.GetContainerState()
 
 		if err != nil {
-			containerWatcher.Logger.Info("graceful shutdown failed - forcing kill")
+			containerWatcher.Logger.Info(err.Error())
+			containerWatcher.Container.GetStatus().Reconciling = false
+			break
+		}
 
-			go func() {
-				err = containerObj.Kill(static.SIGKILL)
+		switch containerStateEngine {
+		case "created":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+			}
+			break
+		case "exited":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+			}
+			break
+		case "dead":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+			}
+			break
+		case "removing":
+			// No OP
+			break
+		case "removed":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
+			}
+			break
+		default:
+			containerWatcher.Logger.Info("attempt to shutdown gracefully")
+
+			err = containerObj.Stop(static.SIGTERM)
+
+			if err != nil {
+				err = containerObj.Stop(static.SIGKILL)
+
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
-			}()
-			err = Wait(10*time.Second, func() error {
-				var containerStateEngine string
-				containerStateEngine, err = containerObj.GetContainerState()
-
-				if err != nil {
-					return err
-				}
-
-				if containerStateEngine == "exited" {
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
-				} else {
-					return errors.New("container is not yet in exited state")
-				}
-
-				return nil
-			})
-		}
-
-		if err != nil {
-			containerWatcher.Logger.Error("failed to stop container - will try again")
+			}
 		}
 
 		ReconcileLoop(containerWatcher)
@@ -460,33 +509,67 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	case status.STATUS_PENDING_DELETE:
 		containerStateEngine, err := containerObj.GetContainerState()
 
-		containerWatcher.Logger.Info("container is pending delete")
-
 		if err != nil {
-			shared.Registry.Remove(containerObj.GetGroup(), containerObj.GetGeneratedName())
-			containerWatcher.Cancel()
-		} else {
-			if containerStateEngine == "running" {
-				containerWatcher.Logger.Info("starting graceful termination, timeout 30s")
+			containerWatcher.Logger.Info(err.Error())
+			containerWatcher.Container.GetStatus().Reconciling = false
+			break
+		}
 
-				err = containerObj.Stop(static.SIGTERM)
+		switch containerStateEngine {
+		case "created":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerWatcher.Cancel()
+			}
+			break
+		case "exited":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerWatcher.Cancel()
+			}
+			break
+		case "dead":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerWatcher.Cancel()
+			}
+			break
+		case "removing":
+			// No OP
+			break
+		case "removed":
+			err = containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
+				containerWatcher.Logger.Error(err.Error())
+			} else {
+				containerWatcher.Cancel()
+			}
+			break
+		case "running":
+			err = containerObj.Stop(static.SIGTERM)
+
+			if err != nil {
+				err = containerObj.Stop(static.SIGKILL)
 
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
 			}
-
-			err = containerObj.Delete()
-
-			if err != nil {
-				containerWatcher.Logger.Info("failed to delete container from engine daemon")
-
-			} else {
-				containerWatcher.Logger.Info("container is deleted")
-
-				shared.Registry.Remove(containerObj.GetGroup(), containerObj.GetGeneratedName())
-				containerWatcher.Cancel()
-			}
+			break
 		}
 		break
 	}

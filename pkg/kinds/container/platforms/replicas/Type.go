@@ -3,6 +3,7 @@ package replicas
 import (
 	"github.com/r3labs/diff/v3"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 )
 
@@ -11,6 +12,8 @@ type Replicas struct {
 	Definition      *v1.ContainerDefinition
 	Shared          *shared.Shared
 	Distributed     *Distributed
+	CreateScoped    []platforms.IContainer
+	DeleteScoped    []platforms.IContainer
 	Agent           string
 	ChangeLog       diff.Changelog
 	Spread          v1.ContainerSpread

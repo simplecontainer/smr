@@ -1,6 +1,7 @@
 package replicas
 
 import (
+	"fmt"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -18,13 +19,15 @@ func NewReplica(shared *shared.Shared, agent string, definition *v1.ContainerDef
 		Shared:          shared,
 		NodeID:          shared.Manager.Config.KVStore.Node,
 		Distributed:     NewDistributed(shared.Manager.Config.KVStore.Node, definition.Meta.Group, definition.Meta.Name),
+		CreateScoped:    make([]platforms.IContainer, 0),
+		DeleteScoped:    make([]platforms.IContainer, 0),
 		ChangeLog:       changelog,
 		ExistingIndexes: shared.Registry.GetIndexes(definition.Meta.Group, definition.Meta.Name),
 		Agent:           agent,
 	}
 }
 
-func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []string) (*Distributed, error) {
+func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []string) error {
 	dr := NewDistributed(replicas.NodeID, replicas.Definition.Meta.Group, replicas.Definition.Meta.Name)
 	err := dr.Load(replicas.Shared.Client.Get(user.Username), user)
 
@@ -41,63 +44,59 @@ func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []strin
 			existingContainer := replicas.Shared.Registry.FindLocal(replicas.Definition.Meta.Group, name)
 
 			if existingContainer != nil {
+				replicas.DeleteScoped = append(replicas.DeleteScoped, existingContainer)
 				dr.Replicas[replicas.NodeID].Delete(existingContainer.GetGroup(), existingContainer.GetGeneratedName())
 			}
 		}
 	}
 
 	// Create from the start to the end
-	for _, v := range create {
-		name, _ := replicas.Shared.Registry.NameReplicas(replicas.Definition.Meta.Group, replicas.Definition.Meta.Name, v)
-		existingContainer := replicas.Shared.Registry.FindLocal(replicas.Definition.Meta.Group, name)
+	if len(create) > 0 {
+		var onlyReplicaChange = false
 
-		if existingContainer != nil {
-			var onlyReplicaChange = false
-
-			if len(replicas.ChangeLog) == 1 {
-				for _, change := range replicas.ChangeLog {
-					if strings.Join(change.Path, ":") == "Spec:Container:Replicas" {
-						if change.Type == "update" {
-							onlyReplicaChange = true
-						}
+		if len(replicas.ChangeLog) == 1 {
+			for _, change := range replicas.ChangeLog {
+				fmt.Println(strings.Join(change.Path, ":"))
+				if strings.Join(change.Path, ":") == "spec:container:replicas" {
+					if change.Type == "update" {
+						onlyReplicaChange = true
 					}
 				}
 			}
+		}
 
-			if onlyReplicaChange {
-				continue
+		for _, v := range create {
+			name, _ := replicas.Shared.Registry.NameReplicas(replicas.Definition.Meta.Group, replicas.Definition.Meta.Name, v)
+			existingContainer := replicas.Shared.Registry.FindLocal(replicas.Definition.Meta.Group, name)
+
+			var containerObj platforms.IContainer
+
+			containerObj, err = platforms.New(static.PLATFORM_DOCKER, name, replicas.Shared.Manager.Config, replicas.Shared.Registry.ChangeC, replicas.Definition)
+
+			if err != nil {
+				return err
 			}
-		}
 
-		var containerObj platforms.IContainer
-
-		containerObj, err = platforms.New(static.PLATFORM_DOCKER, name, replicas.Shared.Manager.Config, replicas.Shared.Registry.ChangeC, replicas.Definition)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if existingContainer == nil {
-			replicas.Shared.Registry.AddOrUpdate(replicas.Definition.Meta.Group, name, containerObj)
-		} else {
-			if len(replicas.ChangeLog) > 0 {
-				replicas.Shared.Registry.AddOrUpdate(replicas.Definition.Meta.Group, name, containerObj)
+			if existingContainer != nil {
+				if onlyReplicaChange {
+					continue
+				} else {
+					replicas.CreateScoped = append(replicas.CreateScoped, containerObj)
+				}
+			} else {
+				replicas.CreateScoped = append(replicas.CreateScoped, containerObj)
 			}
-		}
 
-		dr.Replicas[replicas.NodeID].Add(replicas.Definition.Meta.Group, name)
+			dr.Replicas[replicas.NodeID].Add(replicas.Definition.Meta.Group, name)
+		}
 	}
 
-	err = dr.Save(replicas.Shared.Client.Get(user.Username), user)
+	replicas.Distributed = dr
+	return dr.Save(replicas.Shared.Client.Get(user.Username), user)
 
-	if err != nil {
-		return nil, err
-	}
-
-	return dr, nil
 }
 
-func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) (*Distributed, error) {
+func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) error {
 	dr := NewDistributed(replicas.NodeID, replicas.Definition.Meta.Group, replicas.Definition.Meta.Name)
 	dr.Load(replicas.Shared.Client.Get(user.Username), user)
 
@@ -112,7 +111,7 @@ func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) 
 		}
 	}
 
-	return dr, nil
+	return nil
 }
 
 func (replicas *Replicas) GetReplicaNumbers(dr *Distributed, spread v1.ContainerSpread, replicasNumber uint64, existingIndexes []uint64, clusterSize uint64) ([]uint64, []uint64, []uint64) {
@@ -148,6 +147,10 @@ func Default(replicasNumber uint64, existingIndexes []uint64) ([]uint64, []uint6
 
 	for replicas := uint64(1); replicas <= replicasNumber; replicas++ {
 		create = append(create, replicas)
+	}
+
+	if len(create) < len(existingIndexes) {
+		destroy = existingIndexes[len(create):]
 	}
 
 	return create, destroy, existingIndexes

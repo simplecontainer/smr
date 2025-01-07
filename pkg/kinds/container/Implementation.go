@@ -115,22 +115,11 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 
 	logger.Log.Debug("server received container object", zap.String("definition", string(jsonStringFromRequest)))
 
-	var dr *replicas.Distributed
+	var dr *replicas.Replicas
 
 	if obj.Exists() {
-		dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
-
-		if err != nil {
-			return contracts.Response{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "failed to update object",
-				ErrorExplanation: err.Error(),
-				Error:            false,
-				Success:          true,
-			}, err
-		}
-
 		if obj.Diff(jsonStringFromRequest) {
+			dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
 			err = obj.Update(format, jsonStringFromRequest)
 
 			if err != nil {
@@ -178,14 +167,12 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 	}
 
 	if err == nil {
-		if len(dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove) > 0 {
-			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove)
+		fmt.Println(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Create)
+		fmt.Println(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove)
 
-			for _, containerObj := range containerObjs {
+		if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove) > 0 {
+			for _, containerObj := range dr.DeleteScoped {
 				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-				format = f.New("container", containerObj.GetGroup(), containerObj.GetName(), "")
-				obj.Remove(format)
 
 				format = f.New("configuration", containerObj.GetGroup(), containerObj.GetGeneratedName(), "")
 				obj.Remove(format)
@@ -195,16 +182,16 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 			}
 		}
 
-		if len(dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Create) > 0 {
-			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Create)
-
-			for k, containerObj := range containerObjs {
+		if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Create) > 0 {
+			for _, containerObj := range dr.CreateScoped {
 				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 				existingWatcher := container.Shared.Watcher.Find(GroupIdentifier)
 
 				if obj.Exists() {
 					if obj.ChangeDetected() {
-						existingWatcher = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
+						container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
+
+						existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
 						existingWatcher.Logger.Info("container object modified")
 
 						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
@@ -217,10 +204,11 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 						logger.Log.Info("no change detected in the containers definition")
 					}
 				} else {
-					_, err = containerObjs[k].GetContainerState()
+					_, err = containerObj.GetContainerState()
+					container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
 					if err != nil {
-						existingWatcher = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
+						existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
 						existingWatcher.Logger.Info("container object created")
 
 						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
@@ -228,7 +216,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
 						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
 					} else {
-						existingWatcher = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
+						existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
 						existingWatcher.Logger.Info("container object created but already is existing - manual intervention needed")
 
 						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
@@ -296,12 +284,12 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 	err = obj.Find(format)
 
 	if obj.Exists() {
-		var dr *replicas.Distributed
+		var dr *replicas.Replicas
 		dr, err = GetContainers(container.Shared, user, agent, request.Definition)
 
 		if err == nil {
-			if len(dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Numbers.Existing) > 0 {
-				containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Existing)
+			if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Numbers.Existing) > 0 {
+				containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Existing)
 
 				format = f.New("container", request.Definition.Meta.Group, request.Definition.Meta.Name, "")
 				obj.Remove(format)
@@ -312,7 +300,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 					reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
 				}
 
-				dr.Remove(container.Shared.Client.Clients[user.Username], user)
+				dr.Distributed.Remove(container.Shared.Client.Clients[user.Username], user)
 
 				return contracts.Response{
 					HttpStatus:       200,
@@ -390,12 +378,16 @@ func FetchContainersFromRegistry(registry *registry.Registry, containers []repli
 	return order
 }
 
-func GenerateContainers(shared *shared.Shared, user *authentication.User, agent string, containerDefinition *v1.ContainerDefinition, changelog diff.Changelog) (*replicas.Distributed, error) {
+func GenerateContainers(shared *shared.Shared, user *authentication.User, agent string, containerDefinition *v1.ContainerDefinition, changelog diff.Changelog) (*replicas.Replicas, error) {
 	replication := replicas.NewReplica(shared, agent, containerDefinition, changelog)
-	return replication.HandleReplica(user, shared.Manager.Cluster.Cluster.ToString())
+	err := replication.HandleReplica(user, shared.Manager.Cluster.Cluster.ToString())
+
+	return replication, err
 }
 
-func GetContainers(shared *shared.Shared, user *authentication.User, agent string, containerDefinition *v1.ContainerDefinition) (*replicas.Distributed, error) {
+func GetContainers(shared *shared.Shared, user *authentication.User, agent string, containerDefinition *v1.ContainerDefinition) (*replicas.Replicas, error) {
 	replication := replicas.NewReplica(shared, agent, containerDefinition, nil)
-	return replication.GetReplica(user, shared.Manager.Cluster.Cluster.ToString())
+	err := replication.GetReplica(user, shared.Manager.Cluster.Cluster.ToString())
+
+	return replication, err
 }

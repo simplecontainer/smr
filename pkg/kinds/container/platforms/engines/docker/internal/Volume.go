@@ -7,12 +7,14 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"os"
 	"strings"
+	"sync"
 )
 
 type Volumes struct {
 	Volumes     []*Volume
 	HomeDir     string
 	HostHomeDir string
+	Lock        sync.RWMutex
 }
 
 type Volume struct {
@@ -37,6 +39,7 @@ func NewVolumes(volumes []v1.ContainerVolume, config *configuration.Configuratio
 
 	volumesObj.HomeDir = config.Environment.HOMEDIR
 	volumesObj.HostHomeDir = config.HostHome
+	volumesObj.Lock = sync.RWMutex{}
 
 	return volumesObj, nil
 }
@@ -62,18 +65,21 @@ func (volumes *Volumes) Add(volume v1.ContainerVolume) error {
 }
 
 func (volumes *Volumes) RemoveResources() error {
-	for k, v := range volumes.Volumes {
+	tmpSlice := make([]*Volume, 0)
+
+	for _, v := range volumes.Volumes {
 		if v.Type == "resource" {
 			err := os.Remove(v.HostPath)
 
 			if err != nil {
 				return err
 			}
-
-			volumes.Volumes = append(volumes.Volumes[:k], volumes.Volumes[k+1:]...)
+		} else {
+			tmpSlice = append(tmpSlice, v)
 		}
 	}
 
+	volumes.Volumes = tmpSlice
 	return nil
 }
 
