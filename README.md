@@ -280,10 +280,10 @@ Traefik and nginx will wait till mysql is ready because of the dependency defini
 
 Important links
 ---------------------------
+- https://simplecontainer.io
 - https://github.com/simplecontainer/smr
 - https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
-- https://simplecontainer.qdnqn.com
 
 # License
 This project is licensed under the GNU General Public License v3.0. See more in LICENSE file.
