@@ -124,6 +124,10 @@ func (c *Container) HasDependencyOn(kind string, group string, identifier string
 	return c.Platform.HasDependencyOn(kind, group, identifier, runtime)
 }
 
+func (c *Container) HasOwner() bool {
+	return c.Platform.HasOwner()
+}
+
 func (c *Container) GetRuntime() *types.Runtime {
 	return c.General.Runtime
 }

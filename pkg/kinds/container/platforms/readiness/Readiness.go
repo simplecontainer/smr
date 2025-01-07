@@ -151,12 +151,17 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 			}
 		}
 	case TYPE_COMMAND:
-		result := container.Exec(readiness.Command)
+		c, err := container.GetContainerState()
+		if err == nil && c == "running" {
+			result := container.Exec(readiness.Command)
 
-		if result.Exit == 0 {
-			return nil
+			if result.Exit == 0 {
+				return nil
+			} else {
+				return errors.New("readiness request failed")
+			}
 		} else {
-			return errors.New("readiness request failed")
+			return errors.New("readiness request failed - container not running")
 		}
 	default:
 		return nil

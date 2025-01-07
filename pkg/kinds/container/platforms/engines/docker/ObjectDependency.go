@@ -11,3 +11,7 @@ func (container *Docker) HasDependencyOn(kind string, group string, identifier s
 
 	return false
 }
+
+func (container *Docker) HasOwner() bool {
+	return container.Definition.Meta.Owner.Group != "" && container.Definition.Meta.Owner.Name != ""
+}

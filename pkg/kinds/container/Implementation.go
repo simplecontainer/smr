@@ -117,59 +117,129 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 
 	var dr *replicas.Replicas
 
-	if obj.Exists() {
-		if obj.Diff(jsonStringFromRequest) {
-			dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
-			err = obj.Update(format, jsonStringFromRequest)
+	if !request.Definition.Meta.Owner.IsEmpty() {
+		if obj.Exists() {
+			if obj.Diff(jsonStringFromRequest) {
+				dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
 
-			if err != nil {
+				if err != nil {
+					return contracts.Response{
+						HttpStatus:       http.StatusInternalServerError,
+						Explanation:      "failed to generate replica counts",
+						ErrorExplanation: err.Error(),
+						Error:            false,
+						Success:          true,
+					}, err
+				}
+
+				err = obj.AddLocal(format, jsonStringFromRequest)
+
+				if err != nil {
+					return contracts.Response{
+						HttpStatus:       http.StatusInternalServerError,
+						Explanation:      "failed to add object",
+						ErrorExplanation: err.Error(),
+						Error:            false,
+						Success:          true,
+					}, err
+				}
+			} else {
 				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "failed to update object",
-					ErrorExplanation: err.Error(),
+					HttpStatus:       http.StatusOK,
+					Explanation:      "object is same",
+					ErrorExplanation: "",
 					Error:            false,
 					Success:          true,
 				}, err
 			}
 		} else {
-			return contracts.Response{
-				HttpStatus:       http.StatusOK,
-				Explanation:      "object is same",
-				ErrorExplanation: "",
-				Error:            false,
-				Success:          true,
-			}, err
+			dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
+
+			if err != nil {
+				return contracts.Response{
+					HttpStatus:       http.StatusInternalServerError,
+					Explanation:      "failed to generate container objects",
+					ErrorExplanation: err.Error(),
+					Error:            false,
+					Success:          true,
+				}, err
+			}
+
+			err = obj.AddLocal(format, jsonStringFromRequest)
+
+			if err != nil {
+				return contracts.Response{
+					HttpStatus:       http.StatusInternalServerError,
+					Explanation:      "failed to add object",
+					ErrorExplanation: err.Error(),
+					Error:            false,
+					Success:          true,
+				}, err
+			}
 		}
 	} else {
-		dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
+		if obj.Exists() {
+			if obj.Diff(jsonStringFromRequest) {
+				dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
 
-		if err != nil {
-			return contracts.Response{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "failed to update object",
-				ErrorExplanation: err.Error(),
-				Error:            false,
-				Success:          true,
-			}, err
-		}
+				if err != nil {
+					return contracts.Response{
+						HttpStatus:       http.StatusInternalServerError,
+						Explanation:      "failed to generate replica counts",
+						ErrorExplanation: err.Error(),
+						Error:            false,
+						Success:          true,
+					}, err
+				}
 
-		err = obj.Add(format, jsonStringFromRequest)
+				err = obj.Add(format, jsonStringFromRequest)
 
-		if err != nil {
-			return contracts.Response{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "failed to add object",
-				ErrorExplanation: err.Error(),
-				Error:            false,
-				Success:          true,
-			}, err
+				if err != nil {
+					return contracts.Response{
+						HttpStatus:       http.StatusInternalServerError,
+						Explanation:      "failed to add object",
+						ErrorExplanation: err.Error(),
+						Error:            false,
+						Success:          true,
+					}, err
+				}
+			} else {
+				return contracts.Response{
+					HttpStatus:       http.StatusOK,
+					Explanation:      "object is same",
+					ErrorExplanation: "",
+					Error:            false,
+					Success:          true,
+				}, err
+			}
+		} else {
+			dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
+
+			if err != nil {
+				return contracts.Response{
+					HttpStatus:       http.StatusInternalServerError,
+					Explanation:      "failed to generate container objects",
+					ErrorExplanation: err.Error(),
+					Error:            false,
+					Success:          true,
+				}, err
+			}
+
+			err = obj.Add(format, jsonStringFromRequest)
+
+			if err != nil {
+				return contracts.Response{
+					HttpStatus:       http.StatusInternalServerError,
+					Explanation:      "failed to add object",
+					ErrorExplanation: err.Error(),
+					Error:            false,
+					Success:          true,
+				}, err
+			}
 		}
 	}
 
 	if err == nil {
-		fmt.Println(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Create)
-		fmt.Println(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove)
-
 		if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove) > 0 {
 			for _, containerObj := range dr.DeleteScoped {
 				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())

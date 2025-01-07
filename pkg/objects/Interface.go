@@ -9,6 +9,7 @@ type ObjectInterface interface {
 	GetDefinition() map[string]any
 	GetDefinitionByte() []byte
 	Add(format *f.Format, data []byte) error
+	AddLocal(format *f.Format, data []byte) error
 	Update(format *f.Format, data []byte) error
 	Find(format *f.Format) error
 	Remove(format *f.Format) (bool, error)

@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"sort"
 	"time"
 )
 
@@ -82,32 +83,44 @@ func SolveDepends(registry *registry.Registry, myGroup string, myName string, de
 
 	if otherName == "*" {
 		containers := registry.FindGroup(otherGroup)
+		keys := make([]string, 0)
+
+		for k, _ := range containers {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
 
 		if len(containers) == 0 {
 			return errors.New("waiting for atleast one container from group to show up")
 		} else {
-			for _, container := range registry.FindGroup(otherGroup) {
-				if container == nil {
+			flagFail := false
+
+			for _, containerName := range keys {
+				if containers[containerName] == nil {
 					channel <- &State{
 						State: CHECKING,
-						Error: errors.New(fmt.Sprintf("container not found %s", container.GetGeneratedName())),
+						Error: errors.New(fmt.Sprintf("container not found %s", containers[containerName].GetGeneratedName())),
 					}
 
-					return errors.New(fmt.Sprintf("container not found %s", container.GetGeneratedName()))
+					flagFail = true
 				} else {
-					if !container.GetStatus().LastReadiness {
+					if !containers[containerName].GetStatus().LastReadiness {
 						channel <- &State{
 							State: CHECKING,
-							Error: errors.New(fmt.Sprintf("container not ready %s", container.GetGeneratedName())),
+							Error: errors.New(fmt.Sprintf("container not ready %s", containers[containerName].GetGeneratedName())),
 						}
 
-						return errors.New(fmt.Sprintf("container not ready %s", container.GetGeneratedName()))
+						flagFail = true
 					}
-
-					// Otherwise no-op continue to check next container and if every container is ready return nil
 				}
 			}
-			return nil
+
+			if flagFail {
+				return errors.New("dependency not ready")
+			} else {
+				return nil
+			}
 		}
 	} else {
 		container := registry.Find(otherGroup, otherName)

@@ -28,6 +28,7 @@ type IContainer interface {
 	UpdateDns(dnsCache *dns.Records)
 
 	HasDependencyOn(string, string, string, *types.Runtime) bool
+	HasOwner() bool
 
 	GetRuntime() *types.Runtime
 	GetStatus() *status.Status
@@ -67,6 +68,7 @@ type IPlatform interface {
 	GenerateLabels() map[string]string
 
 	HasDependencyOn(string, string, string, *types.Runtime) bool
+	HasOwner() bool
 
 	GetDefinition() v1.ContainerDefinition
 	GetGeneratedName() string

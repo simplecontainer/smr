@@ -68,6 +68,28 @@ func (obj *Object) Add(format *f.Format, data []byte) error {
 	}
 }
 
+func (obj *Object) AddLocal(format *f.Format, data []byte) error {
+	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.Category, format.ToString())
+	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
+
+	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
+
+	if response.Success {
+		URL = fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s.auth", obj.client.API, static.CATEGORY_PLAIN, format.ToString())
+		response = SendRequest(obj.client.Http, URL, "POST", obj.User.ToBytes())
+
+		logger.Log.Debug("object auth remove", zap.String("URL", URL))
+
+		if !response.Success {
+			return errors.New(response.ErrorExplanation)
+		} else {
+			return nil
+		}
+	} else {
+		return errors.New(response.ErrorExplanation)
+	}
+}
+
 func (obj *Object) Update(format *f.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.Category, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "PUT", []byte(data))

@@ -62,11 +62,16 @@ func Container(shared *shared.Shared, user *authentication.User, containers *wat
 	containers.Syncing = true
 
 	for _, definition := range containers.Definition.Spec {
+		definition.Meta.Owner.Kind = containers.Definition.Kind
+		definition.Meta.Owner.Name = containers.Definition.Meta.Name
+		definition.Meta.Owner.Group = containers.Definition.Meta.Group
+
 		definitionJSON, err := definition.ToJson()
 
 		if err != nil {
 			containers.Logger.Info(err.Error())
 		} else {
+			fmt.Println("Calling apply")
 			_, err = shared.Manager.KindsRegistry["container"].Apply(user, definitionJSON, agent)
 
 			if err != nil {

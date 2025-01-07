@@ -15,6 +15,17 @@ type ContainerMeta struct {
 	Name   string            `validate:"required" json:"name"`
 	Group  string            `validate:"required" json:"group"`
 	Labels map[string]string `json:"labels"`
+	Owner  ContainerOwner    `json:"-"`
+}
+
+type ContainerOwner struct {
+	Kind  string
+	Group string
+	Name  string
+}
+
+func (owner ContainerOwner) IsEmpty() bool {
+	return owner.Group != "" && owner.Name != ""
 }
 
 type ContainerSpec struct {
