@@ -33,10 +33,3 @@ type ExecResult struct {
 	Stderr string
 	Exit   int
 }
-
-type Events struct {
-	Kind    string
-	Group   string
-	Name    string
-	Message string
-}

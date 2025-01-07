@@ -103,8 +103,8 @@ func (c *Container) Exec(command []string) types.ExecResult {
 	return c.Platform.Exec(command)
 }
 
-func (c *Container) Get() (*TDTypes.Container, error) {
-	return c.Platform.Get()
+func (c *Container) GetContainerState() (string, error) {
+	return c.Platform.GetContainerState()
 }
 func (c *Container) Run(config *configuration.Configuration, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
 	return c.Platform.Run(config, http, records, user)
@@ -118,6 +118,10 @@ func (c *Container) AttachToNetworks(agentContainerName string) error {
 }
 func (c *Container) UpdateDns(cache *dns.Records) {
 	c.Platform.UpdateDns(cache)
+}
+
+func (c *Container) HasDependencyOn(kind string, group string, identifier string, runtime *types.Runtime) bool {
+	return c.Platform.HasDependencyOn(kind, group, identifier, runtime)
 }
 
 func (c *Container) GetRuntime() *types.Runtime {

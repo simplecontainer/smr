@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func SendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.Response {
+func SendRequest(client *client.Http, user *authentication.User, URL string, data []byte) *contracts.Response {
 	var req *http.Request
 	var err error
 
@@ -76,6 +76,7 @@ func SendRequest(client *client.Http, user *authentication.User, URL string, dat
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
+			Data:             body,
 		}
 	}
 

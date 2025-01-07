@@ -50,6 +50,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(created, pendingDelete)
 
 	status.StateMachine.AddEdge(recreated, prepare)
+	status.StateMachine.AddEdge(recreated, running)
 	status.StateMachine.AddEdge(recreated, kill)
 	status.StateMachine.AddEdge(recreated, dead)
 	status.StateMachine.AddEdge(recreated, pendingDelete)

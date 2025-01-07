@@ -6,14 +6,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
+	"github.com/simplecontainer/smr/pkg/raft"
 	"go.uber.org/zap"
 	"time"
 )
 
 type ContainerWatcher struct {
 	Container    map[string]*Container
-	EventChannel chan *types.Events
+	EventChannel chan raft.KV
 }
 
 type Container struct {

@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/raft"
@@ -88,8 +89,10 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	etcdC := make(chan raft.KV)
 	objectC := make(chan raft.KV)
 
+	containerShared := api.Manager.KindsRegistry["container"].GetShared().(*shared.Shared)
+
 	api.Cluster.Client = api.Manager.Http
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC)
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC, containerShared.Watcher.EventChannel)
 
 	if err != nil {
 		return err

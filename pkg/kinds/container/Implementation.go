@@ -13,7 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/replicas"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
@@ -21,6 +20,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
@@ -32,7 +32,7 @@ func (container *Container) Start() error {
 	container.Started = true
 
 	container.Shared.Watcher = &watcher.ContainerWatcher{
-		EventChannel: make(chan *types.Events),
+		EventChannel: make(chan raft.KV),
 	}
 	container.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
@@ -95,7 +95,13 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 	data := make(map[string]interface{})
 	err = json.Unmarshal(jsonData, &data)
 	if err != nil {
-		panic(err)
+		return contracts.Response{
+			HttpStatus:       400,
+			Explanation:      "invalid definition sent",
+			ErrorExplanation: err.Error(),
+			Error:            true,
+			Success:          false,
+		}, err
 	}
 
 	var format *f.Format
@@ -138,7 +144,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 			}
 		} else {
 			return contracts.Response{
-				HttpStatus:       http.StatusNotModified,
+				HttpStatus:       http.StatusOK,
 				Explanation:      "object is same",
 				ErrorExplanation: "",
 				Error:            false,
@@ -193,40 +199,56 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Replicas[container.Shared.Manager.Config.KVStore.Node].Create)
 
 			for k, containerObj := range containerObjs {
-				// containerObj is fetched from the registry and can be used instead of the object
-				// registry is modified by the generateReplicaNamesAndGroups so it is safe to use
-				// it instead of the object
-
 				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-				existingContainer := container.Shared.Watcher.Find(GroupIdentifier)
+				existingWatcher := container.Shared.Watcher.Find(GroupIdentifier)
 
 				if obj.Exists() {
 					if obj.ChangeDetected() {
-						existingContainer = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
-						existingContainer.Logger.Info("container object modified")
+						existingWatcher = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
+						existingWatcher.Logger.Info("container object modified")
 
-						existingContainer.Container.GetStatus().SetState(status.STATUS_CREATED)
-						go reconcile.HandleTickerAndEvents(container.Shared, existingContainer)
+						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
+						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
 
-						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingContainer)
+						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
 
-						reconcile.Container(container.Shared, existingContainer)
+						reconcile.Container(container.Shared, existingWatcher)
 					} else {
 						logger.Log.Info("no change detected in the containers definition")
 					}
 				} else {
-					existingContainer = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
-					existingContainer.Logger.Info("container object created")
+					_, err = containerObjs[k].GetContainerState()
 
-					go reconcile.HandleTickerAndEvents(container.Shared, existingContainer)
+					if err != nil {
+						existingWatcher = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
+						existingWatcher.Logger.Info("container object created")
 
-					existingContainer.Container.GetStatus().SetState(status.STATUS_CREATED)
-					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingContainer)
+						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
 
-					reconcile.Container(container.Shared, existingContainer)
+						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
+						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+					} else {
+						existingWatcher = reconcile.NewWatcher(containerObjs[k], container.Shared.Manager, user)
+						existingWatcher.Logger.Info("container object created but already is existing - manual intervention needed")
+
+						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
+
+						existingWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
+						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+					}
+
+					reconcile.Container(container.Shared, existingWatcher)
 				}
 			}
 		}
+
+		return contracts.Response{
+			HttpStatus:       200,
+			Explanation:      "everything went well: good job!",
+			ErrorExplanation: "",
+			Error:            false,
+			Success:          true,
+		}, nil
 	} else {
 		logger.Log.Error(err.Error())
 
@@ -238,14 +260,6 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 			Success:          true,
 		}, nil
 	}
-
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "everything went well: good job!",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-	}, nil
 }
 func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	return contracts.Response{

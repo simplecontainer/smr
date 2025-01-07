@@ -55,16 +55,10 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 }
 
 func (container *Docker) PrepareResources(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
-	fmt.Println("Preparing resources")
-
 	err := container.Volumes.RemoveResources()
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println("Failed to delete old files")
 		return err
 	}
-
-	fmt.Println("deleted old files")
 
 	for k, v := range container.Resources.Resources {
 		format := f.New("resource", v.Reference.Group, v.Reference.Name, "object")

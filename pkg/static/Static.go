@@ -27,6 +27,7 @@ const PLATFORM_DOCKER = "docker"
 const CATEGORY_OBJECT = "object"
 const CATEGORY_ETCD = "etcd"
 const CATEGORY_PLAIN = "plain"
+const CATEGORY_EVENT = "event"
 const CATEGORY_SECRET = "secret"
 
 const SIGTERM = "SIGTERM"

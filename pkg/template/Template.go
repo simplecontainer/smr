@@ -18,8 +18,6 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 
 	var parsed string = template
 
-	fmt.Println(placeholders)
-
 	for _, placeholder := range placeholders {
 		pf := f.NewFromString(placeholder)
 
@@ -33,8 +31,6 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 			var value any
 			var ok = false
 
-			fmt.Println(stripedIndex)
-
 			if runtime == nil {
 				ok = false
 			} else {
@@ -43,7 +39,6 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 
 			if ok {
 				parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), value.(string), -1)
-				fmt.Println("XXXXXXXXXX")
 			} else {
 				return template, nil, errors.New(fmt.Sprintf("container runtime configuration is missing: %s", placeholder))
 			}
@@ -58,8 +53,6 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
 			break
 		case "configuration":
-			fmt.Println(placeholder)
-
 			cf := f.NewFromString(pf.ToString())
 			cf.Key = "object"
 

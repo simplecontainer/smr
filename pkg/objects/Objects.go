@@ -123,7 +123,6 @@ func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
 			err := json.Unmarshal(bytes, &keys)
 
 			if err != nil {
-				fmt.Println("FAIL HERE")
 				return nil, err
 			}
 

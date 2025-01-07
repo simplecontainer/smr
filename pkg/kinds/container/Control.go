@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"net/http"
+	"go.uber.org/zap"
 )
 
 var supportedControlOperations = []string{"List", "Get", "Remove", "View", "Restart"}
@@ -88,7 +89,7 @@ func (container *Container) Get(request contracts.Control) contracts.Response {
 	}
 }
 func (container *Container) View(request contracts.Control) contracts.Response {
-	containerObj := container.Shared.Registry.FindLocal(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
+	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
 
 	if containerObj == nil {
 		return contracts.Response{
@@ -114,6 +115,39 @@ func (container *Container) View(request contracts.Control) contracts.Response {
 	}
 }
 func (container *Container) Restart(request contracts.Control) contracts.Response {
+	containerObj := container.Shared.Registry.Find(request.Group, request.Name)
+
+	if containerObj == nil {
+		return contracts.Response{
+			HttpStatus:       404,
+			Explanation:      "container not found in the registry",
+			ErrorExplanation: "",
+			Error:            true,
+			Success:          false,
+			Data:             nil,
+		}
+	}
+
+	event := events.New(events.EVENT_RESTART, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+
+	bytes, err := event.ToJson()
+
+	if err != nil {
+		logger.Log.Debug("failed to dispatch event", zap.Error(err))
+	} else {
+		container.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, container.Shared.Manager.Config.Node)
+	}
+
+	return contracts.Response{
+		HttpStatus:       200,
+		Explanation:      "container object is scheduled for restarted",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             nil,
+	}
+}
+func (container *Container) Remove(request contracts.Control) contracts.Response {
 	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
 
 	if containerObj == nil {
@@ -127,54 +161,20 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 		}
 	}
 
-	containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
-	container.Shared.Watcher.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
+	event := events.New(events.EVENT_DELETE, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+
+	bytes, err := event.ToJson()
+
+	if err != nil {
+		container.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, container.Shared.Manager.Config.Node)
+	}
 
 	return contracts.Response{
 		HttpStatus:       200,
-		Explanation:      "container object is restarted",
+		Explanation:      "container object is scheduled for deletion",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
 		Data:             nil,
-	}
-}
-func (container *Container) Remove(request contracts.Control) contracts.Response {
-	format := f.New("container", request.Group, request.Name, "object")
-
-	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
-	if err != nil {
-		panic(err)
-	}
-
-	if !obj.Exists() {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "object not found on the server",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}
-	}
-
-	_, err = container.Delete(request.User, obj.GetDefinitionByte(), container.Shared.Manager.Config.Node)
-
-	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "failed to delete containers",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       http.StatusOK,
-		Explanation:      "action completed successfully",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
 	}
 }

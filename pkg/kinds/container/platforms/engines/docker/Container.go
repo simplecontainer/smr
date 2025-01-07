@@ -323,6 +323,19 @@ func (container *Docker) Exec(command []string) types.ExecResult {
 	}
 }
 
+func (container *Docker) GetContainerState() (string, error) {
+	dockerContainer, err := DockerGet(container.GeneratedName)
+
+	if err != nil {
+		return "", err
+	}
+
+	container.DockerID = dockerContainer.ID
+	container.DockerState = dockerContainer.State
+
+	return dockerContainer.State, nil
+}
+
 func (container *Docker) Get() (*TDTypes.Container, error) {
 	dockerContainer, err := DockerGet(container.GeneratedName)
 

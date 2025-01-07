@@ -1,4 +1,4 @@
-![simplecontainer manager](.github/resources/repository.jpg)
+![simplecontainer manager](.github/resources/promo.png)
 
 Quick start
 ===========
@@ -38,7 +38,7 @@ Introducing objects which can be defined as YAML definition and sent to the simp
 These objects let you deploy containers on local/remote Docker daemon. The simplecontainer introduces the following:
 
 - Cluster of Docker daemons or single Docker daemon
-- Overlay networking for containers using flannel
+- Overlay networking for containers using flannel (encrypted using wireguard by default)
 - Integrated DNS server isolated from Docker daemon
 - GitOps: deploy objects from the Git repositories using GitOps approach
 - Replication of containers in cluster of Docker daemons
@@ -49,6 +49,11 @@ These objects let you deploy containers on local/remote Docker daemon. The simpl
 - Secrets, Configuration and Resources objects for external configuration
 - CLI to interact with the simplecontainer
 - Fast learning curve - simplicity and deterministic behavior
+
+> [!IMPORTANT]
+> To use flannel wireguard network encryption wireguard package needs to be installed on the machine running simplecontainer.
+> See more at: https://www.wireguard.com/install/
+
 
 Installation
 --------------------------
@@ -234,6 +239,8 @@ Output:
 
 ## Running containers (Applying definitions approach)
 
+This scenario assumes two nodes of simplecontainer running.
+
 Run the next commands:
 ```bash
 smr secret create secret.mysql.mysql.password 123456789
@@ -254,11 +261,11 @@ This example demonstrates:
 After running commands above, check the `smr ps`:
 ```bash
 smr ps
-GROUP    NAME     DOCKER NAME        IMAGE         IP                                      PORTS                      DEPS      DOCKER STATE  SMR STATE         
-mysql    mysql    mysql-mysql-1      mysql:8.0     10.10.0.3 (ghost), 172.17.0.4 (bridge)  3306                                 running       running (51m17s)  
-mysql    mysql    mysql-mysql-2      mysql:8.0     10.10.0.2 (ghost), 172.17.0.3 (bridge)  3306                                 running       running (51m15s)  
-nginx    nginx    nginx-nginx-1      nginx:1.23.3  10.10.0.6 (ghost), 172.17.0.6 (bridge)  80, 443                    mysql.*   running       running (51m14s)  
-traefik  traefik  traefik-traefik-1  traefik:v2.5  10.10.0.5 (ghost), 172.17.0.5 (bridge)  80:80, 443:443, 8888:8080  mysql.*   running       running (51m15s)  
+NODE             GROUP    NAME     DOCKER NAME        IMAGE         IP                   PORTS                      DEPS      ENGINE STATE      SMR STATE                  
+smr-agent-1 (1)  mysql    mysql    mysql-mysql-1      mysql:8.0                          3306                       -         running (docker)  running  (36s)          
+smr-agent-2 (2)  mysql    mysql    mysql-mysql-2      mysql:8.0                          3306                       -         running (docker)  running  (36s)          
+smr-agent-2 (2)  nginx    nginx    nginx-nginx-1      nginx:1.23.3                       80, 443                    mysql.*   running (docker)  running  (36s)          
+smr-agent-2 (2)  traefik  traefik  traefik-traefik-1  traefik:v2.5  172.17.0.7 (bridge)  80:80, 443:443, 8888:8080  mysql.*   running (docker)  running  (36s)  
 ```
 
 Containers from group mysql will start first. 

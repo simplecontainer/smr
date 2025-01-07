@@ -20,12 +20,14 @@ type IContainer interface {
 	Rename(newName string) error
 	Exec(command []string) types.ExecResult
 
-	Get() (*TDTypes.Container, error)
+	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User) error
 
 	AttachToNetworks(string) error
 	UpdateDns(dnsCache *dns.Records)
+
+	HasDependencyOn(string, string, string, *types.Runtime) bool
 
 	GetRuntime() *types.Runtime
 	GetStatus() *status.Status
@@ -56,13 +58,15 @@ type IPlatform interface {
 	Rename(newName string) error
 	Exec(command []string) types.ExecResult
 
-	Get() (*TDTypes.Container, error)
+	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error
 
 	AttachToNetworks(string) error
 	UpdateDns(dnsCache *dns.Records)
 	GenerateLabels() map[string]string
+
+	HasDependencyOn(string, string, string, *types.Runtime) bool
 
 	GetDefinition() v1.ContainerDefinition
 	GetGeneratedName() string

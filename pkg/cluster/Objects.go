@@ -23,6 +23,12 @@ func (cluster *Cluster) ListenObjects(agent string) {
 					if !response.Success {
 						if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
 							logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+							fmt.Println(response)
+							fmt.Println(response.Data)
+							fmt.Println(string(response.Data))
+							fmt.Println(string(data.Val))
+							fmt.Println(data)
+							fmt.Println("........................................................................")
 						}
 					}
 				}

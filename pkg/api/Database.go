@@ -267,7 +267,7 @@ func (api *Api) Propose(c *gin.Context) {
 
 	switch c.Param("type") {
 	case static.CATEGORY_PLAIN:
-		api.Cluster.KVStore.Propose(key, string(data), api.Config.Node)
+		api.Cluster.KVStore.Propose(key, data, api.Config.Node)
 		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "value stored in the key value store",
 			ErrorExplanation: "",
@@ -277,7 +277,7 @@ func (api *Api) Propose(c *gin.Context) {
 		})
 		return
 	case static.CATEGORY_OBJECT:
-		api.Cluster.KVStore.ProposeObject(key, string(data), api.Config.Node)
+		api.Cluster.KVStore.ProposeObject(key, data, api.Config.Node)
 		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "value stored in the key value store",
 			ErrorExplanation: "",
@@ -287,7 +287,7 @@ func (api *Api) Propose(c *gin.Context) {
 		})
 		return
 	case static.CATEGORY_SECRET:
-		api.Cluster.KVStore.ProposeSecret(key, string(data), api.Config.Node)
+		api.Cluster.KVStore.ProposeSecret(key, data, api.Config.Node)
 
 		bytes, _ := json.Marshal(data)
 
@@ -300,7 +300,7 @@ func (api *Api) Propose(c *gin.Context) {
 		})
 		return
 	case static.CATEGORY_ETCD:
-		api.Cluster.KVStore.ProposeEtcd(key, string(data), api.Config.Node)
+		api.Cluster.KVStore.ProposeEtcd(key, data, api.Config.Node)
 		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "value stored in the key value store",
 			ErrorExplanation: "",
@@ -311,7 +311,7 @@ func (api *Api) Propose(c *gin.Context) {
 		return
 	}
 
-	api.Cluster.KVStore.ProposeObject(key, string(data), api.Config.Node)
+	api.Cluster.KVStore.ProposeObject(key, data, api.Config.Node)
 	c.JSON(http.StatusBadRequest, contracts.Response{
 		Explanation:      "",
 		ErrorExplanation: "invalid category selected for the propose",

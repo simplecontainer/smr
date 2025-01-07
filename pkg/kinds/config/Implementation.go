@@ -9,8 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
-	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"go.uber.org/zap"
@@ -106,11 +105,15 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 			}
 		}
 
-		config.Shared.Manager.KindsRegistry["container"].GetShared().(*shared.Shared).Watcher.EventChannel <- &types.Events{
-			Kind:    KIND,
-			Group:   definition.Meta.Group,
-			Name:    definition.Meta.Name,
-			Message: "detected configuration update, reconcile container",
+		event := events.New(events.EVENT_CHANGE, definition.Meta.Group, definition.Meta.Name, nil)
+
+		var bytes []byte
+		bytes, err = event.ToJson()
+
+		if err != nil {
+			logger.Log.Debug("failed to dispatch event", zap.Error(err))
+		} else {
+			config.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, agent)
 		}
 	} else {
 		return contracts.Response{

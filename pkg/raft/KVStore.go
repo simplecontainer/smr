@@ -39,6 +39,7 @@ type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
 	EtcdC       chan KV
 	ObjectsC    chan KV
+	EventsC     chan KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
 	Agent       string
 	mu          sync.RWMutex
@@ -49,13 +50,13 @@ type KVStore struct {
 
 type KV struct {
 	Key      string
-	Val      string
+	Val      []byte
 	Category string
 	Agent    string
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV, objectsC chan KV) (*KVStore, error) {
-	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, ObjectsC: objectsC, kvStore: badger, client: client, snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV, objectsC chan KV, eventsC chan KV) (*KVStore, error) {
+	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, ObjectsC: objectsC, EventsC: eventsC, kvStore: badger, client: client, snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
@@ -74,7 +75,7 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client
 	return s, nil
 }
 
-func (s *KVStore) Propose(k string, v string, agent string) {
+func (s *KVStore) Propose(k string, v []byte, agent string) {
 	var buf strings.Builder
 
 	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_PLAIN, agent}); err != nil {
@@ -84,7 +85,17 @@ func (s *KVStore) Propose(k string, v string, agent string) {
 	s.proposeC <- buf.String()
 }
 
-func (s *KVStore) ProposeObject(k string, v string, agent string) {
+func (s *KVStore) ProposeEvent(k string, v []byte, agent string) {
+	var buf strings.Builder
+
+	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_EVENT, agent}); err != nil {
+		log.Fatal(err)
+	}
+
+	s.proposeC <- buf.String()
+}
+
+func (s *KVStore) ProposeObject(k string, v []byte, agent string) {
 	var buf strings.Builder
 
 	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_OBJECT, agent}); err != nil {
@@ -94,7 +105,7 @@ func (s *KVStore) ProposeObject(k string, v string, agent string) {
 	s.proposeC <- buf.String()
 }
 
-func (s *KVStore) ProposeSecret(k string, v string, agent string) {
+func (s *KVStore) ProposeSecret(k string, v []byte, agent string) {
 	var buf strings.Builder
 
 	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_SECRET, agent}); err != nil {
@@ -104,14 +115,14 @@ func (s *KVStore) ProposeSecret(k string, v string, agent string) {
 	s.proposeC <- buf.String()
 }
 
-func (s *KVStore) ProposeEtcd(k string, v string, agent string) {
+func (s *KVStore) ProposeEtcd(k string, v []byte, agent string) {
 	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.client.Clients[s.Agent].API, k)
 	response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "GET", nil)
 
 	if response.Success {
-		bytes, _ := response.Data.MarshalJSON()
+		responseBytes, _ := response.Data.MarshalJSON()
 
-		if string(bytes) == v {
+		if bytes.Equal(responseBytes, v) {
 			return
 		}
 	}
@@ -158,7 +169,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 					URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
 					response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
-					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
 
 					if !response.Success {
 						logger.Log.Error(errors.New(response.ErrorExplanation).Error())
@@ -168,11 +179,15 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				}
 				break
 
+			case static.CATEGORY_EVENT:
+				s.EventsC <- dataKv
+				break
+
 			case static.CATEGORY_PLAIN:
 				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
 				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
-				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
 
 				if !response.Success {
 					logger.Log.Error(response.ErrorExplanation)
@@ -183,7 +198,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				URL := fmt.Sprintf("https://%s/api/v1/secrets/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
 				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
-				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
 
 				if !response.Success {
 					logger.Log.Error(response.ErrorExplanation)
@@ -195,7 +210,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
 				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
 
-				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", dataKv.Val))
+				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
 
 				if !response.Success {
 					logger.Log.Error(errors.New(response.ErrorExplanation).Error())

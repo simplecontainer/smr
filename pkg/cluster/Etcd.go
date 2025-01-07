@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -67,10 +68,10 @@ func (cluster *Cluster) ListenEvents(agent string) {
 				for _, event := range watchResp.Events {
 					switch event.Type {
 					case mvccpb.PUT:
-						cluster.KVStore.ProposeEtcd(string(event.Kv.Key), string(event.Kv.Value), agent)
+						cluster.KVStore.ProposeEtcd(string(event.Kv.Key), event.Kv.Value, agent)
 						break
 					case mvccpb.DELETE:
-						cluster.KVStore.ProposeEtcd(string(event.Kv.Key), "", agent)
+						cluster.KVStore.ProposeEtcd(string(event.Kv.Key), nil, agent)
 						break
 					}
 				}
@@ -95,8 +96,8 @@ func (cluster *Cluster) ListenUpdates(agent string) {
 						logger.Log.Error(err.Error())
 					}
 
-					if len(val.Kvs) == 0 || string(val.Kvs[len(val.Kvs)-1].Value) != data.Val {
-						_, err = cluster.EtcdClient.Put(ctx, data.Key, data.Val)
+					if len(val.Kvs) == 0 || !bytes.Equal(val.Kvs[len(val.Kvs)-1].Value, data.Val) {
+						_, err = cluster.EtcdClient.Put(ctx, data.Key, string(data.Val))
 
 						if err != nil {
 							logger.Log.Error(err.Error())

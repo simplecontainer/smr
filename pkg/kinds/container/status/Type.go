@@ -8,6 +8,7 @@ import (
 
 type Status struct {
 	State                      *StatusState               `json:"state"`
+	Recreated                  bool                       `json:"recreated"`
 	ChangeC                    chan distributed.Container `json:"-"`
 	LastReadiness              bool
 	LastReadinessTimestamp     time.Time

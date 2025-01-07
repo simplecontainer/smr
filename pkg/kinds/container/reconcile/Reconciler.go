@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
@@ -86,9 +85,10 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 	switch containerObj.GetStatus().GetState() {
 	case status.STATUS_CREATED:
-		dockerState := GetState(containerWatcher)
+		containerState := GetState(containerWatcher)
+		containerObj.GetStatus().Recreated = false
 
-		switch dockerState {
+		switch containerState {
 		case "running":
 			containerWatcher.Logger.Info("container created but already running")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
@@ -105,13 +105,13 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_RECREATED:
-		dockerState := GetState(containerWatcher)
+		containerState := GetState(containerWatcher)
+		containerObj.GetStatus().Recreated = true
 
-		switch dockerState {
+		switch containerState {
 		case "running":
-			containerWatcher.Logger.Info("container recreated but already running")
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
-
+			containerWatcher.Logger.Info("container recreated but already running - next restart of container will pickup changes")
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_RUNNING)
 			break
 		case "exited":
 			containerWatcher.Logger.Info("container recreated but already exited")
@@ -119,7 +119,6 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			break
 		default:
 			containerWatcher.Logger.Info("container recreated")
-
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
 		}
 
@@ -187,10 +186,10 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_START:
-		dockerState := GetState(containerWatcher)
+		containerState := GetState(containerWatcher)
 		var err error = nil
 
-		if dockerState != "running" {
+		if containerState != "running" {
 			containerWatcher.Logger.Info("container attempt to start")
 			_, err = containerObj.Run(shared.Manager.Config, shared.Client, shared.DnsCache, containerWatcher.User)
 
@@ -237,9 +236,9 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		for !ContinueReconciliation {
 			select {
 			case readinessResult := <-containerWatcher.ReadinessChan:
-				dockerState := GetState(containerWatcher)
+				containerState := GetState(containerWatcher)
 
-				if dockerState != "running" {
+				if containerState != "running" {
 					ContinueReconciliation = true
 					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
 					break
@@ -277,14 +276,14 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		break
 	case status.STATUS_RUNNING:
-		dockerState, err := containerObj.Get()
+		containerStateEngine, err := containerObj.GetContainerState()
 
 		if err != nil {
 			ReconcileLoop(containerWatcher)
 			break
 		}
 
-		switch dockerState.State {
+		switch containerStateEngine {
 		case "running":
 			// shhhhh go to sleep
 			containerWatcher.Logger.Debug("container is running")
@@ -313,14 +312,14 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_DEAD:
-		dockerState, err := containerObj.Get()
+		containerStateEngine, err := containerObj.GetContainerState()
 
 		if err != nil {
 			containerWatcher.Logger.Info(err.Error())
 			break
 		}
 
-		switch dockerState.State {
+		switch containerStateEngine {
 		case "exited":
 			containerWatcher.Logger.Info("container is dead")
 			shared.Registry.BackOffTracking(containerObj.GetGroup(), containerObj.GetGeneratedName())
@@ -350,7 +349,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
 			break
 		default:
-			containerWatcher.Logger.Info("container not dead retry again", zap.String("current-state", dockerState.State))
+			containerWatcher.Logger.Info("container not dead retry again", zap.String("current-state", containerStateEngine))
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
 		}
 
@@ -410,13 +409,13 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		}()
 
 		err := Wait(10*time.Second, func() error {
-			c, err := containerObj.Get()
+			containerStateEngine, err := containerObj.GetContainerState()
 
 			if err != nil {
 				return nil
 			}
 
-			if c != nil && c.State == "exited" {
+			if containerStateEngine == "exited" {
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
 			} else {
 				return errors.New("container is not yet in exited state")
@@ -435,14 +434,14 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				}
 			}()
 			err = Wait(10*time.Second, func() error {
-				var c *types.Container
-				c, err = containerObj.Get()
+				var containerStateEngine string
+				containerStateEngine, err = containerObj.GetContainerState()
 
 				if err != nil {
 					return err
 				}
 
-				if c != nil && c.State == "exited" {
+				if containerStateEngine == "exited" {
 					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
 				} else {
 					return errors.New("container is not yet in exited state")
@@ -459,7 +458,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_PENDING_DELETE:
-		c, err := containerObj.Get()
+		containerStateEngine, err := containerObj.GetContainerState()
 
 		containerWatcher.Logger.Info("container is pending delete")
 
@@ -467,7 +466,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			shared.Registry.Remove(containerObj.GetGroup(), containerObj.GetGeneratedName())
 			containerWatcher.Cancel()
 		} else {
-			if c.State == "running" {
+			if containerStateEngine == "running" {
 				containerWatcher.Logger.Info("starting graceful termination, timeout 30s")
 
 				err = containerObj.Stop(static.SIGTERM)
@@ -480,7 +479,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			err = containerObj.Delete()
 
 			if err != nil {
-				containerWatcher.Logger.Info("failed to delete container from docker daemon")
+				containerWatcher.Logger.Info("failed to delete container from engine daemon")
 
 			} else {
 				containerWatcher.Logger.Info("container is deleted")
@@ -499,17 +498,13 @@ func ReconcileLoop(containerWatcher *watcher.Container) {
 }
 
 func GetState(containerWatcher *watcher.Container) string {
-	c, err := containerWatcher.Container.Get()
+	containerStateEngine, err := containerWatcher.Container.GetContainerState()
 
 	if err != nil {
 		return ""
 	}
 
-	if c != nil {
-		return c.State
-	}
-
-	return ""
+	return containerStateEngine
 }
 
 func Wait(timeout time.Duration, f func() error) error {
