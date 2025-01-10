@@ -3,12 +3,11 @@ package logger
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
 )
 
 var Log *zap.Logger
 
-func NewLogger(logLevel string) *zap.Logger {
+func NewLogger(logLevel string, outputStdout []string, outputStderr []string) *zap.Logger {
 	encoderCfg := zap.NewProductionEncoderConfig()
 	encoderCfg.TimeKey = "timestamp"
 	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
@@ -27,15 +26,9 @@ func NewLogger(logLevel string) *zap.Logger {
 		Sampling:          nil,
 		Encoding:          "json",
 		EncoderConfig:     encoderCfg,
-		OutputPaths: []string{
-			"stderr",
-		},
-		ErrorOutputPaths: []string{
-			"stderr",
-		},
-		InitialFields: map[string]interface{}{
-			"pid": os.Getpid(),
-		},
+		OutputPaths:       outputStdout,
+		ErrorOutputPaths:  outputStderr,
+		InitialFields:     map[string]interface{}{},
 	}
 
 	return zap.Must(config.Build())

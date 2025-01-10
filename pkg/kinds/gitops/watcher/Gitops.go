@@ -1,11 +1,15 @@
 package watcher
 
-func (gitops *Gitops) Backoff() bool {
-	if gitops.BackOff.Failure > 5 {
-		gitops.BackOff.BackOff = true
+func (gitopsWatcher *Gitops) ShouldSync() bool {
+	return gitopsWatcher.Gitops.AutomaticSync || gitopsWatcher.Gitops.ManualSync
+}
+
+func (gitopsWatcher *Gitops) Backoff() bool {
+	if gitopsWatcher.BackOff.Failure > 5 {
+		gitopsWatcher.BackOff.BackOff = true
 	} else {
-		gitops.BackOff.Failure += 1
+		gitopsWatcher.BackOff.Failure += 1
 	}
 
-	return gitops.BackOff.BackOff
+	return gitopsWatcher.BackOff.BackOff
 }

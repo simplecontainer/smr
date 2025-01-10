@@ -2,12 +2,12 @@ package docker
 
 import (
 	"fmt"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func (container *Docker) GetDefinition() v1.ContainerDefinition {
-	return container.Definition
+func (container *Docker) GetDefinition() contracts.IDefinition {
+	return &container.Definition
 }
 
 func (container *Docker) GetGeneratedName() string {

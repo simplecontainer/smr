@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func ReadFile(filePath string) string {
+func ReadFile(filePath string) ([]byte, error) {
 	var jsonData []byte = nil
 
 	if filePath != "" {
@@ -17,18 +17,18 @@ func ReadFile(filePath string) string {
 		}
 
 		var body interface{}
-		if err := yaml.Unmarshal([]byte(YAML), &body); err != nil {
-			panic(err)
+		if err = yaml.Unmarshal(YAML, &body); err != nil {
+			return nil, err
 		}
 
 		body = convert(body)
 
 		if jsonData, err = json.Marshal(body); err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 
-	return string(jsonData)
+	return jsonData, nil
 }
 
 func convert(i interface{}) interface{} {

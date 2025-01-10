@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func (gitops *Gitops) sendRequest(client *client.Http, user *authentication.User, URL string, data string) *contracts.Response {
+func (gitops *Gitops) sendRequest(client *client.Http, user *authentication.User, URL string, data []byte) *contracts.Response {
 	var req *http.Request
 	var err error
 
@@ -26,7 +26,7 @@ func (gitops *Gitops) sendRequest(client *client.Http, user *authentication.User
 			}
 		}
 
-		req, err = http.NewRequest("POST", URL, bytes.NewBuffer([]byte(data)))
+		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(data))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Name))
 	} else {

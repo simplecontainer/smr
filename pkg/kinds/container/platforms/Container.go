@@ -8,7 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
@@ -20,7 +20,7 @@ import (
 	"strconv"
 )
 
-func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition *v1.ContainerDefinition) (IContainer, error) {
+func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition contracts.IDefinition) (IContainer, error) {
 	statusObj := status.New(ChangeC)
 
 	switch platform {
@@ -138,7 +138,7 @@ func (c *Container) GetAgent() string {
 	return c.General.Runtime.Agent
 }
 
-func (c *Container) GetDefinition() v1.ContainerDefinition {
+func (c *Container) GetDefinition() contracts.IDefinition {
 	return c.Platform.GetDefinition()
 }
 func (c *Container) GetLabels() map[string]string {

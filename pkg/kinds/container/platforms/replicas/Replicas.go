@@ -1,7 +1,6 @@
 package replicas
 
 import (
-	"fmt"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -56,7 +55,6 @@ func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []strin
 
 		if len(replicas.ChangeLog) == 1 {
 			for _, change := range replicas.ChangeLog {
-				fmt.Println(strings.Join(change.Path, ":"))
 				if strings.Join(change.Path, ":") == "spec:container:replicas" {
 					if change.Type == "update" {
 						onlyReplicaChange = true

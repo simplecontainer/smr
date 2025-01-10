@@ -3,6 +3,9 @@ package v1
 import (
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type ConfigurationDefinition struct {
@@ -11,12 +14,35 @@ type ConfigurationDefinition struct {
 }
 
 type ConfigurationMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group string         `json:"group" validate:"required"`
+	Name  string         `json:"name" validate:"required"`
+	Owner commonv1.Owner `json:"-"`
 }
 
 type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
+}
+
+func (configuration *ConfigurationDefinition) SetOwner(kind string, group string, name string) {
+	configuration.Meta.Owner.Kind = kind
+	configuration.Meta.Owner.Group = group
+	configuration.Meta.Owner.Name = name
+}
+
+func (configuration *ConfigurationDefinition) GetOwner() commonv1.Owner {
+	return configuration.Meta.Owner
+}
+
+func (configuration *ConfigurationDefinition) GetKind() string {
+	return static.KIND_CONFIGURATION
+}
+
+func (configuration *ConfigurationDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (configuration *ConfigurationDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, configuration)
 }
 
 func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {

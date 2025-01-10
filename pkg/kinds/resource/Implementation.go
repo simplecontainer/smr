@@ -1,17 +1,16 @@
 package resource
 
 import (
-	"encoding/json"
-	"errors"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -28,80 +27,41 @@ func (resource *Resource) GetShared() interface{} {
 }
 
 func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var definition v1.ResourceDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
+	request, err := common.NewRequest(static.KIND_RESOURCE)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ResourceDefinition)
 
 	valid, err := definition.Validate()
 
 	if !valid {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
-	}
-
-	err = json.Unmarshal(jsonData, &resource)
-	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
 	var format *f.Format
 
 	format = f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
 	var jsonStringFromRequest []byte
 	jsonStringFromRequest, err = definition.ToJson()
 
 	logger.Log.Debug("server received resource object", zap.String("definition", string(jsonStringFromRequest)))
 
-	if obj.Exists() {
-		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(format, jsonStringFromRequest)
+	obj, err = request.Definition.Apply(format, obj, static.KIND_RESOURCE)
 
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "",
-					ErrorExplanation: err.Error(),
-					Error:            true,
-					Success:          false,
-				}, err
-			}
-		}
-	} else {
-		err = obj.Add(format, jsonStringFromRequest)
-
-		if err != nil {
-			return contracts.Response{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err), err
 	}
 
-	if obj.ChangeDetected() || !obj.Exists() {
+	if obj.ChangeDetected() {
 		event := events.New(events.EVENT_CHANGE, definition.Meta.Group, definition.Meta.Name, nil)
 
 		var bytes []byte
@@ -113,142 +73,65 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 			resource.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, agent)
 		}
 
-	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "object is same as the one on the server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, errors.New("object is same on the server")
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "everything went smoothly: good job!",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-	}, nil
+	return common.Response(http.StatusOK, "object applied", nil), nil
 }
 
 func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	var definition v1.ResourceDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
-	}
+	request, err := common.NewRequest(static.KIND_RESOURCE)
 
-	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
 	if err != nil {
-		panic(err)
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	mapstructure.Decode(data["spec"], &resource)
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ResourceDefinition)
 
 	var format *f.Format
 
 	format = f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
-	var jsonStringFromRequest []byte
-	jsonStringFromRequest, err = definition.ToJson()
+	changed, err := request.Definition.Changed(format, obj)
 
-	if obj.Exists() {
-		obj.Diff(jsonStringFromRequest)
-	} else {
-		return contracts.Response{
-			HttpStatus:       418,
-			Explanation:      "object is drifted from the definition",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err), err
 	}
 
-	if obj.ChangeDetected() {
-		return contracts.Response{
-			HttpStatus:       418,
-			Explanation:      "object is drifted from the definition",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
-	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "object in sync",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
+	if changed {
+		return common.Response(http.StatusTeapot, "object drifted", nil), nil
 	}
+
+	return common.Response(http.StatusOK, "object in sync", nil), nil
 }
 
 func (resource *Resource) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var definition v1.ResourceDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
-	}
+	request, err := common.NewRequest(static.KIND_RESOURCE)
 
-	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
 	if err != nil {
-		panic(err)
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	mapstructure.Decode(data["spec"], &resource)
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ResourceDefinition)
 
 	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
-
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
-	if obj.Exists() {
-		deleted, err := obj.Remove(format)
+	_, err = request.Definition.Delete(format, obj, static.KIND_RESOURCE)
 
-		if deleted {
-			format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "")
-			deleted, err = obj.Remove(format)
-
-			return contracts.Response{
-				HttpStatus:       200,
-				Explanation:      "deleted resource successfully",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-			}, err
-		} else {
-			return contracts.Response{
-				HttpStatus:       500,
-				Explanation:      "failed to delete resource",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
-	} else {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "object not found",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}, err
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err), err
 	}
+
+	return common.Response(http.StatusOK, "object in deleted", nil), nil
 }
 
 func (resource *Resource) Run(operation string, request contracts.Control) contracts.Response {

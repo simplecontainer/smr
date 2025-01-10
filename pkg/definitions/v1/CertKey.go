@@ -3,6 +3,9 @@ package v1
 import (
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type CertKeyDefinition struct {
@@ -11,8 +14,9 @@ type CertKeyDefinition struct {
 }
 
 type CertKeyMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group string         `json:"group" validate:"required"`
+	Name  string         `json:"name" validate:"required"`
+	Owner commonv1.Owner `json:"-"`
 }
 
 type CertKeySpec struct {
@@ -24,6 +28,28 @@ type CertKeySpec struct {
 	KeyStorePassword   string `json:"keyStorePassword"`
 	CertStore          string `json:"certStore"`
 	CertStorePassword  string `json:"certStorePassword"`
+}
+
+func (certkey *CertKeyDefinition) SetOwner(kind string, group string, name string) {
+	certkey.Meta.Owner.Kind = kind
+	certkey.Meta.Owner.Group = group
+	certkey.Meta.Owner.Name = name
+}
+
+func (certkey *CertKeyDefinition) GetOwner() commonv1.Owner {
+	return certkey.Meta.Owner
+}
+
+func (certkey *CertKeyDefinition) GetKind() string {
+	return static.KIND_CERTKEY
+}
+
+func (certkey *CertKeyDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (certkey *CertKeyDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, certkey)
 }
 
 func (certkey *CertKeyDefinition) ToJson() ([]byte, error) {

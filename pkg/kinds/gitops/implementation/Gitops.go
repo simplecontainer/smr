@@ -9,17 +9,20 @@ import (
 	"time"
 )
 
-func New(gitopsObj *v1.GitopsDefinition) *Gitops {
+func New(definition *v1.GitopsDefinition) *Gitops {
+	fmt.Println(definition)
+	fmt.Println(definition.Spec.DirectoryPath)
+
 	gitops := &Gitops{
-		RepoURL:         gitopsObj.Spec.RepoURL,
-		Revision:        gitopsObj.Spec.Revision,
-		DirectoryPath:   gitopsObj.Spec.DirectoryPath,
-		PoolingInterval: gitopsObj.Spec.PoolingInterval,
-		AutomaticSync:   gitopsObj.Spec.AutomaticSync,
-		API:             gitopsObj.Spec.API,
-		Context:         gitopsObj.Spec.Context,
+		RepoURL:         definition.Spec.RepoURL,
+		Revision:        definition.Spec.Revision,
+		DirectoryPath:   definition.Spec.DirectoryPath,
+		PoolingInterval: definition.Spec.PoolingInterval,
+		AutomaticSync:   definition.Spec.AutomaticSync,
+		API:             definition.Spec.API,
+		Context:         definition.Spec.Context,
 		Commit:          nil,
-		Path:            fmt.Sprintf("/tmp/%s", path.Base(gitopsObj.Spec.RepoURL)),
+		Path:            fmt.Sprintf("/tmp/%s", path.Base(definition.Spec.RepoURL)),
 		Status: &status.Status{
 			State:            &status.StatusState{},
 			LastUpdate:       time.Now(),
@@ -28,17 +31,17 @@ func New(gitopsObj *v1.GitopsDefinition) *Gitops {
 			LastSyncedCommit: plumbing.Hash{},
 		},
 		Auth: &Auth{
-			CertKeyRef:  gitopsObj.Spec.CertKeyRef,
-			HttpAuthRef: gitopsObj.Spec.HttpAuthRef,
+			CertKeyRef:  definition.Spec.CertKeyRef,
+			HttpAuthRef: definition.Spec.HttpAuthRef,
 		},
-		AuthInternal: &AuthInternal{
-			CertKey:  nil,
-			HttpAuth: nil,
-		},
-		Definition: gitopsObj,
+		Definition: definition,
 	}
 
 	gitops.Status.CreateGraph()
+
+	if gitops.PoolingInterval == "" {
+		gitops.PoolingInterval = "360s"
+	}
 
 	return gitops
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
@@ -34,7 +34,7 @@ type IContainer interface {
 	GetStatus() *status.Status
 	GetAgent() string
 
-	GetDefinition() v1.ContainerDefinition
+	GetDefinition() contracts.IDefinition
 	GetLabels() map[string]string
 	GetGeneratedName() string
 	GetName() string
@@ -70,7 +70,7 @@ type IPlatform interface {
 	HasDependencyOn(string, string, string, *types.Runtime) bool
 	HasOwner() bool
 
-	GetDefinition() v1.ContainerDefinition
+	GetDefinition() contracts.IDefinition
 	GetGeneratedName() string
 	GetName() string
 	GetGroup() string

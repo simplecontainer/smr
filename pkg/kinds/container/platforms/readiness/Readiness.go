@@ -21,7 +21,7 @@ import (
 )
 
 func Ready(client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
-	for _, ready := range container.GetDefinition().Spec.Container.Readiness {
+	for _, ready := range container.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Readiness {
 		readiness, err := NewReadinessFromDefinition(client, user, container, ready)
 
 		if err != nil {

@@ -32,3 +32,12 @@ const CATEGORY_SECRET = "secret"
 
 const SIGTERM = "SIGTERM"
 const SIGKILL = "SIGKILL"
+
+const KIND_CONTAINER = "container"
+const KIND_CONTAINERS = "containers"
+const KIND_CONFIGURATION = "configuration"
+const KIND_RESOURCE = "resource"
+const KIND_CERTKEY = "certkey"
+const KIND_HTTPAUTH = "httpauth"
+const KIND_GITOPS = "gitops"
+const KIND_NETWORK = "network"

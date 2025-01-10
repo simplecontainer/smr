@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"os"
 	"time"
 )
 
@@ -21,13 +24,7 @@ func NewWatcher(containerObj platforms.IContainer, mgr *manager.Manager, user *a
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	cfg := zap.NewProductionConfig()
-	cfg.OutputPaths = []string{fmt.Sprintf("/tmp/container.%s.%s.log", containerObj.GetGroup(), containerObj.GetGeneratedName())}
-
-	loggerObj, err := cfg.Build()
-	if err != nil {
-		panic(err)
-	}
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{fmt.Sprintf("/tmp/container.%s.%s.log", containerObj.GetGroup(), containerObj.GetGeneratedName())}, []string{fmt.Sprintf("/tmp/container.%s.%s.log", containerObj.GetGroup(), containerObj.GetGeneratedName())})
 
 	return &watcher.Container{
 		Container:      containerObj,
@@ -158,7 +155,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		err := containerObj.Prepare(shared.Client, containerWatcher.User)
 
 		if err == nil {
-			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().Spec.Container.Dependencies, containerWatcher.DependencyChan)
+			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
 
 			containerWatcher.Logger.Info("container prepared")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)
@@ -456,7 +453,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		err := containerObj.Prepare(shared.Client, containerWatcher.User)
 
 		if err == nil {
-			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().Spec.Container.Dependencies, containerWatcher.DependencyChan)
+			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
 
 			containerWatcher.Logger.Info("container prepared")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)

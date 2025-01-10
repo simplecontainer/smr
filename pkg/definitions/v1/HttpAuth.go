@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type HttpAuthDefinition struct {
@@ -12,13 +15,36 @@ type HttpAuthDefinition struct {
 }
 
 type HttpAuthMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group string         `json:"group" validate:"required"`
+	Name  string         `json:"name" validate:"required"`
+	Owner commonv1.Owner `json:"-"`
 }
 
 type HttpAuthSpec struct {
 	Username string
 	Password string
+}
+
+func (httpauth *HttpAuthDefinition) SetOwner(kind string, group string, name string) {
+	httpauth.Meta.Owner.Kind = kind
+	httpauth.Meta.Owner.Group = group
+	httpauth.Meta.Owner.Name = name
+}
+
+func (httpauth *HttpAuthDefinition) GetOwner() commonv1.Owner {
+	return httpauth.Meta.Owner
+}
+
+func (httpauth *HttpAuthDefinition) GetKind() string {
+	return static.KIND_HTTPAUTH
+}
+
+func (httpauth *HttpAuthDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (httpauth *HttpAuthDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, httpauth)
 }
 
 func (httpauth *HttpAuthDefinition) ToJson() ([]byte, error) {

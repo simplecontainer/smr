@@ -6,8 +6,7 @@ Quick start
 > [!IMPORTANT]
 > The project is not stable yet. Releases and major changes are introduced often. 
 
-Would you like to do docker apply to various remote daemons, like you can do for k8s? Well:
-
+Would you like to apply docker to various remote daemons, as you can for k8s? Well:
 ```cgo
 smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definition.yaml
 smr ps
@@ -182,7 +181,10 @@ These objects let you deploy containers on local/remote Docker daemon.
 
 ## Running Docker containers (GitOps approach)
 
-It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository.
+![simplecontainer manager](.github/resources/simplecontainer-gitops-promo.png)
+
+
+It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository - a.k.a GitOps.
 
 ```bash
 smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/gitops/apps/gitops-plain.yaml

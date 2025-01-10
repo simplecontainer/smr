@@ -16,6 +16,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -32,7 +33,7 @@ import (
 	"time"
 )
 
-func New(name string, config *configuration.Configuration, definition *v1.ContainerDefinition) (*Docker, error) {
+func New(name string, config *configuration.Configuration, definition contracts.IDefinition) (*Docker, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -49,37 +50,37 @@ func New(name string, config *configuration.Configuration, definition *v1.Contai
 	}
 
 	var volumes *internal.Volumes
-	volumes, err = internal.NewVolumes(definition.Spec.Container.Volumes, config)
+	volumes, err = internal.NewVolumes(definition.(*v1.ContainerDefinition).Spec.Container.Volumes, config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if definition.Spec.Container.Tag == "" {
-		definition.Spec.Container.Tag = "latest"
+	if definition.(*v1.ContainerDefinition).Spec.Container.Tag == "" {
+		definition.(*v1.ContainerDefinition).Spec.Container.Tag = "latest"
 	}
 
 	container := &Docker{
-		Name:          definition.Meta.Name,
+		Name:          definition.(*v1.ContainerDefinition).Meta.Name,
 		GeneratedName: name,
-		Labels:        smaps.NewFromMap(definition.Meta.Labels),
-		Group:         definition.Meta.Group,
-		Image:         definition.Spec.Container.Image,
-		Tag:           definition.Spec.Container.Tag,
-		Replicas:      definition.Spec.Container.Replicas,
+		Labels:        smaps.NewFromMap(definition.(*v1.ContainerDefinition).Meta.Labels),
+		Group:         definition.(*v1.ContainerDefinition).Meta.Group,
+		Image:         definition.(*v1.ContainerDefinition).Spec.Container.Image,
+		Tag:           definition.(*v1.ContainerDefinition).Spec.Container.Tag,
+		Replicas:      definition.(*v1.ContainerDefinition).Spec.Container.Replicas,
 		Lock:          sync.RWMutex{},
-		Env:           definition.Spec.Container.Envs,
-		Entrypoint:    definition.Spec.Container.Entrypoint,
-		Args:          definition.Spec.Container.Args,
-		Configuration: smaps.NewFromMap(definition.Spec.Container.Configuration),
-		NetworkMode:   definition.Spec.Container.NetworkMode,
-		Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
-		Ports:         internal.NewPorts(definition.Spec.Container.Ports),
-		Readiness:     internal.NewReadinesses(definition.Spec.Container.Readiness),
-		Resources:     internal.NewResources(definition.Spec.Container.Resources),
+		Env:           definition.(*v1.ContainerDefinition).Spec.Container.Envs,
+		Entrypoint:    definition.(*v1.ContainerDefinition).Spec.Container.Entrypoint,
+		Args:          definition.(*v1.ContainerDefinition).Spec.Container.Args,
+		Configuration: smaps.NewFromMap(definition.(*v1.ContainerDefinition).Spec.Container.Configuration),
+		NetworkMode:   definition.(*v1.ContainerDefinition).Spec.Container.NetworkMode,
+		Networks:      internal.NewNetworks(definition.(*v1.ContainerDefinition).Spec.Container.Networks),
+		Ports:         internal.NewPorts(definition.(*v1.ContainerDefinition).Spec.Container.Ports),
+		Readiness:     internal.NewReadinesses(definition.(*v1.ContainerDefinition).Spec.Container.Readiness),
+		Resources:     internal.NewResources(definition.(*v1.ContainerDefinition).Spec.Container.Resources),
 		Volumes:       volumes,
-		Capabilities:  definition.Spec.Container.Capabilities,
-		Privileged:    definition.Spec.Container.Privileged,
+		Capabilities:  definition.(*v1.ContainerDefinition).Spec.Container.Capabilities,
+		Privileged:    definition.(*v1.ContainerDefinition).Spec.Container.Privileged,
 		Definition:    definitionCopy,
 	}
 

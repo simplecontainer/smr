@@ -9,18 +9,24 @@ import (
 	"path/filepath"
 )
 
-func (gitops *Gitops) Definitions(relations *relations.RelationRegistry) ([]map[string]string, error) {
+func (gitops *Gitops) Definitions(relations *relations.RelationRegistry) ([]FileKind, error) {
 	entries, err := os.ReadDir(filepath.Clean(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath)))
 
 	if err != nil {
 		return nil, err
 	}
 
-	orderedByDependencies := make([]map[string]string, 0)
+	orderedByDependencies := make([]FileKind, 0)
 
 	for _, e := range entries {
 		if filepath.Ext(e.Name()) == ".yaml" {
-			definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, e.Name()))
+			var definition []byte
+			definition, err = definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, e.Name()))
+
+			if err != nil {
+				return nil, err
+			}
+
 			data := make(map[string]interface{})
 
 			err = json.Unmarshal([]byte(definition), &data)
@@ -32,7 +38,7 @@ func (gitops *Gitops) Definitions(relations *relations.RelationRegistry) ([]map[
 			position := -1
 
 			for index, orderedEntry := range orderedByDependencies {
-				deps := relations.GetDependencies(orderedEntry["kind"])
+				deps := relations.GetDependencies(orderedEntry.Kind)
 
 				for _, dp := range deps {
 					if data["kind"].(string) == dp {
@@ -44,9 +50,15 @@ func (gitops *Gitops) Definitions(relations *relations.RelationRegistry) ([]map[
 			if data["kind"] != nil {
 				if position != -1 {
 					orderedByDependencies = append(orderedByDependencies[:position+1], orderedByDependencies[position:]...)
-					orderedByDependencies[position] = map[string]string{"name": e.Name(), "kind": data["kind"].(string)}
+					orderedByDependencies[position] = FileKind{
+						File: e.Name(),
+						Kind: data["kind"].(string),
+					}
 				} else {
-					orderedByDependencies = append(orderedByDependencies, map[string]string{"name": e.Name(), "kind": data["kind"].(string)})
+					orderedByDependencies = append(orderedByDependencies, FileKind{
+						File: e.Name(),
+						Kind: data["kind"].(string),
+					})
 				}
 			}
 		}

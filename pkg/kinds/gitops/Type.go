@@ -2,6 +2,7 @@ package gitops
 
 import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type Gitops struct {
@@ -9,7 +10,7 @@ type Gitops struct {
 	Shared  *shared.Shared
 }
 
-const KIND string = "gitops"
+const KIND string = static.KIND_GITOPS
 
 var invalidOperators []string = []string{
 	"Run",

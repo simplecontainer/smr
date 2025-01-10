@@ -10,73 +10,121 @@ import (
 	"time"
 )
 
-const POLLING_INTERVAL_ERROR = "latest changes not pulled - waiting for interval"
+var (
+	ErrPoolingInterval = errors.New("sleep interval didn't pass")
+)
 
-func (gitops *Gitops) CloneOrPull(auth transport.AuthMethod) error {
-	var repository *git.Repository
-	var err error
-
-	if _, err = os.Stat(gitops.Path); errors.Is(err, os.ErrNotExist) {
-		repository, err = git.PlainClone(gitops.Path, false, &git.CloneOptions{
-			URL:           gitops.RepoURL,
-			Progress:      os.Stdout,
-			ReferenceName: plumbing.NewBranchReferenceName(gitops.Revision),
-			Auth:          auth,
-		})
+func (gitops *Gitops) Fetch() error {
+	if _, err := os.Stat(gitops.Path); errors.Is(err, os.ErrNotExist) {
+		err = gitops.Clone(gitops.AuthResolved)
 
 		if err != nil {
+			if errors.Is(err, git.ErrRepositoryAlreadyExists) {
+				err = gitops.Pull(gitops.AuthResolved)
+
+				if err != nil {
+					if errors.Is(err, git.NoErrAlreadyUpToDate) {
+						return nil
+					}
+
+					return err
+				}
+			}
+
 			return err
 		}
+
+		return gitops.Pull(gitops.AuthResolved)
 	} else {
-		repository, err = git.PlainOpen(gitops.Path)
+		var sleepDuration time.Duration
+		sleepDuration, err = time.ParseDuration(gitops.PoolingInterval)
 
 		if err != nil {
 			return err
 		}
+
+		if time.Now().Sub(gitops.LastPoll) > sleepDuration || gitops.ForcePoll {
+			return gitops.Pull(gitops.AuthResolved)
+		} else {
+			return ErrPoolingInterval
+		}
+	}
+}
+
+func (gitops *Gitops) Clone(auth transport.AuthMethod) error {
+	_, err := git.PlainClone(gitops.Path, false, &git.CloneOptions{
+		URL:           gitops.RepoURL,
+		Progress:      os.Stdout,
+		ReferenceName: plumbing.NewBranchReferenceName(gitops.Revision),
+		Auth:          auth,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (gitops *Gitops) Pull(auth transport.AuthMethod) error {
+	repository, err := git.PlainOpen(gitops.Path)
+
+	if err != nil {
+		return err
 	}
 
 	worktree, _ := repository.Worktree()
 
-	var d time.Duration
-	d, err = time.ParseDuration(gitops.PoolingInterval)
-
-	if err != nil {
-		d = time.Second * 180
-	}
-
 	var ref *plumbing.Reference
 
-	if time.Now().Sub(gitops.LastPoll) > d || gitops.ForcePoll {
-		err = worktree.Pull(&git.PullOptions{
-			RemoteName:    "origin",
-			Auth:          auth,
-			SingleBranch:  true,
-			Force:         true,
-			ReferenceName: plumbing.NewBranchReferenceName(gitops.Revision),
-		})
+	err = worktree.Pull(&git.PullOptions{
+		RemoteName:    "origin",
+		Auth:          auth,
+		SingleBranch:  true,
+		Force:         true,
+		ReferenceName: plumbing.NewBranchReferenceName(gitops.Revision),
+	})
 
-		if err != nil {
-			if err.Error() != "already up-to-date" {
-				return err
-			}
-		}
+	gitops.LastPoll = time.Now()
+	gitops.ForcePoll = false
 
-		gitops.LastPoll = time.Now()
-		gitops.ForcePoll = false
+	ref, _ = repository.Head()
+	gitops.Commit, err = repository.CommitObject(ref.Hash())
 
-		ref, _ = repository.Head()
-		gitops.Commit, err = repository.CommitObject(ref.Hash())
+	return err
+}
 
-		if err != nil {
-			return err
-		}
+func (gitops *Gitops) RemoteHead() (plumbing.Hash, error) {
+	repository, err := git.PlainOpen(gitops.Path)
 
-		if _, missing := os.Stat(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath)); os.IsNotExist(missing) {
-			return errors.New(fmt.Sprintf("%s does not exists in the repository"))
-		}
-
-		return nil
-	} else {
-		return errors.New(POLLING_INTERVAL_ERROR)
+	if err != nil {
+		return plumbing.Hash{}, err
 	}
+
+	remotes, err := repository.Remotes()
+
+	if err != nil {
+		return plumbing.Hash{}, err
+	}
+
+	remote := git.NewRemote(repository.Storer, remotes[0].Config())
+
+	if err != nil {
+		return plumbing.Hash{}, err
+	}
+
+	refs, err := remote.List(&git.ListOptions{
+		Auth: gitops.AuthResolved,
+	})
+
+	if len(refs) > 0 {
+		return refs[0].Hash(), nil
+	} else {
+		return plumbing.Hash{}, errors.New("refs empty list")
+	}
+}
+
+func (gitops *Gitops) PathExists() bool {
+	_, err := os.Stat(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath))
+	return os.IsExist(err)
 }

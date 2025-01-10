@@ -184,12 +184,6 @@ func Start() {
 						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
 					}
 
-					definitions := v1.Group("/definitions")
-					{
-						definitions.GET("/", api.Definitions)
-						definitions.GET("/:definition", api.Definition)
-					}
-
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)

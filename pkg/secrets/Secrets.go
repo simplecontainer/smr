@@ -8,6 +8,7 @@ import (
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -19,7 +20,7 @@ import (
 
 //go:generate mockgen -source=Interface.go -destination=mock/Interface.go
 
-func New(client *client.Client, user *authentication.User) *Object {
+func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
 		Changelog:  diff.Changelog{},
 		client:     client,
@@ -124,8 +125,8 @@ func (obj *Object) Find(format *f.Format) error {
 	return nil
 }
 
-func (obj *Object) FindMany(format *f.Format) (map[string]*Object, error) {
-	var objects = make(map[string]*Object)
+func (obj *Object) FindMany(format *f.Format) (map[string]contracts.ObjectInterface, error) {
+	var objects = make(map[string]contracts.ObjectInterface)
 
 	URL := fmt.Sprintf("https://%s/api/v1/secrets/keys/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "GET", nil)
@@ -189,6 +190,35 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 	}
 }
 
+func (obj *Object) RemoveLocal(format *f.Format) (bool, error) {
+	prefix := format.ToString()
+
+	if !format.Full() {
+		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
+		prefix += "."
+	}
+
+	URL := fmt.Sprintf("https://%s/api/v1/secrets/keys/%s", obj.client.API, prefix)
+	response := SendRequest(obj.client.Http, URL, "DELETE", nil)
+
+	logger.Log.Debug("object remove", zap.String("URL", URL))
+
+	if response.Success {
+		URL = fmt.Sprintf("https://%s/api/v1/secrets/keys/%s.auth", obj.client.API, prefix)
+		response = SendRequest(obj.client.Http, URL, "DELETE", nil)
+
+		logger.Log.Debug("object auth remove", zap.String("URL", URL))
+
+		if !response.Success {
+			return false, errors.New(response.ErrorExplanation)
+		} else {
+			return true, nil
+		}
+	} else {
+		return false, errors.New(response.ErrorExplanation)
+	}
+}
+
 func (obj *Object) Diff(definition []byte) bool {
 	data := make(map[string]any)
 	err := json.Unmarshal([]byte(definition), &data)
@@ -208,6 +238,10 @@ func (obj *Object) Diff(definition []byte) bool {
 	}
 
 	return obj.changed
+}
+
+func (obj *Object) GetDiff() []diff.Change {
+	return obj.Changelog
 }
 
 func (obj *Object) Exists() bool {

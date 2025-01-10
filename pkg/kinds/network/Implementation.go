@@ -1,16 +1,16 @@
 package network
 
 import (
-	"encoding/json"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/mitchellh/mapstructure"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -27,59 +27,38 @@ func (network *Network) GetShared() interface{} {
 }
 
 func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var definition v1.NetworkDefinition
+	request, err := common.NewRequest(static.KIND_NETWORK)
 
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+	}
+
+	definition := request.Definition.Definition.(*v1.NetworkDefinition)
 
 	valid, err := definition.Validate()
 
 	if !valid {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
-
-	data := make(map[string]interface{})
-	err = json.Unmarshal(jsonData, &data)
-	if err != nil {
-		panic(err)
-	}
-
-	mapstructure.Decode(data["network"], &definition)
 
 	var format *f.Format
 	format = f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
 	var jsonStringFromRequest []byte
 	jsonStringFromRequest, err = definition.ToJson()
 
 	logger.Log.Debug("server received network object", zap.String("definition", string(jsonStringFromRequest)))
 
-	err = obj.AddLocal(format, jsonStringFromRequest)
+	obj, err = request.Definition.Apply(format, obj.(*objects.Object), static.KIND_NETWORK)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusBadRequest, "", err), err
 	}
 
 	var networkObj *implementation.Network
@@ -93,141 +72,66 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	err = networkObj.Create()
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusInternalServerError, "internal error", err), err
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "everything went smoothly: good job!",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-	}, nil
+	return common.Response(http.StatusOK, "object applied", nil), nil
 }
 
 func (network *Network) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	var definition v1.NetworkDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
-	}
+	request, err := common.NewRequest(static.KIND_NETWORK)
 
-	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
 	if err != nil {
-		panic(err)
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	mapstructure.Decode(data["spec"], &network)
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+	}
+
+	definition := request.Definition.Definition.(*v1.NetworkDefinition)
 
 	var format *f.Format
 
 	format = f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
-	var jsonStringFromRequest []byte
-	jsonStringFromRequest, err = definition.ToJson()
+	changed, err := request.Definition.Changed(format, obj)
 
-	if obj.Exists() {
-		obj.Diff(jsonStringFromRequest)
-	} else {
-		return contracts.Response{
-			HttpStatus:       418,
-			Explanation:      "object is drifted from the definition",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err), err
 	}
 
-	if obj.ChangeDetected() {
-		return contracts.Response{
-			HttpStatus:       418,
-			Explanation:      "object is drifted from the definition",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
-	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "object in sync",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
+	if changed {
+		return common.Response(http.StatusTeapot, "object drifted", nil), nil
 	}
+
+	return common.Response(http.StatusOK, "object in sync", nil), nil
 }
 
 func (network *Network) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var definition v1.NetworkDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
-	}
+	request, err := common.NewRequest(static.KIND_NETWORK)
 
-	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
 	if err != nil {
-		panic(err)
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	mapstructure.Decode(data["network"], &network)
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+	}
+
+	definition := request.Definition.Definition.(*v1.NetworkDefinition)
 
 	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
-
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
-	if obj.Exists() {
-		deleted, err := obj.Remove(format)
+	_, err = request.Definition.Delete(format, obj, static.KIND_NETWORK)
 
-		if deleted {
-			format = f.New("network", definition.Meta.Group, definition.Meta.Name, "")
-			deleted, err = obj.Remove(format)
-
-			return contracts.Response{
-				HttpStatus:       200,
-				Explanation:      "deleted resource successfully",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-			}, err
-		} else {
-			return contracts.Response{
-				HttpStatus:       500,
-				Explanation:      "failed to delete resource",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
-	} else {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "object not found",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}, err
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err), err
 	}
+
+	return common.Response(http.StatusOK, "object in deleted", nil), nil
 }
 
 func (network *Network) Run(operation string, request contracts.Control) contracts.Response {

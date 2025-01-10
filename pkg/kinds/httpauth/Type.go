@@ -3,6 +3,7 @@ package httpauth
 import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type Httpauth struct {
@@ -15,7 +16,7 @@ type Shared struct {
 	Client  *client.Http
 }
 
-const KIND string = "httpauth"
+const KIND string = static.KIND_HTTPAUTH
 
 var invalidOperators []string = []string{
 	"Run",

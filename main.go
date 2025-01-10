@@ -12,10 +12,16 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	"log"
+	"net/http"
 	"os"
 )
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
+
 	startup.SetFlags()
 
 	logLevel := os.Getenv("LOG_LEVEL")
@@ -23,7 +29,7 @@ func main() {
 		logLevel = static.DEFAULT_LOG_LEVEL
 	}
 
-	logger.Log = logger.NewLogger(logLevel)
+	logger.Log = logger.NewLogger(logLevel, []string{"stdout"}, []string{"stderr"})
 	fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
 
 	// Prepare configuration for the commands

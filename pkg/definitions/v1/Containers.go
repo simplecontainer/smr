@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type ContainersDefinition struct {
@@ -17,6 +20,29 @@ type ContainersMeta struct {
 	Name    string            `validate:"required" json:"name"`
 	Group   string            `validate:"required" json:"group"`
 	Labels  map[string]string `json:"labels"`
+	Owner   commonv1.Owner    `json:"-"`
+}
+
+func (containers *ContainersDefinition) SetOwner(kind string, group string, name string) {
+	containers.Meta.Owner.Kind = kind
+	containers.Meta.Owner.Group = group
+	containers.Meta.Owner.Name = name
+}
+
+func (containers *ContainersDefinition) GetOwner() commonv1.Owner {
+	return containers.Meta.Owner
+}
+
+func (containers *ContainersDefinition) GetKind() string {
+	return static.KIND_CONTAINERS
+}
+
+func (containers *ContainersDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (containers *ContainersDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, containers)
 }
 
 func (containers *ContainersDefinition) ToJson() ([]byte, error) {
