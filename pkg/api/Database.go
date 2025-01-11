@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -265,6 +266,11 @@ func (api *Api) Propose(c *gin.Context) {
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
+	// To prevent empty responses since Json.RawMessage is in the response
+	if len(data) == 0 {
+		data, _ = json.Marshal("{}")
+	}
+
 	switch c.Param("type") {
 	case static.CATEGORY_PLAIN:
 		api.Cluster.KVStore.Propose(key, data, api.Config.Node)
@@ -277,6 +283,8 @@ func (api *Api) Propose(c *gin.Context) {
 		})
 		return
 	case static.CATEGORY_OBJECT:
+		fmt.Println("PROPOSE")
+
 		api.Cluster.KVStore.ProposeObject(key, data, api.Config.Node)
 		c.JSON(http.StatusOK, contracts.Response{
 			Explanation:      "value stored in the key value store",
@@ -311,7 +319,6 @@ func (api *Api) Propose(c *gin.Context) {
 		return
 	}
 
-	api.Cluster.KVStore.ProposeObject(key, data, api.Config.Node)
 	c.JSON(http.StatusBadRequest, contracts.Response{
 		Explanation:      "",
 		ErrorExplanation: "invalid category selected for the propose",

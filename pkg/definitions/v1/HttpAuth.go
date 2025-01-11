@@ -17,7 +17,7 @@ type HttpAuthDefinition struct {
 type HttpAuthMeta struct {
 	Group string         `json:"group" validate:"required"`
 	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"-"`
+	Owner commonv1.Owner `json:"owner"`
 }
 
 type HttpAuthSpec struct {

@@ -1,12 +1,15 @@
 package gitops
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
 )
 
@@ -70,70 +73,36 @@ func (gitops *Gitops) Get(request contracts.Control) contracts.Response {
 		Data:             network.ToJson(definition),
 	}
 }
-func (gitops *Gitops) Remove(request contracts.Control) contracts.Response {
-	format := f.New("gitops", request.Group, request.Name, "object")
 
-	obj := objects.New(gitops.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
+func (gitops *Gitops) Remove(data contracts.Control) contracts.Response {
+	request, err := common.NewRequest(static.KIND_GITOPS)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "object database failed to process request",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}
+		return common.Response(http.StatusBadRequest, err.Error(), err)
 	}
 
-	if !obj.Exists() {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "object not found on the server",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}
-	}
+	format := f.New("gitops", data.Group, data.Name, "object")
+	obj := objects.New(gitops.Shared.Client.Get(data.User.Username), data.User)
 
-	_, err = obj.Remove(format)
+	_, err = request.Definition.Delete(format, obj, static.KIND_GITOPS)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "object removal failed",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}
+		return common.Response(http.StatusInternalServerError, err.Error(), err)
 	}
 
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
+	GroupIdentifier := fmt.Sprintf("%s.%s", data.Group, data.Name)
 	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
 
 	if gitopsWatcher == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "gitops definition doesn't exists",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, "gitops definition doesn't exists", errors.New("gitops definition doesn't exists"))
 	} else {
 		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_PENDING_DELETE)
 		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "gitops is transitioned to the pending delete state",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
+	return common.Response(http.StatusOK, "object deleted", nil)
 }
+
 func (gitops *Gitops) Refresh(request contracts.Control) contracts.Response {
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
 	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)

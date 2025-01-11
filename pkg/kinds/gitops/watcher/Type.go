@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"go.uber.org/zap"
 	"time"
@@ -14,9 +15,7 @@ type RepositoryWatcher struct {
 
 type Gitops struct {
 	Gitops      *implementation.Gitops
-	Syncing     bool
-	Tracking    bool
-	BackOff     BackOff
+	Children    []*common.Request
 	User        *authentication.User        `json:"-"`
 	GitopsQueue chan *implementation.Gitops `json:"-"`
 	Ctx         context.Context             `json:"-"`

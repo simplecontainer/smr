@@ -191,6 +191,7 @@ func Start() {
 						kinds.POST("apply/:kind/:agent", api.Apply)
 						kinds.POST("compare", api.Compare)
 						kinds.POST("delete", api.Delete)
+						kinds.POST("delete/:kind", api.Delete)
 					}
 
 					operators := v1.Group("/control")

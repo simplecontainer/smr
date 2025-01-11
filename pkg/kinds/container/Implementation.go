@@ -201,7 +201,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "", err), err
 	} else {
-		dr, err = GenerateContainers(container.Shared, user, agent, existingDefinition.(*v1.ContainerDefinition), obj.GetDiff())
+		dr, err = GetContainers(container.Shared, user, agent, existingDefinition.(*v1.ContainerDefinition))
 
 		if err != nil {
 			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err), err
@@ -212,12 +212,10 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 		if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Numbers.Existing) > 0 {
 			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Existing)
 
-			format = f.New("container", definition.Meta.Group, definition.Meta.Name, "")
-			obj.Remove(format)
-
 			for _, containerObj := range containerObjs {
 				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+
 				reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
 			}
 

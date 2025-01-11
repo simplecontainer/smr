@@ -17,8 +17,8 @@ func (status *Status) CreateGraph() {
 
 	created := gograph.NewVertex(&StatusState{STATUS_CREATED, CATEGORY_PRERUN})
 	syncing := gograph.NewVertex(&StatusState{STATUS_SYNCING, CATEGORY_WHILERUN})
-	insync := gograph.NewVertex(&StatusState{STATUS_INSYNC, CATEGORY_WHILERUN})
-	backoff := gograph.NewVertex(&StatusState{STATUS_BACKOFF, CATEGORY_WHILERUN})
+	insync := gograph.NewVertex(&StatusState{STATUS_INSYNC, CATEGORY_END})
+	backoff := gograph.NewVertex(&StatusState{STATUS_BACKOFF, CATEGORY_END})
 	invalidgit := gograph.NewVertex(&StatusState{STATUS_INVALID_GIT, CATEGORY_END})
 	invaliddefinitions := gograph.NewVertex(&StatusState{STATUS_INVALID_DEFINITIONS, CATEGORY_END})
 	inspecting := gograph.NewVertex(&StatusState{STATUS_INSPECTING, CATEGORY_WHILERUN})
@@ -62,6 +62,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(syncing, pendingDelete)
 	status.StateMachine.AddEdge(created, pendingDelete)
 	status.StateMachine.AddEdge(cloning, pendingDelete)
+	status.StateMachine.AddEdge(cloned, pendingDelete)
 	status.StateMachine.AddEdge(invaliddefinitions, pendingDelete)
 	status.StateMachine.AddEdge(invalidgit, pendingDelete)
 }

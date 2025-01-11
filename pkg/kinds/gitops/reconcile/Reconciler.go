@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
@@ -23,13 +24,8 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)}, []string{fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)})
 
 	return &watcher.Gitops{
-		Gitops: gitopsObj,
-		BackOff: watcher.BackOff{
-			BackOff: false,
-			Failure: 0,
-		},
-		Tracking:    true,
-		Syncing:     false,
+		Gitops:      gitopsObj,
+		Children:    make([]*common.Request, 0),
 		GitopsQueue: make(chan *implementation.Gitops),
 		User:        user,
 		Ctx:         ctx,
@@ -46,8 +42,18 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 			gitopsWatcher.Ticker.Stop()
 			close(gitopsWatcher.GitopsQueue)
 
+			for _, request := range gitopsWatcher.Children {
+				err := request.Delete(shared.Manager.Http, shared.Manager.User)
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+				} else {
+
+				}
+			}
+
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
-			logger.Log.Debug("gitops watcher deleted")
+			logger.Log.Debug("gitops watcher deleted - proceed with deleting children")
 
 			return
 		case <-gitopsWatcher.GitopsQueue:
@@ -116,15 +122,22 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_CLONED_GIT:
+		gitopsWatcher.Logger.Debug(fmt.Sprintf("successfully cloned/pulled the: %s", gitopsWatcher.Gitops.RepoURL))
+
 		if gitopsWatcher.ShouldSync() {
 			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_SYNCING)
 			Loop(gitopsWatcher)
 		} else {
-			gitopsWatcher.Logger.Info("gitops reconciler going to sleep - wait for sync")
-			gitopsWatcher.Gitops.Status.Reconciling = false
-			gitopsWatcher.Ticker.Stop()
+			if !gitopsWatcher.Gitops.Status.LastSyncedCommit.IsZero() {
+				gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INSPECTING)
+
+				Loop(gitopsWatcher)
+			}
 		}
 
+		logger.Log.Debug("reconcile is going to sleep till manual sync occured")
+		gitopsWatcher.Gitops.Status.Reconciling = false
+		gitopsWatcher.Ticker.Stop()
 		break
 	case status.STATUS_INVALID_GIT:
 		gitopsWatcher.Logger.Info("git configuration is invalid or pull failed")
@@ -137,32 +150,24 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	case status.STATUS_SYNCING:
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gitopsWatcher.Gitops.Commit.ID()))
 
-		if gitopsWatcher.Syncing {
-			gitopsWatcher.Logger.Info("gitops already syncing, waiting for the free slot")
-			gitopsWatcher.Gitops.Status.Reconciling = false
-
-			return
-		}
-
-		gitopsWatcher.Syncing = true
 		if gitopsWatcher.Gitops.Status.LastSyncedCommit != gitopsWatcher.Gitops.Commit.ID() || !gitopsWatcher.Gitops.Status.InSync {
-			defs, err := gitopsWatcher.Gitops.Definitions(shared.Manager.Kinds)
+			defs, err := gitopsWatcher.Gitops.ReadDefinitions(shared.Manager.Kinds)
 
 			if err != nil {
 				gitopsWatcher.Logger.Error(err.Error())
 				gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
 			} else {
 				if len(defs) == 0 {
-					gitopsWatcher.Logger.Info(fmt.Sprintf("no valid definitions detected: %s/%s", gitopsWatcher.Gitops.Path, gitopsWatcher.Gitops.DirectoryPath))
+					gitopsWatcher.Logger.Info(fmt.Sprintf("no valid definitions found: %s/%s", gitopsWatcher.Gitops.Path, gitopsWatcher.Gitops.DirectoryPath))
 					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
 				} else {
-					err = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User, defs)
+					gitopsWatcher.Children, err = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User, defs)
 
 					if err != nil {
 						gitopsWatcher.Logger.Info(fmt.Sprintf("failed to sync latest changes"))
 						gitopsWatcher.Logger.Info(err.Error())
+
 						gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_DEFINITIONS)
-						gitopsWatcher.Syncing = false
 
 						Loop(gitopsWatcher)
 						return
@@ -180,8 +185,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			gitopsWatcher.Logger.Info("everything synced")
 		}
 
-		gitopsWatcher.Syncing = false
-
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_INSPECTING:
@@ -191,13 +194,11 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			logger.Log.Error(err.Error())
 			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INVALID_GIT)
 		} else {
-
 			if gitopsWatcher.Gitops.Status.LastSyncedCommit != remoteHeadHash {
 				gitopsWatcher.Gitops.ForcePoll = true
 				gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
 			} else {
-				var defs []implementation.FileKind
-				defs, err = gitopsWatcher.Gitops.Definitions(shared.Manager.Kinds)
+				defs, err := gitopsWatcher.Gitops.ReadDefinitions(shared.Manager.Kinds)
 
 				var drifted bool
 				drifted, err = gitopsWatcher.Gitops.Drift(shared.Client, gitopsWatcher.User, defs)
@@ -211,12 +212,12 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 					return
 				}
 
-				gitopsWatcher.Gitops.Status.InSync = drifted
+				gitopsWatcher.Gitops.Status.InSync = drifted == false
 
-				if drifted {
-					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_DRIFTED)
-				} else {
+				if gitopsWatcher.Gitops.Status.InSync {
 					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INSYNC)
+				} else {
+					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_DRIFTED)
 				}
 			}
 		}
@@ -224,16 +225,19 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_INSYNC:
-		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
-
-		// Let time ticker trigger transition state instead of direct transition
-		gitopsWatcher.Gitops.Status.Reconciling = false
+		// NO-OP
 		break
 	case status.STATUS_DRIFTED:
-		gitopsWatcher.Logger.Info("drift detected")
-		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_SYNCING)
+		if gitopsWatcher.Gitops.AutomaticSync {
+			gitopsWatcher.Logger.Info("drift detected")
+			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONED_GIT)
 
-		Loop(gitopsWatcher)
+			Loop(gitopsWatcher)
+		} else {
+			gitopsWatcher.Gitops.Status.Reconciling = false
+			gitopsWatcher.Ticker.Stop()
+		}
+
 		break
 	case status.STATUS_PENDING_DELETE:
 		gitopsWatcher.Logger.Info("delete is in process")

@@ -55,16 +55,7 @@ func (obj *Object) Add(format *f.Format, data []byte) error {
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		URL = fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s.auth", obj.client.API, static.CATEGORY_PLAIN, format.ToString())
-		response = SendRequest(obj.client.Http, URL, "POST", obj.User.ToBytes())
-
-		logger.Log.Debug("object auth remove", zap.String("URL", URL))
-
-		if !response.Success {
-			return errors.New(response.ErrorExplanation)
-		} else {
-			return nil
-		}
+		return nil
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}
@@ -77,16 +68,7 @@ func (obj *Object) AddLocal(format *f.Format, data []byte) error {
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		URL = fmt.Sprintf("https://%s/api/v1/database/create/%s.auth", obj.client.API, format.ToString())
-		response = SendRequest(obj.client.Http, URL, "POST", obj.User.ToBytes())
-
-		logger.Log.Debug("object auth remove", zap.String("URL", URL))
-
-		if !response.Success {
-			return errors.New(response.ErrorExplanation)
-		} else {
-			return nil
-		}
+		return nil
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}
@@ -206,17 +188,10 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 
+	fmt.Println(response)
+
 	if response.Success {
-		URL = fmt.Sprintf("https://%s/api/v1/database/keys/%s.auth", obj.client.API, prefix)
-		response = SendRequest(obj.client.Http, URL, "DELETE", nil)
-
-		logger.Log.Debug("object auth remove", zap.String("URL", URL))
-
-		if !response.Success {
-			return false, errors.New(response.ErrorExplanation)
-		} else {
-			return true, nil
-		}
+		return true, nil
 	} else {
 		return false, errors.New(response.ErrorExplanation)
 	}
@@ -236,16 +211,7 @@ func (obj *Object) RemoveLocal(format *f.Format) (bool, error) {
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 
 	if response.Success {
-		URL = fmt.Sprintf("https://%s/api/v1/database/keys/%s.auth", obj.client.API, prefix)
-		response = SendRequest(obj.client.Http, URL, "DELETE", nil)
-
-		logger.Log.Debug("object auth remove", zap.String("URL", URL))
-
-		if !response.Success {
-			return false, errors.New(response.ErrorExplanation)
-		} else {
-			return true, nil
-		}
+		return true, nil
 	} else {
 		return false, errors.New(response.ErrorExplanation)
 	}

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-func (gitops *Gitops) Definitions(relations *relations.RelationRegistry) ([]FileKind, error) {
+func (gitops *Gitops) ReadDefinitions(relations *relations.RelationRegistry) ([]FileKind, error) {
 	entries, err := os.ReadDir(filepath.Clean(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath)))
 
 	if err != nil {

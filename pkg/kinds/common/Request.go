@@ -1,12 +1,13 @@
 package common
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
-	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/network"
+	"strings"
 )
 
 func NewRequest(kind string) (*Request, error) {
@@ -21,16 +22,42 @@ func NewRequest(kind string) (*Request, error) {
 	return request, nil
 }
 
-func (request *Request) Resolve(obj contracts.ObjectInterface, format *f.Format) error {
-	err := obj.Find(format)
+func (request *Request) Load() {
+
+}
+
+func (request *Request) Apply(client *client.Http, user *authentication.User) error {
+	bytes, err := request.Definition.ToJson()
 
 	if err != nil {
 		return err
 	}
 
-	if obj.Exists() {
-		return json.Unmarshal(obj.GetDefinitionByte(), request.Definition)
+	response := network.Send(client, user, fmt.Sprintf("https://%s/api/v1/apply/%s", client.Clients[user.Username].API, request.Definition.GetKind()), bytes)
+
+	if !response.Success {
+		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
+			err = errors.New(response.ErrorExplanation)
+		}
 	}
 
-	return errors.New(fmt.Sprintf("object not found: %s", format.ToString()))
+	return err
+}
+
+func (request *Request) Delete(client *client.Http, user *authentication.User) error {
+	bytes, err := request.Definition.ToJson()
+
+	if err != nil {
+		return err
+	}
+
+	response := network.Send(client, user, fmt.Sprintf("https://%s/api/v1/delete/%s", client.Clients[user.Username].API, request.Definition.GetKind()), bytes)
+
+	if !response.Success {
+		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
+			err = errors.New(response.ErrorExplanation)
+		}
+	}
+
+	return err
 }

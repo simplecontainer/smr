@@ -166,13 +166,24 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 			switch dataKv.Category {
 			case static.CATEGORY_OBJECT:
 				if dataKv.Agent == s.Agent {
-					URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-					response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
+					if dataKv.Val == nil {
+						URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", s.client.Clients[s.Agent].API, dataKv.Key)
+						response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "DELETE", dataKv.Val)
 
-					logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
+						logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
 
-					if !response.Success {
-						logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+						if !response.Success {
+							logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+						}
+					} else {
+						URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
+						response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", dataKv.Val)
+
+						logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
+
+						if !response.Success {
+							logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+						}
 					}
 				} else {
 					s.ObjectsC <- dataKv
@@ -185,7 +196,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 
 			case static.CATEGORY_PLAIN:
 				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
+				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", dataKv.Val)
 
 				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
 

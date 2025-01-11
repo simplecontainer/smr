@@ -69,7 +69,6 @@ func Container(shared *shared.Shared, user *authentication.User, containers *wat
 		if err != nil {
 			containers.Logger.Info(err.Error())
 		} else {
-			fmt.Println("Calling apply")
 			_, err = shared.Manager.KindsRegistry["container"].Apply(user, definitionJSON, agent)
 
 			if err != nil {

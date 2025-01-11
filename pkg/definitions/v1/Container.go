@@ -18,7 +18,7 @@ type ContainerMeta struct {
 	Name   string            `validate:"required" json:"name"`
 	Group  string            `validate:"required" json:"group"`
 	Labels map[string]string `json:"labels"`
-	Owner  commonv1.Owner    `json:"-"`
+	Owner  commonv1.Owner    `json:"owner"`
 }
 
 type ContainerSpec struct {

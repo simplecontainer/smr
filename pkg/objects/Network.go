@@ -62,10 +62,12 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
+		fmt.Println(err)
+
 		return &contracts.Response{
 			HttpStatus:       resp.StatusCode,
 			Explanation:      "failed to unmarshal body response from smr-agent",
-			ErrorExplanation: generateResponse(URL, method, marshaled, body, err),
+			ErrorExplanation: generateResponse(URL, resp.StatusCode, method, marshaled, body, err),
 			Error:            true,
 			Success:          false,
 			Data:             nil,
@@ -76,7 +78,7 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	return &response
 }
 
-func generateResponse(URL string, method string, data []byte, body []byte, err error) string {
-	debug := fmt.Sprintf("URL: %s METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, method, string(data), string(body))
+func generateResponse(URL string, status int, method string, data []byte, body []byte, err error) string {
+	debug := fmt.Sprintf("URL: %s RESPONSE_CODE: %d, METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, status, method, string(data), string(body))
 	return fmt.Sprintf("database returned malformed response - " + debug + "\n" + err.Error())
 }

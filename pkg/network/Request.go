@@ -1,9 +1,8 @@
-package implementation
+package network
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -11,7 +10,7 @@ import (
 	"net/http"
 )
 
-func (gitops *Gitops) sendRequest(client *client.Http, user *authentication.User, URL string, data []byte) *contracts.Response {
+func Send(client *client.Http, user *authentication.User, URL string, data []byte) *contracts.Response {
 	var req *http.Request
 	var err error
 
@@ -28,11 +27,9 @@ func (gitops *Gitops) sendRequest(client *client.Http, user *authentication.User
 
 		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(data))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Name))
 	} else {
 		req, err = http.NewRequest("GET", URL, nil)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Owner", fmt.Sprintf("gitops.%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Name))
 	}
 
 	if err != nil {

@@ -17,7 +17,7 @@ type GitopsDefinition struct {
 type GitopsMeta struct {
 	Group string         `json:"group" validate:"required"`
 	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"-"`
+	Owner commonv1.Owner `json:"owner"`
 }
 
 type GitopsSpec struct {

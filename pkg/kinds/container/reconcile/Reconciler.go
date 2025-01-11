@@ -614,6 +614,8 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		}
 		break
 	}
+
+	ReconcileLoop(containerWatcher)
 }
 
 func ReconcileLoop(containerWatcher *watcher.Container) {

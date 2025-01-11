@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -60,6 +61,9 @@ func (definition *Definition) Apply(format *f.Format, obj contracts.ObjectInterf
 			if err != nil {
 				return obj, err
 			}
+
+			fmt.Println("JEJO")
+			fmt.Println(existing.GetOwner())
 
 			if !existing.GetOwner().IsEmpty() {
 				return obj, errors.New("object has owner - direct modification not allowed")

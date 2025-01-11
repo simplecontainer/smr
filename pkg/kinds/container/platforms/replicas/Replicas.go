@@ -91,7 +91,6 @@ func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []strin
 
 	replicas.Distributed = dr
 	return dr.Save(replicas.Shared.Client.Get(user.Username), user)
-
 }
 
 func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) error {
@@ -109,6 +108,7 @@ func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) 
 		}
 	}
 
+	replicas.Distributed = dr
 	return nil
 }
 

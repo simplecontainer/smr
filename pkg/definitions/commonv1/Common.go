@@ -7,5 +7,5 @@ type Owner struct {
 }
 
 func (owner Owner) IsEmpty() bool {
-	return owner.Group != "" && owner.Name != ""
+	return owner.Group == "" && owner.Name == ""
 }

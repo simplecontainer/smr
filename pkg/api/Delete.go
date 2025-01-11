@@ -35,7 +35,37 @@ func (api *Api) Delete(c *gin.Context) {
 			})
 		}
 
-		api.ImplementationWrapperDelete(authentication.NewUser(c.Request.TLS), data["kind"].(string), jsonData, c)
+		if data != nil {
+			kind := ""
+
+			if c.Param("kind") != "" {
+				kind = c.Param("kind")
+			} else {
+				if data["kind"] != nil {
+					kind = data["kind"].(string)
+				} else {
+					c.JSON(http.StatusBadRequest, contracts.Response{
+						HttpStatus:       http.StatusBadRequest,
+						Explanation:      "",
+						ErrorExplanation: "invalid definition sent - kind is not defined",
+						Error:            true,
+						Success:          false,
+					})
+
+					return
+				}
+			}
+
+			api.ImplementationWrapperDelete(authentication.NewUser(c.Request.TLS), kind, jsonData, c)
+		} else {
+			c.JSON(http.StatusBadRequest, contracts.Response{
+				HttpStatus:       http.StatusBadRequest,
+				Explanation:      "invalid definition sent",
+				ErrorExplanation: err.Error(),
+				Error:            true,
+				Success:          false,
+			})
+		}
 	}
 }
 
