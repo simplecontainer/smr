@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smaps.Smap) (string, []*f.Format, error) {
-	var dependencyMap = make([]*f.Format, 0)
+func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smaps.Smap) (string, []f.Format, error) {
+	var dependencyMap = make([]f.Format, 0)
 	placeholders := GetTemplatePlaceholders(template)
 
 	var parsed string = template

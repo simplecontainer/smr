@@ -17,7 +17,7 @@ type Runtime struct {
 	State              string
 	Ready              bool
 	Configuration      *smaps.Smap
-	ObjectDependencies []*f.Format
+	ObjectDependencies []f.Format
 	NodeIP             string
 	Agent              string
 }

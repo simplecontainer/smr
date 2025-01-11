@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
@@ -45,9 +46,7 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	var format *f.Format
-
-	format = f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -70,7 +69,7 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 		if err != nil {
 			logger.Log.Debug("failed to dispatch event", zap.Error(err))
 		} else {
-			resource.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, agent)
+			resource.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, agent, static.CATEGORY_EVENT)
 		}
 
 	}
@@ -91,9 +90,7 @@ func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (c
 
 	definition := request.Definition.Definition.(*v1.ResourceDefinition)
 
-	var format *f.Format
-
-	format = f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)

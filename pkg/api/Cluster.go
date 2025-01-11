@@ -12,9 +12,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/networking"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.etcd.io/etcd/server/v3/embed"
 	"io"
 	"log"
@@ -129,7 +131,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		d, _ := json.Marshal(map[string]string{"node": request["node"]})
-		response := cluster.SendRequest(api.Manager.Http, user, fmt.Sprintf("%s/cluster/node", request["join"]), d)
+		response := network.Send(api.Manager.Http, user, fmt.Sprintf("%s/cluster/node", request["join"]), d)
 
 		if response.Error {
 			c.JSON(http.StatusBadRequest, response)
@@ -137,7 +139,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		// Ask join: what is the cluster?
-		response = cluster.SendRequest(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster", request["join"]), nil)
+		response = network.Send(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster", request["join"]), nil)
 
 		if response.Success {
 			var bytes []byte
@@ -191,7 +193,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	api.Manager.Cluster = api.Cluster
 
 	var server *embed.Etcd
-	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
+	server, err = networking.StartEtcd(api.Config)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -208,7 +210,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 	select {
 	case <-server.Server.ReadyNotify():
 		fmt.Println("etcd server started - continue with starting raft")
-		api.Cluster.EtcdClient = cluster.NewEtcdClient()
 
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(api.Keys.CA.Certificate)
@@ -245,11 +246,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		api.SaveClusterConfiguration()
 
-		go api.Cluster.ListenEvents(api.Config.Node)
-		go api.Cluster.ListenUpdates(api.Config.Node)
-		go api.Cluster.ListenObjects(api.Config.Node)
+		go api.Replication.ListenEtcd(api.Config.Node)
+		go api.Replication.ListenData(api.Config.Node)
 
-		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
+		err = networking.Flannel(api.Config.OverlayNetwork)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -339,7 +339,7 @@ func (api *Api) RestoreCluster(c *gin.Context) {
 	api.Manager.Cluster = api.Cluster
 
 	var server *embed.Etcd
-	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
+	server, err = networking.StartEtcd(api.Config)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -356,7 +356,6 @@ func (api *Api) RestoreCluster(c *gin.Context) {
 	select {
 	case <-server.Server.ReadyNotify():
 		fmt.Println("etcd server started - continue with starting raft")
-		api.Cluster.EtcdClient = cluster.NewEtcdClient()
 
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(api.Keys.CA.Certificate)
@@ -386,11 +385,10 @@ func (api *Api) RestoreCluster(c *gin.Context) {
 			return
 		}
 
-		go api.Cluster.ListenEvents(api.Config.Node)
-		go api.Cluster.ListenUpdates(api.Config.Node)
-		go api.Cluster.ListenObjects(api.Config.Node)
+		go api.Replication.ListenEtcd(api.Config.Node)
+		go api.Replication.ListenData(api.Config.Node)
 
-		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
+		err = networking.Flannel(api.Config.OverlayNetwork)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -449,7 +447,7 @@ func (api *Api) SaveClusterConfiguration() {
 		logger.Log.Error(err.Error())
 	}
 
-	format := f.NewFromString("smr.cluster")
+	format := f.NewUnformated("smr.cluster", static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)

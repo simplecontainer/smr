@@ -43,13 +43,13 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 			close(gitopsWatcher.GitopsQueue)
 
 			for _, request := range gitopsWatcher.Children {
-				err := request.Delete(shared.Manager.Http, shared.Manager.User)
+				go func() {
+					err := request.Delete(shared.Manager.Http, shared.Manager.User)
 
-				if err != nil {
-					logger.Log.Error(err.Error())
-				} else {
-
-				}
+					if err != nil {
+						logger.Log.Error(err.Error())
+					}
+				}()
 			}
 
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))

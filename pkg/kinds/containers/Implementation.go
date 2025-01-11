@@ -50,8 +50,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte, 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	var format *f.Format
-	format = f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -116,9 +115,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	var format *f.Format
-
-	format = f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -146,9 +143,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	var format *f.Format
-
-	format = f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINERS)

@@ -3,11 +3,13 @@ package container
 import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 )
 
@@ -135,7 +137,7 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 	if err != nil {
 		logger.Log.Debug("failed to dispatch event", zap.Error(err))
 	} else {
-		container.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, container.Shared.Manager.Config.Node)
+		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
 	}
 
 	return contracts.Response{
@@ -166,7 +168,7 @@ func (container *Container) Remove(request contracts.Control) contracts.Response
 	bytes, err := event.ToJson()
 
 	if err != nil {
-		container.Shared.Manager.Cluster.KVStore.ProposeEvent(event.GetKey(), bytes, container.Shared.Manager.Config.Node)
+		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
 	}
 
 	return contracts.Response{

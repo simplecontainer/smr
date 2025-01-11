@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 func NewDistributed(nodeID uint64, group string, name string) *Distributed {
@@ -35,7 +36,7 @@ func NewScoped() *ScopedReplicas {
 }
 
 func (dr *Distributed) Save(client *client.Client, user *authentication.User) error {
-	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
+	format := f.NewUnformated(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name), static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(client, user)
 
 	data, err := dr.ToJson()
@@ -49,7 +50,7 @@ func (dr *Distributed) Save(client *client.Client, user *authentication.User) er
 }
 
 func (dr *Distributed) Remove(client *client.Client, user *authentication.User) (bool, error) {
-	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
+	format := f.NewUnformated(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name), static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(client, user)
 
 	return obj.Remove(format)
@@ -61,7 +62,7 @@ func (dr *Distributed) Clear(node uint64) {
 }
 
 func (dr *Distributed) Load(client *client.Client, user *authentication.User) error {
-	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
+	format := f.NewUnformated(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name), static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(client, user)
 
 	obj.Find(format)

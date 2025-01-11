@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -22,6 +23,7 @@ type Api struct {
 	Badger        *badger.DB
 	confChangeC   chan raftpb.ConfChange
 	Cluster       *cluster.Cluster
+	Replication   *distributed.Replication
 	BadgerSync    *sync.RWMutex
 	Kinds         *relations.RelationRegistry
 	KindsRegistry map[string]contracts.Kind

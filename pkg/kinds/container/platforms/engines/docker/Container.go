@@ -473,7 +473,7 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 }
 
 func (container *Docker) Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
-	runtime.ObjectDependencies = make([]*f.Format, 0)
+	runtime.ObjectDependencies = make([]f.Format, 0)
 
 	err := container.PrepareNetwork(client, user, runtime)
 

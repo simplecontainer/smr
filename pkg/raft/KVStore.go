@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"log"
 	"strings"
@@ -37,9 +37,8 @@ import (
 // a key-value store backed by raft
 type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
-	EtcdC       chan KV
-	ObjectsC    chan KV
-	EventsC     chan KV
+	DataC       chan distributed.KV
+	EventsC     chan distributed.KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
 	Agent       string
 	mu          sync.RWMutex
@@ -48,15 +47,8 @@ type KVStore struct {
 	snapshotter *snap.Snapshotter
 }
 
-type KV struct {
-	Key      string
-	Val      []byte
-	Category string
-	Agent    string
-}
-
-func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, etcdC chan KV, objectsC chan KV, eventsC chan KV) (*KVStore, error) {
-	s := &KVStore{proposeC: proposeC, EtcdC: etcdC, ObjectsC: objectsC, EventsC: eventsC, kvStore: badger, client: client, snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan distributed.KV) (*KVStore, error) {
+	s := &KVStore{proposeC: proposeC, DataC: dataC, kvStore: badger, client: client, snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
@@ -75,61 +67,10 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client
 	return s, nil
 }
 
-func (s *KVStore) Propose(k string, v []byte, agent string) {
+func (s *KVStore) Propose(k string, v []byte, category int, agent string) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_PLAIN, agent}); err != nil {
-		log.Fatal(err)
-	}
-
-	s.proposeC <- buf.String()
-}
-
-func (s *KVStore) ProposeEvent(k string, v []byte, agent string) {
-	var buf strings.Builder
-
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_EVENT, agent}); err != nil {
-		log.Fatal(err)
-	}
-
-	s.proposeC <- buf.String()
-}
-
-func (s *KVStore) ProposeObject(k string, v []byte, agent string) {
-	var buf strings.Builder
-
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_OBJECT, agent}); err != nil {
-		log.Fatal(err)
-	}
-
-	s.proposeC <- buf.String()
-}
-
-func (s *KVStore) ProposeSecret(k string, v []byte, agent string) {
-	var buf strings.Builder
-
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_SECRET, agent}); err != nil {
-		log.Fatal(err)
-	}
-
-	s.proposeC <- buf.String()
-}
-
-func (s *KVStore) ProposeEtcd(k string, v []byte, agent string) {
-	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", s.client.Clients[s.Agent].API, k)
-	response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "GET", nil)
-
-	if response.Success {
-		responseBytes, _ := response.Data.MarshalJSON()
-
-		if bytes.Equal(responseBytes, v) {
-			return
-		}
-	}
-
-	var buf strings.Builder
-
-	if err := gob.NewEncoder(&buf).Encode(KV{k, v, static.CATEGORY_ETCD, agent}); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(distributed.NewEncode(k, v, agent, category)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -154,83 +95,8 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 		}
 
 		for _, data := range commit.data {
-			var dataKv KV
-
-			dec := gob.NewDecoder(bytes.NewBufferString(data))
-			if err := dec.Decode(&dataKv); err != nil {
-				log.Fatalf("raftexample: could not decode message (%v)", err)
-			}
-
 			s.mu.Lock()
-
-			switch dataKv.Category {
-			case static.CATEGORY_OBJECT:
-				if dataKv.Agent == s.Agent {
-					if dataKv.Val == nil {
-						URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-						response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "DELETE", dataKv.Val)
-
-						logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
-
-						if !response.Success {
-							logger.Log.Error(errors.New(response.ErrorExplanation).Error())
-						}
-					} else {
-						URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-						response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", dataKv.Val)
-
-						logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
-
-						if !response.Success {
-							logger.Log.Error(errors.New(response.ErrorExplanation).Error())
-						}
-					}
-				} else {
-					s.ObjectsC <- dataKv
-				}
-				break
-
-			case static.CATEGORY_EVENT:
-				s.EventsC <- dataKv
-				break
-
-			case static.CATEGORY_PLAIN:
-				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", dataKv.Val)
-
-				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
-
-				if !response.Success {
-					logger.Log.Error(response.ErrorExplanation)
-				}
-				break
-
-			case static.CATEGORY_SECRET:
-				URL := fmt.Sprintf("https://%s/api/v1/secrets/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
-
-				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
-
-				if !response.Success {
-					logger.Log.Error(response.ErrorExplanation)
-				}
-
-				break
-
-			case static.CATEGORY_ETCD:
-				URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, dataKv.Key)
-				response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(dataKv.Val))
-
-				logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", string(dataKv.Val)))
-
-				if !response.Success {
-					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
-				}
-
-				s.EtcdC <- dataKv
-				break
-			}
-
+			s.DataC <- distributed.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Agent)
 			s.mu.Unlock()
 		}
 		close(commit.applyDoneC)

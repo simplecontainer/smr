@@ -62,8 +62,6 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		fmt.Println(err)
-
 		return &contracts.Response{
 			HttpStatus:       resp.StatusCode,
 			Explanation:      "failed to unmarshal body response from smr-agent",

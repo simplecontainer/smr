@@ -51,9 +51,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	var format *f.Format
-
-	format = f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -112,9 +110,7 @@ func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contr
 
 	definition := request.Definition.Definition.(*v1.GitopsDefinition)
 
-	var format *f.Format
-
-	format = f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -148,9 +144,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	var format *f.Format
-
-	format = f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_GITOPS)

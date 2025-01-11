@@ -3,17 +3,17 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
-	"github.com/simplecontainer/smr/pkg/raft"
 	"go.uber.org/zap"
 	"time"
 )
 
 type ContainerWatcher struct {
 	Container    map[string]*Container
-	EventChannel chan raft.KV
+	EventChannel chan distributed.KV
 }
 
 type Container struct {

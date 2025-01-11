@@ -27,7 +27,7 @@ func (container *Docker) PrepareNetwork(client *client.Http, user *authenticatio
 }
 
 func (container *Docker) PrepareConfiguration(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
-	var dependencyMap []*f.Format
+	var dependencyMap []f.Format
 	var err error
 
 	obj := objects.New(client.Get(user.Username), user)
@@ -131,7 +131,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
-		runtime.ObjectDependencies = append(runtime.ObjectDependencies, &f.Format{
+		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.Format{
 			Kind:       "resource",
 			Group:      container.Resources.Resources[k].Reference.Group,
 			Identifier: container.Resources.Resources[k].Reference.Name,

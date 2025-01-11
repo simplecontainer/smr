@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
@@ -86,13 +87,14 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC)
 
 	var err error
-	etcdC := make(chan raft.KV)
-	objectC := make(chan raft.KV)
-
 	containerShared := api.Manager.KindsRegistry["container"].GetShared().(*shared.Shared)
 
-	api.Cluster.Client = api.Manager.Http
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, etcdC, objectC, containerShared.Watcher.EventChannel)
+	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User)
+	api.Replication.EventsC = containerShared.Watcher.EventChannel
+
+	api.Manager.Replication = api.Replication
+
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, api.Replication.DataC)
 
 	if err != nil {
 		return err

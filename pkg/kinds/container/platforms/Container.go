@@ -36,7 +36,7 @@ func New(platform string, name string, config *configuration.Configuration, Chan
 			General: &General{
 				Runtime: &types.Runtime{
 					Configuration:      smaps.New(),
-					ObjectDependencies: make([]*f.Format, 0),
+					ObjectDependencies: make([]f.Format, 0),
 					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
 					Agent:              config.Node,
 				},

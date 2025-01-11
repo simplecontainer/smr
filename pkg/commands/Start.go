@@ -237,11 +237,6 @@ func Start() {
 					{
 						users.POST("/:username/:domain/:externalIP", api.CreateUser)
 					}
-
-					etcd := v1.Group("etcd")
-					{
-						etcd.PUT("/etcd/update/*key", api.EtcdPut)
-					}
 				}
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

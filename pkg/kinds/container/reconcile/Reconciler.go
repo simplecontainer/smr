@@ -575,6 +575,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 				containerWatcher.Logger.Error(err.Error())
 			} else {
 				containerWatcher.Cancel()
+				return
 			}
 			break
 		case "dead":
@@ -612,10 +613,10 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			}
 			break
 		}
+
+		ReconcileLoop(containerWatcher)
 		break
 	}
-
-	ReconcileLoop(containerWatcher)
 }
 
 func ReconcileLoop(containerWatcher *watcher.Container) {

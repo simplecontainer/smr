@@ -10,9 +10,6 @@ import (
 )
 
 func New(definition *v1.GitopsDefinition) *Gitops {
-	fmt.Println(definition)
-	fmt.Println(definition.Spec.DirectoryPath)
-
 	gitops := &Gitops{
 		RepoURL:         definition.Spec.RepoURL,
 		Revision:        definition.Spec.Revision,

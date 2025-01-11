@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	replication "github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
@@ -21,7 +22,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
@@ -33,7 +33,7 @@ func (container *Container) Start() error {
 	container.Started = true
 
 	container.Shared.Watcher = &watcher.ContainerWatcher{
-		EventChannel: make(chan raft.KV),
+		EventChannel: make(chan replication.KV),
 	}
 	container.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
@@ -87,9 +87,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	var format *f.Format
-
-	format = f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -189,9 +187,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 
 	definition := request.Definition.Definition.(*v1.ContainerDefinition)
 
-	var format *f.Format
-	format = f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
-
+	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 
 	var dr *replicas.Replicas
@@ -213,10 +209,12 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 			containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Existing)
 
 			for _, containerObj := range containerObjs {
-				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+				go func() {
+					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
 
-				reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
+					reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
+				}()
 			}
 
 			dr.Distributed.Remove(container.Shared.Client.Clients[user.Username], user)

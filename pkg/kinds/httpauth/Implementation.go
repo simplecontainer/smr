@@ -41,9 +41,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
 	}
 
-	var format *f.Format
-
-	format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -72,9 +70,7 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 
 	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
 
-	var format *f.Format
-
-	format = f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)

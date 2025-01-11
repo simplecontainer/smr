@@ -10,9 +10,8 @@ func New() *Cluster {
 	nodes := node.NewNodes()
 
 	return &Cluster{
-		Node:       node.NewNode(),
-		Cluster:    nodes,
-		EtcdClient: NewEtcdClient(),
+		Node:    node.NewNode(),
+		Cluster: nodes,
 	}
 }
 

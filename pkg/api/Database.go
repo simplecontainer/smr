@@ -2,13 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
-	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 	"net/http"
 	"strings"
@@ -265,66 +264,19 @@ func (api *Api) Propose(c *gin.Context) {
 	}
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
+	api.Cluster.KVStore.Propose(key, data, helpers.Category(c.Param("type")), api.Config.Node)
 
 	// To prevent empty responses since Json.RawMessage is in the response
 	if len(data) == 0 {
 		data, _ = json.Marshal("{}")
 	}
 
-	switch c.Param("type") {
-	case static.CATEGORY_PLAIN:
-		api.Cluster.KVStore.Propose(key, data, api.Config.Node)
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "value stored in the key value store",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             data,
-		})
-		return
-	case static.CATEGORY_OBJECT:
-		fmt.Println("PROPOSE")
-
-		api.Cluster.KVStore.ProposeObject(key, data, api.Config.Node)
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "value stored in the key value store",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             data,
-		})
-		return
-	case static.CATEGORY_SECRET:
-		api.Cluster.KVStore.ProposeSecret(key, data, api.Config.Node)
-
-		bytes, _ := json.Marshal(data)
-
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "value stored in the key value store",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             bytes,
-		})
-		return
-	case static.CATEGORY_ETCD:
-		api.Cluster.KVStore.ProposeEtcd(key, data, api.Config.Node)
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "value stored in the key value store",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             data,
-		})
-		return
-	}
-
-	c.JSON(http.StatusBadRequest, contracts.Response{
-		Explanation:      "",
-		ErrorExplanation: "invalid category selected for the propose",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
+	c.JSON(http.StatusOK, contracts.Response{
+		Explanation:      "value proposed to the key value store",
+		ErrorExplanation: "",
+		Error:            false,
+		Success:          true,
+		Data:             data,
 	})
 }
 

@@ -15,8 +15,8 @@ import (
 )
 
 func (api *Api) Restore(c *gin.Context) {
-	var formatContainers *f.Format
-	var formatGitops *f.Format
+	var formatContainers f.Format
+	var formatGitops f.Format
 
 	data := make(map[string]any, 0)
 

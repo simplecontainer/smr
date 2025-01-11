@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
+	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
 )
@@ -99,28 +100,28 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer) {
 }
 
 func HandleStart(shared *shared.Shared, container platforms.IContainer) {
-	if !reconcileIgnore(container.GetLabels()) {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 
 func HandleKill(shared *shared.Shared, container platforms.IContainer) {
-	if !reconcileIgnore(container.GetLabels()) {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
 		logger.Log.Info(fmt.Sprintf("container is killed - reconcile %s", container.GetGeneratedName()))
 		//container.GetStatus().TransitionState(container.GetGeneratedName(), status.STATUS_KILL)
 	}
 }
 
 func HandleStop(shared *shared.Shared, container platforms.IContainer) {
-	if !reconcileIgnore(container.GetLabels()) {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 
 func HandleDie(shared *shared.Shared, container platforms.IContainer) {
-	if !reconcileIgnore(container.GetLabels()) {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}

@@ -2,11 +2,9 @@ package definitions
 
 import (
 	"errors"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
@@ -39,7 +37,7 @@ func NewImplementation(kind string) contracts.IDefinition {
 	}
 }
 
-func (definition *Definition) Apply(format *f.Format, obj contracts.ObjectInterface, kind string) (contracts.ObjectInterface, error) {
+func (definition *Definition) Apply(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.ObjectInterface, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -62,9 +60,6 @@ func (definition *Definition) Apply(format *f.Format, obj contracts.ObjectInterf
 				return obj, err
 			}
 
-			fmt.Println("JEJO")
-			fmt.Println(existing.GetOwner())
-
 			if !existing.GetOwner().IsEmpty() {
 				return obj, errors.New("object has owner - direct modification not allowed")
 			}
@@ -83,7 +78,7 @@ func (definition *Definition) Apply(format *f.Format, obj contracts.ObjectInterf
 		}
 	}
 }
-func (definition *Definition) Delete(format *f.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
+func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -124,7 +119,7 @@ func (definition *Definition) Delete(format *f.Format, obj contracts.ObjectInter
 		}
 	}
 }
-func (definition *Definition) Changed(format *f.Format, obj contracts.ObjectInterface) (bool, error) {
+func (definition *Definition) Changed(format contracts.Format, obj contracts.ObjectInterface) (bool, error) {
 	err := obj.Find(format)
 
 	if err != nil {

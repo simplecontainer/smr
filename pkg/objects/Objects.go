@@ -10,10 +10,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -48,8 +46,8 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Add(format *f.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.Category, format.ToString())
+func (obj *Object) Add(format contracts.Format, data []byte) error {
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
@@ -61,7 +59,7 @@ func (obj *Object) Add(format *f.Format, data []byte) error {
 	}
 }
 
-func (obj *Object) AddLocal(format *f.Format, data []byte) error {
+func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", data)
 
@@ -74,30 +72,8 @@ func (obj *Object) AddLocal(format *f.Format, data []byte) error {
 	}
 }
 
-func (obj *Object) Ensure(format *f.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.Category, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", data)
-
-	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
-
-	if response.Success {
-		URL = fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s.auth", obj.client.API, static.CATEGORY_PLAIN, format.ToString())
-		response = SendRequest(obj.client.Http, URL, "POST", obj.User.ToBytes())
-
-		logger.Log.Debug("object auth remove", zap.String("URL", URL))
-
-		if !response.Success {
-			return errors.New(response.ErrorExplanation)
-		} else {
-			return nil
-		}
-	} else {
-		return errors.New(response.ErrorExplanation)
-	}
-}
-
-func (obj *Object) Update(format *f.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.Category, format.ToString())
+func (obj *Object) Update(format contracts.Format, data []byte) error {
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := SendRequest(obj.client.Http, URL, "PUT", data)
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", string(data)))
@@ -109,7 +85,7 @@ func (obj *Object) Update(format *f.Format, data []byte) error {
 	}
 }
 
-func (obj *Object) Find(format *f.Format) error {
+func (obj *Object) Find(format contracts.Format) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "GET", nil)
 
@@ -136,7 +112,7 @@ func (obj *Object) Find(format *f.Format) error {
 	return nil
 }
 
-func (obj *Object) FindMany(format *f.Format) (map[string]contracts.ObjectInterface, error) {
+func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.ObjectInterface, error) {
 	var objects = make(map[string]contracts.ObjectInterface)
 
 	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, format.ToString())
@@ -155,15 +131,26 @@ func (obj *Object) FindMany(format *f.Format) (map[string]contracts.ObjectInterf
 				return nil, err
 			}
 
-			for _, key := range keys {
-				objTmp := New(obj.client, obj.User)
-				err = objTmp.Find(f.NewFromString(key))
+			if format.GetType() == f.TYPE_FORMATED {
+				for _, key := range keys {
+					objTmp := New(obj.client, obj.User)
+					err = objTmp.Find(f.NewFromString(key))
 
-				if err != nil {
-					return objects, err
+					if err != nil {
+						return objects, err
+					}
+
+					objects[key] = objTmp
 				}
+			} else {
+				for _, key := range keys {
+					objTmp := New(obj.client, obj.User)
+					err = objTmp.Find(f.NewUnformated(key, format.GetCategory()))
 
-				if !strings.HasSuffix(key, ".auth") {
+					if err != nil {
+						return objects, err
+					}
+
 					objects[key] = objTmp
 				}
 			}
@@ -175,7 +162,7 @@ func (obj *Object) FindMany(format *f.Format) (map[string]contracts.ObjectInterf
 	return objects, nil
 }
 
-func (obj *Object) Remove(format *f.Format) (bool, error) {
+func (obj *Object) Remove(format contracts.Format) (bool, error) {
 	prefix := format.ToString()
 
 	if !format.Full() {
@@ -183,12 +170,10 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 		prefix += "."
 	}
 
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.Category, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
-
-	fmt.Println(response)
 
 	if response.Success {
 		return true, nil
@@ -197,7 +182,7 @@ func (obj *Object) Remove(format *f.Format) (bool, error) {
 	}
 }
 
-func (obj *Object) RemoveLocal(format *f.Format) (bool, error) {
+func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 	prefix := format.ToString()
 
 	if !format.Full() {
