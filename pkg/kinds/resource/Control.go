@@ -4,21 +4,17 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
+	"net/http"
 )
 
 var supportedControlOperations = []string{"List", "Get", "Remove"}
 
 func (resource *Resource) ListSupported(request contracts.Control) contracts.Response {
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(supportedControlOperations),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(supportedControlOperations))
 }
 
 func (resource *Resource) List(request contracts.Control) contracts.Response {
@@ -30,28 +26,14 @@ func (resource *Resource) List(request contracts.Control) contracts.Response {
 	objs, err := obj.FindMany(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
 	for k, v := range objs {
 		data[k] = v.GetDefinition()
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "list of the resource objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(data),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(data))
 }
 
 func (resource *Resource) Get(request contracts.Control) contracts.Response {
@@ -61,14 +43,7 @@ func (resource *Resource) Get(request contracts.Control) contracts.Response {
 	err := obj.Find(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "gitops definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
 	definitionObject := obj.GetDefinition()
@@ -77,14 +52,7 @@ func (resource *Resource) Get(request contracts.Control) contracts.Response {
 	definition["kind"] = KIND
 	definition[KIND] = definitionObject
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "gitops object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(definition),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
 }
 
 func (resource *Resource) Remove(request contracts.Control) contracts.Response {
@@ -95,35 +63,14 @@ func (resource *Resource) Remove(request contracts.Control) contracts.Response {
 	err := obj.Find(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "resource definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
 	removed, err := obj.Remove(format)
 
 	if !removed {
-		return contracts.Response{
-			HttpStatus:       500,
-			Explanation:      "resource definition is not deleted",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "resource definition is deleted and removed from server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             nil,
-		}
+		return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)
 	}
 }

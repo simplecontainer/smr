@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func Response(status int, explanation string, err error) contracts.Response {
+func Response(status int, explanation string, err error, data []byte) contracts.Response {
 	errString := ""
 	if err != nil {
 		errString = err.Error()
@@ -16,5 +16,6 @@ func Response(status int, explanation string, err error) contracts.Response {
 		Explanation:      explanation,
 		ErrorExplanation: errString,
 		Success:          status == http.StatusOK,
+		Data:             data,
 	}
 }

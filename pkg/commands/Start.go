@@ -184,6 +184,14 @@ func Start() {
 						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
 					}
 
+					cluster := v1.Group("cluster")
+					{
+						cluster.GET("/", api.GetCluster)
+						cluster.POST("/start", api.StartCluster)
+						cluster.POST("/node", api.AddNode)
+						cluster.DELETE("/node/:node", api.RemoveNode)
+					}
+
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)
@@ -223,8 +231,7 @@ func Start() {
 
 					logs := v1.Group("/logs")
 					{
-						//logs.GET("/", api.Node)
-						logs.GET(":kind/:group/:identifier", api.Logs)
+						logs.GET(":kind/:group/:identifier/:type", api.Logs)
 					}
 
 					dns := v1.Group("/dns")
@@ -244,15 +251,9 @@ func Start() {
 				router.GET("/ca", api.CA)
 				router.GET("/connect", api.Health)
 				router.GET("/restore", api.Restore)
-				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+				router.GET("/healthz", api.Health)
 				router.GET("/metrics", api.Metrics())
-
-				router.GET("/cluster", api.GetCluster)
-				router.POST("/cluster/start", api.StartCluster)
-				router.POST("/cluster/restore", api.RestoreCluster)
-				router.POST("/cluster/node", api.AddNode)
-				router.DELETE("/cluster/node/:node", api.RemoveNode)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)

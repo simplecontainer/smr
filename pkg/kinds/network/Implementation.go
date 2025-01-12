@@ -30,11 +30,11 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	request, err := common.NewRequest(static.KIND_NETWORK)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.NetworkDefinition)
@@ -42,7 +42,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	valid, err := definition.Validate()
 
 	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
@@ -56,7 +56,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	obj, err = request.Definition.Apply(format, obj.(*objects.Object), static.KIND_NETWORK)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	var networkObj *implementation.Network
@@ -70,21 +70,21 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	err = networkObj.Create()
 
 	if err != nil {
-		return common.Response(http.StatusInternalServerError, "internal error", err), err
+		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
 	}
 
-	return common.Response(http.StatusOK, "object applied", nil), nil
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
 func (network *Network) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_NETWORK)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.NetworkDefinition)
@@ -95,25 +95,25 @@ func (network *Network) Compare(user *authentication.User, jsonData []byte) (con
 	changed, err := request.Definition.Changed(format, obj)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	if changed {
-		return common.Response(http.StatusTeapot, "object drifted", nil), nil
+		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
 	}
 
-	return common.Response(http.StatusOK, "object in sync", nil), nil
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 
 func (network *Network) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_NETWORK)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.NetworkDefinition)
@@ -124,10 +124,10 @@ func (network *Network) Delete(user *authentication.User, jsonData []byte, agent
 	_, err = request.Definition.Delete(format, obj, static.KIND_NETWORK)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	return common.Response(http.StatusOK, "object in deleted", nil), nil
+	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
 func (network *Network) Run(operation string, request contracts.Control) contracts.Response {

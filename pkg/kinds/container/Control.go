@@ -1,29 +1,23 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
+	"net/http"
 )
 
 var supportedControlOperations = []string{"List", "Get", "Remove", "View", "Restart"}
 
 func (container *Container) ListSupported(request contracts.Control) contracts.Response {
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(supportedControlOperations),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(supportedControlOperations))
 }
 
 func (container *Container) List(request contracts.Control) contracts.Response {
@@ -35,28 +29,14 @@ func (container *Container) List(request contracts.Control) contracts.Response {
 	objs, err := obj.FindMany(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
 	for k, v := range objs {
 		data[k] = v.GetDefinition()
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "list of the certkey objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(data),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(data))
 }
 func (container *Container) Get(request contracts.Control) contracts.Response {
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
@@ -65,14 +45,7 @@ func (container *Container) Get(request contracts.Control) contracts.Response {
 	err := obj.Find(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "container definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
 	definitionObject := obj.GetDefinition()
@@ -81,53 +54,25 @@ func (container *Container) Get(request contracts.Control) contracts.Response {
 	definition["kind"] = KIND
 	definition[KIND] = definitionObject
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "container object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(definition),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
 }
 func (container *Container) View(request contracts.Control) contracts.Response {
 	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
 
 	if containerObj == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "container not found in the registry",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("container not found"), nil)
 	}
 
 	var definition = make(map[string]any)
 	definition[containerObj.GetGeneratedName()] = containerObj
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "container object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(definition),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
 }
 func (container *Container) Restart(request contracts.Control) contracts.Response {
 	containerObj := container.Shared.Registry.Find(request.Group, request.Name)
 
 	if containerObj == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "container not found in the registry",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("container not found"), nil)
 	}
 
 	event := events.New(events.EVENT_RESTART, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
@@ -135,32 +80,18 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 	bytes, err := event.ToJson()
 
 	if err != nil {
-		logger.Log.Debug("failed to dispatch event", zap.Error(err))
-	} else {
-		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "container object is scheduled for restarted",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
+	container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
+
+	return common.Response(http.StatusOK, static.STATUS_RESPONSE_RESTART, nil, nil)
 }
 func (container *Container) Remove(request contracts.Control) contracts.Response {
 	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
 
 	if containerObj == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "container not found in the registry",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("container not found"), nil)
 	}
 
 	event := events.New(events.EVENT_DELETE, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
@@ -171,12 +102,5 @@ func (container *Container) Remove(request contracts.Control) contracts.Response
 		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "container object is scheduled for deletion",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
+	return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)
 }

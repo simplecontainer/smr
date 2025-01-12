@@ -36,11 +36,11 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 	request, err := common.NewRequest(static.KIND_GITOPS)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.GitopsDefinition)
@@ -48,7 +48,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 	valid, err := definition.Validate()
 
 	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
@@ -62,7 +62,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 	obj, err = request.Definition.Apply(format, obj, static.KIND_GITOPS)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", definition.Meta.Group, definition.Meta.Name)
@@ -95,17 +95,17 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 		reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 	}
 
-	return common.Response(http.StatusOK, "object applied", nil), nil
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_GITOPS)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.GitopsDefinition)
@@ -116,24 +116,24 @@ func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contr
 	changed, err := request.Definition.Changed(format, obj)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	if changed {
-		return common.Response(http.StatusTeapot, "object drifted", nil), nil
+		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
 	}
 
-	return common.Response(http.StatusOK, "object in sync", nil), nil
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_GITOPS)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.GitopsDefinition)
@@ -141,7 +141,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 	_, err = definition.Validate()
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
@@ -150,7 +150,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_GITOPS)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", existingDefinition.(*v1.GitopsDefinition).Meta.Group, existingDefinition.(*v1.GitopsDefinition).Meta.Name)
@@ -160,7 +160,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 	gitopsObj.Status.TransitionState(gitopsObj.Definition.Meta.Name, status.STATUS_PENDING_DELETE)
 	reconcile.Gitops(gitops.Shared, gitops.Shared.Watcher.Find(GroupIdentifier))
 
-	return common.Response(http.StatusOK, "object in deleted", nil), nil
+	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 
 }
 func (gitops *Gitops) Run(operation string, request contracts.Control) contracts.Response {

@@ -28,11 +28,11 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	request, err := common.NewRequest(static.KIND_CONFIGURATION)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.ConfigurationDefinition)
@@ -40,7 +40,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	valid, err := definition.Validate()
 
 	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	format := f.New("configuration", definition.Meta.Group, definition.Meta.Name, "object")
@@ -56,7 +56,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	obj, err = request.Definition.Apply(format, obj, static.KIND_CONFIGURATION)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	if obj.ChangeDetected() {
@@ -72,17 +72,17 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 		}
 	}
 
-	return common.Response(http.StatusOK, "object applied", nil), nil
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 func (config *Config) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONFIGURATION)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.ConfigurationDefinition)
@@ -93,24 +93,24 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 	changed, err := request.Definition.Changed(format, obj)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	if changed {
-		return common.Response(http.StatusTeapot, "object drifted", nil), nil
+		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
 	}
 
-	return common.Response(http.StatusOK, "object in sync", nil), nil
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 func (config *Config) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONFIGURATION)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.ConfigurationDefinition)
@@ -121,10 +121,10 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte, agent s
 	_, err = request.Definition.Delete(format, obj, static.KIND_CONFIGURATION)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	return common.Response(http.StatusOK, "object in deleted", nil), nil
+	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 func (config *Config) Run(operation string, request contracts.Control) contracts.Response {
 	reflected := reflect.TypeOf(config)

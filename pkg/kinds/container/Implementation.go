@@ -72,11 +72,11 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 	request, err := common.NewRequest(static.KIND_CONTAINER)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.ContainerDefinition)
@@ -84,7 +84,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 	_, err = definition.Validate()
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
@@ -100,12 +100,12 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 	obj, err = request.Definition.Apply(format, obj, static.KIND_CONTAINER)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	} else {
 		dr, err = GenerateContainers(container.Shared, user, agent, definition, obj.GetDiff())
 
 		if err != nil {
-			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err), err
+			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
 		}
 	}
 
@@ -169,20 +169,20 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 		}
 	}
 
-	return common.Response(http.StatusOK, "object applied", nil), nil
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	return common.Response(http.StatusOK, "object in sync", nil), nil
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 func (container *Container) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONTAINER)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.ContainerDefinition)
@@ -195,12 +195,12 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINER)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	} else {
 		dr, err = GetContainers(container.Shared, user, agent, existingDefinition.(*v1.ContainerDefinition))
 
 		if err != nil {
-			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err), err
+			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
 		}
 	}
 
@@ -227,10 +227,10 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 				Success:          true,
 			}, nil
 		} else {
-			return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found")), errors.New("container not found")
+			return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
 		}
 	} else {
-		return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found")), errors.New("container not found")
+		return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
 
 	}
 }
@@ -249,7 +249,7 @@ func (container *Container) Run(operation string, request contracts.Control) con
 		}
 	}
 
-	return common.Response(http.StatusBadRequest, "server doesn't support requested functionality", errors.New("implementation is missing"))
+	return common.Response(http.StatusBadRequest, "server doesn't support requested functionality", errors.New("implementation is missing"), nil)
 }
 
 func FetchContainersFromRegistry(registry *registry.Registry, containers []replicas.R) []platforms.IContainer {

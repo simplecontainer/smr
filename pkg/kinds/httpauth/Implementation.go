@@ -26,11 +26,11 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 	request, err := common.NewRequest(static.KIND_HTTPAUTH)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
@@ -38,7 +38,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 	valid, err := definition.Validate()
 
 	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
@@ -52,20 +52,20 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 	_, err = request.Definition.Apply(format, obj, static.KIND_HTTPAUTH)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	return common.Response(http.StatusOK, "object applied", nil), nil
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_HTTPAUTH)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
@@ -76,24 +76,24 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 	changed, err := request.Definition.Changed(format, obj)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	if changed {
-		return common.Response(http.StatusTeapot, "object drifted", nil), nil
+		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
 	}
 
-	return common.Response(http.StatusOK, "object in sync", nil), nil
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_HTTPAUTH)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err), err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
 	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
@@ -104,10 +104,10 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, age
 	_, err = request.Definition.Delete(format, obj, static.KIND_HTTPAUTH)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	return common.Response(http.StatusOK, "object in deleted", nil), nil
+	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
 func (httpauth *Httpauth) Run(operation string, request contracts.Control) contracts.Response {

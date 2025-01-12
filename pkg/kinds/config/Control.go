@@ -4,21 +4,17 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
+	"net/http"
 )
 
 var supportedControlOperations = []string{"List", "Get", "Remove"}
 
 func (config *Config) ListSupported(request contracts.Control) contracts.Response {
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(supportedControlOperations),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(supportedControlOperations))
 }
 func (config *Config) List(request contracts.Control) contracts.Response {
 	data := make(map[string]any)
@@ -29,28 +25,14 @@ func (config *Config) List(request contracts.Control) contracts.Response {
 	objs, err := obj.FindMany(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "error occured",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
 	for k, v := range objs {
 		data[k] = v.GetDefinition()
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "list of the certkey objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(data),
-	}
+	return common.Response(http.StatusOK, "", err, network.ToJson(data))
 }
 func (config *Config) Get(request contracts.Control) contracts.Response {
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
@@ -59,14 +41,7 @@ func (config *Config) Get(request contracts.Control) contracts.Response {
 	err := obj.Find(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "configuration definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
 	definitionObject := obj.GetDefinition()
@@ -75,14 +50,7 @@ func (config *Config) Get(request contracts.Control) contracts.Response {
 	definition["kind"] = KIND
 	definition[KIND] = definitionObject
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "certkey object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(definition),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
 }
 func (config *Config) Remove(request contracts.Control) contracts.Response {
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
@@ -92,35 +60,14 @@ func (config *Config) Remove(request contracts.Control) contracts.Response {
 	err := obj.Find(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "configuration definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
 	removed, err := obj.Remove(format)
 
 	if !removed {
-		return contracts.Response{
-			HttpStatus:       500,
-			Explanation:      "configuration definition is not deleted",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "configuration definition is deleted and removed from server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             nil,
-		}
+		return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)
 	}
 }
