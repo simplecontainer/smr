@@ -50,19 +50,14 @@ func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(configuration)
-	return string(bytes), err
-}
-
-func (configuration *ConfigurationDefinition) ToJsonStringWithKind() (string, error) {
+func (configuration *ConfigurationDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(configuration)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "configuration"
@@ -71,10 +66,15 @@ func (configuration *ConfigurationDefinition) ToJsonStringWithKind() (string, er
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(configuration)
+	return string(bytes), err
 }
 
 func (configuration *ConfigurationDefinition) Validate() (bool, error) {

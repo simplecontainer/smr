@@ -50,19 +50,14 @@ func (containers *ContainersDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (containers *ContainersDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(containers)
-	return string(bytes), err
-}
-
-func (containers *ContainersDefinition) ToJsonStringWithKind() (string, error) {
+func (containers *ContainersDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(containers)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "containers"
@@ -71,10 +66,15 @@ func (containers *ContainersDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (containers *ContainersDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(containers)
+	return string(bytes), err
 }
 
 func (containers *ContainersDefinition) Validate() (bool, error) {

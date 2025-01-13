@@ -6,6 +6,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
+func (container *Docker) GetId() string {
+	return container.DockerID
+}
+
 func (container *Docker) GetDefinition() contracts.IDefinition {
 	return &container.Definition
 }

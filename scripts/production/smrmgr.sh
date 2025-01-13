@@ -98,7 +98,7 @@ Manager(){
     echo
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
-        IMAGETAG=$(smr node inspect --agent smr-agent-1 | jq '.Config.Image' | tr -d /\"//)
+        IMAGETAG=$(smr cli inspect --agent smr-agent-1 | jq '.Config.Image' | tr -d /\"//)
         arrIN=(${IMAGETAG//:/ })
 
         smr node stop --agent "${AGENT}" $CLIENT_ARGS --wait
@@ -141,7 +141,7 @@ Manager(){
 
         while :
         do
-          if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${AGENT}.pem" --context "${AGENT}" --wait --y; then
+          if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${AGENT}.pem" --context "${AGENT}" --y; then
             break
           else
             echo "Failed to connect to siplecontainer, trying again in 1 second"
@@ -150,9 +150,9 @@ Manager(){
         done
 
         if [[ ${JOIN} == "" ]]; then
-          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 &
         else
-          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster-join.log &>/dev/null &
+          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" 2>&1 &
         fi
 
         echo "The simplecontainer is started in cluster mode."

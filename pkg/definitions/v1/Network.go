@@ -51,19 +51,14 @@ func (network *NetworkDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (network *NetworkDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(network)
-	return string(bytes), err
-}
-
-func (network *NetworkDefinition) ToJsonStringWithKind() (string, error) {
+func (network *NetworkDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(network)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "network"
@@ -72,10 +67,15 @@ func (network *NetworkDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (network *NetworkDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(network)
+	return string(bytes), err
 }
 
 func (network *NetworkDefinition) Validate() (bool, error) {

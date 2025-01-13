@@ -51,19 +51,14 @@ func (resource *ResourceDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (resource *ResourceDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(resource)
-	return string(bytes), err
-}
-
-func (resource *ResourceDefinition) ToJsonStringWithKind() (string, error) {
+func (resource *ResourceDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(resource)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "resource"
@@ -72,10 +67,15 @@ func (resource *ResourceDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (resource *ResourceDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(resource)
+	return string(bytes), err
 }
 
 func (resource *ResourceDefinition) Validate() (bool, error) {

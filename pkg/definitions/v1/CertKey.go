@@ -57,19 +57,14 @@ func (certkey *CertKeyDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (certkey *CertKeyDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(certkey)
-	return string(bytes), err
-}
-
-func (certkey *CertKeyDefinition) ToJsonStringWithKind() (string, error) {
+func (certkey *CertKeyDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(certkey)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "certkey"
@@ -78,10 +73,15 @@ func (certkey *CertKeyDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (certkey *CertKeyDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(certkey)
+	return string(bytes), err
 }
 
 func (certkey *CertKeyDefinition) Validate() (bool, error) {

@@ -107,19 +107,14 @@ func (gitops *GitopsDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (gitops *GitopsDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(gitops)
-	return string(bytes), err
-}
-
-func (gitops *GitopsDefinition) ToJsonStringWithKind() (string, error) {
+func (gitops *GitopsDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(gitops)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "gitops"
@@ -128,10 +123,15 @@ func (gitops *GitopsDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (gitops *GitopsDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(gitops)
+	return string(bytes), err
 }
 
 func (gitops *GitopsDefinition) Validate() (bool, error) {

@@ -12,8 +12,8 @@ type IDefinition interface {
 	GetKind() string
 	ResolveReferences(ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)
+	ToJsonWithKind() ([]byte, error)
 	ToJsonString() (string, error)
-	ToJsonStringWithKind() (string, error)
 	Validate() (bool, error)
 }
 
@@ -27,7 +27,7 @@ type TDefinition interface {
 	GetKind() string
 	ResolveReferences(ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)
+	ToJsonWithKind() ([]byte, error)
 	ToJsonString() (string, error)
-	ToJsonStringWithKind() (string, error)
 	Validate() (bool, error)
 }

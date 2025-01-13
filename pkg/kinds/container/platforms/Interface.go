@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"io"
 )
 
 type IContainer interface {
@@ -18,7 +19,8 @@ type IContainer interface {
 	Restart() error
 	Delete() error
 	Rename(newName string) error
-	Exec(command []string) types.ExecResult
+	Exec(command []string) (types.ExecResult, error)
+	Logs(follow bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
@@ -34,6 +36,7 @@ type IContainer interface {
 	GetStatus() *status.Status
 	GetAgent() string
 
+	GetId() string
 	GetDefinition() contracts.IDefinition
 	GetLabels() map[string]string
 	GetGeneratedName() string
@@ -57,7 +60,8 @@ type IPlatform interface {
 	Restart() error
 	Delete() error
 	Rename(newName string) error
-	Exec(command []string) types.ExecResult
+	Exec(command []string) (types.ExecResult, error)
+	Logs(follow bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
@@ -70,6 +74,7 @@ type IPlatform interface {
 	HasDependencyOn(string, string, string, *types.Runtime) bool
 	HasOwner() bool
 
+	GetId() string
 	GetDefinition() contracts.IDefinition
 	GetGeneratedName() string
 	GetName() string

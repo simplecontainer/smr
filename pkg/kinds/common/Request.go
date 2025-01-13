@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	"github.com/simplecontainer/smr/pkg/network"
+	"net/http"
 	"strings"
 )
 
@@ -33,7 +34,7 @@ func (request *Request) Apply(client *client.Http, user *authentication.User) er
 		return err
 	}
 
-	response := network.Send(client, user, fmt.Sprintf("https://%s/api/v1/apply/%s", client.Clients[user.Username].API, request.Definition.GetKind()), bytes)
+	response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://%s/api/v1/apply/%s", client.Clients[user.Username].API, request.Definition.GetKind()), http.MethodPost, bytes)
 
 	if !response.Success {
 		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
@@ -51,7 +52,7 @@ func (request *Request) Delete(client *client.Http, user *authentication.User) e
 		return err
 	}
 
-	response := network.Send(client, user, fmt.Sprintf("https://%s/api/v1/delete/%s", client.Clients[user.Username].API, request.Definition.GetKind()), bytes)
+	response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://%s/api/v1/delete/%s", client.Clients[user.Username].API, request.Definition.GetKind()), http.MethodPost, bytes)
 
 	if !response.Success {
 		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {

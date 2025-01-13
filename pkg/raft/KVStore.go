@@ -24,7 +24,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/network"
 	"go.uber.org/zap"
 	"log"
 	"strings"
@@ -133,7 +133,7 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 
 	for k, v := range store {
 		URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, k)
-		response := objects.SendRequest(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(v))
+		response := network.Send(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(v))
 
 		logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", v))
 

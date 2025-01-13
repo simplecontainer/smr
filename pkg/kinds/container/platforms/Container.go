@@ -17,6 +17,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
+	"io"
 	"strconv"
 )
 
@@ -99,8 +100,11 @@ func (c *Container) Delete() error {
 func (c *Container) Rename(newName string) error {
 	return c.Platform.Rename(newName)
 }
-func (c *Container) Exec(command []string) types.ExecResult {
+func (c *Container) Exec(command []string) (types.ExecResult, error) {
 	return c.Platform.Exec(command)
+}
+func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
+	return c.Logs(follow)
 }
 
 func (c *Container) GetContainerState() (string, error) {
@@ -126,6 +130,10 @@ func (c *Container) HasDependencyOn(kind string, group string, identifier string
 
 func (c *Container) HasOwner() bool {
 	return c.Platform.HasOwner()
+}
+
+func (c *Container) GetId() string {
+	return c.GetId()
 }
 
 func (c *Container) GetRuntime() *types.Runtime {

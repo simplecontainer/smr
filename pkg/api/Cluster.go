@@ -135,7 +135,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		d, _ := json.Marshal(map[string]string{"node": request["node"]})
-		response := network.Send(api.Manager.Http, user, fmt.Sprintf("%s/cluster/node", request["join"]), d)
+		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, d)
 
 		if response.Error {
 			c.JSON(http.StatusBadRequest, response)
@@ -143,7 +143,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		// Ask join: what is the cluster?
-		response = network.Send(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster", request["join"]), nil)
+		response = network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster", request["join"]), http.MethodGet, nil)
 
 		if response.Success {
 			var bytes []byte

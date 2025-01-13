@@ -169,12 +169,12 @@ func (definition *Definition) ToJson() ([]byte, error) {
 	return definition.Definition.ToJson()
 }
 
-func (definition *Definition) ToJsonString() (string, error) {
-	return definition.Definition.ToJsonString()
+func (definition *Definition) ToJsonWithKind() ([]byte, error) {
+	return definition.Definition.ToJsonWithKind()
 }
 
-func (definition *Definition) ToJsonStringWithKind() (string, error) {
-	return definition.Definition.ToJsonStringWithKind()
+func (definition *Definition) ToJsonString() (string, error) {
+	return definition.Definition.ToJsonString()
 }
 
 func (definition *Definition) Validate() (bool, error) {

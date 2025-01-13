@@ -27,6 +27,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"io"
 	"io/ioutil"
 	"strconv"
 	"sync"
@@ -247,20 +248,20 @@ func (container *Docker) Rename(newName string) error {
 
 	return err
 }
-func (container *Docker) Exec(command []string) types.ExecResult {
+func (container *Docker) Exec(command []string) (types.ExecResult, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
-		var execResult types.ExecResult
+		var result types.ExecResult
 
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
-			panic(err)
+			return types.ExecResult{}, err
 		}
 
 		defer func(cli *IDClient.Client) {
 			err = cli.Close()
 			if err != nil {
-				return
+				logger.Log.Error(err.Error())
 			}
 		}(cli)
 
@@ -291,36 +292,62 @@ func (container *Docker) Exec(command []string) types.ExecResult {
 		select {
 		case err = <-outputDone:
 			if err != nil {
-				return execResult
+				return result, nil
 			}
 			break
 
 		case <-ctx.Done():
-			return execResult
+			return result, nil
 		}
 
 		stdout, err := ioutil.ReadAll(&stdoutBuffer)
 		if err != nil {
-			return execResult
+			return result, nil
 		}
 
 		stderr, err := ioutil.ReadAll(&stderrBuffer)
 		if err != nil {
-			return execResult
+			return result, nil
 		}
 
 		res, err := cli.ContainerExecInspect(ctx, exec.ID)
 		if err != nil {
-			return execResult
+			return result, nil
 		}
 
-		execResult.Exit = res.ExitCode
-		execResult.Stdout = string(stdout)
-		execResult.Stderr = string(stderr)
+		result.Exit = res.ExitCode
+		result.Stdout = string(stdout)
+		result.Stderr = string(stderr)
 
-		return execResult
+		return result, nil
 	} else {
-		return types.ExecResult{}
+		return types.ExecResult{}, errors.New("container is not running")
+	}
+}
+
+func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
+		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+		if err != nil {
+			return nil, err
+		}
+
+		var logs io.ReadCloser
+		logs, err = cli.ContainerLogs(context.Background(), container.DockerID, TDContainer.LogsOptions{
+			ShowStderr: true,
+			ShowStdout: true,
+			Timestamps: false,
+			Follow:     follow,
+			Tail:       "30",
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return logs, nil
+	} else {
+		return nil, errors.New("container is not running")
 	}
 }
 
@@ -501,6 +528,10 @@ func (container *Docker) Prepare(client *client.Http, user *authentication.User,
 }
 
 func (container *Docker) AttachToNetworks(agentContainerName string) error {
+	if agentContainerName == "" {
+		return errors.New("agent container name is empty")
+	}
+
 	var dockerContainer *TDTypes.Container
 	var err error
 

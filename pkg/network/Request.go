@@ -3,32 +3,22 @@ package network
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
 )
 
-func Send(client *client.Http, user *authentication.User, URL string, data []byte) *contracts.Response {
+func Send(client *http.Client, URL string, method string, data []byte) *contracts.Response {
 	var req *http.Request
+	var marshaled []byte
 	var err error
 
-	if len(data) > 0 {
-		if err != nil {
-			return &contracts.Response{
-				HttpStatus:       0,
-				Explanation:      "failed to marshal data for sending request",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}
-		}
-
-		req, err = http.NewRequest("POST", URL, bytes.NewBuffer(data))
+	if data != nil {
+		req, err = http.NewRequest(method, URL, bytes.NewBuffer(data))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, err = http.NewRequest("GET", URL, nil)
+		req, err = http.NewRequest(method, URL, nil)
 		req.Header.Set("Content-Type", "application/json")
 	}
 
@@ -39,10 +29,11 @@ func Send(client *client.Http, user *authentication.User, URL string, data []byt
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
+			Data:             nil,
 		}
 	}
 
-	resp, err := client.Get(user.Username).Http.Do(req)
+	resp, err := client.Do(req)
 
 	if err != nil {
 		return &contracts.Response{
@@ -51,6 +42,7 @@ func Send(client *client.Http, user *authentication.User, URL string, data []byt
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
+			Data:             nil,
 		}
 	}
 	defer resp.Body.Close()
@@ -63,6 +55,7 @@ func Send(client *client.Http, user *authentication.User, URL string, data []byt
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
+			Data:             nil,
 		}
 	}
 
@@ -71,13 +64,66 @@ func Send(client *client.Http, user *authentication.User, URL string, data []byt
 
 	if err != nil {
 		return &contracts.Response{
-			HttpStatus:       0,
+			HttpStatus:       resp.StatusCode,
 			Explanation:      "failed to unmarshal body response from smr-agent",
-			ErrorExplanation: err.Error(),
+			ErrorExplanation: generateResponse(URL, resp.StatusCode, method, marshaled, body, err),
 			Error:            true,
 			Success:          false,
+			Data:             nil,
 		}
 	}
 
+	response.HttpStatus = resp.StatusCode
 	return &response
+}
+
+func Raw(client *http.Client, URL string, method string, data interface{}) (*http.Response, error) {
+	var req *http.Request
+	var err error
+
+	if data != nil {
+		var marshaled []byte
+		marshaled, err = json.Marshal(data)
+
+		switch v := data.(type) {
+		case string:
+			marshaled = []byte(v)
+			break
+		default:
+			marshaled, err = json.Marshal(v)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		req, err = http.NewRequest(method, URL, bytes.NewBuffer(marshaled))
+
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req, err = http.NewRequest(method, URL, nil)
+
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func generateResponse(URL string, status int, method string, data []byte, body []byte, err error) string {
+	debug := fmt.Sprintf("URL: %s RESPONSE_CODE: %d, METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, status, method, string(data), string(body))
+	return fmt.Sprintf("database returned malformed response - " + debug + "\n" + err.Error())
 }

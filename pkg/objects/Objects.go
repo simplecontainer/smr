@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/network"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -48,7 +49,7 @@ func (obj *Object) GetDefinitionByte() []byte {
 
 func (obj *Object) Add(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", data)
+	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -61,7 +62,7 @@ func (obj *Object) Add(format contracts.Format, data []byte) error {
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", data)
+	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -74,7 +75,7 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 
 func (obj *Object) Update(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
-	response := SendRequest(obj.client.Http, URL, "PUT", data)
+	response := network.Send(obj.client.Http, URL, "PUT", data)
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -87,7 +88,7 @@ func (obj *Object) Update(format contracts.Format, data []byte) error {
 
 func (obj *Object) Find(format contracts.Format) error {
 	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", obj.client.API, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "GET", nil)
+	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
 
@@ -116,7 +117,7 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 	var objects = make(map[string]contracts.ObjectInterface)
 
 	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "GET", nil)
+	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
 
@@ -171,7 +172,7 @@ func (obj *Object) Remove(format contracts.Format) (bool, error) {
 	}
 
 	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", nil)
+	response := network.Send(obj.client.Http, URL, "POST", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 
@@ -191,7 +192,7 @@ func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 	}
 
 	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, prefix)
-	response := SendRequest(obj.client.Http, URL, "DELETE", nil)
+	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
 

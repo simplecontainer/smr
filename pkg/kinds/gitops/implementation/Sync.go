@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"net/http"
 	"strings"
 )
 
@@ -40,7 +41,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 			return requests, err
 		}
 
-		response := network.Send(client, user, fmt.Sprintf("https://localhost:1443/api/v1/apply/%s", request.Definition.GetKind()), bytes)
+		response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://localhost:1443/api/v1/apply/%s", request.Definition.GetKind()), http.MethodPost, bytes)
 
 		if !response.Success {
 			if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
