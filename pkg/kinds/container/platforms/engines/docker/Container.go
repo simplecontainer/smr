@@ -332,8 +332,7 @@ func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 			return nil, err
 		}
 
-		var logs io.ReadCloser
-		logs, err = cli.ContainerLogs(context.Background(), container.DockerID, TDContainer.LogsOptions{
+		logs, err := cli.ContainerLogs(context.Background(), container.DockerID, TDContainer.LogsOptions{
 			ShowStderr: true,
 			ShowStdout: true,
 			Timestamps: false,

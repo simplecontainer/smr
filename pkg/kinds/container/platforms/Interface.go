@@ -20,7 +20,7 @@ type IContainer interface {
 	Delete() error
 	Rename(newName string) error
 	Exec(command []string) (types.ExecResult, error)
-	Logs(follow bool) (io.ReadCloser, error)
+	Logs(bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
@@ -61,7 +61,7 @@ type IPlatform interface {
 	Delete() error
 	Rename(newName string) error
 	Exec(command []string) (types.ExecResult, error)
-	Logs(follow bool) (io.ReadCloser, error)
+	Logs(bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)

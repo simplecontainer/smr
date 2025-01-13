@@ -27,7 +27,7 @@ Manager(){
   MODE="cluster"
   JOIN=""
   CONTROL_PLANE="0.0.0.0:1443"
-  REPOSITORY="simplecontainermanager/smr"
+  REPOSITORY="quay.io/simplecontainer/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
   RESTART=false
   UPGRADE=false
@@ -119,7 +119,7 @@ Manager(){
           fi
         done
 
-        sudo nohup smr node cluster restore 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+        sudo nohup smr node cluster restore </dev/null >/dev/null 2>&1 &
     fi
   else
     if [[ ${AGENT} != "" ]]; then
@@ -150,9 +150,9 @@ Manager(){
         done
 
         if [[ ${JOIN} == "" ]]; then
-          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 &
+          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" </dev/null >/dev/null 2>&1 &
         else
-          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" 2>&1 &
+          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" </dev/null >/dev/null 2>&1 &
         fi
 
         echo "The simplecontainer is started in cluster mode."
@@ -160,7 +160,7 @@ Manager(){
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domain ${DOMAIN} --ip ${IP}" --agent "${AGENT}" --wait
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --agent "${AGENT}"
 
-        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 | dd of=~/smr/smr/logs/$AGENT-cluster.log &>/dev/null &
+        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 </dev/null >/dev/null 2>&1 &
 
         echo "The simplecontainer is started in single mode."
       fi

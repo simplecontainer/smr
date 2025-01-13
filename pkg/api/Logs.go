@@ -26,77 +26,98 @@ func (api *Api) Logs(c *gin.Context) {
 
 	container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(group, identifier)
 
-	if container.IsGhost() {
-		resp, err := network.Raw(api.Manager.Http.Clients[container.GetRuntime().Agent].Http, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().Agent].API, os.Args[3], os.Args[4], follow), http.MethodGet, nil)
+	if container == nil {
+		_, err := w.Write([]byte("container is not found"))
 
-		var bytes int
-		buff := make([]byte, 512)
-
-		for {
-			bytes, err = resp.Body.Read(buff)
-
-			if bytes == 0 || err == io.EOF {
-				err = resp.Body.Close()
-
-				if err != nil {
-					logger.Log.Error(err.Error())
-				}
-
-				w.CloseNotify()
-				break
-			}
-
-			_, err = w.Write(buff[:bytes])
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-				w.CloseNotify()
-				break
-			}
-
-			w.(http.Flusher).Flush()
+		if err != nil {
+			logger.Log.Error(err.Error())
 		}
+
+		w.(http.Flusher).Flush()
+		w.CloseNotify()
+		return
 	} else {
-		followBool, err := strconv.ParseBool(follow)
+		if container.IsGhost() {
+			resp, err := network.Raw(api.Manager.Http.Clients[container.GetRuntime().Agent].Http, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().Agent].API, os.Args[3], os.Args[4], follow), http.MethodGet, nil)
 
-		if err != nil {
-			w.CloseNotify()
-			return
-		}
+			var bytes int
+			buff := make([]byte, 512)
 
-		reader, err := container.Logs(followBool)
+			for {
+				bytes, err = resp.Body.Read(buff)
 
-		if err != nil {
-			w.CloseNotify()
-			return
-		}
+				if bytes == 0 || err == io.EOF {
+					err = resp.Body.Close()
 
-		var bytes int
-		buff := make([]byte, 512)
+					if err != nil {
+						logger.Log.Error(err.Error())
+					}
 
-		for {
-			bytes, err = reader.Read(buff)
+					w.CloseNotify()
+					break
+				}
 
-			if bytes == 0 || err == io.EOF {
-				err = reader.Close()
+				_, err = w.Write(buff[:bytes])
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+					w.CloseNotify()
+					break
+				}
+
+				w.(http.Flusher).Flush()
+			}
+		} else {
+			followBool, err := strconv.ParseBool(follow)
+
+			if err != nil {
+				_, err = w.Write([]byte(err.Error()))
 
 				if err != nil {
 					logger.Log.Error(err.Error())
 				}
 
+				w.(http.Flusher).Flush()
 				w.CloseNotify()
-				break
+				return
 			}
 
-			_, err = w.Write(buff[:bytes])
+			reader, err := container.Logs(followBool)
 
 			if err != nil {
-				logger.Log.Error(err.Error())
+				_, err = w.Write([]byte(err.Error()))
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
+
+				w.(http.Flusher).Flush()
 				w.CloseNotify()
-				break
+				return
 			}
 
-			w.(http.Flusher).Flush()
+			var bytes int
+			buff := make([]byte, 512)
+
+			for {
+				bytes, err = reader.Read(buff)
+
+				if bytes == 0 || err == io.EOF {
+					logger.Log.Info(err.Error())
+					w.CloseNotify()
+					break
+				}
+
+				_, err = w.Write(buff[:bytes])
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+					w.CloseNotify()
+					break
+				}
+
+				w.(http.Flusher).Flush()
+			}
 		}
 	}
 }

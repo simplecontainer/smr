@@ -85,7 +85,7 @@ func splitReposSearchTerm(reposName string) (string, string) {
 	if len(nameParts) == 1 || (!strings.Contains(nameParts[0], ".") &&
 		!strings.Contains(nameParts[0], ":") && nameParts[0] != "localhost") {
 
-		indexName = "docker.io"
+		indexName = "quay.io"
 		remoteName = reposName
 	} else {
 		indexName = nameParts[0]

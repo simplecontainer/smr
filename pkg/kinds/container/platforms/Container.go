@@ -104,7 +104,7 @@ func (c *Container) Exec(command []string) (types.ExecResult, error) {
 	return c.Platform.Exec(command)
 }
 func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
-	return c.Logs(follow)
+	return c.Platform.Logs(follow)
 }
 
 func (c *Container) GetContainerState() (string, error) {

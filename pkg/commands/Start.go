@@ -200,6 +200,8 @@ func Start() {
 						kinds.POST("compare", api.Compare)
 						kinds.POST("delete", api.Delete)
 						kinds.POST("delete/:kind", api.Delete)
+						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
+						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
 					}
 
 					operators := v1.Group("/control")
@@ -227,11 +229,6 @@ func Start() {
 					containers := v1.Group("/")
 					{
 						containers.GET("ps", api.Ps)
-					}
-
-					logs := v1.Group("/logs")
-					{
-						logs.GET(":kind/:group/:identifier/:type", api.Logs)
 					}
 
 					dns := v1.Group("/dns")
