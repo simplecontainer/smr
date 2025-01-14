@@ -43,6 +43,9 @@ func (replication *Replication) ListenData(agent string) {
 					case static.CATEGORY_OBJECT:
 						replication.HandleObject(data)
 						break
+					case static.CATEGORY_OBJECT_DELETE:
+						replication.HandleObjectDelete(data)
+						break
 					case static.CATEGORY_EVENT:
 						replication.EventsC <- data
 						break
@@ -94,6 +97,32 @@ func (replication *Replication) HandleObject(data KV) {
 				if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
 					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
 				}
+			}
+		}
+	}
+}
+
+func (replication *Replication) HandleObjectDelete(data KV) {
+	split := strings.Split(data.Key, ".")
+	kind := split[0]
+
+	request, _ := common.NewRequest(kind)
+	request.Definition.FromJson(data.Val)
+	request.Definition.GetRuntime().SetNode(data.Agent)
+
+	bytes, err := request.Definition.ToJsonWithKind()
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
+
+	response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodDelete, bytes)
+
+	if response != nil {
+		if !response.Success {
+			if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
+				logger.Log.Error(errors.New(response.ErrorExplanation).Error())
 			}
 		}
 	}

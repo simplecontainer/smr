@@ -489,7 +489,7 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 				return nil, err
 			}
 
-			container.UpdateDns(dnsCache)
+			//container.UpdateDns(dnsCache)
 		}
 
 		return container.Get()
@@ -596,32 +596,32 @@ func (container *Docker) AttachToNetworks(agentContainerName string) error {
 
 	return nil
 }
-func (container *Docker) UpdateDns(dnsCache *dns.Records) {
-	/*
-		for _, n := range containerObj.Networks.Networks {
-			for _, ip := range shared.DnsCache.FindDeleteQueue(containerObj.GetDomain(n.Reference.Name)) {
-				shared.DnsCache.RemoveARecord(containerObj.GetDomain(n.Reference.Name), ip)
-				shared.DnsCache.RemoveARecord(containerObj.GetHeadlessDomain(n.Reference.Name), ip)
-
-				obj := objects.New(shared.Client.Get("root"), &authentication.User{
-					Username: "root",
-					Domain:   "localhost",
-				})
-
-				obj.Remove(f.NewFromString(fmt.Sprintf("network.%s.%s.dns", containerObj.Static.Group, containerObj.Static.GeneratedName)))
-			}
-
-			shared.DnsCache.ResetDeleteQueue(containerObj.GetDomain(n.Reference.Name))
-		}
-	*/
-
+func (container *Docker) UpdateDns(dnsCache *dns.Records, networkId string) {
 	networks := container.GetNetworkInfoTS()
 
 	for _, network := range networks.Networks {
-		dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
-		dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+		if network.Docker.NetworkId == networkId {
+			dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
+			dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+
+			return
+		}
 	}
 }
+
+func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) {
+	networks := container.GetNetworkInfoTS()
+
+	for _, network := range networks.Networks {
+		if network.Docker.NetworkId == networkId {
+			dnsCache.RemoveARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
+			dnsCache.RemoveARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+
+			return
+		}
+	}
+}
+
 func (container *Docker) GenerateLabels() map[string]string {
 	now := time.Now()
 

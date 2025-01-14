@@ -3,6 +3,7 @@ package containers
 import (
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -31,7 +32,7 @@ func (containers *Containers) Start() error {
 func (containers *Containers) GetShared() interface{} {
 	return containers.Shared
 }
-func (containers *Containers) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (containers *Containers) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONTAINERS)
 
 	if err != nil {
@@ -52,9 +53,17 @@ func (containers *Containers) Propose(user *authentication.User, jsonData []byte
 
 	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
 
-	bytes, err := definition.ToJsonWithKind()
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
-	containers.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, containers.Shared.Manager.Config.Node)
+	switch c.Request.Method {
+	case http.MethodPost:
+		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, containers.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, containers.Shared.Manager.Config.Node)
+		break
+	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

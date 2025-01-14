@@ -91,38 +91,18 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 		return nil, err
 	}
 
-	if definition.Definition.GetRuntime().GetOwner().IsEmpty() {
-		if obj.Exists() {
-			existing := NewImplementation(kind)
-			err = existing.FromJson(obj.GetDefinitionByte())
+	if obj.Exists() {
+		existing := NewImplementation(kind)
+		err = existing.FromJson(obj.GetDefinitionByte())
 
-			if err != nil {
-				return nil, err
-			}
-
-			if !existing.GetRuntime().GetOwner().IsEmpty() {
-				return nil, errors.New("object has owner - direct modification not allowed")
-			}
-
-			_, err = obj.Remove(format)
-			return existing, err
-		} else {
-			return nil, errors.New("object doesnt exist")
+		if err != nil {
+			return nil, err
 		}
+
+		_, err = obj.RemoveLocal(format)
+		return existing, err
 	} else {
-		if obj.Exists() {
-			existing := NewImplementation(kind)
-			err = existing.FromJson(obj.GetDefinitionByte())
-
-			if err != nil {
-				return nil, err
-			}
-
-			_, err = obj.RemoveLocal(format)
-			return existing, err
-		} else {
-			return nil, errors.New("object doesnt exist")
-		}
+		return nil, errors.New("object doesnt exist")
 	}
 }
 func (definition *Definition) Changed(format contracts.Format, obj contracts.ObjectInterface) (bool, error) {

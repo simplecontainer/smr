@@ -1,7 +1,6 @@
 package replicas
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
@@ -58,23 +57,11 @@ func (replicas *Replicas) GenerateContainers(registry *registry.Registry, defini
 		}
 	}
 
-	fmt.Println("Creating")
-
-	for _, c := range createContainers {
-		fmt.Println(c.GetGeneratedName())
-	}
-
-	fmt.Println("Destroying")
-
-	for _, c := range destroyContainers {
-		fmt.Println(c.GetGeneratedName())
-	}
-
 	return createContainers, destroyContainers, nil
 }
 
 func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definition *v1.ContainerDefinition) ([]platforms.IContainer, error) {
-	_, destroy := replicas.GetContainersIndexes(registry, definition)
+	destroy, _ := replicas.GetContainersIndexes(registry, definition)
 
 	destroyContainers := make([]platforms.IContainer, 0)
 

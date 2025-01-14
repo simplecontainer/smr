@@ -1,6 +1,7 @@
 package certkey
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -22,7 +23,7 @@ func (certkey *Certkey) Start() error {
 func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
-func (certkey *Certkey) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (certkey *Certkey) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CERTKEY)
 
 	if err != nil {
@@ -41,10 +42,19 @@ func (certkey *Certkey) Propose(user *authentication.User, jsonData []byte, agen
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	bytes, err := definition.ToJsonWithKind()
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
 	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
-	certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.Node)
+
+	switch c.Request.Method {
+	case http.MethodPost:
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, certkey.Shared.Manager.Config.Node)
+		break
+	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

@@ -236,7 +236,7 @@ func (api *Api) DatabaseSetBase64(c *gin.Context) {
 	}
 }
 
-func (api *Api) Propose(c *gin.Context) {
+func (api *Api) ProposeDatabase(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {

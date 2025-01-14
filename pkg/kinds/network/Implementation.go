@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -26,7 +27,7 @@ func (network *Network) GetShared() interface{} {
 	return network.Shared
 }
 
-func (network *Network) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (network *Network) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	return network.Apply(user, jsonData, agent)
 }
 

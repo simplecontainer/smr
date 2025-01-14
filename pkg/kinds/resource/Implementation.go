@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -27,7 +28,7 @@ func (resource *Resource) GetShared() interface{} {
 	return resource.Shared
 }
 
-func (resource *Resource) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (resource *Resource) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_RESOURCE)
 
 	if err != nil {
@@ -48,9 +49,17 @@ func (resource *Resource) Propose(user *authentication.User, jsonData []byte, ag
 
 	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
 
-	bytes, err := definition.ToJsonWithKind()
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
-	resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.Node)
+	switch c.Request.Method {
+	case http.MethodPost:
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, resource.Shared.Manager.Config.Node)
+		break
+	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

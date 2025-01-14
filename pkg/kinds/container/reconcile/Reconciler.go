@@ -560,7 +560,6 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_PENDING_DELETE:
-		time.Sleep(10 * time.Second)
 		containerStateEngine, err := containerObj.GetContainerState()
 
 		if err != nil {

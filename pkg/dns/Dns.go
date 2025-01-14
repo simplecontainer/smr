@@ -67,14 +67,7 @@ func (r *Records) RemoveARecord(domain string, ip string) error {
 		format := f.NewUnformated(fmt.Sprintf("dns.%s.%s", domain, r.Agent), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
-		bytes, err := json.Marshal(r.ARecords[domain].IPs)
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-			return err
-		}
-
-		obj.Add(format, bytes)
+		obj.Remove(format)
 
 		return nil
 	} else {

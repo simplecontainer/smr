@@ -176,8 +176,8 @@ func Start() {
 					{
 						database.POST("create/*key", api.DatabaseSet)
 						database.PUT("update/*key", api.DatabaseSet)
-						database.POST("propose/:type/*key", api.Propose)
-						database.PUT("propose/:type/*key", api.Propose)
+						database.POST("propose/:type/*key", api.ProposeDatabase)
+						database.PUT("propose/:type/*key", api.ProposeDatabase)
 						database.GET("get/*key", api.DatabaseGet)
 						database.GET("keys", api.DatabaseGetKeys)
 						database.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
@@ -195,9 +195,10 @@ func Start() {
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)
-						kinds.POST("propose", api.ProposeApply)
+						kinds.POST("propose/apply", api.Propose)
+						kinds.DELETE("propose/remove", api.Propose)
 						kinds.POST("compare", api.Compare)
-						kinds.POST("delete", api.Delete)
+						kinds.DELETE("delete", api.Delete)
 						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
 						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
 					}

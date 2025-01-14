@@ -1,6 +1,7 @@
 package httpauth
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -22,7 +23,7 @@ func (httpauth *Httpauth) Start() error {
 func (httpauth *Httpauth) GetShared() interface{} {
 	return httpauth.Shared
 }
-func (httpauth *Httpauth) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (httpauth *Httpauth) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_HTTPAUTH)
 
 	if err != nil {
@@ -43,9 +44,17 @@ func (httpauth *Httpauth) Propose(user *authentication.User, jsonData []byte, ag
 
 	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
 
-	bytes, err := definition.ToJsonWithKind()
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
-	httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, httpauth.Shared.Manager.Config.Node)
+	switch c.Request.Method {
+	case http.MethodPost:
+		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, httpauth.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, httpauth.Shared.Manager.Config.Node)
+		break
+	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

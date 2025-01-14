@@ -3,6 +3,7 @@ package container
 import (
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -68,7 +69,7 @@ func (container *Container) Start() error {
 func (container *Container) GetShared() interface{} {
 	return container.Shared
 }
-func (container *Container) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (container *Container) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONTAINER)
 
 	if err != nil {
@@ -89,9 +90,17 @@ func (container *Container) Propose(user *authentication.User, jsonData []byte, 
 
 	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
 
-	bytes, err := definition.ToJsonWithKind()
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
-	container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.Node)
+	switch c.Request.Method {
+	case http.MethodPost:
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.Node)
+		break
+	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
@@ -166,10 +175,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 					}
 
 					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
-
 					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
-
-					go reconcile.Container(container.Shared, existingWatcher)
 				} else {
 					logger.Log.Info("no change detected in the containers definition")
 				}
@@ -194,9 +200,9 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 					existingWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
 					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
 				}
-
-				reconcile.Container(container.Shared, existingWatcher)
 			}
+
+			go reconcile.Container(container.Shared, existingWatcher)
 		}
 	}
 

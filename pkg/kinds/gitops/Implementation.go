@@ -2,6 +2,7 @@ package gitops
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -32,7 +33,7 @@ func (gitops *Gitops) Start() error {
 func (gitops *Gitops) GetShared() interface{} {
 	return gitops.Shared
 }
-func (gitops *Gitops) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (gitops *Gitops) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_GITOPS)
 
 	if err != nil {
@@ -53,9 +54,17 @@ func (gitops *Gitops) Propose(user *authentication.User, jsonData []byte, agent 
 
 	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
 
-	bytes, err := definition.ToJsonWithKind()
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
-	gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, gitops.Shared.Manager.Config.Node)
+	switch c.Request.Method {
+	case http.MethodPost:
+		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, gitops.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, gitops.Shared.Manager.Config.Node)
+		break
+	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

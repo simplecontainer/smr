@@ -27,7 +27,8 @@ type IContainer interface {
 	Prepare(client *client.Http, user *authentication.User) error
 
 	AttachToNetworks(string) error
-	UpdateDns(dnsCache *dns.Records)
+	UpdateDns(dnsCache *dns.Records, networkId string)
+	RemoveDns(dnsCache *dns.Records, networkId string)
 
 	HasDependencyOn(string, string, string, *types.Runtime) bool
 	HasOwner() bool
@@ -68,7 +69,8 @@ type IPlatform interface {
 	Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error
 
 	AttachToNetworks(string) error
-	UpdateDns(dnsCache *dns.Records)
+	UpdateDns(dnsCache *dns.Records, networkId string)
+	RemoveDns(dnsCache *dns.Records, networkId string)
 	GenerateLabels() map[string]string
 
 	HasDependencyOn(string, string, string, *types.Runtime) bool

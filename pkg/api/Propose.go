@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) ProposeApply(c *gin.Context) {
+func (api *Api) Propose(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -96,7 +96,7 @@ func (api *Api) ImplementationWrapperPropose(user *authentication.User, kind str
 	}
 
 	var response contracts.Response
-	response, err = kindObj.Propose(user, jsonData, agent)
+	response, err = kindObj.Propose(c, user, jsonData, agent)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, contracts.Response{
