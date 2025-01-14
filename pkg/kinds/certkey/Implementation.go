@@ -1,14 +1,15 @@
 package certkey
 
 import (
-	"encoding/json"
-	"errors"
+	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
 	"reflect"
@@ -22,197 +23,127 @@ func (certkey *Certkey) Start() error {
 func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
-func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var definition v1.CertKeyDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
+func (certkey *Certkey) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CERTKEY)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
 	valid, err := definition.Validate()
 
 	if !valid {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	var format *f.Format
-	format = f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
 
+	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+
+	switch c.Request.Method {
+	case http.MethodPost:
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, certkey.Shared.Manager.Config.Node)
+		break
+	}
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
+func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CERTKEY)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
+
+	valid, err := definition.Validate()
+
+	if !valid {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
 	var jsonStringFromRequest []byte
 	jsonStringFromRequest, err = definition.ToJson()
 
 	logger.Log.Debug("server received certkey object", zap.String("definition", string(jsonStringFromRequest)))
 
-	if obj.Exists() {
-		if obj.Diff(jsonStringFromRequest) {
-			err = obj.Update(format, jsonStringFromRequest)
+	_, err = request.Definition.Apply(format, obj, static.KIND_CERTKEY)
 
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "",
-					ErrorExplanation: err.Error(),
-					Error:            true,
-					Success:          false,
-				}, err
-			}
-		}
-	} else {
-		err = obj.Add(format, jsonStringFromRequest)
-
-		if err != nil {
-			return contracts.Response{
-				HttpStatus:       http.StatusInternalServerError,
-				Explanation:      "",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	if obj.ChangeDetected() || !obj.Exists() {
-		//pl := plugins.GetPlugin(certkey.Shared.Manager.Config.OptRoot, "hub.so")
-		//sharedHub := pl.GetShared().(*hubShared.Shared)
-		//
-		//sharedHub.Event <- &hub.Event{
-		//	Kind:  KIND,
-		//	Group: certkey.Definition.Meta.Group,
-		//	Name:  certkey.Definition.Meta.Name,
-		//	Data: "",
-		//}
-	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "object is same as the one on the server",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, errors.New("object is same on the server")
-	}
-
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "everything went smoothly: good job!",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-	}, nil
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	var definition v1.CertKeyDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
+	request, err := common.NewRequest(static.KIND_CERTKEY)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	var format *f.Format
-
-	format = f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
-	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
-	obj.Find(format)
-
-	var jsonStringFromRequest []byte
-	jsonStringFromRequest, _ = definition.ToJson()
-
-	if obj.Exists() {
-		obj.Diff(jsonStringFromRequest)
-	} else {
-		return contracts.Response{
-			HttpStatus:       418,
-			Explanation:      "object is drifted from the definition",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if obj.ChangeDetected() {
-		return contracts.Response{
-			HttpStatus:       418,
-			Explanation:      "object is drifted from the definition",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
-	} else {
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "object in sync",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
-	}
-}
-func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	var definition v1.CertKeyDefinition
-	if err := json.Unmarshal(jsonData, &definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid configuration sent: json is not valid",
-			ErrorExplanation: "invalid configuration sent: json is not valid",
-			Error:            true,
-			Success:          false,
-		}, err
-	}
+	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
 	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
-
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
-	obj.Find(format)
 
-	if obj.Exists() {
-		deleted, err := obj.Remove(format)
+	changed, err := request.Definition.Changed(format, obj)
 
-		if deleted {
-			format = f.New("certkey", definition.Meta.Group, definition.Meta.Name, "")
-			deleted, err = obj.Remove(format)
-
-			return contracts.Response{
-				HttpStatus:       200,
-				Explanation:      "deleted resource successfully",
-				ErrorExplanation: "",
-				Error:            true,
-				Success:          false,
-			}, err
-		} else {
-			return contracts.Response{
-				HttpStatus:       500,
-				Explanation:      "failed to delete resource",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			}, err
-		}
-	} else {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "object not found",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}, errors.New("object not found")
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
+
+	if changed {
+		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
+	}
+
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
+}
+func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CERTKEY)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
+
+	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
+
+	_, err = request.Definition.Delete(format, obj, static.KIND_CERTKEY)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
+	}
+
+	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 func (certkey *Certkey) Run(operation string, request contracts.Control) contracts.Response {
 	reflected := reflect.TypeOf(certkey)

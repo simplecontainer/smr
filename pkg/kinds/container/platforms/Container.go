@@ -8,7 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
@@ -17,10 +17,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
+	"io"
 	"strconv"
 )
 
-func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition *v1.ContainerDefinition) (IContainer, error) {
+func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition contracts.IDefinition) (IContainer, error) {
 	statusObj := status.New(ChangeC)
 
 	switch platform {
@@ -36,7 +37,7 @@ func New(platform string, name string, config *configuration.Configuration, Chan
 			General: &General{
 				Runtime: &types.Runtime{
 					Configuration:      smaps.New(),
-					ObjectDependencies: make([]*f.Format, 0),
+					ObjectDependencies: make([]f.Format, 0),
 					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
 					Agent:              config.Node,
 				},
@@ -99,8 +100,11 @@ func (c *Container) Delete() error {
 func (c *Container) Rename(newName string) error {
 	return c.Platform.Rename(newName)
 }
-func (c *Container) Exec(command []string) types.ExecResult {
+func (c *Container) Exec(command []string) (types.ExecResult, error) {
 	return c.Platform.Exec(command)
+}
+func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
+	return c.Platform.Logs(follow)
 }
 
 func (c *Container) GetContainerState() (string, error) {
@@ -116,8 +120,11 @@ func (c *Container) Prepare(client *client.Http, user *authentication.User) erro
 func (c *Container) AttachToNetworks(agentContainerName string) error {
 	return c.Platform.AttachToNetworks(agentContainerName)
 }
-func (c *Container) UpdateDns(cache *dns.Records) {
-	c.Platform.UpdateDns(cache)
+func (c *Container) UpdateDns(cache *dns.Records, networkId string) {
+	c.Platform.UpdateDns(cache, networkId)
+}
+func (c *Container) RemoveDns(cache *dns.Records, networkId string) {
+	c.Platform.RemoveDns(cache, networkId)
 }
 
 func (c *Container) HasDependencyOn(kind string, group string, identifier string, runtime *types.Runtime) bool {
@@ -126,6 +133,10 @@ func (c *Container) HasDependencyOn(kind string, group string, identifier string
 
 func (c *Container) HasOwner() bool {
 	return c.Platform.HasOwner()
+}
+
+func (c *Container) GetId() string {
+	return c.GetId()
 }
 
 func (c *Container) GetRuntime() *types.Runtime {
@@ -138,7 +149,7 @@ func (c *Container) GetAgent() string {
 	return c.General.Runtime.Agent
 }
 
-func (c *Container) GetDefinition() v1.ContainerDefinition {
+func (c *Container) GetDefinition() contracts.IDefinition {
 	return c.Platform.GetDefinition()
 }
 func (c *Container) GetLabels() map[string]string {

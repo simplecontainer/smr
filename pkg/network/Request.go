@@ -1,14 +1,15 @@
-package objects
+package network
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
 )
 
-func SendRequest(client *http.Client, URL string, method string, data []byte) *contracts.Response {
+func Send(client *http.Client, URL string, method string, data []byte) *contracts.Response {
 	var req *http.Request
 	var marshaled []byte
 	var err error
@@ -65,7 +66,7 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 		return &contracts.Response{
 			HttpStatus:       resp.StatusCode,
 			Explanation:      "failed to unmarshal body response from smr-agent",
-			ErrorExplanation: generateResponse(URL, method, marshaled, body, err),
+			ErrorExplanation: generateResponse(URL, resp.StatusCode, method, marshaled, body, err),
 			Error:            true,
 			Success:          false,
 			Data:             nil,
@@ -76,7 +77,53 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	return &response
 }
 
-func generateResponse(URL string, method string, data []byte, body []byte, err error) string {
-	debug := fmt.Sprintf("URL: %s METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, method, string(data), string(body))
+func Raw(client *http.Client, URL string, method string, data interface{}) (*http.Response, error) {
+	var req *http.Request
+	var err error
+
+	if data != nil {
+		var marshaled []byte
+		marshaled, err = json.Marshal(data)
+
+		switch v := data.(type) {
+		case string:
+			marshaled = []byte(v)
+			break
+		default:
+			marshaled, err = json.Marshal(v)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		req, err = http.NewRequest(method, URL, bytes.NewBuffer(marshaled))
+
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req, err = http.NewRequest(method, URL, nil)
+
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func generateResponse(URL string, status int, method string, data []byte, body []byte, err error) string {
+	debug := fmt.Sprintf("URL: %s RESPONSE_CODE: %d, METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, status, method, string(data), string(body))
 	return fmt.Sprintf("database returned malformed response - " + debug + "\n" + err.Error())
 }

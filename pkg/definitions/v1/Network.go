@@ -3,6 +3,9 @@ package v1
 import (
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type NetworkDefinition struct {
@@ -11,8 +14,9 @@ type NetworkDefinition struct {
 }
 
 type NetworkMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type NetworkSpec struct {
@@ -20,24 +24,39 @@ type NetworkSpec struct {
 	IPV4AddressPool string
 }
 
+func (network *NetworkDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	network.Meta.Runtime = runtime
+}
+
+func (network *NetworkDefinition) GetRuntime() *commonv1.Runtime {
+	return network.Meta.Runtime
+}
+
+func (network *NetworkDefinition) GetKind() string {
+	return static.KIND_NETWORK
+}
+
+func (network *NetworkDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (network *NetworkDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, network)
+}
+
 func (network *NetworkDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(network)
 	return bytes, err
 }
 
-func (network *NetworkDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(network)
-	return string(bytes), err
-}
-
-func (network *NetworkDefinition) ToJsonStringWithKind() (string, error) {
+func (network *NetworkDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(network)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "network"
@@ -46,10 +65,15 @@ func (network *NetworkDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (network *NetworkDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(network)
+	return string(bytes), err
 }
 
 func (network *NetworkDefinition) Validate() (bool, error) {

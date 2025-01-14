@@ -1,147 +1,103 @@
 package replicas
 
 import (
-	"fmt"
-	"github.com/r3labs/diff/v3"
-	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/configuration"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
+	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
+	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
-	"slices"
-	"sort"
-	"strings"
 )
 
-func NewReplica(shared *shared.Shared, agent string, definition *v1.ContainerDefinition, changelog diff.Changelog) *Replicas {
+func New(nodeID uint64, nodes []*node.Node) *Replicas {
+	cluster := make([]uint64, 0)
+
+	for _, n := range nodes {
+		cluster = append(cluster, n.NodeID)
+	}
+
 	return &Replicas{
-		Definition:      definition,
-		Shared:          shared,
-		NodeID:          shared.Manager.Config.KVStore.Node,
-		Distributed:     NewDistributed(shared.Manager.Config.KVStore.Node, definition.Meta.Group, definition.Meta.Name),
-		CreateScoped:    make([]platforms.IContainer, 0),
-		DeleteScoped:    make([]platforms.IContainer, 0),
-		ChangeLog:       changelog,
-		ExistingIndexes: shared.Registry.GetIndexes(definition.Meta.Group, definition.Meta.Name),
-		Agent:           agent,
+		NodeID:  nodeID,
+		Create:  []uint64{0},
+		Destroy: []uint64{0},
+		Cluster: cluster,
 	}
 }
 
-func (replicas *Replicas) HandleReplica(user *authentication.User, clstr []string) error {
-	dr := NewDistributed(replicas.NodeID, replicas.Definition.Meta.Group, replicas.Definition.Meta.Name)
-	err := dr.Load(replicas.Shared.Client.Get(user.Username), user)
+func (replicas *Replicas) GenerateContainers(registry *registry.Registry, definition *v1.ContainerDefinition, config *configuration.Configuration) ([]platforms.IContainer, []platforms.IContainer, error) {
+	create, destroy := replicas.GetContainersIndexes(registry, definition)
 
-	dr.Replicas[replicas.NodeID].Numbers.Create, dr.Replicas[replicas.NodeID].Numbers.Destroy, dr.Replicas[replicas.NodeID].Numbers.Existing = replicas.GetReplicaNumbers(dr, replicas.Definition.Spec.Container.Spread, replicas.Definition.Spec.Container.Replicas, replicas.ExistingIndexes, uint64(len(clstr)))
-	dr.Clear(replicas.NodeID)
+	createContainers := make([]platforms.IContainer, 0)
+	destroyContainers := make([]platforms.IContainer, 0)
 
-	create := dr.Replicas[replicas.NodeID].Numbers.Create
-	destroy := dr.Replicas[replicas.NodeID].Numbers.Destroy
+	for _, index := range create {
+		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
 
-	// Destroy from the end to start
-	if len(destroy) > 0 {
-		for _, v := range destroy {
-			name, _ := replicas.Shared.Registry.NameReplicas(replicas.Definition.Meta.Group, replicas.Definition.Meta.Name, v)
-			existingContainer := replicas.Shared.Registry.FindLocal(replicas.Definition.Meta.Group, name)
+		newContainer, err := platforms.New(static.PLATFORM_DOCKER, generatedName, config, registry.ChangeC, definition)
 
-			if existingContainer != nil {
-				replicas.DeleteScoped = append(replicas.DeleteScoped, existingContainer)
-				dr.Replicas[replicas.NodeID].Delete(existingContainer.GetGroup(), existingContainer.GetGeneratedName())
-			}
+		if err != nil {
+			return createContainers, destroyContainers, err
+		}
+
+		existing := registry.FindLocal(newContainer.GetGroup(), newContainer.GetGeneratedName())
+
+		if existing == nil || existing.GetStatus().GetCategory() == status.CATEGORY_END {
+			// Since container already exists in local registry don't recreate it - it's good
+			createContainers = append(createContainers, newContainer)
 		}
 	}
 
-	// Create from the start to the end
-	if len(create) > 0 {
-		var onlyReplicaChange = false
+	for _, index := range destroy {
+		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
+		existing := registry.FindLocal(definition.Meta.Group, generatedName)
 
-		if len(replicas.ChangeLog) == 1 {
-			for _, change := range replicas.ChangeLog {
-				fmt.Println(strings.Join(change.Path, ":"))
-				if strings.Join(change.Path, ":") == "spec:container:replicas" {
-					if change.Type == "update" {
-						onlyReplicaChange = true
-					}
-				}
-			}
-		}
-
-		for _, v := range create {
-			name, _ := replicas.Shared.Registry.NameReplicas(replicas.Definition.Meta.Group, replicas.Definition.Meta.Name, v)
-			existingContainer := replicas.Shared.Registry.FindLocal(replicas.Definition.Meta.Group, name)
-
-			var containerObj platforms.IContainer
-
-			containerObj, err = platforms.New(static.PLATFORM_DOCKER, name, replicas.Shared.Manager.Config, replicas.Shared.Registry.ChangeC, replicas.Definition)
-
-			if err != nil {
-				return err
-			}
-
-			if existingContainer != nil {
-				if onlyReplicaChange {
-					continue
-				} else {
-					replicas.CreateScoped = append(replicas.CreateScoped, containerObj)
-				}
-			} else {
-				replicas.CreateScoped = append(replicas.CreateScoped, containerObj)
-			}
-
-			dr.Replicas[replicas.NodeID].Add(replicas.Definition.Meta.Group, name)
+		if existing != nil {
+			destroyContainers = append(destroyContainers, existing)
 		}
 	}
 
-	replicas.Distributed = dr
-	return dr.Save(replicas.Shared.Client.Get(user.Username), user)
-
+	return createContainers, destroyContainers, nil
 }
 
-func (replicas *Replicas) GetReplica(user *authentication.User, clstr []string) error {
-	dr := NewDistributed(replicas.NodeID, replicas.Definition.Meta.Group, replicas.Definition.Meta.Name)
-	dr.Load(replicas.Shared.Client.Get(user.Username), user)
+func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definition *v1.ContainerDefinition) ([]platforms.IContainer, error) {
+	destroy, _ := replicas.GetContainersIndexes(registry, definition)
 
-	_, _, dr.Replicas[replicas.NodeID].Numbers.Existing = replicas.GetReplicaNumbers(dr, replicas.Definition.Spec.Container.Spread, replicas.Definition.Spec.Container.Replicas, replicas.ExistingIndexes, uint64(len(clstr)))
+	destroyContainers := make([]platforms.IContainer, 0)
 
-	for _, v := range dr.Replicas[replicas.NodeID].Numbers.Existing {
-		name, _ := replicas.Shared.Registry.NameReplicas(replicas.Definition.Meta.Group, replicas.Definition.Meta.Name, v)
-		existingContainer := replicas.Shared.Registry.FindLocal(replicas.Definition.Meta.Group, name)
+	for _, index := range destroy {
+		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
+		existing := registry.FindLocal(definition.Meta.Group, generatedName)
 
-		if existingContainer != nil {
-			dr.Replicas[replicas.NodeID].AddExisting(replicas.Definition.Meta.Group, name)
+		if existing != nil {
+			destroyContainers = append(destroyContainers, existing)
 		}
 	}
 
-	return nil
+	return destroyContainers, nil
 }
 
-func (replicas *Replicas) GetReplicaNumbers(dr *Distributed, spread v1.ContainerSpread, replicasNumber uint64, existingIndexes []uint64, clusterSize uint64) ([]uint64, []uint64, []uint64) {
-	switch replicas.Definition.Spec.Container.Spread.Spread {
+func (replicas *Replicas) GetContainersIndexes(registry *registry.Registry, definition *v1.ContainerDefinition) ([]uint64, []uint64) {
+	replicas.Recalculate(definition.Spec.Container.Spread, definition.Spec.Container.Replicas, registry.GetIndexes(definition.Meta.Group, definition.Meta.Name))
+	return replicas.Create, replicas.Destroy
+}
+
+func (replicas *Replicas) Recalculate(spread v1.ContainerSpread, replicasDefined uint64, existingIndexes []uint64) {
+	replicas.Create, replicas.Destroy = replicas.GetReplicaNumbers(spread, replicasDefined, existingIndexes)
+}
+
+func (replicas *Replicas) GetReplicaNumbers(spread v1.ContainerSpread, replicasDefined uint64, existingIndexes []uint64) ([]uint64, []uint64) {
+	switch spread.Spread {
 	case platforms.SPREAD_SPECIFIC:
-		if dr.Replicas[replicas.NodeID] == nil {
-			dr.Replicas[replicas.NodeID] = NewScoped()
-		}
-
-		return Specific(replicasNumber, existingIndexes, spread.Agents, replicas.NodeID)
+		return Specific(replicasDefined, existingIndexes, spread.Agents, replicas.NodeID)
 	case platforms.SPREAD_UNIFORM:
-		if dr.Replicas[replicas.NodeID] == nil {
-			dr.Replicas[replicas.NodeID] = NewScoped()
-		}
-
-		return Uniform(replicasNumber, existingIndexes, clusterSize, replicas.NodeID)
+		return Uniform(replicasDefined, existingIndexes, replicas.Cluster, replicas.NodeID)
 	default:
-		if replicas.Agent != replicas.Shared.Manager.Config.Node {
-			return Empty()
-		} else {
-			return Default(replicasNumber, existingIndexes)
-		}
+		return Default(replicasDefined, existingIndexes)
 	}
 }
 
-func Empty() ([]uint64, []uint64, []uint64) {
-	return []uint64{}, []uint64{}, []uint64{}
-}
-
-func Default(replicasNumber uint64, existingIndexes []uint64) ([]uint64, []uint64, []uint64) {
+func Default(replicasNumber uint64, existingIndexes []uint64) ([]uint64, []uint64) {
 	var create = make([]uint64, 0)
 	var destroy = make([]uint64, 0)
 
@@ -153,65 +109,83 @@ func Default(replicasNumber uint64, existingIndexes []uint64) ([]uint64, []uint6
 		destroy = existingIndexes[len(create):]
 	}
 
-	return create, destroy, existingIndexes
+	return create, destroy
 }
-
-func Uniform(replicasNumber uint64, existingIndexes []uint64, clusterSize uint64, member uint64) ([]uint64, []uint64, []uint64) {
-	var create = make([]uint64, 0)
+func Uniform(replicasWanted uint64, existingIndexes []uint64, cluster []uint64, member uint64) ([]uint64, []uint64) {
+	var create = make([][]uint64, 0)
 	var destroy = make([]uint64, 0)
 
-	replicasScoped := replicasNumber / clusterSize
-
-	for replicas := 1 * member; replicas <= replicasScoped*member; replicas++ {
-		create = append(create, replicas)
+	replicas := make([]uint64, replicasWanted)
+	for i := uint64(0); i < replicasWanted; i++ {
+		replicas[i] = i + uint64(1)
 	}
 
-	if clusterSize == member && replicasNumber%clusterSize != 0 {
-		create = append(create, replicasNumber)
-	}
+	create = ChunkSlice(replicas, len(cluster))
 
-	if len(create) < len(existingIndexes) {
-		destroy = existingIndexes[len(create):]
-	}
+	if len(create[member-1]) < len(existingIndexes) {
+		for i, existing := range existingIndexes {
+			preserve := false
 
-	return create, destroy, existingIndexes
-}
+			for _, creating := range create[member-1] {
+				if creating == existing {
+					preserve = true
+				}
+			}
 
-func Specific(replicasNumber uint64, existingIndexes []uint64, nodes []uint64, member uint64) ([]uint64, []uint64, []uint64) {
-	var create = make([]uint64, 0)
-	var destroy = make([]uint64, 0)
-
-	if slices.Contains(nodes, member) {
-		sort.Slice(nodes, func(i, j int) bool {
-			return nodes[i] < nodes[j]
-		})
-
-		nodeCount := uint64(len(nodes))
-		replicasScoped := replicasNumber / nodeCount
-		normalizedNodes := make(map[uint64]uint64)
-		normalizedMember := uint64(0)
-
-		for i, node := range nodes {
-			x := node - uint64(i)
-			normalizedNodes[uint64(i)] = nodes[i] - x + 1
-
-			if node == member {
-				normalizedMember = uint64(i)
+			if !preserve {
+				destroy = append(destroy, existingIndexes[i])
 			}
 		}
+	}
 
-		for replicas := 1 * normalizedNodes[normalizedMember]; replicas <= replicasScoped*normalizedNodes[normalizedMember]; replicas++ {
-			create = append(create, replicas)
-		}
+	return create[member-1], destroy
+}
+func Specific(replicasWanted uint64, existingIndexes []uint64, nodes []uint64, member uint64) ([]uint64, []uint64) {
+	var create = make([][]uint64, 0)
+	var destroy = make([]uint64, 0)
 
-		if nodeCount == normalizedNodes[normalizedMember] && replicasNumber%nodeCount != 0 {
-			create = append(create, replicasNumber)
-		}
+	replicas := make([]uint64, replicasWanted)
+	for i := uint64(0); i < replicasWanted; i++ {
+		replicas[i] = i + uint64(1)
+	}
 
-		if len(create) < len(existingIndexes) {
-			destroy = existingIndexes[len(create):]
+	create = ChunkSlice(replicas, len(nodes))
+
+	if len(create[member-1]) < len(existingIndexes) {
+		for i, existing := range existingIndexes {
+			preserve := false
+
+			for _, creating := range create[member-1] {
+				if creating == existing {
+					preserve = true
+				}
+			}
+
+			if !preserve {
+				destroy = append(destroy, existingIndexes[i])
+			}
 		}
 	}
 
-	return create, destroy, existingIndexes
+	return create[member-1], destroy
+}
+
+func ChunkSlice(slice []uint64, numChunks int) [][]uint64 {
+	chunkSize := len(slice) / numChunks
+	extra := len(slice) % numChunks
+
+	var result [][]uint64
+	start := 0
+
+	for i := 0; i < numChunks; i++ {
+		end := start + chunkSize
+		if i < extra {
+			end++
+		}
+
+		result = append(result, slice[start:end])
+		start = end
+	}
+
+	return result
 }

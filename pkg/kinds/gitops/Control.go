@@ -1,27 +1,24 @@
 package gitops
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
 )
 
 var supportedControlOperations = []string{"List", "Get", "Remove", "Refresh", "Sync"}
 
 func (gitops *Gitops) ListSupported(request contracts.Control) contracts.Response {
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(supportedControlOperations),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(supportedControlOperations))
 }
+
 func (gitops *Gitops) List(request contracts.Control) contracts.Response {
 	data := make(map[string]any)
 
@@ -29,15 +26,9 @@ func (gitops *Gitops) List(request contracts.Control) contracts.Response {
 		data[key] = gitopsInstance.Gitops
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "list of the gitops objects",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(data),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(data))
 }
+
 func (gitops *Gitops) Get(request contracts.Control) contracts.Response {
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
 
@@ -45,14 +36,7 @@ func (gitops *Gitops) Get(request contracts.Control) contracts.Response {
 	err := obj.Find(format)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "gitops definition is not found on the server",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
 	definitionObject := obj.GetDefinition()
@@ -61,120 +45,58 @@ func (gitops *Gitops) Get(request contracts.Control) contracts.Response {
 	definition["kind"] = KIND
 	definition[KIND] = definitionObject
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "gitops object is found on the server",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             network.ToJson(definition),
-	}
+	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
 }
-func (gitops *Gitops) Remove(request contracts.Control) contracts.Response {
-	format := f.New("gitops", request.Group, request.Name, "object")
 
-	obj := objects.New(gitops.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
+func (gitops *Gitops) Remove(data contracts.Control) contracts.Response {
+	request, err := common.NewRequest(static.KIND_GITOPS)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "object database failed to process request",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}
+		return common.Response(http.StatusBadRequest, static.STATUS_RESPONSE_BAD_REQUEST, err, nil)
 	}
 
-	if !obj.Exists() {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "object not found on the server",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		}
-	}
+	format := f.New("gitops", data.Group, data.Name, "object")
+	obj := objects.New(gitops.Shared.Client.Get(data.User.Username), data.User)
 
-	_, err = obj.Remove(format)
+	_, err = request.Definition.Delete(format, obj, static.KIND_GITOPS)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      "object removal failed",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}
+		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
+	GroupIdentifier := fmt.Sprintf("%s.%s", data.Group, data.Name)
 	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
 
 	if gitopsWatcher == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "gitops definition doesn't exists",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, "gitops definition doesn't exists", errors.New("gitops definition doesn't exists"), nil)
 	} else {
 		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_PENDING_DELETE)
 		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "gitops is transitioned to the pending delete state",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
+	return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)
 }
+
 func (gitops *Gitops) Refresh(request contracts.Control) contracts.Response {
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
 	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
 
 	if gitopsWatcher == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "gitops definition doesn't exists",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("gitops doesn't exist"), nil)
 	} else {
 		gitopsWatcher.Gitops.ForcePoll = true
 		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
 		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "refresh is triggered manually",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
+	return common.Response(http.StatusOK, static.STATUS_RESPONSE_REFRESHED, nil, nil)
 }
 func (gitops *Gitops) Sync(request contracts.Control) contracts.Response {
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
 	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
 
 	if gitopsWatcher == nil {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "gitops definition doesn't exists",
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		}
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("gitops doesn't exist"), nil)
 	} else {
 		if gitopsWatcher.Gitops.AutomaticSync == false {
 			gitopsWatcher.Gitops.ManualSync = true
@@ -185,12 +107,5 @@ func (gitops *Gitops) Sync(request contracts.Control) contracts.Response {
 		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "sync is triggered manually",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-		Data:             nil,
-	}
+	return common.Response(http.StatusOK, static.STATUS_RESPONSE_SYNCED, nil, nil)
 }

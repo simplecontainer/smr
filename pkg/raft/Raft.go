@@ -101,7 +101,7 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 
 		TLSConfig: TLSConfig,
 
-		logger: logger.NewLogger(os.Getenv("LOG_LEVEL")),
+		logger: logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{"stdout"}, []string{"stderr"}),
 
 		snapshotterReady: make(chan *snap.Snapshotter, 1),
 	}

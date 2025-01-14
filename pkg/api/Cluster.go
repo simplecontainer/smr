@@ -12,9 +12,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/networking"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.etcd.io/etcd/server/v3/embed"
 	"io"
 	"log"
@@ -85,7 +87,11 @@ func (api *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
-	api.Cluster = cluster.New()
+	api.Cluster, err = cluster.Restore(api.Config)
+
+	if err != nil {
+		api.Cluster = cluster.New()
+	}
 
 	currentNode := api.Cluster.Cluster.NewNode(request["node"])
 
@@ -129,7 +135,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		d, _ := json.Marshal(map[string]string{"node": request["node"]})
-		response := cluster.SendRequest(api.Manager.Http, user, fmt.Sprintf("%s/cluster/node", request["join"]), d)
+		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, d)
 
 		if response.Error {
 			c.JSON(http.StatusBadRequest, response)
@@ -137,7 +143,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		// Ask join: what is the cluster?
-		response = cluster.SendRequest(api.Manager.Http, api.User, fmt.Sprintf("%s/cluster", request["join"]), nil)
+		response = network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster", request["join"]), http.MethodGet, nil)
 
 		if response.Success {
 			var bytes []byte
@@ -191,7 +197,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	api.Manager.Cluster = api.Cluster
 
 	var server *embed.Etcd
-	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
+	server, err = networking.StartEtcd(api.Config)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -208,7 +214,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 	select {
 	case <-server.Server.ReadyNotify():
 		fmt.Println("etcd server started - continue with starting raft")
-		api.Cluster.EtcdClient = cluster.NewEtcdClient()
 
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(api.Keys.CA.Certificate)
@@ -245,152 +250,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		api.SaveClusterConfiguration()
 
-		go api.Cluster.ListenEvents(api.Config.Node)
-		go api.Cluster.ListenUpdates(api.Config.Node)
-		go api.Cluster.ListenObjects(api.Config.Node)
+		go api.Replication.ListenEtcd(api.Config.Node)
+		go api.Replication.ListenData(api.Config.Node)
 
-		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: "flannel overlay network failed to start",
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return
-		}
-
-		api.Cluster.Started = true
-
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "everything went ok",
-			Error:            false,
-			Success:          true,
-			Data: network.ToJson(map[string]string{
-				"agent": api.Config.Node,
-			}),
-		})
-
-		return
-	case <-time.After(60 * time.Second):
-		server.Server.Stop() // trigger a shutdown
-		log.Printf("etcd server took too long to start!")
-
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "etcd server took too long to start",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-	}
-}
-
-func (api *Api) RestoreCluster(c *gin.Context) {
-	if starting {
-		c.JSON(http.StatusConflict, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "cluster is in the process of starting on this node",
-			Error:            true,
-			Success:          false,
-			Data: network.ToJson(map[string]any{
-				"agent": api.Config.Node,
-			}),
-		})
-
-		return
-	} else {
-		if api.Cluster != nil && api.Cluster.Started {
-			c.JSON(http.StatusConflict, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: "cluster is already started on this node",
-				Error:            true,
-				Success:          false,
-				Data: network.ToJson(map[string]any{
-					"agent": api.Config.Node,
-				}),
-			})
-
-			return
-		}
-	}
-
-	starting = true
-	var err error
-
-	api.Cluster, err = cluster.Restore(api.Config)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
-		return
-	}
-
-	api.Manager.Cluster = api.Cluster
-
-	var server *embed.Etcd
-	server, err = api.Cluster.StartSingleNodeEtcd(api.Config)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
-		return
-	}
-
-	select {
-	case <-server.Server.ReadyNotify():
-		fmt.Println("etcd server started - continue with starting raft")
-		api.Cluster.EtcdClient = cluster.NewEtcdClient()
-
-		CAPool := x509.NewCertPool()
-		CAPool.AddCert(api.Keys.CA.Certificate)
-
-		tlsConfig := &tls.Config{
-			ClientAuth:     tls.RequireAndVerifyClientCert,
-			ClientCAs:      CAPool,
-			GetCertificate: api.Keys.Reloader.GetCertificateFunc(),
-		}
-
-		api.Cluster.Regenerate(api.Config, api.Keys)
-		api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-
-		err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, "")
-
-		if err != nil {
-			server.Server.Stop()
-
-			c.JSON(http.StatusInternalServerError, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return
-		}
-
-		go api.Cluster.ListenEvents(api.Config.Node)
-		go api.Cluster.ListenUpdates(api.Config.Node)
-		go api.Cluster.ListenObjects(api.Config.Node)
-
-		err = api.Cluster.ConfigureFlannel(api.Config.OverlayNetwork)
+		err = networking.Flannel(api.Config.OverlayNetwork)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -449,7 +312,7 @@ func (api *Api) SaveClusterConfiguration() {
 		logger.Log.Error(err.Error())
 	}
 
-	format := f.NewFromString("smr.cluster")
+	format := f.NewUnformated("smr.cluster", static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)

@@ -8,16 +8,16 @@ import (
 const EVENT_NETWORK_CONNECT = "conn"
 const EVENT_NETWORK_DISCONNECT = "disscon"
 const EVENT_START = "start"
-const EVENT_STOP = "start"
-const EVENT_KILL = "start"
-const EVENT_DIE = "start"
+const EVENT_STOP = "stop"
+const EVENT_KILL = "kill"
+const EVENT_DIE = "die"
 
 type Runtime struct {
 	Id                 string
 	State              string
 	Ready              bool
 	Configuration      *smaps.Smap
-	ObjectDependencies []*f.Format
+	ObjectDependencies []f.Format
 	NodeIP             string
 	Agent              string
 }

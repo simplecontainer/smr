@@ -6,28 +6,53 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"net/http"
 	"strings"
 )
 
-func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authentication.User, definitionsOrdered []map[string]string) error {
-	for _, fileInfo := range definitionsOrdered {
-		fileName := fileInfo["name"]
+func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authentication.User, definitionsOrdered []FileKind) ([]*common.Request, error) {
+	var requests = make([]*common.Request, 0)
+	var err error
 
-		logger.Info("syncing object", zap.String("object", fileName))
+	for _, file := range definitionsOrdered {
+		logger.Debug("syncing object", zap.String("object", file.File))
 
-		definition := definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, fileName))
+		var definition []byte
+		definition, err = definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, file.File))
 
-		response := gitops.sendRequest(client, user, "https://localhost:1443/api/v1/apply", definition)
+		if err != nil {
+			return requests, err
+		}
+
+		request, err := common.NewRequest(file.Kind)
+		request.Definition.FromJson(definition)
+		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+
+		requests = append(requests, request)
+
+		var bytes []byte
+		bytes, err = request.Definition.ToJsonWithKind()
+
+		if err != nil {
+			return requests, err
+		}
+
+		response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
 
 		if !response.Success {
 			if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
-				return errors.New(response.ErrorExplanation)
+				err = errors.New(response.ErrorExplanation)
 			} else {
 				logger.Info(fmt.Sprintf(response.ErrorExplanation))
 			}
 		}
+
+		logger.Debug("object synced", zap.String("object", file.File))
 	}
 
-	return nil
+	return requests, err
 }

@@ -3,6 +3,9 @@ package v1
 import (
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type ConfigurationDefinition struct {
@@ -11,12 +14,33 @@ type ConfigurationDefinition struct {
 }
 
 type ConfigurationMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
+}
+
+func (configuration *ConfigurationDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	configuration.Meta.Runtime = runtime
+}
+
+func (configuration *ConfigurationDefinition) GetRuntime() *commonv1.Runtime {
+	return configuration.Meta.Runtime
+}
+
+func (configuration *ConfigurationDefinition) GetKind() string {
+	return static.KIND_CONFIGURATION
+}
+
+func (configuration *ConfigurationDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (configuration *ConfigurationDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, configuration)
 }
 
 func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {
@@ -24,19 +48,14 @@ func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {
 	return bytes, err
 }
 
-func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(configuration)
-	return string(bytes), err
-}
-
-func (configuration *ConfigurationDefinition) ToJsonStringWithKind() (string, error) {
+func (configuration *ConfigurationDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(configuration)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "configuration"
@@ -45,10 +64,15 @@ func (configuration *ConfigurationDefinition) ToJsonStringWithKind() (string, er
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(configuration)
+	return string(bytes), err
 }
 
 func (configuration *ConfigurationDefinition) Validate() (bool, error) {

@@ -2,11 +2,10 @@ package f
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/static"
 	"strings"
 )
 
-func New(elements ...string) *Format {
+func New(elements ...string) Format {
 	builder := ""
 
 	for _, member := range elements {
@@ -18,21 +17,22 @@ func New(elements ...string) *Format {
 	return NewFromString(builder)
 }
 
-func NewFromString(f string) *Format {
+func NewFromString(f string) Format {
 	elements, nonEmptyCount := BuildElements(strings.SplitN(f, ".", 4))
-	format := &Format{
+	format := Format{
 		Kind:       strings.TrimSpace(elements[0]),
 		Group:      strings.TrimSpace(elements[1]),
 		Identifier: strings.TrimSpace(elements[2]),
 		Key:        strings.TrimSpace(elements[3]),
 		Elems:      nonEmptyCount,
-		Category:   DetermineCategory(strings.TrimSpace(elements[3])),
+		Category:   strings.TrimSpace(elements[3]),
+		Type:       TYPE_FORMATED,
 	}
 
 	if format.IsValid() {
 		return format
 	} else {
-		return &Format{}
+		return Format{}
 	}
 }
 
@@ -57,7 +57,15 @@ func BuildElements(splitted []string) ([]string, int) {
 	return elements, nonEmptyCount
 }
 
-func (format *Format) IsValid() bool {
+func (format Format) GetCategory() string {
+	return format.Category
+}
+
+func (format Format) GetType() string {
+	return format.Type
+}
+
+func (format Format) IsValid() bool {
 	split := strings.SplitN(format.ToString(), ".", 4)
 
 	for _, element := range split {
@@ -69,11 +77,11 @@ func (format *Format) IsValid() bool {
 	return true
 }
 
-func (format *Format) Full() bool {
+func (format Format) Full() bool {
 	return format.Elems == 4
 }
 
-func (format *Format) ToString() string {
+func (format Format) ToString() string {
 	output := ""
 
 	if format.Kind != "" {
@@ -95,7 +103,7 @@ func (format *Format) ToString() string {
 	return output
 }
 
-func (format *Format) ToBytes() []byte {
+func (format Format) ToBytes() []byte {
 	output := ""
 
 	if format.Kind != "" {
@@ -115,15 +123,4 @@ func (format *Format) ToBytes() []byte {
 	}
 
 	return []byte(output)
-}
-
-func DetermineCategory(key string) string {
-	switch key {
-	case static.CATEGORY_SECRET:
-		return static.CATEGORY_SECRET
-	case static.CATEGORY_OBJECT:
-		return static.CATEGORY_OBJECT
-	default:
-		return static.CATEGORY_PLAIN
-	}
 }

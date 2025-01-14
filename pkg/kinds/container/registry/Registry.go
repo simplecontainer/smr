@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"strconv"
 	"strings"
 )
@@ -38,7 +39,7 @@ func (registry *Registry) Sync(container distributed.Container) {
 			return
 		}
 
-		format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", container.Group, container.Name))
+		format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", container.Group, container.Name), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		obj.Add(format, bytes)
@@ -61,7 +62,7 @@ func (registry *Registry) Remove(group string, name string) bool {
 
 		registry.ContainersLock.Unlock()
 
-		format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", group, name))
+		format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		obj.Remove(format)
@@ -86,7 +87,7 @@ func (registry *Registry) FindLocal(group string, name string) platforms.IContai
 }
 
 func (registry *Registry) Find(group string, name string) platforms.IContainer {
-	format := f.NewFromString(fmt.Sprintf("state.container.%s.%s", group, name))
+	format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.ContainersLock.RLock()
@@ -146,7 +147,7 @@ func (registry *Registry) FindGroup(group string) map[string]platforms.IContaine
 }
 
 func (registry *Registry) All() map[string]map[string]platforms.IContainer {
-	format := f.NewFromString("state.container")
+	format := f.NewUnformated("state.container", static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result = make(map[string]map[string]platforms.IContainer)
@@ -186,8 +187,8 @@ func (registry *Registry) Name(client *client.Http, group string, name string) (
 	return fmt.Sprintf("%s-%s-%d", group, name, index), indexes
 }
 
-func (registry *Registry) NameReplicas(group string, name string, index uint64) (string, uint64) {
-	return fmt.Sprintf("%s-%s-%d", group, name, index), index
+func (registry *Registry) NameReplica(group string, name string, index uint64) string {
+	return fmt.Sprintf("%s-%s-%d", group, name, index)
 }
 
 func (registry *Registry) BackOffTracking(group string, name string) {

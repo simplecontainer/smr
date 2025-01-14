@@ -1,6 +1,8 @@
 module github.com/simplecontainer/smr
 
-go 1.22.0
+go 1.23.0
+
+replace github.com/simplecontainer/smr => ../smr
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0

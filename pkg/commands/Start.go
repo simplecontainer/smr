@@ -176,27 +176,31 @@ func Start() {
 					{
 						database.POST("create/*key", api.DatabaseSet)
 						database.PUT("update/*key", api.DatabaseSet)
-						database.POST("propose/:type/*key", api.Propose)
-						database.PUT("propose/:type/*key", api.Propose)
+						database.POST("propose/:type/*key", api.ProposeDatabase)
+						database.PUT("propose/:type/*key", api.ProposeDatabase)
 						database.GET("get/*key", api.DatabaseGet)
 						database.GET("keys", api.DatabaseGetKeys)
 						database.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
 						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
 					}
 
-					definitions := v1.Group("/definitions")
+					cluster := v1.Group("cluster")
 					{
-						definitions.GET("/", api.Definitions)
-						definitions.GET("/:definition", api.Definition)
+						cluster.GET("/", api.GetCluster)
+						cluster.POST("/start", api.StartCluster)
+						cluster.POST("/node", api.AddNode)
+						cluster.DELETE("/node/:node", api.RemoveNode)
 					}
 
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)
-						kinds.POST("apply/:kind", api.Apply)
-						kinds.POST("apply/:kind/:agent", api.Apply)
+						kinds.POST("propose/apply", api.Propose)
+						kinds.DELETE("propose/remove", api.Propose)
 						kinds.POST("compare", api.Compare)
-						kinds.POST("delete", api.Delete)
+						kinds.DELETE("delete", api.Delete)
+						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
+						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
 					}
 
 					operators := v1.Group("/control")
@@ -226,12 +230,6 @@ func Start() {
 						containers.GET("ps", api.Ps)
 					}
 
-					logs := v1.Group("/logs")
-					{
-						//logs.GET("/", api.Node)
-						logs.GET(":kind/:group/:identifier", api.Logs)
-					}
-
 					dns := v1.Group("/dns")
 					{
 						dns.GET("/", api.ListDns)
@@ -242,11 +240,6 @@ func Start() {
 					{
 						users.POST("/:username/:domain/:externalIP", api.CreateUser)
 					}
-
-					etcd := v1.Group("etcd")
-					{
-						etcd.PUT("/etcd/update/*key", api.EtcdPut)
-					}
 				}
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -254,15 +247,9 @@ func Start() {
 				router.GET("/ca", api.CA)
 				router.GET("/connect", api.Health)
 				router.GET("/restore", api.Restore)
-				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+				router.GET("/healthz", api.Health)
 				router.GET("/metrics", api.Metrics())
-
-				router.GET("/cluster", api.GetCluster)
-				router.POST("/cluster/start", api.StartCluster)
-				router.POST("/cluster/restore", api.RestoreCluster)
-				router.POST("/cluster/node", api.AddNode)
-				router.DELETE("/cluster/node/:node", api.RemoveNode)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)

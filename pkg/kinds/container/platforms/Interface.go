@@ -5,10 +5,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
+	"io"
 )
 
 type IContainer interface {
@@ -18,14 +19,16 @@ type IContainer interface {
 	Restart() error
 	Delete() error
 	Rename(newName string) error
-	Exec(command []string) types.ExecResult
+	Exec(command []string) (types.ExecResult, error)
+	Logs(bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User) error
 
 	AttachToNetworks(string) error
-	UpdateDns(dnsCache *dns.Records)
+	UpdateDns(dnsCache *dns.Records, networkId string)
+	RemoveDns(dnsCache *dns.Records, networkId string)
 
 	HasDependencyOn(string, string, string, *types.Runtime) bool
 	HasOwner() bool
@@ -34,7 +37,8 @@ type IContainer interface {
 	GetStatus() *status.Status
 	GetAgent() string
 
-	GetDefinition() v1.ContainerDefinition
+	GetId() string
+	GetDefinition() contracts.IDefinition
 	GetLabels() map[string]string
 	GetGeneratedName() string
 	GetName() string
@@ -57,20 +61,23 @@ type IPlatform interface {
 	Restart() error
 	Delete() error
 	Rename(newName string) error
-	Exec(command []string) types.ExecResult
+	Exec(command []string) (types.ExecResult, error)
+	Logs(bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
 	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
 	Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error
 
 	AttachToNetworks(string) error
-	UpdateDns(dnsCache *dns.Records)
+	UpdateDns(dnsCache *dns.Records, networkId string)
+	RemoveDns(dnsCache *dns.Records, networkId string)
 	GenerateLabels() map[string]string
 
 	HasDependencyOn(string, string, string, *types.Runtime) bool
 	HasOwner() bool
 
-	GetDefinition() v1.ContainerDefinition
+	GetId() string
+	GetDefinition() contracts.IDefinition
 	GetGeneratedName() string
 	GetName() string
 	GetGroup() string

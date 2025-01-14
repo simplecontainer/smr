@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type ContainerDefinition struct {
@@ -12,20 +15,10 @@ type ContainerDefinition struct {
 }
 
 type ContainerMeta struct {
-	Name   string            `validate:"required" json:"name"`
-	Group  string            `validate:"required" json:"group"`
-	Labels map[string]string `json:"labels"`
-	Owner  ContainerOwner    `json:"-"`
-}
-
-type ContainerOwner struct {
-	Kind  string
-	Group string
-	Name  string
-}
-
-func (owner ContainerOwner) IsEmpty() bool {
-	return owner.Group != "" && owner.Name != ""
+	Name    string            `validate:"required" json:"name"`
+	Group   string            `validate:"required" json:"group"`
+	Labels  map[string]string `json:"labels"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type ContainerSpec struct {
@@ -97,24 +90,39 @@ type ContainerResource struct {
 	MountPoint string
 }
 
+func (container *ContainerDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	container.Meta.Runtime = runtime
+}
+
+func (container *ContainerDefinition) GetRuntime() *commonv1.Runtime {
+	return container.Meta.Runtime
+}
+
+func (container *ContainerDefinition) GetKind() string {
+	return static.KIND_CONTAINER
+}
+
+func (container *ContainerDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (container *ContainerDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, container)
+}
+
 func (container *ContainerDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(container)
 	return bytes, err
 }
 
-func (container *ContainerDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(container)
-	return string(bytes), err
-}
-
-func (container *ContainerDefinition) ToJsonStringWithKind() (string, error) {
+func (container *ContainerDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(container)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "container"
@@ -123,10 +131,15 @@ func (container *ContainerDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (container *ContainerDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(container)
+	return string(bytes), err
 }
 
 func (container *ContainerDefinition) Validate() (bool, error) {

@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type HttpAuthDefinition struct {
@@ -12,8 +15,9 @@ type HttpAuthDefinition struct {
 }
 
 type HttpAuthMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type HttpAuthSpec struct {
@@ -21,19 +25,39 @@ type HttpAuthSpec struct {
 	Password string
 }
 
+func (httpauth *HttpAuthDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	httpauth.Meta.Runtime = runtime
+}
+
+func (httpauth *HttpAuthDefinition) GetRuntime() *commonv1.Runtime {
+	return httpauth.Meta.Runtime
+}
+
+func (httpauth *HttpAuthDefinition) GetKind() string {
+	return static.KIND_HTTPAUTH
+}
+
+func (httpauth *HttpAuthDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (httpauth *HttpAuthDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, httpauth)
+}
+
 func (httpauth *HttpAuthDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(httpauth)
 	return bytes, err
 }
 
-func (httpauth *HttpAuthDefinition) ToJsonStringWithKind() (string, error) {
+func (httpauth *HttpAuthDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(httpauth)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "httpauth"
@@ -42,10 +66,10 @@ func (httpauth *HttpAuthDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
 }
 
 func (httpauth *HttpAuthDefinition) ToJsonString() (string, error) {

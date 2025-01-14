@@ -1,13 +1,16 @@
 package container
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	replication "github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
@@ -20,7 +23,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
@@ -32,7 +34,7 @@ func (container *Container) Start() error {
 	container.Started = true
 
 	container.Shared.Watcher = &watcher.ContainerWatcher{
-		EventChannel: make(chan raft.KV),
+		EventChannel: make(chan replication.KV),
 	}
 	container.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
@@ -67,344 +69,196 @@ func (container *Container) Start() error {
 func (container *Container) GetShared() interface{} {
 	return container.Shared
 }
+func (container *Container) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CONTAINER)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ContainerDefinition)
+
+	_, err = definition.Validate()
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
+
+	var bytes []byte
+	bytes, err = definition.ToJsonWithKind()
+
+	switch c.Request.Method {
+	case http.MethodPost:
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.Node)
+		break
+	case http.MethodDelete:
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.Node)
+		break
+	}
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
+
 func (container *Container) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request := NewRequest()
-
-	if err := json.Unmarshal(jsonData, request.Definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
-	}
-
-	_, err := request.Definition.Validate()
+	request, err := common.NewRequest(static.KIND_CONTAINER)
 
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	data := make(map[string]interface{})
-	err = json.Unmarshal(jsonData, &data)
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ContainerDefinition)
+
+	_, err = definition.Validate()
+
 	if err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	var format *f.Format
-	format = f.New("container", request.Definition.Meta.Group, request.Definition.Meta.Name, "object")
-
+	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
 
 	var jsonStringFromRequest []byte
-	jsonStringFromRequest, err = request.Definition.ToJson()
+	jsonStringFromRequest, err = definition.ToJson()
 
 	logger.Log.Debug("server received container object", zap.String("definition", string(jsonStringFromRequest)))
 
-	var dr *replicas.Replicas
+	var create []platforms.IContainer
+	var destroy []platforms.IContainer
 
-	if !request.Definition.Meta.Owner.IsEmpty() {
-		if obj.Exists() {
-			if obj.Diff(jsonStringFromRequest) {
-				dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
+	obj, err = request.Definition.Apply(format, obj, static.KIND_CONTAINER)
 
-				if err != nil {
-					return contracts.Response{
-						HttpStatus:       http.StatusInternalServerError,
-						Explanation:      "failed to generate replica counts",
-						ErrorExplanation: err.Error(),
-						Error:            false,
-						Success:          true,
-					}, err
-				}
-
-				err = obj.AddLocal(format, jsonStringFromRequest)
-
-				if err != nil {
-					return contracts.Response{
-						HttpStatus:       http.StatusInternalServerError,
-						Explanation:      "failed to add object",
-						ErrorExplanation: err.Error(),
-						Error:            false,
-						Success:          true,
-					}, err
-				}
-			} else {
-				return contracts.Response{
-					HttpStatus:       http.StatusOK,
-					Explanation:      "object is same",
-					ErrorExplanation: "",
-					Error:            false,
-					Success:          true,
-				}, err
-			}
-		} else {
-			dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
-
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "failed to generate container objects",
-					ErrorExplanation: err.Error(),
-					Error:            false,
-					Success:          true,
-				}, err
-			}
-
-			err = obj.AddLocal(format, jsonStringFromRequest)
-
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "failed to add object",
-					ErrorExplanation: err.Error(),
-					Error:            false,
-					Success:          true,
-				}, err
-			}
-		}
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	} else {
-		if obj.Exists() {
-			if obj.Diff(jsonStringFromRequest) {
-				dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
+		create, destroy, err = GenerateContainers(container.Shared, definition, obj.GetDiff())
 
-				if err != nil {
-					return contracts.Response{
-						HttpStatus:       http.StatusInternalServerError,
-						Explanation:      "failed to generate replica counts",
-						ErrorExplanation: err.Error(),
-						Error:            false,
-						Success:          true,
-					}, err
-				}
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
+		}
+	}
 
-				err = obj.Add(format, jsonStringFromRequest)
+	if len(destroy) > 0 {
+		for _, containerObj := range destroy {
+			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 
-				if err != nil {
-					return contracts.Response{
-						HttpStatus:       http.StatusInternalServerError,
-						Explanation:      "failed to add object",
-						ErrorExplanation: err.Error(),
-						Error:            false,
-						Success:          true,
-					}, err
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+			reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
+		}
+	}
+
+	if len(create) > 0 {
+		for _, containerObj := range create {
+			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
+			existingWatcher := container.Shared.Watcher.Find(GroupIdentifier)
+
+			if obj.Exists() {
+				if obj.ChangeDetected() {
+					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
+					existingWatcher.Logger.Info("container object modified")
+
+					existingContainer := container.Shared.Registry.Find(containerObj.GetGroup(), containerObj.GetGeneratedName())
+					if existingContainer != nil && existingContainer.IsGhost() {
+						existingWatcher.Container.GetStatus().SetState(status.STATUS_TRANSFERING)
+					} else {
+						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
+						container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
+					}
+
+					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
+					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+				} else {
+					logger.Log.Info("no change detected in the containers definition")
 				}
 			} else {
-				return contracts.Response{
-					HttpStatus:       http.StatusOK,
-					Explanation:      "object is same",
-					ErrorExplanation: "",
-					Error:            false,
-					Success:          true,
-				}, err
-			}
-		} else {
-			dr, err = GenerateContainers(container.Shared, user, agent, request.Definition, obj.Changelog)
+				_, err = containerObj.GetContainerState()
+				container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "failed to generate container objects",
-					ErrorExplanation: err.Error(),
-					Error:            false,
-					Success:          true,
-				}, err
+				if err != nil {
+					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
+					existingWatcher.Logger.Info("container object created")
+
+					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
+
+					existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
+					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+				} else {
+					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
+					existingWatcher.Logger.Info("container object created but already is existing - manual intervention needed")
+
+					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
+
+					existingWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
+					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+				}
 			}
 
-			err = obj.Add(format, jsonStringFromRequest)
+			go reconcile.Container(container.Shared, existingWatcher)
+		}
+	}
 
-			if err != nil {
-				return contracts.Response{
-					HttpStatus:       http.StatusInternalServerError,
-					Explanation:      "failed to add object",
-					ErrorExplanation: err.Error(),
-					Error:            false,
-					Success:          true,
-				}, err
-			}
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
+func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
+}
+func (container *Container) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CONTAINER)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ContainerDefinition)
+
+	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
+	obj := objects.New(container.Shared.Client.Get(user.Username), user)
+
+	var destroy []platforms.IContainer
+
+	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINER)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
+	} else {
+		destroy, err = GetContainers(container.Shared, existingDefinition.(*v1.ContainerDefinition))
+
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
 		}
 	}
 
 	if err == nil {
-		if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Remove) > 0 {
-			for _, containerObj := range dr.DeleteScoped {
-				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-				format = f.New("configuration", containerObj.GetGroup(), containerObj.GetGeneratedName(), "")
-				obj.Remove(format)
-
-				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
-				reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
-			}
-		}
-
-		if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Create) > 0 {
-			for _, containerObj := range dr.CreateScoped {
-				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-				existingWatcher := container.Shared.Watcher.Find(GroupIdentifier)
-
-				if obj.Exists() {
-					if obj.ChangeDetected() {
-						container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
-
-						existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
-						existingWatcher.Logger.Info("container object modified")
-
-						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
-						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
-
-						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
-
-						reconcile.Container(container.Shared, existingWatcher)
-					} else {
-						logger.Log.Info("no change detected in the containers definition")
-					}
-				} else {
-					_, err = containerObj.GetContainerState()
-					container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
-
-					if err != nil {
-						existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
-						existingWatcher.Logger.Info("container object created")
-
-						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
-
-						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
-						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
-					} else {
-						existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
-						existingWatcher.Logger.Info("container object created but already is existing - manual intervention needed")
-
-						go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
-
-						existingWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
-						container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
-					}
-
-					reconcile.Container(container.Shared, existingWatcher)
-				}
-			}
-		}
-
-		return contracts.Response{
-			HttpStatus:       200,
-			Explanation:      "everything went well: good job!",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-		}, nil
-	} else {
-		logger.Log.Error(err.Error())
-
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "failed to add container",
-			ErrorExplanation: err.Error(),
-			Error:            false,
-			Success:          true,
-		}, nil
-	}
-}
-func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	return contracts.Response{
-		HttpStatus:       200,
-		Explanation:      "object in sync",
-		ErrorExplanation: "",
-		Error:            false,
-		Success:          true,
-	}, nil
-}
-func (container *Container) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request := NewRequest()
-
-	if err := json.Unmarshal(jsonData, request.Definition); err != nil {
-		return contracts.Response{
-			HttpStatus:       400,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		}, err
-	}
-
-	data := make(map[string]interface{})
-	err := json.Unmarshal(jsonData, &data)
-	if err != nil {
-		panic(err)
-	}
-
-	var format *f.Format
-	format = f.New("container", request.Definition.Meta.Group, request.Definition.Meta.Name, "object")
-
-	obj := objects.New(container.Shared.Client.Get(user.Username), user)
-	err = obj.Find(format)
-
-	if obj.Exists() {
-		var dr *replicas.Replicas
-		dr, err = GetContainers(container.Shared, user, agent, request.Definition)
-
-		if err == nil {
-			if len(dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Numbers.Existing) > 0 {
-				containerObjs := FetchContainersFromRegistry(container.Shared.Registry, dr.Distributed.Replicas[container.Shared.Manager.Config.KVStore.Node].Existing)
-
-				format = f.New("container", request.Definition.Meta.Group, request.Definition.Meta.Name, "")
-				obj.Remove(format)
-
-				for _, containerObj := range containerObjs {
+		if len(destroy) > 0 {
+			for _, containerObj := range destroy {
+				go func() {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+
 					reconcile.Container(container.Shared, container.Shared.Watcher.Find(GroupIdentifier))
-				}
-
-				dr.Distributed.Remove(container.Shared.Client.Clients[user.Username], user)
-
-				return contracts.Response{
-					HttpStatus:       200,
-					Explanation:      "container is deleted",
-					ErrorExplanation: "",
-					Error:            false,
-					Success:          true,
-				}, nil
-			} else {
-				return contracts.Response{
-					HttpStatus:       404,
-					Explanation:      "",
-					ErrorExplanation: "container is not found on the server",
-					Error:            true,
-					Success:          false,
-				}, nil
+				}()
 			}
+
+			return common.Response(http.StatusOK, "object is deleted", nil, nil), nil
 		} else {
-			return contracts.Response{
-				HttpStatus:       404,
-				Explanation:      "",
-				ErrorExplanation: "container is not found on the server",
-				Error:            true,
-				Success:          false,
-			}, nil
+			return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
 		}
 	} else {
-		return contracts.Response{
-			HttpStatus:       404,
-			Explanation:      "",
-			ErrorExplanation: "container is not found on the server",
-			Error:            true,
-			Success:          false,
-		}, nil
+		return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
+
 	}
 }
 func (container *Container) Run(operation string, request contracts.Control) contracts.Response {
@@ -422,42 +276,15 @@ func (container *Container) Run(operation string, request contracts.Control) con
 		}
 	}
 
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+	return common.Response(http.StatusBadRequest, "server doesn't support requested functionality", errors.New("implementation is missing"), nil)
 }
 
-func FetchContainersFromRegistry(registry *registry.Registry, containers []replicas.R) []platforms.IContainer {
-	var order []platforms.IContainer
-
-	registry.ContainersLock.RLock()
-	for _, r := range containers {
-		if registry.Containers[r.Group] != nil {
-			if registry.Containers[r.Group][r.Name] != nil {
-				order = append(order, registry.Containers[r.Group][r.Name])
-			}
-		}
-	}
-	registry.ContainersLock.RUnlock()
-
-	return order
+func GenerateContainers(shared *shared.Shared, definition *v1.ContainerDefinition, changelog diff.Changelog) ([]platforms.IContainer, []platforms.IContainer, error) {
+	r := replicas.New(shared.Manager.Cluster.Node.NodeID, shared.Manager.Cluster.Cluster.Nodes)
+	return r.GenerateContainers(shared.Registry, definition, shared.Manager.Config)
 }
 
-func GenerateContainers(shared *shared.Shared, user *authentication.User, agent string, containerDefinition *v1.ContainerDefinition, changelog diff.Changelog) (*replicas.Replicas, error) {
-	replication := replicas.NewReplica(shared, agent, containerDefinition, changelog)
-	err := replication.HandleReplica(user, shared.Manager.Cluster.Cluster.ToString())
-
-	return replication, err
-}
-
-func GetContainers(shared *shared.Shared, user *authentication.User, agent string, containerDefinition *v1.ContainerDefinition) (*replicas.Replicas, error) {
-	replication := replicas.NewReplica(shared, agent, containerDefinition, nil)
-	err := replication.GetReplica(user, shared.Manager.Cluster.Cluster.ToString())
-
-	return replication, err
+func GetContainers(shared *shared.Shared, definition *v1.ContainerDefinition) ([]platforms.IContainer, error) {
+	r := replicas.New(shared.Manager.Cluster.Node.NodeID, shared.Manager.Cluster.Cluster.Nodes)
+	return r.RemoveContainers(shared.Registry, definition)
 }

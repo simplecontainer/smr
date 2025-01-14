@@ -16,6 +16,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -26,13 +27,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"io"
 	"io/ioutil"
 	"strconv"
 	"sync"
 	"time"
 )
 
-func New(name string, config *configuration.Configuration, definition *v1.ContainerDefinition) (*Docker, error) {
+func New(name string, config *configuration.Configuration, definition contracts.IDefinition) (*Docker, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -49,37 +51,37 @@ func New(name string, config *configuration.Configuration, definition *v1.Contai
 	}
 
 	var volumes *internal.Volumes
-	volumes, err = internal.NewVolumes(definition.Spec.Container.Volumes, config)
+	volumes, err = internal.NewVolumes(definition.(*v1.ContainerDefinition).Spec.Container.Volumes, config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if definition.Spec.Container.Tag == "" {
-		definition.Spec.Container.Tag = "latest"
+	if definition.(*v1.ContainerDefinition).Spec.Container.Tag == "" {
+		definition.(*v1.ContainerDefinition).Spec.Container.Tag = "latest"
 	}
 
 	container := &Docker{
-		Name:          definition.Meta.Name,
+		Name:          definition.(*v1.ContainerDefinition).Meta.Name,
 		GeneratedName: name,
-		Labels:        smaps.NewFromMap(definition.Meta.Labels),
-		Group:         definition.Meta.Group,
-		Image:         definition.Spec.Container.Image,
-		Tag:           definition.Spec.Container.Tag,
-		Replicas:      definition.Spec.Container.Replicas,
+		Labels:        smaps.NewFromMap(definition.(*v1.ContainerDefinition).Meta.Labels),
+		Group:         definition.(*v1.ContainerDefinition).Meta.Group,
+		Image:         definition.(*v1.ContainerDefinition).Spec.Container.Image,
+		Tag:           definition.(*v1.ContainerDefinition).Spec.Container.Tag,
+		Replicas:      definition.(*v1.ContainerDefinition).Spec.Container.Replicas,
 		Lock:          sync.RWMutex{},
-		Env:           definition.Spec.Container.Envs,
-		Entrypoint:    definition.Spec.Container.Entrypoint,
-		Args:          definition.Spec.Container.Args,
-		Configuration: smaps.NewFromMap(definition.Spec.Container.Configuration),
-		NetworkMode:   definition.Spec.Container.NetworkMode,
-		Networks:      internal.NewNetworks(definition.Spec.Container.Networks),
-		Ports:         internal.NewPorts(definition.Spec.Container.Ports),
-		Readiness:     internal.NewReadinesses(definition.Spec.Container.Readiness),
-		Resources:     internal.NewResources(definition.Spec.Container.Resources),
+		Env:           definition.(*v1.ContainerDefinition).Spec.Container.Envs,
+		Entrypoint:    definition.(*v1.ContainerDefinition).Spec.Container.Entrypoint,
+		Args:          definition.(*v1.ContainerDefinition).Spec.Container.Args,
+		Configuration: smaps.NewFromMap(definition.(*v1.ContainerDefinition).Spec.Container.Configuration),
+		NetworkMode:   definition.(*v1.ContainerDefinition).Spec.Container.NetworkMode,
+		Networks:      internal.NewNetworks(definition.(*v1.ContainerDefinition).Spec.Container.Networks),
+		Ports:         internal.NewPorts(definition.(*v1.ContainerDefinition).Spec.Container.Ports),
+		Readiness:     internal.NewReadinesses(definition.(*v1.ContainerDefinition).Spec.Container.Readiness),
+		Resources:     internal.NewResources(definition.(*v1.ContainerDefinition).Spec.Container.Resources),
 		Volumes:       volumes,
-		Capabilities:  definition.Spec.Container.Capabilities,
-		Privileged:    definition.Spec.Container.Privileged,
+		Capabilities:  definition.(*v1.ContainerDefinition).Spec.Container.Capabilities,
+		Privileged:    definition.(*v1.ContainerDefinition).Spec.Container.Privileged,
 		Definition:    definitionCopy,
 	}
 
@@ -246,20 +248,20 @@ func (container *Docker) Rename(newName string) error {
 
 	return err
 }
-func (container *Docker) Exec(command []string) types.ExecResult {
+func (container *Docker) Exec(command []string) (types.ExecResult, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
-		var execResult types.ExecResult
+		var result types.ExecResult
 
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
-			panic(err)
+			return types.ExecResult{}, err
 		}
 
 		defer func(cli *IDClient.Client) {
 			err = cli.Close()
 			if err != nil {
-				return
+				logger.Log.Error(err.Error())
 			}
 		}(cli)
 
@@ -290,36 +292,61 @@ func (container *Docker) Exec(command []string) types.ExecResult {
 		select {
 		case err = <-outputDone:
 			if err != nil {
-				return execResult
+				return result, nil
 			}
 			break
 
 		case <-ctx.Done():
-			return execResult
+			return result, nil
 		}
 
 		stdout, err := ioutil.ReadAll(&stdoutBuffer)
 		if err != nil {
-			return execResult
+			return result, nil
 		}
 
 		stderr, err := ioutil.ReadAll(&stderrBuffer)
 		if err != nil {
-			return execResult
+			return result, nil
 		}
 
 		res, err := cli.ContainerExecInspect(ctx, exec.ID)
 		if err != nil {
-			return execResult
+			return result, nil
 		}
 
-		execResult.Exit = res.ExitCode
-		execResult.Stdout = string(stdout)
-		execResult.Stderr = string(stderr)
+		result.Exit = res.ExitCode
+		result.Stdout = string(stdout)
+		result.Stderr = string(stderr)
 
-		return execResult
+		return result, nil
 	} else {
-		return types.ExecResult{}
+		return types.ExecResult{}, errors.New("container is not running")
+	}
+}
+
+func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
+		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+		if err != nil {
+			return nil, err
+		}
+
+		logs, err := cli.ContainerLogs(context.Background(), container.DockerID, TDContainer.LogsOptions{
+			ShowStderr: true,
+			ShowStdout: true,
+			Timestamps: false,
+			Follow:     follow,
+			Tail:       "30",
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return logs, nil
+	} else {
+		return nil, errors.New("container is not running")
 	}
 }
 
@@ -462,7 +489,7 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 				return nil, err
 			}
 
-			container.UpdateDns(dnsCache)
+			//container.UpdateDns(dnsCache)
 		}
 
 		return container.Get()
@@ -472,7 +499,7 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 }
 
 func (container *Docker) Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
-	runtime.ObjectDependencies = make([]*f.Format, 0)
+	runtime.ObjectDependencies = make([]f.Format, 0)
 
 	err := container.PrepareNetwork(client, user, runtime)
 
@@ -500,6 +527,10 @@ func (container *Docker) Prepare(client *client.Http, user *authentication.User,
 }
 
 func (container *Docker) AttachToNetworks(agentContainerName string) error {
+	if agentContainerName == "" {
+		return errors.New("agent container name is empty")
+	}
+
 	var dockerContainer *TDTypes.Container
 	var err error
 
@@ -565,32 +596,32 @@ func (container *Docker) AttachToNetworks(agentContainerName string) error {
 
 	return nil
 }
-func (container *Docker) UpdateDns(dnsCache *dns.Records) {
-	/*
-		for _, n := range containerObj.Networks.Networks {
-			for _, ip := range shared.DnsCache.FindDeleteQueue(containerObj.GetDomain(n.Reference.Name)) {
-				shared.DnsCache.RemoveARecord(containerObj.GetDomain(n.Reference.Name), ip)
-				shared.DnsCache.RemoveARecord(containerObj.GetHeadlessDomain(n.Reference.Name), ip)
-
-				obj := objects.New(shared.Client.Get("root"), &authentication.User{
-					Username: "root",
-					Domain:   "localhost",
-				})
-
-				obj.Remove(f.NewFromString(fmt.Sprintf("network.%s.%s.dns", containerObj.Static.Group, containerObj.Static.GeneratedName)))
-			}
-
-			shared.DnsCache.ResetDeleteQueue(containerObj.GetDomain(n.Reference.Name))
-		}
-	*/
-
+func (container *Docker) UpdateDns(dnsCache *dns.Records, networkId string) {
 	networks := container.GetNetworkInfoTS()
 
 	for _, network := range networks.Networks {
-		dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
-		dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+		if network.Docker.NetworkId == networkId {
+			dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
+			dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+
+			return
+		}
 	}
 }
+
+func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) {
+	networks := container.GetNetworkInfoTS()
+
+	for _, network := range networks.Networks {
+		if network.Docker.NetworkId == networkId {
+			dnsCache.RemoveARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
+			dnsCache.RemoveARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+
+			return
+		}
+	}
+}
+
 func (container *Docker) GenerateLabels() map[string]string {
 	now := time.Now()
 

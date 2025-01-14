@@ -17,13 +17,14 @@ func (status *Status) CreateGraph() {
 
 	created := gograph.NewVertex(&StatusState{STATUS_CREATED, CATEGORY_PRERUN})
 	syncing := gograph.NewVertex(&StatusState{STATUS_SYNCING, CATEGORY_WHILERUN})
-	insync := gograph.NewVertex(&StatusState{STATUS_INSYNC, CATEGORY_WHILERUN})
-	backoff := gograph.NewVertex(&StatusState{STATUS_BACKOFF, CATEGORY_WHILERUN})
+	insync := gograph.NewVertex(&StatusState{STATUS_INSYNC, CATEGORY_END})
+	backoff := gograph.NewVertex(&StatusState{STATUS_BACKOFF, CATEGORY_END})
 	invalidgit := gograph.NewVertex(&StatusState{STATUS_INVALID_GIT, CATEGORY_END})
 	invaliddefinitions := gograph.NewVertex(&StatusState{STATUS_INVALID_DEFINITIONS, CATEGORY_END})
 	inspecting := gograph.NewVertex(&StatusState{STATUS_INSPECTING, CATEGORY_WHILERUN})
 	drifted := gograph.NewVertex(&StatusState{STATUS_DRIFTED, CATEGORY_WHILERUN})
 	cloning := gograph.NewVertex(&StatusState{STATUS_CLONING_GIT, CATEGORY_WHILERUN})
+	cloned := gograph.NewVertex(&StatusState{STATUS_CLONED_GIT, CATEGORY_WHILERUN})
 	pendingDelete := gograph.NewVertex(&StatusState{STATUS_PENDING_DELETE, CATEGORY_END})
 
 	status.StateMachine.AddEdge(created, syncing)
@@ -31,11 +32,16 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(cloning, invalidgit)
 	status.StateMachine.AddEdge(cloning, syncing)
+	status.StateMachine.AddEdge(cloning, cloned)
 	status.StateMachine.AddEdge(cloning, inspecting)
+
+	status.StateMachine.AddEdge(cloned, syncing)
+	status.StateMachine.AddEdge(cloned, inspecting)
 
 	status.StateMachine.AddEdge(inspecting, invalidgit)
 	status.StateMachine.AddEdge(inspecting, drifted)
 	status.StateMachine.AddEdge(inspecting, insync)
+	status.StateMachine.AddEdge(inspecting, cloning)
 
 	status.StateMachine.AddEdge(syncing, insync)
 	status.StateMachine.AddEdge(syncing, backoff)
@@ -56,6 +62,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(syncing, pendingDelete)
 	status.StateMachine.AddEdge(created, pendingDelete)
 	status.StateMachine.AddEdge(cloning, pendingDelete)
+	status.StateMachine.AddEdge(cloned, pendingDelete)
 	status.StateMachine.AddEdge(invaliddefinitions, pendingDelete)
 	status.StateMachine.AddEdge(invalidgit, pendingDelete)
 }
@@ -80,7 +87,7 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				logger.Log.Debug("container transitioned state",
+				logger.Log.Debug("gitops transitioned state",
 					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
 					zap.String("gitops", gitops),
@@ -96,7 +103,7 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 		}
 
 		if status.State.State != destination {
-			logger.Log.Debug("container failed to transition state",
+			logger.Log.Debug("gitops failed to transition state",
 				zap.String("old-state", status.State.State),
 				zap.String("new-state", destination),
 				zap.String("gitops", gitops),

@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"regexp"
 	"strings"
 )
 
-func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.Smap) (string, []*f.Format, error) {
-	var dependencyMap = make([]*f.Format, 0)
+func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smaps.Smap) (string, []f.Format, error) {
+	var dependencyMap = make([]f.Format, 0)
 	placeholders := GetTemplatePlaceholders(template)
 
 	var parsed string = template
@@ -88,7 +88,7 @@ func ParseTemplate(obj objects.ObjectInterface, template string, runtime *smaps.
 	return parsed, dependencyMap, nil
 }
 
-func ParseSecretTemplate(obj objects.ObjectInterface, value string) (string, error) {
+func ParseSecretTemplate(obj contracts.ObjectInterface, value string) (string, error) {
 	placeholders := GetTemplatePlaceholders(value)
 
 	for _, placeholder := range placeholders {

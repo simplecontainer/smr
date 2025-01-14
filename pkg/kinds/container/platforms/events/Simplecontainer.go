@@ -2,14 +2,14 @@ package events
 
 import (
 	"encoding/json"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/raft"
 	"go.uber.org/zap"
 )
 
-func NewEventsListener(shared *shared.Shared, e chan raft.KV) {
+func NewEventsListener(shared *shared.Shared, e chan distributed.KV) {
 	for {
 		select {
 		case data := <-e:

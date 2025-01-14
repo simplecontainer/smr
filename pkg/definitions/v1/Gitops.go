@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type GitopsDefinition struct {
@@ -12,14 +15,15 @@ type GitopsDefinition struct {
 }
 
 type GitopsMeta struct {
-	Group string `json:"group" validate:"required"`
-	Name  string `json:"name" validate:"required"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type GitopsSpec struct {
 	RepoURL         string            `json:"repoURL"`
 	Revision        string            `json:"revision"`
-	DirectoryPath   string            `json:"directory"`
+	DirectoryPath   string            `json:"directoryPath"`
 	PoolingInterval string            `json:"poolingInterval"`
 	AutomaticSync   bool              `json:"automaticSync"`
 	API             string            `json:"API"`
@@ -38,24 +42,77 @@ type GitopsHttpauthRef struct {
 	Name  string
 }
 
+func (gitops *GitopsDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	gitops.Meta.Runtime = runtime
+}
+
+func (gitops *GitopsDefinition) GetRuntime() *commonv1.Runtime {
+	return gitops.Meta.Runtime
+}
+
+func (gitops *GitopsDefinition) GetKind() string {
+	return static.KIND_GITOPS
+}
+
+func (gitops *GitopsDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	references := make([]contracts.IDefinition, 0)
+
+	if gitops.Spec.HttpAuthRef.Group != "" && gitops.Spec.HttpAuthRef.Name != "" {
+		/*
+			format := f.New("httpauth", gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name, "object")
+
+			request, err := common.NewRequest(static.KIND_HTTPAUTH)
+
+			if err != nil {
+				return references, err
+			}
+
+			err = request.Resolve(obj, format)
+
+			if err != nil {
+				return references, err
+			}
+		*/
+	}
+
+	if gitops.Spec.CertKeyRef.Group != "" && gitops.Spec.CertKeyRef.Name != "" {
+		/*
+			format := f.New("certkey", gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name, "object")
+
+			request, err := common.NewRequest(static.KIND_CERTKEY)
+
+			if err != nil {
+				return references, err
+			}
+
+			err = request.Resolve(obj, format)
+
+			if err != nil {
+				return references, err
+			}
+		*/
+	}
+
+	return references, nil
+}
+
+func (gitops *GitopsDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, gitops)
+}
+
 func (gitops *GitopsDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(gitops)
 	return bytes, err
 }
 
-func (gitops *GitopsDefinition) ToJsonString() (string, error) {
-	bytes, err := json.Marshal(gitops)
-	return string(bytes), err
-}
-
-func (gitops *GitopsDefinition) ToJsonStringWithKind() (string, error) {
+func (gitops *GitopsDefinition) ToJsonWithKind() ([]byte, error) {
 	bytes, err := json.Marshal(gitops)
 
 	var definition map[string]interface{}
 	err = json.Unmarshal(bytes, &definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definition["kind"] = "gitops"
@@ -64,10 +121,15 @@ func (gitops *GitopsDefinition) ToJsonStringWithKind() (string, error) {
 	marshalled, err = json.Marshal(definition)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(marshalled), err
+	return marshalled, err
+}
+
+func (gitops *GitopsDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(gitops)
+	return string(bytes), err
 }
 
 func (gitops *GitopsDefinition) Validate() (bool, error) {

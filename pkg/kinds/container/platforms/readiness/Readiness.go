@@ -12,6 +12,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"go.uber.org/zap"
 	"net/http"
@@ -21,7 +22,7 @@ import (
 )
 
 func Ready(client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
-	for _, ready := range container.GetDefinition().Spec.Container.Readiness {
+	for _, ready := range container.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Readiness {
 		readiness, err := NewReadinessFromDefinition(client, user, container, ready)
 
 		if err != nil {
@@ -153,7 +154,12 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 	case TYPE_COMMAND:
 		c, err := container.GetContainerState()
 		if err == nil && c == "running" {
-			result := container.Exec(readiness.Command)
+			var result types.ExecResult
+			result, err = container.Exec(readiness.Command)
+
+			if err != nil {
+				return err
+			}
 
 			if result.Exit == 0 {
 				return nil
