@@ -8,15 +8,17 @@ Quick start
 
 Would you like to apply docker to various remote daemons, as you can for k8s? Well:
 ```cgo
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definition.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal-cluster/definition.yaml
 smr ps
-NODE             GROUP    NAME     DOCKER NAME        IMAGE           IP                   PORTS  DEPS  ENGINE STATE      SMR STATE        
-smr-agent-2 (2)  example  busybox  example-busybox-1  busybox:latest  172.17.0.4 (bridge)  -      -     running (docker)  running (1m18s)  
-smr-agent-2 (2)  example  busybox  example-busybox-2  busybox:latest  172.17.0.5 (bridge)  -      -     running (docker)  running (1m18s)  
+NODE             GROUP    NAME     DOCKER NAME        IMAGE           IP                    PORTS  DEPS  ENGINE STATE      SMR STATE     
+smr-agent-2 (2)  example  busybox  example-busybox-2  busybox:latest  10.10.42.3 (cluster)  -      -     running (docker)  running (1s)  
+smr-agent-1 (1)  example  busybox  example-busybox-1  busybox:latest  10.10.42.2 (cluster)  -      -     running (docker)  running (1s)  
 ```
 
-Voila! This is a quick start tutorial for how you can do just that.
+Voila! This is a quick start tutorial for how you can do just that
 
+These containers are running on different nodes and are connected via flannel with encrypted overlay network! Cool? We think so too.
+To explore more dive into this README.md.
 ## What is simplecontainer?
 ### Architecture
 ![simplecontainer manager](.github/resources/arch.drawio.png)
@@ -283,6 +285,7 @@ Traefik and nginx will wait till mysql is ready because of the dependency defini
 Important links
 ---------------------------
 - https://simplecontainer.io
+- https://quay.io/repository/simplecontainer/smr
 - https://github.com/simplecontainer/smr
 - https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
