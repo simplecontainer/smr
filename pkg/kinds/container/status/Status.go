@@ -23,6 +23,7 @@ func New(ChangeC chan distributed.Container) *Status {
 func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[*StatusState](gograph.Directed())
 
+	transfering := gograph.NewVertex(&StatusState{STATUS_TRANSFERING, CATEGORY_PRERUN})
 	created := gograph.NewVertex(&StatusState{STATUS_CREATED, CATEGORY_PRERUN})
 	recreated := gograph.NewVertex(&StatusState{STATUS_RECREATED, CATEGORY_PRERUN})
 	prepare := gograph.NewVertex(&StatusState{STATUS_PREPARE, CATEGORY_PRERUN})
@@ -43,6 +44,8 @@ func (status *Status) CreateGraph() {
 	kill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
 	forceKill := gograph.NewVertex(&StatusState{STATUS_KILL, CATEGORY_WHILERUN})
 	pendingDelete := gograph.NewVertex(&StatusState{STATUS_PENDING_DELETE, CATEGORY_END})
+
+	status.StateMachine.AddEdge(transfering, created)
 
 	status.StateMachine.AddEdge(created, prepare)
 	status.StateMachine.AddEdge(created, kill)

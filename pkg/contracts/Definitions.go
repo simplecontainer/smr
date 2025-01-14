@@ -7,8 +7,8 @@ import (
 
 type IDefinition interface {
 	FromJson([]byte) error
-	SetOwner(string, string, string)
-	GetOwner() commonv1.Owner
+	SetRuntime(*commonv1.Runtime)
+	GetRuntime() *commonv1.Runtime
 	GetKind() string
 	ResolveReferences(ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)
@@ -22,8 +22,8 @@ type TDefinition interface {
 	Delete(*f.Format, ObjectInterface, string) (IDefinition, error)
 	Changed(*f.Format, ObjectInterface) (bool, error)
 	FromJson([]byte) error
-	SetOwner(string, string, string)
-	GetOwner() commonv1.Owner
+	SetRuntime(*commonv1.Runtime)
+	GetRuntime() *commonv1.Runtime
 	GetKind() string
 	ResolveReferences(ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)

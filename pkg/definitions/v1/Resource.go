@@ -15,23 +15,21 @@ type ResourceDefinition struct {
 }
 
 type ResourceMeta struct {
-	Group string         `json:"group" validate:"required"`
-	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"owner"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type ResourceSpec struct {
 	Data map[string]string `json:"data"`
 }
 
-func (resource *ResourceDefinition) SetOwner(kind string, group string, name string) {
-	resource.Meta.Owner.Kind = kind
-	resource.Meta.Owner.Group = group
-	resource.Meta.Owner.Name = name
+func (resource *ResourceDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	resource.Meta.Runtime = runtime
 }
 
-func (resource *ResourceDefinition) GetOwner() commonv1.Owner {
-	return resource.Meta.Owner
+func (resource *ResourceDefinition) GetRuntime() *commonv1.Runtime {
+	return resource.Meta.Runtime
 }
 
 func (resource *ResourceDefinition) GetKind() string {

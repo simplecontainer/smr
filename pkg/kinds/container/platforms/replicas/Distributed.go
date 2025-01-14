@@ -8,35 +8,21 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func NewDistributed(nodeID uint64, group string, name string) *Distributed {
+func NewDistributed(nodeID uint64, group string, name string, replicas *Replicas) *Distributed {
 	dr := &Distributed{
 		Group:    group,
 		Name:     name,
-		Replicas: make(map[uint64]*ScopedReplicas),
+		Replicas: make(map[uint64]*Replicas),
 	}
 
-	dr.Replicas[nodeID] = NewScoped()
-
+	dr.Replicas[nodeID] = replicas
 	return dr
 }
 
-func NewScoped() *ScopedReplicas {
-	return &ScopedReplicas{
-		Create: make([]R, 0),
-		Remove: make([]R, 0),
-		Numbers: Numbers{
-			Create:   make([]uint64, 0),
-			Destroy:  make([]uint64, 0),
-			Existing: make([]uint64, 0),
-		},
-	}
-}
-
 func (dr *Distributed) Save(client *client.Client, user *authentication.User) error {
-	format := f.NewUnformated(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name), static.CATEGORY_PLAIN_STRING)
+	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
 	obj := objects.New(client, user)
 
 	data, err := dr.ToJson()
@@ -50,19 +36,14 @@ func (dr *Distributed) Save(client *client.Client, user *authentication.User) er
 }
 
 func (dr *Distributed) Remove(client *client.Client, user *authentication.User) (bool, error) {
-	format := f.NewUnformated(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name), static.CATEGORY_PLAIN_STRING)
+	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
 	obj := objects.New(client, user)
 
 	return obj.Remove(format)
 }
 
-func (dr *Distributed) Clear(node uint64) {
-	dr.Replicas[node].Create = make([]R, 0)
-	dr.Replicas[node].Remove = make([]R, 0)
-}
-
 func (dr *Distributed) Load(client *client.Client, user *authentication.User) error {
-	format := f.NewUnformated(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name), static.CATEGORY_PLAIN_STRING)
+	format := f.NewFromString(fmt.Sprintf("replicas.%s.%s", dr.Group, dr.Name))
 	obj := objects.New(client, user)
 
 	obj.Find(format)

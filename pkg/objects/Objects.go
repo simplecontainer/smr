@@ -213,6 +213,7 @@ func (obj *Object) Diff(definition []byte) bool {
 
 	var changelog diff.Changelog
 	changelog, _ = diff.Diff(obj.Definition, data)
+	changelog = changelog.FilterOut([]string{"Meta", "Runtime"})
 
 	if len(changelog) > 0 {
 		obj.Changelog = changelog

@@ -6,6 +6,7 @@ import (
 
 type Kind interface {
 	Start() error
+	Propose(*authentication.User, []byte, string) (Response, error)
 	Apply(*authentication.User, []byte, string) (Response, error)
 	Compare(*authentication.User, []byte) (Response, error)
 	Delete(*authentication.User, []byte, string) (Response, error)

@@ -9,3 +9,7 @@ type Owner struct {
 func (owner Owner) IsEmpty() bool {
 	return owner.Group == "" && owner.Name == ""
 }
+
+func (owner Owner) IsEqual(o Owner) bool {
+	return owner.Kind == o.Kind && owner.Name == o.Name && owner.Group == o.Group
+}

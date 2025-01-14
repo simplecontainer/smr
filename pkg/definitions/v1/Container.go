@@ -15,10 +15,10 @@ type ContainerDefinition struct {
 }
 
 type ContainerMeta struct {
-	Name   string            `validate:"required" json:"name"`
-	Group  string            `validate:"required" json:"group"`
-	Labels map[string]string `json:"labels"`
-	Owner  commonv1.Owner    `json:"owner"`
+	Name    string            `validate:"required" json:"name"`
+	Group   string            `validate:"required" json:"group"`
+	Labels  map[string]string `json:"labels"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type ContainerSpec struct {
@@ -90,14 +90,12 @@ type ContainerResource struct {
 	MountPoint string
 }
 
-func (container *ContainerDefinition) SetOwner(kind string, group string, name string) {
-	container.Meta.Owner.Kind = kind
-	container.Meta.Owner.Group = group
-	container.Meta.Owner.Name = name
+func (container *ContainerDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	container.Meta.Runtime = runtime
 }
 
-func (container *ContainerDefinition) GetOwner() commonv1.Owner {
-	return container.Meta.Owner
+func (container *ContainerDefinition) GetRuntime() *commonv1.Runtime {
+	return container.Meta.Runtime
 }
 
 func (container *ContainerDefinition) GetKind() string {

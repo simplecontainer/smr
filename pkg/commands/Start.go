@@ -195,11 +195,9 @@ func Start() {
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)
-						kinds.POST("apply/:kind", api.Apply)
-						kinds.POST("apply/:kind/:agent", api.Apply)
+						kinds.POST("propose", api.ProposeApply)
 						kinds.POST("compare", api.Compare)
 						kinds.POST("delete", api.Delete)
-						kinds.POST("delete/:kind", api.Delete)
 						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
 						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
 					}

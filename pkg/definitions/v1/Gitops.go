@@ -15,9 +15,9 @@ type GitopsDefinition struct {
 }
 
 type GitopsMeta struct {
-	Group string         `json:"group" validate:"required"`
-	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"owner"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type GitopsSpec struct {
@@ -42,14 +42,12 @@ type GitopsHttpauthRef struct {
 	Name  string
 }
 
-func (gitops *GitopsDefinition) SetOwner(kind string, group string, name string) {
-	gitops.Meta.Owner.Kind = kind
-	gitops.Meta.Owner.Group = group
-	gitops.Meta.Owner.Name = name
+func (gitops *GitopsDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	gitops.Meta.Runtime = runtime
 }
 
-func (gitops *GitopsDefinition) GetOwner() commonv1.Owner {
-	return gitops.Meta.Owner
+func (gitops *GitopsDefinition) GetRuntime() *commonv1.Runtime {
+	return gitops.Meta.Runtime
 }
 
 func (gitops *GitopsDefinition) GetKind() string {

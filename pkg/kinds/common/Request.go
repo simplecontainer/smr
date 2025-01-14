@@ -23,12 +23,8 @@ func NewRequest(kind string) (*Request, error) {
 	return request, nil
 }
 
-func (request *Request) Load() {
-
-}
-
 func (request *Request) Apply(client *client.Http, user *authentication.User) error {
-	bytes, err := request.Definition.ToJson()
+	bytes, err := request.Definition.ToJsonWithKind()
 
 	if err != nil {
 		return err

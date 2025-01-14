@@ -62,7 +62,7 @@ func Container(shared *shared.Shared, user *authentication.User, containers *wat
 	containers.Syncing = true
 
 	for _, definition := range containers.Definition.Spec {
-		definition.SetOwner(containers.Definition.Kind, containers.Definition.Meta.Group, containers.Definition.Meta.Name)
+		definition.GetRuntime().SetOwner(containers.Definition.Kind, containers.Definition.Meta.Group, containers.Definition.Meta.Name)
 
 		definitionJSON, err := definition.ToJson()
 

@@ -1,13 +1,19 @@
 package distributed
 
 import (
+	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"net/http"
+	"strings"
 )
 
 func New(client *client.Client, user *authentication.User) *Replication {
@@ -56,20 +62,39 @@ func (replication *Replication) ListenData(agent string) {
 }
 
 func (replication *Replication) HandleObject(data KV) {
-	format := f.NewFromString(data.Key)
-	obj := objects.New(replication.Client, replication.User)
+	split := strings.Split(data.Key, ".")
+	kind := split[0]
+
+	request, _ := common.NewRequest(kind)
+	request.Definition.FromJson(data.Val)
+	request.Definition.GetRuntime().SetNode(data.Agent)
+
+	bytes, err := request.Definition.ToJsonWithKind()
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return
+	}
 
 	if data.Val == nil {
-		_, err := obj.RemoveLocal(format)
+		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodPost, bytes)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
+		if response != nil {
+			if !response.Success {
+				if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
+					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+				}
+			}
 		}
 	} else {
-		err := obj.AddLocal(format, data.Val)
+		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
+		if response != nil {
+			if !response.Success {
+				if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
+					logger.Log.Error(errors.New(response.ErrorExplanation).Error())
+				}
+			}
 		}
 	}
 }

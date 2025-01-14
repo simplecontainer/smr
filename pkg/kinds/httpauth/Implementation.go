@@ -22,6 +22,34 @@ func (httpauth *Httpauth) Start() error {
 func (httpauth *Httpauth) GetShared() interface{} {
 	return httpauth.Shared
 }
+func (httpauth *Httpauth) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_HTTPAUTH)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
+
+	valid, err := definition.Validate()
+
+	if !valid {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+
+	bytes, err := definition.ToJsonWithKind()
+
+	httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, httpauth.Shared.Manager.Config.Node)
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
+
 func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_HTTPAUTH)
 

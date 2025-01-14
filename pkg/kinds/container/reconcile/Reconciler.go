@@ -81,6 +81,18 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	containerObj.GetStatus().Reconciling = true
 
 	switch containerObj.GetStatus().GetState() {
+	case status.STATUS_TRANSFERING:
+		existingContainer := shared.Registry.Find(containerObj.GetGroup(), containerObj.GetGeneratedName())
+
+		if existingContainer != nil && existingContainer.IsGhost() {
+			containerWatcher.Logger.Info("container is not dead on another node - wait")
+			containerObj.GetStatus().Reconciling = false
+		} else {
+			containerWatcher.Logger.Info("transfered container to this node")
+			shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
+		}
+		break
 	case status.STATUS_CREATED:
 		containerState := GetState(containerWatcher)
 		containerObj.GetStatus().Recreated = false
@@ -548,6 +560,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_PENDING_DELETE:
+		time.Sleep(10 * time.Second)
 		containerStateEngine, err := containerObj.GetContainerState()
 
 		if err != nil {

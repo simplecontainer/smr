@@ -22,6 +22,32 @@ func (certkey *Certkey) Start() error {
 func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
+func (certkey *Certkey) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CERTKEY)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
+
+	valid, err := definition.Validate()
+
+	if !valid {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	bytes, err := definition.ToJsonWithKind()
+
+	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.Node)
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
 func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CERTKEY)
 

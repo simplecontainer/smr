@@ -20,17 +20,15 @@ type ContainersMeta struct {
 	Name    string            `validate:"required" json:"name"`
 	Group   string            `validate:"required" json:"group"`
 	Labels  map[string]string `json:"labels"`
-	Owner   commonv1.Owner    `json:"owner"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
-func (containers *ContainersDefinition) SetOwner(kind string, group string, name string) {
-	containers.Meta.Owner.Kind = kind
-	containers.Meta.Owner.Group = group
-	containers.Meta.Owner.Name = name
+func (containers *ContainersDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	containers.Meta.Runtime = runtime
 }
 
-func (containers *ContainersDefinition) GetOwner() commonv1.Owner {
-	return containers.Meta.Owner
+func (containers *ContainersDefinition) GetRuntime() *commonv1.Runtime {
+	return containers.Meta.Runtime
 }
 
 func (containers *ContainersDefinition) GetKind() string {

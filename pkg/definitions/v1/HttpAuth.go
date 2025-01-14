@@ -15,9 +15,9 @@ type HttpAuthDefinition struct {
 }
 
 type HttpAuthMeta struct {
-	Group string         `json:"group" validate:"required"`
-	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"owner"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type HttpAuthSpec struct {
@@ -25,14 +25,12 @@ type HttpAuthSpec struct {
 	Password string
 }
 
-func (httpauth *HttpAuthDefinition) SetOwner(kind string, group string, name string) {
-	httpauth.Meta.Owner.Kind = kind
-	httpauth.Meta.Owner.Group = group
-	httpauth.Meta.Owner.Name = name
+func (httpauth *HttpAuthDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	httpauth.Meta.Runtime = runtime
 }
 
-func (httpauth *HttpAuthDefinition) GetOwner() commonv1.Owner {
-	return httpauth.Meta.Owner
+func (httpauth *HttpAuthDefinition) GetRuntime() *commonv1.Runtime {
+	return httpauth.Meta.Runtime
 }
 
 func (httpauth *HttpAuthDefinition) GetKind() string {

@@ -30,18 +30,18 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 
 		request, err := common.NewRequest(file.Kind)
 		request.Definition.FromJson(definition)
-		request.Definition.SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 
 		requests = append(requests, request)
 
 		var bytes []byte
-		bytes, err = request.Definition.ToJson()
+		bytes, err = request.Definition.ToJsonWithKind()
 
 		if err != nil {
 			return requests, err
 		}
 
-		response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://localhost:1443/api/v1/apply/%s", request.Definition.GetKind()), http.MethodPost, bytes)
+		response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
 
 		if !response.Success {
 			if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {

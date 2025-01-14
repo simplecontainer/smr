@@ -31,6 +31,33 @@ func (containers *Containers) Start() error {
 func (containers *Containers) GetShared() interface{} {
 	return containers.Shared
 }
+func (containers *Containers) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CONTAINERS)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ContainersDefinition)
+
+	valid, err := definition.Validate()
+
+	if !valid {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+
+	bytes, err := definition.ToJsonWithKind()
+
+	containers.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, containers.Shared.Manager.Config.Node)
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
 func (containers *Containers) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONTAINERS)
 

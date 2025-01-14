@@ -24,6 +24,33 @@ func (config *Config) Start() error {
 func (config *Config) GetShared() interface{} {
 	return config.Shared
 }
+func (config *Config) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequest(static.KIND_CONFIGURATION)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	if err = request.Definition.FromJson(jsonData); err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	definition := request.Definition.Definition.(*v1.ConfigurationDefinition)
+
+	valid, err := definition.Validate()
+
+	if !valid {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	format := f.New("configuration", definition.Meta.Group, definition.Meta.Name, "object")
+
+	bytes, err := definition.ToJsonWithKind()
+
+	config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, config.Shared.Manager.Config.Node)
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
 func (config *Config) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONFIGURATION)
 

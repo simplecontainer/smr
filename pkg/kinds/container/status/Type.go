@@ -34,6 +34,7 @@ const CATEGORY_WHILERUN = 1
 const CATEGORY_POSTRUN = 2
 const CATEGORY_END = 3
 
+const STATUS_TRANSFERING string = "transfering"
 const STATUS_CREATED string = "created"
 const STATUS_RECREATED string = "recreated"
 const STATUS_PREPARE string = "prepare"

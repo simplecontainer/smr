@@ -14,9 +14,9 @@ type CertKeyDefinition struct {
 }
 
 type CertKeyMeta struct {
-	Group string         `json:"group" validate:"required"`
-	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"owner"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type CertKeySpec struct {
@@ -30,14 +30,12 @@ type CertKeySpec struct {
 	CertStorePassword  string `json:"certStorePassword"`
 }
 
-func (certkey *CertKeyDefinition) SetOwner(kind string, group string, name string) {
-	certkey.Meta.Owner.Kind = kind
-	certkey.Meta.Owner.Group = group
-	certkey.Meta.Owner.Name = name
+func (certkey *CertKeyDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	certkey.Meta.Runtime = runtime
 }
 
-func (certkey *CertKeyDefinition) GetOwner() commonv1.Owner {
-	return certkey.Meta.Owner
+func (certkey *CertKeyDefinition) GetRuntime() *commonv1.Runtime {
+	return certkey.Meta.Runtime
 }
 
 func (certkey *CertKeyDefinition) GetKind() string {

@@ -22,7 +22,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User, defi
 
 		request, err := common.NewRequest(file.Kind)
 		request.Definition.FromJson(definition)
-		request.Definition.SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 
 		var bytes []byte
 		bytes, err = request.Definition.ToJson()

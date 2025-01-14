@@ -14,9 +14,9 @@ type NetworkDefinition struct {
 }
 
 type NetworkMeta struct {
-	Group string         `json:"group" validate:"required"`
-	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"owner"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type NetworkSpec struct {
@@ -24,14 +24,12 @@ type NetworkSpec struct {
 	IPV4AddressPool string
 }
 
-func (network *NetworkDefinition) SetOwner(kind string, group string, name string) {
-	network.Meta.Owner.Kind = kind
-	network.Meta.Owner.Group = group
-	network.Meta.Owner.Name = name
+func (network *NetworkDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	network.Meta.Runtime = runtime
 }
 
-func (network *NetworkDefinition) GetOwner() commonv1.Owner {
-	return network.Meta.Owner
+func (network *NetworkDefinition) GetRuntime() *commonv1.Runtime {
+	return network.Meta.Runtime
 }
 
 func (network *NetworkDefinition) GetKind() string {

@@ -187,8 +187,8 @@ func (registry *Registry) Name(client *client.Http, group string, name string) (
 	return fmt.Sprintf("%s-%s-%d", group, name, index), indexes
 }
 
-func (registry *Registry) NameReplicas(group string, name string, index uint64) (string, uint64) {
-	return fmt.Sprintf("%s-%s-%d", group, name, index), index
+func (registry *Registry) NameReplica(group string, name string, index uint64) string {
+	return fmt.Sprintf("%s-%s-%d", group, name, index)
 }
 
 func (registry *Registry) BackOffTracking(group string, name string) {

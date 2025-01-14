@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -15,26 +16,35 @@ func New(kind string) *Definition {
 }
 
 func NewImplementation(kind string) contracts.IDefinition {
+	var def contracts.IDefinition
+
 	switch kind {
 	case static.KIND_GITOPS:
-		return &v1.GitopsDefinition{}
+		def = &v1.GitopsDefinition{}
 	case static.KIND_CONTAINER:
-		return &v1.ContainerDefinition{}
+		def = &v1.ContainerDefinition{}
 	case static.KIND_CONTAINERS:
-		return &v1.ContainersDefinition{}
+		def = &v1.ContainersDefinition{}
 	case static.KIND_CONFIGURATION:
-		return &v1.ConfigurationDefinition{}
+		def = &v1.ConfigurationDefinition{}
 	case static.KIND_RESOURCE:
-		return &v1.ResourceDefinition{}
+		def = &v1.ResourceDefinition{}
 	case static.KIND_HTTPAUTH:
-		return &v1.HttpAuthDefinition{}
+		def = &v1.HttpAuthDefinition{}
 	case static.KIND_CERTKEY:
-		return &v1.CertKeyDefinition{}
+		def = &v1.CertKeyDefinition{}
 	case static.KIND_NETWORK:
-		return &v1.NetworkDefinition{}
+		def = &v1.NetworkDefinition{}
 	default:
-		return nil
+		def = nil
 	}
+
+	def.SetRuntime(&commonv1.Runtime{
+		Owner: commonv1.Owner{},
+		Node:  "",
+	})
+
+	return def
 }
 
 func (definition *Definition) Apply(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.ObjectInterface, error) {
@@ -51,33 +61,29 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 		return obj, err
 	}
 
-	if definition.Definition.GetOwner().IsEmpty() {
-		if obj.Exists() {
-			existing := NewImplementation(kind)
-			err = existing.FromJson(obj.GetDefinitionByte())
+	if obj.Exists() {
+		existing := NewImplementation(kind)
+		err = existing.FromJson(obj.GetDefinitionByte())
 
-			if err != nil {
-				return obj, err
-			}
-
-			if !existing.GetOwner().IsEmpty() {
-				return obj, errors.New("object has owner - direct modification not allowed")
-			}
+		if err != nil {
+			return obj, err
 		}
 
-		if obj.Diff(bytes) {
-			return obj, obj.Add(format, bytes)
-		} else {
-			return obj, nil
-		}
-	} else {
-		if obj.Diff(bytes) {
-			return obj, obj.AddLocal(format, bytes)
-		} else {
-			return obj, nil
+		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
+			return obj, errors.New("object has owner - direct modification not allowed")
 		}
 	}
+
+	if obj.Diff(bytes) {
+		fmt.Println("adding local")
+		fmt.Println(format)
+
+		return obj, obj.AddLocal(format, bytes)
+	} else {
+		return obj, nil
+	}
 }
+
 func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
 	err := obj.Find(format)
 
@@ -85,7 +91,7 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 		return nil, err
 	}
 
-	if definition.Definition.GetOwner().IsEmpty() {
+	if definition.Definition.GetRuntime().GetOwner().IsEmpty() {
 		if obj.Exists() {
 			existing := NewImplementation(kind)
 			err = existing.FromJson(obj.GetDefinitionByte())
@@ -94,7 +100,7 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 				return nil, err
 			}
 
-			if !existing.GetOwner().IsEmpty() {
+			if !existing.GetRuntime().GetOwner().IsEmpty() {
 				return nil, errors.New("object has owner - direct modification not allowed")
 			}
 
@@ -145,12 +151,12 @@ func (definition *Definition) Changed(format contracts.Format, obj contracts.Obj
 	}
 }
 
-func (definition *Definition) SetOwner(kind string, group string, name string) {
-	definition.Definition.SetOwner(kind, group, name)
+func (definition *Definition) SetRuntime(runtime *commonv1.Runtime) {
+	definition.Definition.SetRuntime(runtime)
 }
 
-func (definition *Definition) GetOwner() commonv1.Owner {
-	return definition.Definition.GetOwner()
+func (definition *Definition) GetRuntime() *commonv1.Runtime {
+	return definition.Definition.GetRuntime()
 }
 
 func (definition *Definition) GetKind() string {
@@ -162,7 +168,17 @@ func (definition *Definition) ResolveReferences(obj contracts.ObjectInterface) (
 }
 
 func (definition *Definition) FromJson(bytes []byte) error {
-	return definition.Definition.FromJson(bytes)
+	err := definition.Definition.FromJson(bytes)
+
+	// Protect if json unmarshal nilify runtime
+	if definition.GetRuntime() == nil {
+		definition.SetRuntime(&commonv1.Runtime{
+			Owner: commonv1.Owner{},
+			Node:  "",
+		})
+	}
+
+	return err
 }
 
 func (definition *Definition) ToJson() ([]byte, error) {

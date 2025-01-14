@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/static"
 	"net"
 )
 
@@ -35,7 +36,7 @@ func (r *Records) AddARecord(domain string, ip string) {
 
 	r.ARecords[domain].Append(ip)
 
-	format := f.NewFromString(fmt.Sprintf("dns.%s.%s", domain, r.Agent))
+	format := f.NewUnformated(fmt.Sprintf("dns.%s.%s", domain, r.Agent), static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 	bytes, err := json.Marshal(r.ARecords[domain].IPs)
@@ -63,7 +64,7 @@ func (r *Records) RemoveARecord(domain string, ip string) error {
 
 		r.ARecords[domain].Append(ip)
 
-		format := f.NewFromString(fmt.Sprintf("dns.%s.%s", domain, r.Agent))
+		format := f.NewUnformated(fmt.Sprintf("dns.%s.%s", domain, r.Agent), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 		bytes, err := json.Marshal(r.ARecords[domain].IPs)
@@ -87,7 +88,7 @@ func (r *Records) Find(domain string) []string {
 	if exists {
 		return r.ARecords[domain].IPs
 	} else {
-		format := f.NewFromString(fmt.Sprintf("dns.%s", domain))
+		format := f.NewUnformated(fmt.Sprintf("dns.%s", domain), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 		objs, err := obj.FindMany(format)

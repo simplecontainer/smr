@@ -101,8 +101,7 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer) {
 
 func HandleStart(shared *shared.Shared, container platforms.IContainer) {
 	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
-		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+		// NO OP
 	}
 }
 

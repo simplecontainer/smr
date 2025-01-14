@@ -26,6 +26,10 @@ func (network *Network) GetShared() interface{} {
 	return network.Shared
 }
 
+func (network *Network) Propose(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+	return network.Apply(user, jsonData, agent)
+}
+
 func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_NETWORK)
 

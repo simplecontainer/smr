@@ -14,23 +14,21 @@ type ConfigurationDefinition struct {
 }
 
 type ConfigurationMeta struct {
-	Group string         `json:"group" validate:"required"`
-	Name  string         `json:"name" validate:"required"`
-	Owner commonv1.Owner `json:"owner"`
+	Group   string            `json:"group" validate:"required"`
+	Name    string            `json:"name" validate:"required"`
+	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
 }
 
-func (configuration *ConfigurationDefinition) SetOwner(kind string, group string, name string) {
-	configuration.Meta.Owner.Kind = kind
-	configuration.Meta.Owner.Group = group
-	configuration.Meta.Owner.Name = name
+func (configuration *ConfigurationDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	configuration.Meta.Runtime = runtime
 }
 
-func (configuration *ConfigurationDefinition) GetOwner() commonv1.Owner {
-	return configuration.Meta.Owner
+func (configuration *ConfigurationDefinition) GetRuntime() *commonv1.Runtime {
+	return configuration.Meta.Runtime
 }
 
 func (configuration *ConfigurationDefinition) GetKind() string {
