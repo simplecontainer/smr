@@ -55,7 +55,7 @@ func (user *User) CreateUser(k *keys.Keys, agent string, username string, domain
 			return "", exists
 		}
 	} else {
-		return "", errors.New("users can only be created by root user from localhost")
+		return "", errors.New("users can only be created by agent user from localhost")
 	}
 }
 

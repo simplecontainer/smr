@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) CA(c *gin.Context) {
+func (api *Api) ExportClients(c *gin.Context) {
 	bytes, err := json.Marshal(api.Keys)
 
 	if err != nil {
@@ -47,7 +47,7 @@ func (api *Api) CA(c *gin.Context) {
 
 	c.JSON(http.StatusOK, &contracts.Response{
 		HttpStatus:       http.StatusOK,
-		Explanation:      "CA exported with success",
+		Explanation:      "Client certificates exported with success",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,

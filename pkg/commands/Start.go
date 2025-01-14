@@ -217,8 +217,8 @@ func Start() {
 					{
 						secrets.POST("create/*key", api.DatabaseSetBase64)
 						secrets.PUT("update/*key", api.DatabaseSetBase64)
-						secrets.POST("propose/:type/*key", api.Propose)
-						secrets.PUT("propose/:type/*key", api.Propose)
+						secrets.POST("propose/:type/*key", api.ProposeDatabase)
+						secrets.PUT("propose/:type/*key", api.ProposeDatabase)
 						secrets.GET("get/*key", api.DatabaseGetBase64)
 						secrets.GET("keys", api.DatabaseGetKeys)
 						secrets.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
@@ -244,12 +244,12 @@ func Start() {
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-				router.GET("/ca", api.CA)
 				router.GET("/connect", api.Health)
-				router.GET("/restore", api.Restore)
-				router.GET("/version", api.Version)
-				router.GET("/healthz", api.Health)
+				router.GET("/fetch/certs", api.ExportClients)
+
 				router.GET("/metrics", api.Metrics())
+				router.GET("/healthz", api.Health)
+				router.GET("/version", api.Version)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)
