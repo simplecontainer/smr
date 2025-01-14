@@ -2,7 +2,6 @@ package definitions
 
 import (
 	"errors"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -75,9 +74,6 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 	}
 
 	if obj.Diff(bytes) {
-		fmt.Println("adding local")
-		fmt.Println(format)
-
 		return obj, obj.AddLocal(format, bytes)
 	} else {
 		return obj, nil

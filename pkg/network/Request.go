@@ -11,7 +11,6 @@ import (
 
 func Send(client *http.Client, URL string, method string, data []byte) *contracts.Response {
 	var req *http.Request
-	var marshaled []byte
 	var err error
 
 	if data != nil {
@@ -65,11 +64,11 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       resp.StatusCode,
-			Explanation:      "failed to unmarshal body response from smr-agent",
-			ErrorExplanation: generateResponse(URL, resp.StatusCode, method, marshaled, body, err),
-			Error:            true,
+			Explanation:      "",
+			ErrorExplanation: err.Error(),
+			Error:            false,
 			Success:          false,
-			Data:             nil,
+			Data:             body,
 		}
 	}
 

@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) Propose(c *gin.Context) {
+func (api *Api) ProposeObject(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {

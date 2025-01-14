@@ -195,8 +195,8 @@ func Start() {
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)
-						kinds.POST("propose/apply", api.Propose)
-						kinds.DELETE("propose/remove", api.Propose)
+						kinds.POST("propose/apply", api.ProposeObject)
+						kinds.DELETE("propose/remove", api.ProposeObject)
 						kinds.POST("compare", api.Compare)
 						kinds.DELETE("delete", api.Delete)
 						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
@@ -215,14 +215,14 @@ func Start() {
 
 					secrets := v1.Group("secrets")
 					{
-						secrets.POST("create/*key", api.DatabaseSetBase64)
-						secrets.PUT("update/*key", api.DatabaseSetBase64)
-						secrets.POST("propose/:type/*key", api.ProposeDatabase)
-						secrets.PUT("propose/:type/*key", api.ProposeDatabase)
-						secrets.GET("get/*key", api.DatabaseGetBase64)
-						secrets.GET("keys", api.DatabaseGetKeys)
-						secrets.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
-						secrets.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
+						secrets.POST("create/*key", api.SecretsSet)
+						secrets.PUT("update/*key", api.SecretsSet)
+						secrets.POST("propose/:type/*key", api.ProposeSecrets)
+						secrets.PUT("propose/:type/*key", api.ProposeSecrets)
+						secrets.GET("get/*key", api.SecretsGet)
+						secrets.GET("keys", api.SecretsGet)
+						secrets.GET("keys/*prefix", api.SecretsGetKeysPrefix)
+						secrets.DELETE("keys/*prefix", api.SecretsRemoveKeys)
 					}
 
 					containers := v1.Group("/")

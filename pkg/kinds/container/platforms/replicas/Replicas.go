@@ -8,6 +8,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
+	"slices"
+	"sort"
 )
 
 func New(nodeID uint64, nodes []*node.Node) *Replicas {
@@ -144,30 +146,50 @@ func Specific(replicasWanted uint64, existingIndexes []uint64, nodes []uint64, m
 	var create = make([][]uint64, 0)
 	var destroy = make([]uint64, 0)
 
-	replicas := make([]uint64, replicasWanted)
-	for i := uint64(0); i < replicasWanted; i++ {
-		replicas[i] = i + uint64(1)
-	}
+	if slices.Contains(nodes, member) {
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i] < nodes[j]
+		})
 
-	create = ChunkSlice(replicas, len(nodes))
+		normalizedNodes := make(map[uint64]uint64)
+		normalizedMember := uint64(0)
 
-	if len(create[member-1]) < len(existingIndexes) {
-		for i, existing := range existingIndexes {
-			preserve := false
+		for i, node := range nodes {
+			x := node - uint64(i)
+			normalizedNodes[uint64(i)] = nodes[i] - x + 1
 
-			for _, creating := range create[member-1] {
-				if creating == existing {
-					preserve = true
-				}
-			}
-
-			if !preserve {
-				destroy = append(destroy, existingIndexes[i])
+			if node == member {
+				normalizedMember = uint64(i)
 			}
 		}
+
+		replicas := make([]uint64, replicasWanted)
+		for i := uint64(0); i < replicasWanted; i++ {
+			replicas[i] = i + uint64(1)
+		}
+
+		create = ChunkSlice(replicas, len(nodes))
+
+		if len(create[normalizedMember]) < len(existingIndexes) {
+			for i, existing := range existingIndexes {
+				preserve := false
+
+				for _, creating := range create[normalizedMember] {
+					if creating == existing {
+						preserve = true
+					}
+				}
+
+				if !preserve {
+					destroy = append(destroy, existingIndexes[i])
+				}
+			}
+		}
+
+		return create[normalizedMember], destroy
 	}
 
-	return create[member-1], destroy
+	return []uint64{}, []uint64{}
 }
 
 func ChunkSlice(slice []uint64, numChunks int) [][]uint64 {

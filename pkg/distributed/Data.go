@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/secrets"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
@@ -180,7 +181,7 @@ func (replication *Replication) HandleEtcd(data KV) {
 
 func (replication *Replication) HandleSecret(data KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_SECRET_STRING)
-	obj := objects.New(replication.Client, replication.User)
+	obj := secrets.New(replication.Client, replication.User)
 
 	if data.Val == nil {
 		_, err := obj.RemoveLocal(format)

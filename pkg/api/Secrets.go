@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// DatabaseGet godoc
+// SecretsGet godoc
 //
 //	@Summary		Get value from the key-value store
 //	@Description	get string by key from the key-value store
@@ -25,7 +25,7 @@ import (
 //	@Failure		404	{object}	  contracts.Response
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key} [get]
-func (api *Api) DatabaseGet(c *gin.Context) {
+func (api *Api) SecretsGet(c *gin.Context) {
 	api.BadgerSync.RLock()
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
@@ -65,12 +65,12 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 			ErrorExplanation: "",
 			Error:            false,
 			Success:          true,
-			Data:             value,
+			Data:             network.ToJson(value),
 		})
 	}
 }
 
-// DatabaseSet godoc
+// SecretsSet godoc
 //
 //	@Summary		Set value in the key-value store
 //	@Description	set string by key in the key-value store
@@ -84,7 +84,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 //	@Failure		404		{object}	  contracts.Response
 //	@Failure		500		{object}	  contracts.Response
 //	@Router			/database/{key} [post]
-func (api *Api) DatabaseSet(c *gin.Context) {
+func (api *Api) SecretsSet(c *gin.Context) {
 	var data []byte
 	var err error
 
@@ -130,7 +130,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 	}
 }
 
-func (api *Api) ProposeDatabase(c *gin.Context) {
+func (api *Api) ProposeSecrets(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -166,7 +166,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, contracts.Response{
-		Explanation:      "value proposed to the key value store",
+		Explanation:      "secret proposed to the key value store",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
@@ -174,7 +174,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 	})
 }
 
-// DatabaseGetKeysPrefix godoc
+// SecretsGetKeysPrefix godoc
 //
 //	@Summary		Get keys by prefix in the key-value store
 //	@Description	get all keys by prefix in the key-value store
@@ -185,7 +185,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 //	@Failure		404	{object}	  contracts.Response
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key}/{prefix} [get]
-func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
+func (api *Api) SecretsGetKeysPrefix(c *gin.Context) {
 	var keys []string
 
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
@@ -229,7 +229,7 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	}
 }
 
-// DatabaseGetKeys godoc
+// SecretsGetKeys godoc
 //
 //	@Summary		Get keys by prefix in the key-value store
 //	@Description	get all keys by prefix in the key-value store
@@ -240,7 +240,7 @@ func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 //	@Failure		404	{object}	  contracts.Response
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/keys [get]
-func (api *Api) DatabaseGetKeys(c *gin.Context) {
+func (api *Api) SecretsGetKeys(c *gin.Context) {
 	var keys []string
 
 	api.BadgerSync.RLock()
@@ -281,7 +281,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 	}
 }
 
-// DatabaseRemoveKeys godoc
+// SecretsRemoveKeys godoc
 //
 //	@Summary		Remove keys by prefix in the key-value store
 //	@Description	remove all keys by prefix in the key-value store
@@ -292,7 +292,7 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 //	@Failure		404	{object}	  contracts.Response
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/keys [delete]
-func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
+func (api *Api) SecretsRemoveKeys(c *gin.Context) {
 	var keys []string
 
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))

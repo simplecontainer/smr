@@ -60,7 +60,7 @@ func (obj *Object) Add(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/secrets/create/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
@@ -73,7 +73,7 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) Update(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/secrets/update/%s", obj.client.API, format.ToString())
 	response := SendRequest(obj.client.Http, URL, "PUT", []byte(data))
 
 	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", string(data)))
