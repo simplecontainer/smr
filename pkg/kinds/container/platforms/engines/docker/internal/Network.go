@@ -173,7 +173,7 @@ func (network *Network) FindNetworkAlias(endpointName string) error {
 	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	defer func(cli *dockerClient.Client) {

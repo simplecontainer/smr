@@ -120,11 +120,14 @@ func (c *Container) Prepare(client *client.Http, user *authentication.User) erro
 func (c *Container) AttachToNetworks(agentContainerName string) error {
 	return c.Platform.AttachToNetworks(agentContainerName)
 }
-func (c *Container) UpdateDns(cache *dns.Records, networkId string) {
-	c.Platform.UpdateDns(cache, networkId)
+func (c *Container) UpdateDns(cache *dns.Records) error {
+	return c.Platform.UpdateDns(cache)
 }
-func (c *Container) RemoveDns(cache *dns.Records, networkId string) {
-	c.Platform.RemoveDns(cache, networkId)
+func (c *Container) RemoveDns(cache *dns.Records, networkId string) error {
+	return c.Platform.RemoveDns(cache, networkId)
+}
+func (c *Container) SyncNetworkInformation() error {
+	return c.Platform.SyncNetworkInformation()
 }
 
 func (c *Container) HasDependencyOn(kind string, group string, identifier string, runtime *types.Runtime) bool {

@@ -489,7 +489,11 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 				return nil, err
 			}
 
-			//container.UpdateDns(dnsCache)
+			err = container.UpdateDns(dnsCache)
+
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		return container.Get()
@@ -596,30 +600,28 @@ func (container *Docker) AttachToNetworks(agentContainerName string) error {
 
 	return nil
 }
-func (container *Docker) UpdateDns(dnsCache *dns.Records, networkId string) {
+func (container *Docker) UpdateDns(dnsCache *dns.Records) error {
 	networks := container.GetNetworkInfoTS()
 
 	for _, network := range networks.Networks {
-		if network.Docker.NetworkId == networkId {
-			dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
-			dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
-
-			return
-		}
+		dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
+		dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
 	}
+
+	return nil
 }
 
-func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) {
+func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) error {
 	networks := container.GetNetworkInfoTS()
 
 	for _, network := range networks.Networks {
 		if network.Docker.NetworkId == networkId {
 			dnsCache.RemoveARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
 			dnsCache.RemoveARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
-
-			return
 		}
 	}
+
+	return nil
 }
 
 func (container *Docker) GenerateLabels() map[string]string {

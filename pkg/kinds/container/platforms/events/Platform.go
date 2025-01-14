@@ -89,12 +89,32 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 
 func HandleConnect(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
 	logger.Log.Info(fmt.Sprintf("container %s is connected to the network: %s", container.GetGeneratedName(), event.NetworkID))
-	container.UpdateDns(shared.DnsCache, event.NetworkID)
+	err := container.SyncNetworkInformation()
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
+
+	err = container.UpdateDns(shared.DnsCache)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
 }
 
 func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
 	logger.Log.Info(fmt.Sprintf("container %s is disconnected from the network: %s", container.GetGeneratedName(), event.NetworkID))
-	container.RemoveDns(shared.DnsCache, event.NetworkID)
+	err := container.SyncNetworkInformation()
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
+
+	err = container.RemoveDns(shared.DnsCache, event.NetworkID)
+
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
 }
 
 func HandleStart(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
