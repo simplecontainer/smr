@@ -118,7 +118,7 @@ func (r *Records) Find(domain string) []string {
 	if exists {
 		return r.ARecords[domain].IPs
 	} else {
-		format := f.NewUnformated(fmt.Sprintf("dns.%s", strings.TrimSuffix(domain, ".")), static.CATEGORY_PLAIN_STRING)
+		format := f.NewUnformated(fmt.Sprintf("dns.%s.%s", strings.TrimSuffix(domain, "."), r.Agent), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 		obj.Find(format)
