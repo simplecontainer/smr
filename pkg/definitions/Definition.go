@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"errors"
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -79,7 +80,6 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 		return obj, nil
 	}
 }
-
 func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
 	err := obj.Find(format)
 
@@ -130,7 +130,6 @@ func (definition *Definition) Changed(format contracts.Format, obj contracts.Obj
 func (definition *Definition) SetRuntime(runtime *commonv1.Runtime) {
 	definition.Definition.SetRuntime(runtime)
 }
-
 func (definition *Definition) GetRuntime() *commonv1.Runtime {
 	return definition.Definition.GetRuntime()
 }
@@ -163,6 +162,31 @@ func (definition *Definition) ToJson() ([]byte, error) {
 
 func (definition *Definition) ToJsonWithKind() ([]byte, error) {
 	return definition.Definition.ToJsonWithKind()
+}
+
+func (definition *Definition) ToJsonForUser() ([]byte, error) {
+	bytes, err := definition.Definition.ToJsonWithKind()
+
+	if err != nil {
+		return nil, err
+	}
+
+	patchJSON := []byte(`[
+		{"op": "remove", "path": "/meta/runtime"}
+	]`)
+
+	patch, err := jsonpatch.DecodePatch(patchJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	modified, err := patch.Apply(bytes)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return modified, nil
 }
 
 func (definition *Definition) ToJsonString() (string, error) {

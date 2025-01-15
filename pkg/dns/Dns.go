@@ -41,9 +41,6 @@ func (r *Records) ListenUpdates() {
 				return
 			}
 
-			fmt.Println("UPDATE DNS")
-			fmt.Println(d)
-
 			switch d.Action {
 			case ADD_RECORD:
 				err = r.AddARecord(d.Domain, d.IP)

@@ -2,7 +2,6 @@ package events
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
@@ -73,7 +72,6 @@ func HandleDelete(shared *shared.Shared, event Events, node uint64) {
 
 func HandleChange(shared *shared.Shared, event Events, node uint64) {
 	for _, containerWatcher := range shared.Watcher.Container {
-		fmt.Println(containerWatcher.Container.GetGeneratedName())
 		if containerWatcher.Container.HasDependencyOn(event.Kind, event.Group, event.Name) {
 			containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.STATUS_CHANGE)
 			shared.Watcher.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container

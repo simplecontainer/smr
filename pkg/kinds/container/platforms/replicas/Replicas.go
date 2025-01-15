@@ -1,7 +1,6 @@
 package replicas
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
@@ -82,9 +81,6 @@ func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definiti
 
 func (replicas *Replicas) GetContainersIndexes(registry *registry.Registry, definition *v1.ContainerDefinition) ([]uint64, []uint64) {
 	if definition.Spec.Container.Spread.Spread == "" {
-		fmt.Println("no spread")
-		fmt.Println("set to specific")
-		fmt.Println(definition.GetRuntime().GetNode())
 		// No spread so create only for node who sourced the object
 		replicas.Recalculate(v1.ContainerSpread{
 			Spread: "specific",

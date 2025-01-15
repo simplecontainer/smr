@@ -57,7 +57,7 @@ func (httpauth *Httpauth) Get(request contracts.Control) contracts.Response {
 		return contracts.Response{}
 	}
 
-	bytes, err := r.Definition.ToJsonWithKind()
+	bytes, err := r.Definition.ToJsonForUser()
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
