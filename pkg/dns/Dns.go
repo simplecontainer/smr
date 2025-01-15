@@ -13,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net"
+	"strings"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -117,31 +118,22 @@ func (r *Records) Find(domain string) []string {
 	if exists {
 		return r.ARecords[domain].IPs
 	} else {
-		format := f.NewUnformated(fmt.Sprintf("dns.%s", domain), static.CATEGORY_PLAIN_STRING)
+		format := f.NewUnformated(fmt.Sprintf("dns.%s", strings.TrimSuffix(domain, ".")), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
-		objs, err := obj.FindMany(format)
+		obj.Find(format)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
+		if obj.Exists() {
+			records := make(map[string][]string, 0)
 
-		if len(objs) > 0 {
-			records := make([]string, 0)
+			err := json.Unmarshal(obj.GetDefinitionByte(), &records)
 
-			for _, v := range objs {
-				record := make([]string, 0)
-				err = json.Unmarshal(v.GetDefinitionByte(), &record)
-
-				if err != nil {
-					logger.Log.Error(err.Error())
-					continue
-				}
-
-				records = append(records, record...)
+			if err != nil {
+				logger.Log.Error(err.Error())
+				return []string{}
 			}
 
-			return records
+			return records["IPs"]
 		} else {
 			return []string{}
 		}
