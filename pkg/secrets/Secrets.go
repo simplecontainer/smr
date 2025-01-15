@@ -19,6 +19,8 @@ import (
 
 //go:generate mockgen -source=Interface.go -destination=mock/Interface.go
 
+var acks = make(map[string]chan bool)
+
 func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
 		Changelog:  diff.Changelog{},
@@ -46,7 +48,7 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Add(format contracts.Format, data []byte) error {
+func (obj *Object) Propose(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
 
@@ -56,6 +58,18 @@ func (obj *Object) Add(format contracts.Format, data []byte) error {
 		return nil
 	} else {
 		return errors.New(response.ErrorExplanation)
+	}
+}
+
+func (obj *Object) Wait(format contracts.Format) error {
+	acks[format.ToString()] = make(chan bool)
+	for {
+		select {
+		case <-acks[format.ToString()]:
+			close(acks[format.ToString()])
+			delete(acks, format.ToString())
+			return nil
+		}
 	}
 }
 
@@ -72,16 +86,23 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 	}
 }
 
-func (obj *Object) Update(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/secrets/update/%s", obj.client.API, format.ToString())
-	response := SendRequest(obj.client.Http, URL, "PUT", []byte(data))
+func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
+	prefix := format.ToString()
 
-	logger.Log.Debug("object update", zap.String("URL", URL), zap.String("data", string(data)))
+	if !format.Full() {
+		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
+		prefix += "."
+	}
+
+	URL := fmt.Sprintf("https://%s/api/v1/secrets/keys/%s", obj.client.API, prefix)
+	response := SendRequest(obj.client.Http, URL, "DELETE", nil)
+
+	logger.Log.Debug("object remove", zap.String("URL", URL))
 
 	if response.Success {
-		return nil
+		return true, nil
 	} else {
-		return errors.New(response.ErrorExplanation)
+		return false, errors.New(response.ErrorExplanation)
 	}
 }
 
@@ -140,46 +161,6 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 	}
 
 	return objects, nil
-}
-
-func (obj *Object) Remove(format contracts.Format) (bool, error) {
-	prefix := format.ToString()
-
-	if !format.Full() {
-		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
-		prefix += "."
-	}
-
-	URL := fmt.Sprintf("https://%s/api/v1/secrets/keys/%s", obj.client.API, prefix)
-	response := SendRequest(obj.client.Http, URL, "DELETE", nil)
-
-	logger.Log.Debug("object remove", zap.String("URL", URL))
-
-	if response.Success {
-		return true, nil
-	} else {
-		return false, errors.New(response.ErrorExplanation)
-	}
-}
-
-func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
-	prefix := format.ToString()
-
-	if !format.Full() {
-		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
-		prefix += "."
-	}
-
-	URL := fmt.Sprintf("https://%s/api/v1/secrets/keys/%s", obj.client.API, prefix)
-	response := SendRequest(obj.client.Http, URL, "DELETE", nil)
-
-	logger.Log.Debug("object remove", zap.String("URL", URL))
-
-	if response.Success {
-		return true, nil
-	} else {
-		return false, errors.New(response.ErrorExplanation)
-	}
 }
 
 func (obj *Object) Diff(definition []byte) bool {

@@ -98,15 +98,15 @@ Manager(){
     echo
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
-        IMAGETAG=$(smr cli inspect --agent smr-agent-1 | jq '.Config.Image' | tr -d /\"//)
+        IMAGETAG=$(smr cli inspect --name smr-agent-1 | jq '.Config.Image' | tr -d /\"//)
         arrIN=(${IMAGETAG//:/ })
 
-        smr node stop --agent "${AGENT}" $CLIENT_ARGS --wait
+        smr node stop --name "${AGENT}" $CLIENT_ARGS --wait
 
         if [[ $RESTART == "true" ]]; then
-          smr node run --image "${arrIN[0]}" --tag "${arrIN[1]}" --args="start --restore true" $CLIENT_ARGS --agent "${AGENT}"
+          smr node run --image "${arrIN[0]}" --tag "${arrIN[1]}" --args="start --restore true" $CLIENT_ARGS --name "${AGENT}"
         else
-          smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start --restore true" $CLIENT_ARGS --agent "${AGENT}"
+          smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start --restore true" $CLIENT_ARGS --name "${AGENT}"
         fi
 
         while :
@@ -124,14 +124,14 @@ Manager(){
   else
     if [[ ${AGENT} != "" ]]; then
       if [[ ${MODE} == "cluster" ]]; then
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --agent "${AGENT}" $CLIENT_ARGS --wait
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${AGENT}" $CLIENT_ARGS --wait
 
         if [[ ${?} != 0 ]]; then
           echo "Simplecontainer returned non-zero exit code - check the logs of the node controller container"
           exit
         fi
 
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --agent "${AGENT}"
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${AGENT}"
 
         if [[ $NODE_DOMAIN == "localhost" ]]; then
           NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $AGENT):${NODE_PORT}"
@@ -157,8 +157,8 @@ Manager(){
 
         echo "The simplecontainer is started in cluster mode."
       else
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --agent ${AGENT} --domain ${DOMAIN} --ip ${IP}" --agent "${AGENT}" --wait
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --agent "${AGENT}"
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${AGENT} --domain ${DOMAIN} --ip ${IP}" --name "${AGENT}" --wait
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --name "${AGENT}"
 
         sudo nohup smr node cluster start --node "${NODE_DOMAIN}" 2>&1 </dev/null >/dev/null 2>&1 &
 

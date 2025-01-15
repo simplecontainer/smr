@@ -19,13 +19,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/distributed"
-	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/network"
-	"go.uber.org/zap"
 	"log"
 	"strings"
 	"sync"
@@ -40,7 +36,7 @@ type KVStore struct {
 	DataC       chan distributed.KV
 	EventsC     chan distributed.KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
-	Agent       string
+	Node        uint64
 	mu          sync.RWMutex
 	client      *client.Http
 	kvStore     *badger.DB
@@ -67,10 +63,10 @@ func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client
 	return s, nil
 }
 
-func (s *KVStore) Propose(k string, v []byte, category int, agent string) {
+func (s *KVStore) Propose(k string, v []byte, category int, node uint64) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(distributed.NewEncode(k, v, agent, category)); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(distributed.NewEncode(k, v, node, category)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -96,7 +92,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 
 		for _, data := range commit.data {
 			s.mu.Lock()
-			s.DataC <- distributed.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Agent)
+			s.DataC <- distributed.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node)
 			s.mu.Unlock()
 		}
 		close(commit.applyDoneC)
@@ -131,17 +127,10 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 
 	s.mu.Lock()
 
-	for k, v := range store {
-		URL := fmt.Sprintf("https://%s/api/v1/database/update/%s", s.client.Clients[s.Agent].API, k)
-		response := network.Send(s.client.Clients[s.Agent].Http, URL, "PUT", []byte(v))
-
-		logger.Log.Debug("distributed object update", zap.String("URL", URL), zap.String("data", v))
-
-		if !response.Success {
-			s.mu.Unlock()
-
-			return errors.New(response.ErrorExplanation)
-		}
+	for _, v := range store {
+		s.mu.Lock()
+		s.DataC <- distributed.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node)
+		s.mu.Unlock()
 	}
 
 	s.mu.Unlock()

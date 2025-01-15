@@ -46,14 +46,14 @@ func Start() {
 				api.Manager.Keys = api.Keys
 
 				api.User = &authentication.User{
-					Username: api.Config.Node,
+					Username: api.Config.NodeName,
 					Domain:   "localhost:1443",
 				}
 				api.Manager.User = api.User
 
 				var found error
 
-				found = api.Keys.CAExists(static.SMR_SSH_HOME, api.Config.Node)
+				found = api.Keys.CAExists(static.SMR_SSH_HOME, api.Config.NodeName)
 
 				if found != nil {
 					err = api.Keys.GenerateCA()
@@ -68,7 +68,7 @@ func Start() {
 					}
 				}
 
-				found = api.Keys.ServerExists(static.SMR_SSH_HOME, api.Config.Node)
+				found = api.Keys.ServerExists(static.SMR_SSH_HOME, api.Config.NodeName)
 
 				if found != nil {
 					err = api.Keys.GenerateServer(api.Config.Certificates.Domains, api.Config.Certificates.IPs)
@@ -77,18 +77,18 @@ func Start() {
 						panic(err)
 					}
 
-					err = api.Keys.GenerateClient(api.Config.Certificates.Domains, api.Config.Certificates.IPs, api.Config.Node)
+					err = api.Keys.GenerateClient(api.Config.Certificates.Domains, api.Config.Certificates.IPs, api.Config.NodeName)
 
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Server.Write(static.SMR_SSH_HOME, api.Config.Node)
+					err = api.Keys.Server.Write(static.SMR_SSH_HOME, api.Config.NodeName)
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Clients[api.Config.Node].Write(static.SMR_SSH_HOME, api.Config.Node)
+					err = api.Keys.Clients[api.Config.NodeName].Write(static.SMR_SSH_HOME, api.Config.NodeName)
 					if err != nil {
 						panic(err)
 					}
@@ -99,7 +99,7 @@ func Start() {
 					fmt.Println("/* ls $HOME/.ssh/simplecontainer                                     */")
 					fmt.Println("/*********************************************************************/")
 
-					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.Node, api.Keys.Clients[api.Config.Node])
+					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.NodeName, api.Keys.Clients[api.Config.NodeName])
 
 					if err != nil {
 						panic(err)
@@ -129,7 +129,7 @@ func Start() {
 						panic(err)
 					}
 
-					if username == api.Config.Node {
+					if username == api.Config.NodeName {
 						APIEndpoint = "localhost"
 					}
 
@@ -142,8 +142,10 @@ func Start() {
 					})
 				}
 
-				api.DnsCache = dns.New(api.Config.Node, api.Manager.Http, api.User)
+				api.DnsCache = dns.New(api.Config.NodeName, api.Manager.Http, api.User)
 				api.DnsCache.Client = api.Manager.Http
+
+				go api.DnsCache.ListenUpdates()
 
 				api.Manager.DnsCache = api.DnsCache
 

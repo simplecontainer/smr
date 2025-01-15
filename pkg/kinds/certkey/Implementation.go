@@ -49,10 +49,10 @@ func (certkey *Certkey) Propose(c *gin.Context, user *authentication.User, jsonD
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.Node)
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, certkey.Shared.Manager.Config.Node)
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, certkey.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

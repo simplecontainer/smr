@@ -42,19 +42,31 @@ func (container *Container) Get(request contracts.Control) contracts.Response {
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
+	obj.Find(format)
 
-	if err != nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
+	if !obj.Exists() {
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New(static.STATUS_RESPONSE_NOT_FOUND), nil)
 	}
 
-	definitionObject := obj.GetDefinition()
+	r, err := common.NewRequest(KIND)
 
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
 
-	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
+	err = r.Definition.FromJson(obj.GetDefinitionByte())
+
+	if err != nil {
+		return contracts.Response{}
+	}
+
+	bytes, err := r.Definition.ToJsonWithKind()
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
+
+	return common.Response(http.StatusOK, "", nil, bytes)
 }
 func (container *Container) View(request contracts.Control) contracts.Response {
 	containerObj := container.Shared.Registry.Find(fmt.Sprintf("%s", request.Group), fmt.Sprintf("%s", request.Name))
@@ -75,7 +87,7 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("container not found"), nil)
 	}
 
-	event := events.New(events.EVENT_RESTART, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+	event := events.New(events.EVENT_RESTART, static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
 
 	bytes, err := event.ToJson()
 
@@ -83,7 +95,7 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
-	container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
+	container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_RESTART, nil, nil)
 }
@@ -94,12 +106,12 @@ func (container *Container) Remove(request contracts.Control) contracts.Response
 		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("container not found"), nil)
 	}
 
-	event := events.New(events.EVENT_DELETE, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+	event := events.New(events.EVENT_DELETE, static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
 
 	bytes, err := event.ToJson()
 
 	if err != nil {
-		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.Node, static.CATEGORY_EVENT)
+		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
 	}
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)

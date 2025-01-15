@@ -11,18 +11,16 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"io"
-	"strconv"
 )
 
-func New(platform string, name string, config *configuration.Configuration, ChangeC chan distributed.Container, definition contracts.IDefinition) (IContainer, error) {
-	statusObj := status.New(ChangeC)
+func New(platform string, name string, config *configuration.Configuration, definition contracts.IDefinition) (IContainer, error) {
+	statusObj := status.New()
 
 	switch platform {
 	case static.PLATFORM_DOCKER:
@@ -38,8 +36,9 @@ func New(platform string, name string, config *configuration.Configuration, Chan
 				Runtime: &types.Runtime{
 					Configuration:      smaps.New(),
 					ObjectDependencies: make([]f.Format, 0),
-					NodeIP:             strconv.FormatUint(config.KVStore.Node, 10),
-					Agent:              config.Node,
+					NodeURL:            config.KVStore.URL,
+					Node:               config.KVStore.Node,
+					NodeName:           config.NodeName,
 				},
 				Status: statusObj,
 			},
@@ -130,12 +129,18 @@ func (c *Container) SyncNetworkInformation() error {
 	return c.Platform.SyncNetworkInformation()
 }
 
-func (c *Container) HasDependencyOn(kind string, group string, identifier string, runtime *types.Runtime) bool {
-	return c.Platform.HasDependencyOn(kind, group, identifier, runtime)
+func (c *Container) HasDependencyOn(kind string, group string, name string) bool {
+	for _, format := range c.GetRuntime().ObjectDependencies {
+		if format.Identifier == name && format.Group == group && format.Kind == kind {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *Container) HasOwner() bool {
-	return c.Platform.HasOwner()
+	return c.GetDefinition().GetRuntime().GetOwner().IsEmpty()
 }
 
 func (c *Container) GetId() string {
@@ -148,8 +153,12 @@ func (c *Container) GetRuntime() *types.Runtime {
 func (c *Container) GetStatus() *status.Status {
 	return c.General.Status
 }
-func (c *Container) GetAgent() string {
-	return c.General.Runtime.Agent
+func (c *Container) GetNode() uint64 {
+	return c.General.Runtime.Node
+}
+
+func (c *Container) GetNodeName() string {
+	return c.General.Runtime.NodeName
 }
 
 func (c *Container) GetDefinition() contracts.IDefinition {

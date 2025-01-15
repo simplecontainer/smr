@@ -16,6 +16,8 @@ func Category(category string) int {
 		return static.CATEGORY_SECRET
 	case "plain":
 		return static.CATEGORY_PLAIN
+	case "dns":
+		return static.CATEGORY_DNS
 	default:
 		logger.Log.Error("invalid category sent", zap.String("category", category))
 		return static.CATEGORY_INVALID
@@ -32,6 +34,8 @@ func CategoryString(category int) string {
 		return static.CATEGORY_SECRET_STRING
 	case static.CATEGORY_PLAIN:
 		return static.CATEGORY_PLAIN_STRING
+	case static.CATEGORY_DNS:
+		return static.CATEGORY_DNS_STRING
 	default:
 		return static.CATEGORY_INVALID_STRING
 	}

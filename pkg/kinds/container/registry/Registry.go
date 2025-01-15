@@ -1,10 +1,10 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -28,31 +28,27 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 	registry.ContainersLock.Unlock()
 }
 
-func (registry *Registry) Sync(container distributed.Container) {
-	registry.ContainersLock.Lock()
-	if registry.Containers[container.Group] != nil && registry.Containers[container.Group][container.Name] != nil {
-		bytes, err := registry.Containers[container.Group][container.Name].ToJson()
+func (registry *Registry) Sync(container platforms.IContainer) error {
+	format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", container.GetGroup(), container.GetGeneratedName()), static.CATEGORY_PLAIN_STRING)
+	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
-			registry.ContainersLock.Unlock()
-			return
-		}
+	bytes, err := container.ToJson()
 
-		format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", container.Group, container.Name), static.CATEGORY_PLAIN_STRING)
-		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+	err = obj.Propose(format, bytes)
 
-		obj.Add(format, bytes)
+	if err != nil {
+		return err
 	}
-	registry.ContainersLock.Unlock()
+
+	return obj.Wait(format)
 }
 
-func (registry *Registry) Remove(group string, name string) bool {
+func (registry *Registry) Remove(group string, name string) error {
 	registry.ContainersLock.Lock()
+	defer registry.ContainersLock.Unlock()
 
 	if registry.Containers[group] == nil {
-		registry.ContainersLock.Unlock()
-		return true
+		return errors.New("container not found")
 	} else {
 		delete(registry.Containers[group], name)
 
@@ -60,14 +56,16 @@ func (registry *Registry) Remove(group string, name string) bool {
 			delete(registry.Containers, group)
 		}
 
-		registry.ContainersLock.Unlock()
-
 		format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		obj.Remove(format)
+		err := obj.Propose(format, nil)
 
-		return true
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 }
 
@@ -115,11 +113,11 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 	}
 }
 
-func (registry *Registry) FindGroup(group string) map[string]platforms.IContainer {
+func (registry *Registry) FindGroup(group string) []platforms.IContainer {
 	format := f.NewFromString(fmt.Sprintf("state.container.%s", group))
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-	var result map[string]platforms.IContainer
+	var result []platforms.IContainer
 	objs, _ := obj.FindMany(format)
 
 	if len(objs) > 0 {
@@ -131,15 +129,7 @@ func (registry *Registry) FindGroup(group string) map[string]platforms.IContaine
 				continue
 			}
 
-			if result[instance.GetGeneratedName()] == nil {
-				tmp := map[string]platforms.IContainer{
-					instance.GetGeneratedName(): instance,
-				}
-
-				result = tmp
-			} else {
-				result[instance.GetGeneratedName()] = instance
-			}
+			result = append(result, instance)
 		}
 	}
 

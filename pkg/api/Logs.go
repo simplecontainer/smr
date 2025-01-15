@@ -38,7 +38,7 @@ func (api *Api) Logs(c *gin.Context) {
 		return
 	} else {
 		if container.IsGhost() {
-			resp, err := network.Raw(api.Manager.Http.Clients[container.GetRuntime().Agent].Http, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().Agent].API, os.Args[3], os.Args[4], follow), http.MethodGet, nil)
+			resp, err := network.Raw(api.Manager.Http.Clients[container.GetRuntime().NodeName].Http, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().NodeName].API, os.Args[3], os.Args[4], follow), http.MethodGet, nil)
 
 			var bytes int
 			buff := make([]byte, 512)

@@ -6,7 +6,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
@@ -54,10 +53,10 @@ func (resource *Resource) Propose(c *gin.Context, user *authentication.User, jso
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.Node)
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, resource.Shared.Manager.Config.Node)
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, resource.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -98,7 +97,7 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, definition.Meta.Group, definition.Meta.Name, nil)
+		event := events.New(events.EVENT_CHANGE, definition.GetKind(), definition.Meta.Group, definition.Meta.Name, nil)
 
 		var bytes []byte
 		bytes, err = event.ToJson()
@@ -106,9 +105,10 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 		if err != nil {
 			logger.Log.Debug("failed to dispatch event", zap.Error(err))
 		} else {
-			resource.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, agent, static.CATEGORY_EVENT)
+			if resource.Shared.Manager.Cluster.Node.NodeID == definition.GetRuntime().GetNode() {
+				resource.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, definition.GetRuntime().GetNode())
+			}
 		}
-
 	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil

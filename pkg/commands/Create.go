@@ -34,11 +34,6 @@ func Create() {
 					hostHomeDir = os.Getenv("HOMEDIR")
 				}
 
-				hostname := ""
-				if os.Getenv("HOSTNAME") != "" {
-					hostname = os.Getenv("HOSTNAME")
-				}
-
 				api.Config.Platform = viper.GetString("platform")
 				api.Config.OverlayNetwork = viper.GetString("overlay")
 				api.Config.HostPort.Host, api.Config.HostPort.Port, err = net.SplitHostPort(viper.GetString("port"))
@@ -47,13 +42,12 @@ func Create() {
 					panic(err)
 				}
 
-				api.Config.Node = viper.GetString("agent")
+				api.Config.NodeName = viper.GetString("name")
 				api.Config.Target = viper.GetString("target")
 				api.Config.Root = api.Config.Environment.PROJECTDIR
 				api.Config.Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
 				api.Config.Certificates.IPs = configuration.NewIPs(strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean))
 				api.Config.HostHome = hostHomeDir
-				api.Config.Node = hostname
 
 				// Internal domains needed
 				api.Config.Certificates.Domains.Add("localhost")

@@ -7,7 +7,7 @@ import (
 type Configuration struct {
 	Platform       string        `yaml:"platform"`
 	OverlayNetwork string        `yaml:"overlaynetwork"`
-	Node           string        `yaml:"node"`
+	NodeName       string        `yaml:"nodeName"`
 	HostPort       HostPort      `yaml:"hostport"`
 	KVStore        *KVStore      `yaml:"kvstore"`
 	Target         string        `default:"development" yaml:"target"`

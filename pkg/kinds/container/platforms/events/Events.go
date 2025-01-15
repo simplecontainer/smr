@@ -5,8 +5,9 @@ import (
 	"fmt"
 )
 
-func New(kind string, group string, name string, data []byte) Events {
+func New(event string, kind string, group string, name string, data []byte) Events {
 	return Events{
+		Type:  event,
 		Kind:  kind,
 		Group: group,
 		Name:  name,

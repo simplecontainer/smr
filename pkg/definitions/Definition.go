@@ -40,7 +40,7 @@ func NewImplementation(kind string) contracts.IDefinition {
 
 	def.SetRuntime(&commonv1.Runtime{
 		Owner: commonv1.Owner{},
-		Node:  "",
+		Node:  0,
 	})
 
 	return def
@@ -150,7 +150,7 @@ func (definition *Definition) FromJson(bytes []byte) error {
 	if definition.GetRuntime() == nil {
 		definition.SetRuntime(&commonv1.Runtime{
 			Owner: commonv1.Owner{},
-			Node:  "",
+			Node:  0,
 		})
 	}
 

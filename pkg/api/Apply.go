@@ -89,7 +89,7 @@ func (api *Api) ImplementationWrapperApply(user *authentication.User, kind strin
 		return
 	}
 
-	agent := api.Config.Node
+	agent := api.Config.NodeName
 
 	if c.Param("agent") != "" {
 		agent = c.Param("agent")

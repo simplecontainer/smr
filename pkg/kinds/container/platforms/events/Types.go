@@ -1,6 +1,7 @@
 package events
 
 type Events struct {
+	Type  string
 	Kind  string
 	Group string
 	Name  string

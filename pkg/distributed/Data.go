@@ -47,6 +47,9 @@ func (replication *Replication) ListenData(agent string) {
 					case static.CATEGORY_OBJECT_DELETE:
 						replication.HandleObjectDelete(data)
 						break
+					case static.CATEGORY_DNS:
+						replication.DnsUpdatesC <- data
+						break
 					case static.CATEGORY_EVENT:
 						replication.EventsC <- data
 						break
@@ -71,7 +74,7 @@ func (replication *Replication) HandleObject(data KV) {
 
 	request, _ := common.NewRequest(kind)
 	request.Definition.FromJson(data.Val)
-	request.Definition.GetRuntime().SetNode(data.Agent)
+	request.Definition.GetRuntime().SetNode(data.Node)
 
 	bytes, err := request.Definition.ToJsonWithKind()
 
@@ -109,7 +112,7 @@ func (replication *Replication) HandleObjectDelete(data KV) {
 
 	request, _ := common.NewRequest(kind)
 	request.Definition.FromJson(data.Val)
-	request.Definition.GetRuntime().SetNode(data.Agent)
+	request.Definition.GetRuntime().SetNode(data.Node)
 
 	bytes, err := request.Definition.ToJsonWithKind()
 
@@ -181,6 +184,25 @@ func (replication *Replication) HandleEtcd(data KV) {
 
 func (replication *Replication) HandleSecret(data KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_SECRET_STRING)
+	obj := secrets.New(replication.Client, replication.User)
+
+	if data.Val == nil {
+		_, err := obj.RemoveLocal(format)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+	} else {
+		err := obj.AddLocal(format, data.Val)
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+	}
+}
+
+func (replication *Replication) HandleDns(data KV) {
+	format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
 	obj := secrets.New(replication.Client, replication.User)
 
 	if data.Val == nil {

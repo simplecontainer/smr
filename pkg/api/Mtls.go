@@ -13,7 +13,7 @@ import (
 
 func (api *Api) CreateUser(c *gin.Context) {
 	user := authentication.NewUser(c.Request.TLS)
-	path, err := user.CreateUser(api.Keys, api.Config.Node, c.Param("username"), c.Param("domain"), c.Param("externalIP"))
+	path, err := user.CreateUser(api.Keys, api.Config.NodeName, c.Param("username"), c.Param("domain"), c.Param("externalIP"))
 
 	if err == nil {
 		var httpClient *http.Client

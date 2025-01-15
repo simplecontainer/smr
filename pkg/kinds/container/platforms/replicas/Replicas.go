@@ -1,6 +1,7 @@
 package replicas
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
@@ -36,7 +37,7 @@ func (replicas *Replicas) GenerateContainers(registry *registry.Registry, defini
 	for _, index := range create {
 		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
 
-		newContainer, err := platforms.New(static.PLATFORM_DOCKER, generatedName, config, registry.ChangeC, definition)
+		newContainer, err := platforms.New(static.PLATFORM_DOCKER, generatedName, config, definition)
 
 		if err != nil {
 			return createContainers, destroyContainers, err
@@ -80,7 +81,19 @@ func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definiti
 }
 
 func (replicas *Replicas) GetContainersIndexes(registry *registry.Registry, definition *v1.ContainerDefinition) ([]uint64, []uint64) {
-	replicas.Recalculate(definition.Spec.Container.Spread, definition.Spec.Container.Replicas, registry.GetIndexes(definition.Meta.Group, definition.Meta.Name))
+	if definition.Spec.Container.Spread.Spread == "" {
+		fmt.Println("no spread")
+		fmt.Println("set to specific")
+		fmt.Println(definition.GetRuntime().GetNode())
+		// No spread so create only for node who sourced the object
+		replicas.Recalculate(v1.ContainerSpread{
+			Spread: "specific",
+			Agents: []uint64{definition.GetRuntime().GetNode()},
+		}, definition.Spec.Container.Replicas, registry.GetIndexes(definition.Meta.Group, definition.Meta.Name))
+	} else {
+		replicas.Recalculate(definition.Spec.Container.Spread, definition.Spec.Container.Replicas, registry.GetIndexes(definition.Meta.Group, definition.Meta.Name))
+	}
+
 	return replicas.Create, replicas.Destroy
 }
 
@@ -95,24 +108,10 @@ func (replicas *Replicas) GetReplicaNumbers(spread v1.ContainerSpread, replicasD
 	case platforms.SPREAD_UNIFORM:
 		return Uniform(replicasDefined, existingIndexes, replicas.Cluster, replicas.NodeID)
 	default:
-		return Default(replicasDefined, existingIndexes)
+		return Specific(replicasDefined, existingIndexes, spread.Agents, replicas.NodeID)
 	}
 }
 
-func Default(replicasNumber uint64, existingIndexes []uint64) ([]uint64, []uint64) {
-	var create = make([]uint64, 0)
-	var destroy = make([]uint64, 0)
-
-	for replicas := uint64(1); replicas <= replicasNumber; replicas++ {
-		create = append(create, replicas)
-	}
-
-	if len(create) < len(existingIndexes) {
-		destroy = existingIndexes[len(create):]
-	}
-
-	return create, destroy
-}
 func Uniform(replicasWanted uint64, existingIndexes []uint64, cluster []uint64, member uint64) ([]uint64, []uint64) {
 	var create = make([][]uint64, 0)
 	var destroy = make([]uint64, 0)

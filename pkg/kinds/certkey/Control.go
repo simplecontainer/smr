@@ -1,6 +1,7 @@
 package certkey
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -38,19 +39,31 @@ func (certkey *Certkey) Get(request contracts.Control) contracts.Response {
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(certkey.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
+	obj.Find(format)
 
-	if err != nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
+	if !obj.Exists() {
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New(static.STATUS_RESPONSE_NOT_FOUND), nil)
 	}
 
-	definitionObject := obj.GetDefinition()
+	r, err := common.NewRequest(KIND)
 
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
 
-	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
+	err = r.Definition.FromJson(obj.GetDefinitionByte())
+
+	if err != nil {
+		return contracts.Response{}
+	}
+
+	bytes, err := r.Definition.ToJsonWithKind()
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
+
+	return common.Response(http.StatusOK, "", nil, bytes)
 }
 func (certkey *Certkey) Remove(request contracts.Control) contracts.Response {
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
@@ -63,9 +76,9 @@ func (certkey *Certkey) Remove(request contracts.Control) contracts.Response {
 		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
-	removed, err := obj.Remove(format)
+	err = obj.Propose(format, nil)
 
-	if !removed {
+	if err != nil {
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	} else {
 		return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)

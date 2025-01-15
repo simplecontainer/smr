@@ -5,7 +5,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
@@ -51,10 +50,10 @@ func (config *Config) Propose(c *gin.Context, user *authentication.User, jsonDat
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, config.Shared.Manager.Config.Node)
+		config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, config.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, config.Shared.Manager.Config.Node)
+		config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, config.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -96,7 +95,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, definition.Meta.Group, definition.Meta.Name, nil)
+		event := events.New(events.EVENT_CHANGE, definition.GetKind(), definition.Meta.Group, definition.Meta.Name, nil)
 
 		var bytes []byte
 		bytes, err = event.ToJson()
@@ -104,7 +103,9 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 		if err != nil {
 			logger.Log.Debug("failed to dispatch event", zap.Error(err))
 		} else {
-			config.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, agent, static.CATEGORY_EVENT)
+			if config.Shared.Manager.Cluster.Node.NodeID == definition.GetRuntime().GetNode() {
+				config.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, definition.GetRuntime().GetNode())
+			}
 		}
 	}
 

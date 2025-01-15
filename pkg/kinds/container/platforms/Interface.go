@@ -31,12 +31,13 @@ type IContainer interface {
 	RemoveDns(dnsCache *dns.Records, networkId string) error
 	SyncNetworkInformation() error
 
-	HasDependencyOn(string, string, string, *types.Runtime) bool
+	HasDependencyOn(string, string, string) bool
 	HasOwner() bool
 
 	GetRuntime() *types.Runtime
 	GetStatus() *status.Status
-	GetAgent() string
+	GetNode() uint64
+	GetNodeName() string
 
 	GetId() string
 	GetDefinition() contracts.IDefinition
@@ -74,9 +75,6 @@ type IPlatform interface {
 	RemoveDns(dnsCache *dns.Records, networkId string) error
 	SyncNetworkInformation() error
 	GenerateLabels() map[string]string
-
-	HasDependencyOn(string, string, string, *types.Runtime) bool
-	HasOwner() bool
 
 	GetId() string
 	GetDefinition() contracts.IDefinition

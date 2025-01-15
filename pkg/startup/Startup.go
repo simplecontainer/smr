@@ -71,7 +71,7 @@ func SetFlags() {
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
 
-	flag.String("agent", "", "Node container name")
+	flag.String("name", "", "Node container name")
 	flag.String("cluster", "", "SMR Cluster")
 	flag.String("overlay", "10.10.0.0/16", "Overlay network for flannel to use")
 	flag.Int("node", 0, "Distributed KVStore Node ID")

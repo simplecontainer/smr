@@ -1,6 +1,7 @@
 package network
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -40,19 +41,31 @@ func (network *Network) Get(request contracts.Control) contracts.Response {
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(network.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
+	obj.Find(format)
 
-	if err != nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
+	if !obj.Exists() {
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New(static.STATUS_RESPONSE_NOT_FOUND), nil)
 	}
 
-	definitionObject := obj.GetDefinition()
+	r, err := common.NewRequest(KIND)
 
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
 
-	return common.Response(http.StatusOK, "", nil, networkURL.ToJson(definition))
+	err = r.Definition.FromJson(obj.GetDefinitionByte())
+
+	if err != nil {
+		return contracts.Response{}
+	}
+
+	bytes, err := r.Definition.ToJsonWithKind()
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
+
+	return common.Response(http.StatusOK, "", nil, bytes)
 }
 
 func (network *Network) Remove(request contracts.Control) contracts.Response {
@@ -66,9 +79,9 @@ func (network *Network) Remove(request contracts.Control) contracts.Response {
 		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
-	removed, err := obj.Remove(format)
+	err = obj.Propose(format, nil)
 
-	if !removed {
+	if err != nil {
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	} else {
 		return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)

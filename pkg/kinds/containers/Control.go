@@ -41,19 +41,31 @@ func (containers *Containers) Get(request contracts.Control) contracts.Response 
 	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(containers.Shared.Client.Get(request.User.Username), request.User)
-	err := obj.Find(format)
+	obj.Find(format)
 
-	if err != nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
+	if !obj.Exists() {
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New(static.STATUS_RESPONSE_NOT_FOUND), nil)
 	}
 
-	definitionObject := obj.GetDefinition()
+	r, err := common.NewRequest(KIND)
 
-	var definition = make(map[string]any)
-	definition["kind"] = KIND
-	definition[KIND] = definitionObject
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
 
-	return common.Response(http.StatusOK, "", nil, network.ToJson(definition))
+	err = r.Definition.FromJson(obj.GetDefinitionByte())
+
+	if err != nil {
+		return contracts.Response{}
+	}
+
+	bytes, err := r.Definition.ToJsonWithKind()
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil)
+	}
+
+	return common.Response(http.StatusOK, "", nil, bytes)
 }
 func (containers *Containers) View(request contracts.Control) contracts.Response {
 	registry := containers.Shared.Manager.KindsRegistry["container"].GetShared().(shared.Shared)

@@ -85,7 +85,7 @@ func (api *Api) ImplementationWrapperDelete(user *authentication.User, kind stri
 		return
 	}
 
-	agent := api.Config.Node
+	agent := api.Config.NodeName
 
 	if c.Param("agent") != "" {
 		agent = c.Param("agent")

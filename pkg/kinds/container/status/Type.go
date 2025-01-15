@@ -2,14 +2,12 @@ package status
 
 import (
 	"github.com/hmdsefi/gograph"
-	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"time"
 )
 
 type Status struct {
-	State                      *StatusState               `json:"state"`
-	Recreated                  bool                       `json:"recreated"`
-	ChangeC                    chan distributed.Container `json:"-"`
+	State                      *StatusState `json:"state"`
+	Recreated                  bool         `json:"recreated"`
 	LastReadiness              bool
 	LastReadinessTimestamp     time.Time
 	LastDependsSolved          bool
@@ -21,8 +19,9 @@ type Status struct {
 }
 
 type StatusState struct {
-	State    string
-	category int8
+	State         string
+	PreviousState string
+	category      int8
 }
 
 const PULLING_IMAGE = 1
@@ -34,7 +33,9 @@ const CATEGORY_WHILERUN = 1
 const CATEGORY_POSTRUN = 2
 const CATEGORY_END = 3
 
+const STATUS_INITIAL string = "initial"
 const STATUS_TRANSFERING string = "transfering"
+const STATUS_CHANGE string = "dependency_updated"
 const STATUS_CREATED string = "created"
 const STATUS_RECREATED string = "recreated"
 const STATUS_PREPARE string = "prepare"

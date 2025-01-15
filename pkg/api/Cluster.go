@@ -36,7 +36,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			Error:            true,
 			Success:          false,
 			Data: network.ToJson(map[string]any{
-				"agent": api.Config.Node,
+				"name": api.Config.NodeName,
 			}),
 		})
 
@@ -49,7 +49,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 				Error:            true,
 				Success:          false,
 				Data: network.ToJson(map[string]any{
-					"agent": api.Config.Node,
+					"name": api.Config.NodeName,
 				}),
 			})
 
@@ -250,8 +250,8 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		api.SaveClusterConfiguration()
 
-		go api.Replication.ListenEtcd(api.Config.Node)
-		go api.Replication.ListenData(api.Config.Node)
+		go api.Replication.ListenEtcd(api.Config.NodeName)
+		go api.Replication.ListenData(api.Config.NodeName)
 
 		err = networking.Flannel(api.Config.OverlayNetwork)
 
@@ -275,7 +275,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			Error:            false,
 			Success:          true,
 			Data: network.ToJson(map[string]string{
-				"agent": api.Config.Node,
+				"name": api.Config.NodeName,
 			}),
 		})
 
@@ -318,7 +318,7 @@ func (api *Api) SaveClusterConfiguration() {
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)
 
 	if err == nil {
-		obj.Add(format, bytes)
+		obj.Propose(format, bytes)
 	} else {
 		logger.Log.Error(err.Error())
 	}

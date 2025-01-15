@@ -11,7 +11,6 @@ import (
 	replication "github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
-	"github.com/simplecontainer/smr/pkg/kinds/container/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
@@ -39,7 +38,6 @@ func (container *Container) Start() error {
 	container.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
 	container.Shared.Registry = &registry.Registry{
-		ChangeC:        make(chan distributed.Container),
 		Containers:     make(map[string]map[string]platforms.IContainer),
 		Indexes:        make(map[string][]uint64),
 		BackOffTracker: make(map[string]map[string]uint64),
@@ -59,8 +57,6 @@ func (container *Container) Start() error {
 	// Start listening events based on the platform and for internal events
 	go events.NewPlatformEventsListener(container.Shared, container.Shared.Manager.Config.Platform)
 	go events.NewEventsListener(container.Shared, container.Shared.Watcher.EventChannel)
-
-	go container.Shared.Registry.ListenChanges()
 
 	logger.Log.Info(fmt.Sprintf("started listening events for simplecontainer and platform: %s", container.Shared.Manager.Config.Platform))
 
@@ -95,10 +91,10 @@ func (container *Container) Propose(c *gin.Context, user *authentication.User, j
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.Node)
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.Node)
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

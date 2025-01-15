@@ -18,8 +18,9 @@ type Runtime struct {
 	Ready              bool
 	Configuration      *smaps.Smap
 	ObjectDependencies []f.Format
-	NodeIP             string
-	Agent              string
+	NodeURL            string
+	Node               uint64
+	NodeName           string
 }
 
 type ExecResult struct {

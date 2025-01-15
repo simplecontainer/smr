@@ -7,6 +7,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -22,12 +23,51 @@ func New(agent string, client *client.Http, user *authentication.User) *Records 
 		Agent:    agent,
 		Client:   client,
 		User:     user,
+		Updates:  make(chan distributed.KV),
 	}
 
 	return r
 }
 
-func (r *Records) AddARecord(domain string, ip string) {
+func (r *Records) ListenUpdates() {
+	for {
+		select {
+		case data := <-r.Updates:
+			d := Distributed{}
+			err := json.Unmarshal(data.Val, &d)
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+				return
+			}
+
+			fmt.Println("UPDATE DNS")
+			fmt.Println(d)
+
+			switch d.Action {
+			case ADD_RECORD:
+				err = r.AddARecord(d.Domain, d.IP)
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+					return
+				}
+				break
+			case REMOVE_RECORD:
+				err = r.RemoveARecord(d.Domain, d.IP)
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+					return
+				}
+				break
+			}
+			break
+		}
+	}
+}
+
+func (r *Records) AddARecord(domain string, ip string) error {
 	_, ARecordexists := r.ARecords[domain]
 
 	if !ARecordexists {
@@ -36,40 +76,41 @@ func (r *Records) AddARecord(domain string, ip string) {
 
 	r.ARecords[domain].Append(ip)
 
-	format := f.NewUnformated(fmt.Sprintf("dns.%s.%s", domain, r.Agent), static.CATEGORY_PLAIN_STRING)
-	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
-
-	bytes, err := json.Marshal(r.ARecords[domain].IPs)
+	bytes, err := json.Marshal(r.ARecords[domain])
 
 	if err != nil {
-		logger.Log.Error(err.Error())
-		return
+		return err
 	}
 
-	obj.Add(format, bytes)
+	return r.Local(domain, bytes)
 }
 func (r *Records) RemoveARecord(domain string, ip string) error {
-	ips := r.Find(domain)
+	if r.ARecords[domain] != nil {
+		ips := r.Find(domain)
 
-	if len(ips) > 0 {
-		_, ARecordexists := r.ARecords[domain]
+		if len(ips) > 0 {
+			_, ARecordexists := r.ARecords[domain]
 
-		if ARecordexists {
-			err := r.ARecords[domain].Remove(ip)
+			if ARecordexists {
+				err := r.ARecords[domain].Remove(ip)
+
+				if err != nil {
+					return err
+				}
+			}
+
+			r.ARecords[domain].Append(ip)
+
+			bytes, err := json.Marshal(r.ARecords[domain])
 
 			if err != nil {
 				return err
 			}
+
+			return r.Local(domain, bytes)
+		} else {
+			return errors.New(fmt.Sprintf("ip %s not found for specifed domain %s", ip, domain))
 		}
-
-		r.ARecords[domain].Append(ip)
-
-		format := f.NewUnformated(fmt.Sprintf("dns.%s.%s", domain, r.Agent), static.CATEGORY_PLAIN_STRING)
-		obj := objects.New(r.Client.Clients[r.User.Username], r.User)
-
-		obj.Remove(format)
-
-		return nil
 	} else {
 		return errors.New(fmt.Sprintf("ip %s not found for specifed domain %s", ip, domain))
 	}

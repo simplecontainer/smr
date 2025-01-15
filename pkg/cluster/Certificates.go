@@ -35,7 +35,7 @@ func (cluster *Cluster) Regenerate(config *configuration.Configuration, keys *ke
 
 	logger.Log.Info("regenerating server certificate to support cluster nodes")
 
-	err = keys.GenerateClient(config.Certificates.Domains, config.Certificates.IPs, config.Node)
+	err = keys.GenerateClient(config.Certificates.Domains, config.Certificates.IPs, config.NodeName)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
@@ -49,13 +49,13 @@ func (cluster *Cluster) Regenerate(config *configuration.Configuration, keys *ke
 		return
 	}
 
-	err = keys.Clients[config.Node].Write(static.SMR_SSH_HOME, config.Node)
+	err = keys.Clients[config.NodeName].Write(static.SMR_SSH_HOME, config.NodeName)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	err = keys.Server.Write(static.SMR_SSH_HOME, config.Node)
+	err = keys.Server.Write(static.SMR_SSH_HOME, config.NodeName)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return

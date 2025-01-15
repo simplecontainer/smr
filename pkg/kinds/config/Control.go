@@ -63,9 +63,9 @@ func (config *Config) Remove(request contracts.Control) contracts.Response {
 		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
-	removed, err := obj.Remove(format)
+	err = obj.Propose(format, nil)
 
-	if !removed {
+	if err != nil {
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	} else {
 		return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)

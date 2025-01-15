@@ -158,7 +158,7 @@ func (api *Api) ProposeSecrets(c *gin.Context) {
 	}
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
-	api.Cluster.KVStore.Propose(key, data, helpers.Category(c.Param("type")), api.Config.Node)
+	api.Cluster.KVStore.Propose(key, data, helpers.Category(c.Param("type")), api.Cluster.Node.NodeID)
 
 	// To prevent empty responses since Json.RawMessage is in the response
 	if len(data) == 0 {

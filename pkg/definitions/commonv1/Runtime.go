@@ -2,14 +2,14 @@ package commonv1
 
 type Runtime struct {
 	Owner Owner  `json:"owner"`
-	Node  string `json:"node"`
+	Node  uint64 `json:"node"`
 }
 
-func (runtime *Runtime) SetNode(node string) {
+func (runtime *Runtime) SetNode(node uint64) {
 	runtime.Node = node
 }
 
-func (runtime *Runtime) GetNode() string {
+func (runtime *Runtime) GetNode() uint64 {
 	return runtime.Node
 }
 

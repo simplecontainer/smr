@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/network"
+	TDNetwork "github.com/docker/docker/api/types/network"
 	IDClient "github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
 )
@@ -62,10 +62,10 @@ func (container *Docker) SyncNetworkInformation() error {
 
 	if container.DockerID != "" {
 		data, _ := cli.ContainerInspect(ctx, container.DockerID)
-		var networkInspect types.NetworkResource
+		var networkInspect TDNetwork.Inspect
 
 		if data.NetworkSettings == nil {
-			return errors.New("network settings empty")
+			return nil
 		}
 
 		for _, dockerNetwork := range data.NetworkSettings.Networks {
@@ -81,7 +81,6 @@ func (container *Docker) SyncNetworkInformation() error {
 			if container.Networks.Find(networkInspect.ID) != nil {
 				container.UpdateNetworkInfoTS(networkInspect.ID, dockerNetwork.IPAddress, networkInspect.Name)
 			} else {
-				// optimistic
 				container.RemoveNetworkInfoTS(container.DockerID, networkInspect.ID, dockerNetwork.IPAddress, networkInspect.Name)
 			}
 		}
@@ -92,12 +91,12 @@ func (container *Docker) SyncNetworkInformation() error {
 	return errors.New("docker id is not set")
 }
 
-func (container *Docker) BuildNetwork() *network.NetworkingConfig {
-	networks := network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{}}
+func (container *Docker) BuildNetwork() *TDNetwork.NetworkingConfig {
+	networks := TDNetwork.NetworkingConfig{EndpointsConfig: map[string]*TDNetwork.EndpointSettings{}}
 
 	if container.NetworkMode != "host" {
 		for _, netw := range container.Networks.Networks {
-			networks.EndpointsConfig[netw.Reference.Name] = &network.EndpointSettings{
+			networks.EndpointsConfig[netw.Reference.Name] = &TDNetwork.EndpointSettings{
 				NetworkID: netw.Docker.NetworkId,
 			}
 		}

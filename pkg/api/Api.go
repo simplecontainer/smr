@@ -91,6 +91,7 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 
 	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User)
 	api.Replication.EventsC = containerShared.Watcher.EventChannel
+	api.Replication.DnsUpdatesC = api.DnsCache.Updates
 
 	api.Manager.Replication = api.Replication
 
@@ -101,7 +102,7 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	}
 
 	api.Cluster.KVStore.ConfChangeC = confChangeC
-	api.Cluster.KVStore.Agent = api.Config.Node
+	api.Cluster.KVStore.Node = api.Config.KVStore.Node
 
 	api.Manager.Cluster = api.Cluster
 

@@ -6,16 +6,17 @@ import (
 )
 
 type Replication struct {
-	Client  *client.Client
-	User    *authentication.User
-	DataC   chan KV
-	EventsC chan KV
+	Client      *client.Client
+	User        *authentication.User
+	DataC       chan KV
+	EventsC     chan KV
+	DnsUpdatesC chan KV
 }
 
 type KV struct {
 	Key      string
 	Val      []byte
 	Category int
-	Agent    string
+	Node     uint64
 	Local    bool
 }

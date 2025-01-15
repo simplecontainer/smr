@@ -483,7 +483,7 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 		}
 
 		if container.NetworkMode != "host" {
-			err = container.AttachToNetworks(config.Node)
+			err = container.AttachToNetworks(config.NodeName)
 
 			if err != nil {
 				return nil, err
@@ -553,13 +553,13 @@ func (container *Docker) AttachToNetworks(agentContainerName string) error {
 		return err
 	}
 
-	logger.Log.Debug("trying to find agent container", zap.String("agent", agentContainerName))
+	logger.Log.Debug("trying to find node container", zap.String("node", agentContainerName))
 
 	var agent TDTypes.Container
 	agent, err = DockerGet(agentContainerName)
 
 	if err != nil {
-		return errors.New("failed to find agent container")
+		return errors.New("failed to find node container")
 	}
 
 	networks := container.GetNetworkInfoTS()
@@ -604,8 +604,8 @@ func (container *Docker) UpdateDns(dnsCache *dns.Records) error {
 	networks := container.GetNetworkInfoTS()
 
 	for _, network := range networks.Networks {
-		dnsCache.AddARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
-		dnsCache.AddARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+		dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.ADD_RECORD)
+		dnsCache.Propose(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP, dns.ADD_RECORD)
 	}
 
 	return nil
@@ -616,8 +616,8 @@ func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) erro
 
 	for _, network := range networks.Networks {
 		if network.Docker.NetworkId == networkId {
-			dnsCache.RemoveARecord(container.GetDomain(network.Reference.Name), network.Docker.IP)
-			dnsCache.RemoveARecord(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP)
+			dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.REMOVE_RECORD)
+			dnsCache.Propose(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP, dns.REMOVE_RECORD)
 		}
 	}
 

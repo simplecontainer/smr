@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/network"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -88,7 +89,7 @@ func (api *Api) RunControl(c *gin.Context) {
 		}
 	}
 
-	operatorResponse := kindObj.Run(operation, contracts.Control{
+	response := kindObj.Run(operation, contracts.Control{
 		Kind:      kind,
 		Operation: operation,
 		Group:     group,
@@ -97,7 +98,11 @@ func (api *Api) RunControl(c *gin.Context) {
 		User:      authentication.NewUser(c.Request.TLS),
 	})
 
-	c.JSON(operatorResponse.HttpStatus, operatorResponse)
+	if response.Data == nil {
+		response.Data = network.ToJson(response.Data)
+	}
+
+	c.JSON(response.HttpStatus, response)
 }
 
 func (api *Api) ListSupported(c *gin.Context) {
