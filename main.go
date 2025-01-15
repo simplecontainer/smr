@@ -12,16 +12,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
-	"log"
-	"net/http"
 	"os"
 )
 
 func main() {
-	go func() {
-		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
-	}()
-
 	startup.SetFlags()
 
 	logLevel := os.Getenv("LOG_LEVEL")
