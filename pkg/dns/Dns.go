@@ -47,7 +47,6 @@ func (r *Records) ListenUpdates() {
 
 				if err != nil {
 					logger.Log.Error(err.Error())
-					return
 				}
 				break
 			case REMOVE_RECORD:
@@ -55,7 +54,6 @@ func (r *Records) ListenUpdates() {
 
 				if err != nil {
 					logger.Log.Error(err.Error())
-					return
 				}
 				break
 			}
