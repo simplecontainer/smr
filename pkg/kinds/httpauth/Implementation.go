@@ -49,10 +49,10 @@ func (httpauth *Httpauth) Propose(c *gin.Context, user *authentication.User, jso
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, httpauth.Shared.Manager.Config.KVStore.Node)
+		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, httpauth.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, httpauth.Shared.Manager.Config.KVStore.Node)
+		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, httpauth.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

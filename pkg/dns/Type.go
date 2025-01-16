@@ -4,25 +4,27 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/distributed"
+	"github.com/simplecontainer/smr/pkg/smaps"
 )
 
 type Records struct {
-	ARecords map[string]*ARecord
-	Agent    string
-	Client   *client.Http
-	User     *authentication.User
-	Updates  chan distributed.KV
+	ARecords    *smaps.Smap
+	Client      *client.Http
+	User        *authentication.User
+	Nameservers []string
+	Records     chan distributed.KV
 }
 
 type ARecord struct {
-	IPs []string
+	Addresses []string
 }
 
 type Distributed struct {
-	Domain string
-	IP     string
-	Action uint8
+	Domain   string
+	Headless string
+	IP       string
+	Action   uint8
 }
 
-const ADD_RECORD = 0x1
-const REMOVE_RECORD = 0x2
+const AddRecord = 0x1
+const RemoveRecord = 0x2

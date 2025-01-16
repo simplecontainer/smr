@@ -76,7 +76,7 @@ func (config *Config) Remove(request contracts.Control) contracts.Response {
 		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, err, nil)
 	}
 
-	err = obj.Propose(format, nil)
+	_, err = obj.Propose(format, nil)
 
 	if err != nil {
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)

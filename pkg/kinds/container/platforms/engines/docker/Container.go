@@ -440,11 +440,8 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 			return nil, err
 		}
 
-		DNS := []string{}
-
-		if len(container.Definition.Spec.Container.Dns) == 0 {
-			DNS = append(DNS, []string{config.Environment.AGENTIP, "127.0.0.1"}...)
-		} else {
+		DNS := []string{config.Environment.AGENTIP, "127.0.0.1"}
+		if len(container.Definition.Spec.Container.Dns) != 0 {
 			DNS = append(DNS, container.Definition.Spec.Container.Dns...)
 		}
 
@@ -604,8 +601,7 @@ func (container *Docker) UpdateDns(dnsCache *dns.Records) error {
 	networks := container.GetNetworkInfoTS()
 
 	for _, network := range networks.Networks {
-		dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.ADD_RECORD)
-		dnsCache.Propose(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP, dns.ADD_RECORD)
+		dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.AddRecord)
 	}
 
 	return nil
@@ -616,8 +612,7 @@ func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) erro
 
 	for _, network := range networks.Networks {
 		if network.Docker.NetworkId == networkId {
-			dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.REMOVE_RECORD)
-			dnsCache.Propose(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP, dns.REMOVE_RECORD)
+			dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.RemoveRecord)
 		}
 	}
 

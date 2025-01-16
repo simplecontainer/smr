@@ -91,10 +91,10 @@ func (container *Container) Propose(c *gin.Context, user *authentication.User, j
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.KVStore.Node)
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		container.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.KVStore.Node)
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

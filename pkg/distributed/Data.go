@@ -69,10 +69,9 @@ func (replication *Replication) ListenData(agent string) {
 }
 
 func (replication *Replication) HandleObject(data KV) {
-	split := strings.Split(data.Key, ".")
-	kind := split[0]
+	format := f.NewFromString(data.Key)
 
-	request, _ := common.NewRequest(kind)
+	request, _ := common.NewRequest(format.Kind)
 	request.Definition.FromJson(data.Val)
 	request.Definition.GetRuntime().SetNode(data.Node)
 
@@ -107,10 +106,9 @@ func (replication *Replication) HandleObject(data KV) {
 }
 
 func (replication *Replication) HandleObjectDelete(data KV) {
-	split := strings.Split(data.Key, ".")
-	kind := split[0]
+	format := f.NewFromString(data.Key)
 
-	request, _ := common.NewRequest(kind)
+	request, _ := common.NewRequest(format.Kind)
 	request.Definition.FromJson(data.Val)
 	request.Definition.GetRuntime().SetNode(data.Node)
 

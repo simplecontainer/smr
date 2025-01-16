@@ -59,10 +59,10 @@ func (gitops *Gitops) Propose(c *gin.Context, user *authentication.User, jsonDat
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, gitops.Shared.Manager.Config.KVStore.Node)
+		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, gitops.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, gitops.Shared.Manager.Config.KVStore.Node)
+		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, gitops.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

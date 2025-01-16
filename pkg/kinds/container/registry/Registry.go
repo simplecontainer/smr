@@ -3,6 +3,7 @@ package registry
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
@@ -34,13 +35,14 @@ func (registry *Registry) Sync(container platforms.IContainer) error {
 
 	bytes, err := container.ToJson()
 
-	err = obj.Propose(format, bytes)
+	var UUID uuid.UUID
+	UUID, err = obj.Propose(format, bytes)
 
 	if err != nil {
 		return err
 	}
 
-	return obj.Wait(format)
+	return obj.Wait(UUID)
 }
 
 func (registry *Registry) Remove(group string, name string) error {
@@ -59,7 +61,7 @@ func (registry *Registry) Remove(group string, name string) error {
 		format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		err := obj.Propose(format, nil)
+		_, err := obj.Propose(format, nil)
 
 		if err != nil {
 			return err

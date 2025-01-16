@@ -5,21 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/r3labs/diff/v3"
+	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
-	"reflect"
 	"strings"
 	"time"
 )
 
 //go:generate mockgen -source=Interface.go -destination=mock/Interface.go
-
-var acks = make(map[string]chan bool)
 
 func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
@@ -48,29 +47,21 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Propose(format contracts.Format, data []byte) error {
+func (obj *Object) Propose(format contracts.Format, data []byte) (uuid.UUID, error) {
 	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		return nil
+		return format.GetUUID(), nil
 	} else {
-		return errors.New(response.ErrorExplanation)
+		return uuid.UUID{}, errors.New(response.ErrorExplanation)
 	}
 }
 
-func (obj *Object) Wait(format contracts.Format) error {
-	acks[format.ToString()] = make(chan bool)
-	for {
-		select {
-		case <-acks[format.ToString()]:
-			close(acks[format.ToString()])
-			delete(acks, format.ToString())
-			return nil
-		}
-	}
+func (obj *Object) Wait(UUID uuid.UUID) error {
+	return acks.ACKS.Wait(UUID)
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
@@ -171,14 +162,12 @@ func (obj *Object) Diff(definition []byte) bool {
 		return true
 	}
 
-	var changelog diff.Changelog
+	obj.Changelog, _ = diff.Diff(obj.Definition, data)
 
-	if reflect.DeepEqual(obj.Definition, data) {
-		obj.changed = false
-	} else {
-		changelog, _ = diff.Diff(obj.Definition, data)
-		obj.Changelog = changelog
+	if len(obj.Changelog) > 0 {
 		obj.changed = true
+	} else {
+		obj.changed = false
 	}
 
 	return obj.changed

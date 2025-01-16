@@ -36,7 +36,7 @@ func (replication *Replication) ListenEtcd(agent string) error {
 						obj := objects.New(replication.Client, replication.User)
 						format := f.NewUnformated(string(event.Kv.Key), static.CATEGORY_ETCD_STRING)
 
-						err = obj.Propose(format, event.Kv.Value)
+						_, err = obj.Propose(format, event.Kv.Value)
 
 						if err != nil {
 							logger.Log.Error(err.Error())
@@ -46,7 +46,7 @@ func (replication *Replication) ListenEtcd(agent string) error {
 						obj := objects.New(replication.Client, replication.User)
 						format := f.NewUnformated(string(event.Kv.Key), static.CATEGORY_ETCD_STRING)
 
-						err = obj.Propose(format, nil)
+						_, err = obj.Propose(format, nil)
 
 						if err != nil {
 							logger.Log.Error(err.Error())

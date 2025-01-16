@@ -115,6 +115,11 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, eve
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}
+
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).Container.GetStatus().TransitionState(container.GetGroup(), container.GetGeneratedName(), status.STATUS_KILL)
+		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+	}
 }
 
 func HandleStart(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {

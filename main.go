@@ -12,10 +12,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	_ "net/http/pprof"
 	"os"
 )
 
 func main() {
+
 	startup.SetFlags()
 
 	logLevel := os.Getenv("LOG_LEVEL")

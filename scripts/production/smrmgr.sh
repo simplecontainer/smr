@@ -124,7 +124,7 @@ Manager(){
   else
     if [[ ${AGENT} != "" ]]; then
       if [[ ${MODE} == "cluster" ]]; then
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${AGENT}" $CLIENT_ARGS --wait
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${AGENT} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${AGENT}" $CLIENT_ARGS  --wait
 
         if [[ ${?} != 0 ]]; then
           echo "Simplecontainer returned non-zero exit code - check the logs of the node controller container"

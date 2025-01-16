@@ -50,10 +50,10 @@ func (config *Config) Propose(c *gin.Context, user *authentication.User, jsonDat
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, config.Shared.Manager.Config.KVStore.Node)
+		config.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, config.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		config.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, config.Shared.Manager.Config.KVStore.Node)
+		config.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, config.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

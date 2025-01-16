@@ -53,10 +53,10 @@ func (resource *Resource) Propose(c *gin.Context, user *authentication.User, jso
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.KVStore.Node)
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToString(), bytes, static.CATEGORY_OBJECT_DELETE, resource.Shared.Manager.Config.KVStore.Node)
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, resource.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 

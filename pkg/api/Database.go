@@ -5,6 +5,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -158,7 +159,9 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 	}
 
 	key := strings.TrimPrefix(c.Param("key"), "/")
-	api.Cluster.KVStore.Propose(key, data, helpers.Category(c.Param("type")), api.Cluster.Node.NodeID)
+
+	format := f.NewFromString(key)
+	api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, helpers.Category(c.Param("type")), api.Cluster.Node.NodeID)
 
 	// To prevent empty responses since Json.RawMessage is in the response
 	if len(data) == 0 {

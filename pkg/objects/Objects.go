@@ -3,8 +3,10 @@ package objects
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/r3labs/diff/v3"
+	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -19,7 +21,6 @@ import (
 //go:generate mockgen -source=Interface.go -destination=mock/Interface.go
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
-var acks = make(map[string]chan bool)
 
 func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
@@ -48,29 +49,21 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Propose(format contracts.Format, data []byte) error {
+func (obj *Object) Propose(format contracts.Format, data []byte) (uuid.UUID, error) {
 	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		return nil
+		return format.GetUUID(), nil
 	} else {
-		return errors.New(response.ErrorExplanation)
+		return uuid.UUID{}, errors.New(response.ErrorExplanation)
 	}
 }
 
-func (obj *Object) Wait(format contracts.Format) error {
-	acks[format.ToString()] = make(chan bool)
-	for {
-		select {
-		case <-acks[format.ToString()]:
-			close(acks[format.ToString()])
-			delete(acks, format.ToString())
-			return nil
-		}
-	}
+func (obj *Object) Wait(UUID uuid.UUID) error {
+	return acks.ACKS.Wait(UUID)
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
@@ -79,12 +72,8 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
-	if acks[format.ToString()] != nil {
-		acks[format.ToString()] <- true
-	}
-
 	if response.Success {
-		return nil
+		return acks.ACKS.Ack(format.GetUUID())
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}
@@ -195,13 +184,9 @@ func (obj *Object) Diff(definition []byte) bool {
 		return true
 	}
 
-	var changelog diff.Changelog
-	changelog, _ = diff.Diff(obj.Definition, data)
+	obj.Changelog, _ = diff.Diff(obj.Definition, data)
 
-	changelog = changelog.FilterOut([]string{"Meta", "Runtime"})
-
-	if len(changelog) > 0 {
-		obj.Changelog = changelog
+	if len(obj.Changelog) > 0 {
 		obj.changed = true
 	} else {
 		obj.changed = false

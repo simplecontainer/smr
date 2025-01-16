@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
@@ -108,8 +109,7 @@ func Start() {
 
 				api.Keys.Reloader, err = keys.NewKeypairReloader(api.Keys.Server.CertificatePath, api.Keys.Server.PrivateKeyPath)
 				if err != nil {
-					fmt.Println(err.Error())
-					os.Exit(1)
+					panic(err.Error())
 				}
 
 				err = api.Keys.LoadClients(static.SMR_SSH_HOME)
@@ -145,7 +145,8 @@ func Start() {
 				api.DnsCache = dns.New(api.Config.NodeName, api.Manager.Http, api.User)
 				api.DnsCache.Client = api.Manager.Http
 
-				go api.DnsCache.ListenUpdates()
+				// Listen Records from RAFT
+				go api.DnsCache.ListenRecords()
 
 				api.Manager.DnsCache = api.DnsCache
 
@@ -232,17 +233,16 @@ func Start() {
 						containers.GET("ps", api.Ps)
 					}
 
-					dns := v1.Group("/dns")
-					{
-						dns.GET("/", api.ListDns)
-						dns.GET("/:dns", api.ListDns)
-					}
-
 					users := v1.Group("/user")
 					{
 						users.POST("/:username/:domain/:externalIP", api.CreateUser)
 					}
 				}
+
+				debug := router.Group("/debug", func(c *gin.Context) {
+					c.Next()
+				})
+				pprof.RouteRegister(debug, "pprof")
 
 				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -272,8 +272,11 @@ func Start() {
 				}
 
 				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
+				_, err = api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
 
-				api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
+				if err != nil {
+					panic(err)
+				}
 
 				api.KindsRegistry = kinds.BuildRegistry(api.Manager)
 				api.Manager.KindsRegistry = api.KindsRegistry
