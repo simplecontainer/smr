@@ -440,7 +440,14 @@ func (container *Docker) Run(config *configuration.Configuration, client *client
 			return nil, err
 		}
 
-		DNS := []string{config.Environment.AGENTIP, "127.0.0.1"}
+		var DNS []string
+
+		if config.Environment.AGENTIP != "" {
+			DNS = []string{config.Environment.AGENTIP, "127.0.0.1"}
+		} else {
+			DNS = []string{"127.0.0.1"}
+		}
+
 		if len(container.Definition.Spec.Container.Dns) != 0 {
 			DNS = append(DNS, container.Definition.Spec.Container.Dns...)
 		}
