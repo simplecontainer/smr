@@ -17,13 +17,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.etcd.io/etcd/server/v3/embed"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"syscall"
-	"time"
 )
 
 var starting = false
@@ -196,8 +193,19 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Manager.Cluster = api.Cluster
 
-	var server *embed.Etcd
-	server, err = networking.StartEtcd(api.Config)
+	CAPool := x509.NewCertPool()
+	CAPool.AddCert(api.Keys.CA.Certificate)
+
+	tlsConfig := &tls.Config{
+		ClientAuth:     tls.RequireAndVerifyClientCert,
+		ClientCAs:      CAPool,
+		GetCertificate: api.Keys.Reloader.GetCertificateFunc(),
+	}
+
+	api.Cluster.Regenerate(api.Config, api.Keys)
+	api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+
+	err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -211,87 +219,43 @@ func (api *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
-	select {
-	case <-server.Server.ReadyNotify():
-		fmt.Println("etcd server started - continue with starting raft")
+	api.Config.KVStore.Node = api.Cluster.Node.NodeID
+	api.Config.KVStore.URL = api.Cluster.Node.URL
+	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+	api.Config.KVStore.JoinCluster = request["join"] != ""
 
-		CAPool := x509.NewCertPool()
-		CAPool.AddCert(api.Keys.CA.Certificate)
+	api.SaveClusterConfiguration()
 
-		tlsConfig := &tls.Config{
-			ClientAuth:     tls.RequireAndVerifyClientCert,
-			ClientCAs:      CAPool,
-			GetCertificate: api.Keys.Reloader.GetCertificateFunc(),
-		}
+	go api.Replication.ListenEtcd(api.Config.NodeName)
+	go api.Replication.ListenData(api.Config.NodeName)
 
-		api.Cluster.Regenerate(api.Config, api.Keys)
-		api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+	err = networking.Flannel(request["overlay"], request["backend"])
 
-		err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
-
-		if err != nil {
-			server.Server.Stop()
-
-			c.JSON(http.StatusInternalServerError, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return
-		}
-
-		api.Config.KVStore.Node = api.Cluster.Node.NodeID
-		api.Config.KVStore.URL = api.Cluster.Node.URL
-		api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-		api.Config.KVStore.JoinCluster = request["join"] != ""
-
-		api.SaveClusterConfiguration()
-
-		go api.Replication.ListenEtcd(api.Config.NodeName)
-		go api.Replication.ListenData(api.Config.NodeName)
-
-		err = networking.Flannel(api.Config.OverlayNetwork)
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: "flannel overlay network failed to start",
-				Error:            true,
-				Success:          false,
-				Data:             nil,
-			})
-
-			return
-		}
-
-		api.Cluster.Started = true
-
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "everything went ok",
-			Error:            false,
-			Success:          true,
-			Data: network.ToJson(map[string]string{
-				"name": api.Config.NodeName,
-			}),
-		})
-
-		return
-	case <-time.After(60 * time.Second):
-		server.Server.Stop() // trigger a shutdown
-		log.Printf("etcd server took too long to start!")
-
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, contracts.Response{
 			Explanation:      "",
-			ErrorExplanation: "etcd server took too long to start",
+			ErrorExplanation: "flannel overlay network failed to start",
 			Error:            true,
 			Success:          false,
 			Data:             nil,
 		})
+
+		return
 	}
+
+	api.Cluster.Started = true
+
+	c.JSON(http.StatusOK, contracts.Response{
+		Explanation:      "",
+		ErrorExplanation: "everything went ok",
+		Error:            false,
+		Success:          true,
+		Data: network.ToJson(map[string]string{
+			"name": api.Config.NodeName,
+		}),
+	})
+
+	return
 }
 
 func (api *Api) GetCluster(c *gin.Context) {

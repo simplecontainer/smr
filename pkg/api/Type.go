@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -11,20 +10,21 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/relations"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"sync"
+	"go.etcd.io/etcd/server/v3/embed"
 )
 
 type Api struct {
+	Server        *embed.Etcd
+	Etcd          *clientv3.Client
 	User          *authentication.User
 	Config        *configuration.Configuration
 	Keys          *keys.Keys
 	DnsCache      *dns.Records
-	Badger        *badger.DB
 	confChangeC   chan raftpb.ConfChange
 	Cluster       *cluster.Cluster
 	Replication   *distributed.Replication
-	BadgerSync    *sync.RWMutex
 	Kinds         *relations.RelationRegistry
 	KindsRegistry map[string]contracts.Kind
 	Manager       *manager.Manager

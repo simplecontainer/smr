@@ -5,17 +5,16 @@ import (
 )
 
 type Configuration struct {
-	Platform       string        `yaml:"platform"`
-	OverlayNetwork string        `yaml:"overlaynetwork"`
-	NodeName       string        `yaml:"nodeName"`
-	HostPort       HostPort      `yaml:"hostport"`
-	KVStore        *KVStore      `yaml:"kvstore"`
-	Target         string        `default:"development" yaml:"target"`
-	Root           string        `yaml:"root"`
-	Certificates   *Certificates `yaml:"certificates"`
-	HostHome       string        `yaml:"hostHome"`
-	Environment    *Environment  `yaml:"-"`
-	Flags          Flags         `yaml:"-"`
+	Platform     string        `yaml:"platform"`
+	NodeName     string        `yaml:"nodeName"`
+	HostPort     HostPort      `yaml:"hostport"`
+	KVStore      *KVStore      `yaml:"kvstore"`
+	Target       string        `default:"development" yaml:"target"`
+	Root         string        `yaml:"root"`
+	Certificates *Certificates `yaml:"certificates"`
+	HostHome     string        `yaml:"hostHome"`
+	Environment  *Environment  `yaml:"-"`
+	Flags        Flags         `yaml:"-"`
 }
 
 type HostPort struct {

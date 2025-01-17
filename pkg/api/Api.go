@@ -2,7 +2,6 @@ package api
 
 import (
 	"crypto/tls"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
@@ -11,24 +10,22 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/networking"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/startup"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"sync"
 	"time"
 )
 
-func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
+func NewApi(config *configuration.Configuration) *Api {
 	api := &Api{
 		User:          &authentication.User{},
 		Config:        config,
 		Keys:          &keys.Keys{},
 		DnsCache:      &dns.Records{},
-		Badger:        badger,
-		BadgerSync:    &sync.RWMutex{},
 		Kinds:         relations.NewDefinitionRelationRegistry(),
 		KindsRegistry: nil,
 		Manager:       &manager.Manager{},
@@ -56,25 +53,30 @@ func NewApi(config *configuration.Configuration, badger *badger.DB) *Api {
 	return api
 }
 
-func (api *Api) SetupEncryptedDatabase(masterKey []byte) {
-	opts := badger.DefaultOptions("/home/smr-agent/smr/smr/persistent/kv-store/badger")
+func (api *Api) SetupEtcd() {
+	var err error
 
-	opts.Dir = "/home/smr-agent/smr/smr/persistent/kv-store/badger"
-	opts.ValueDir = "/home/smr-agent/smr/smr/persistent/kv-store/badger"
-	opts.DetectConflicts = true
-	opts.CompactL0OnClose = true
-	opts.Logger = nil
-	opts.SyncWrites = true
-	opts.EncryptionKey = masterKey
-	opts.EncryptionKeyRotationDuration = 24 * time.Hour
-	opts.IndexCacheSize = 100 << 20
+	api.Server, err = networking.StartEtcd(api.Config)
 
-	dbSecrets, err := badger.Open(opts)
 	if err != nil {
-		logger.Log.Fatal(err.Error())
+		panic(err)
 	}
 
-	api.Badger = dbSecrets
+	select {
+	case <-api.Server.Server.ReadyNotify():
+		api.Etcd, err = clientv3.New(clientv3.Config{
+			Endpoints:   []string{"localhost:2379"},
+			DialTimeout: 5 * time.Second,
+		})
+
+		if err != nil {
+			panic(err)
+		}
+		return
+	case <-time.After(60 * time.Second):
+		api.Server.Server.Stop()
+		panic("etcd server took too long to start!")
+	}
 }
 
 func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *cluster.Cluster, join string) error {
@@ -86,16 +88,16 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	api.Cluster.RaftNode = &raft.RaftNode{}
 	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC)
 
-	var err error
 	containerShared := api.Manager.KindsRegistry["container"].GetShared().(*shared.Shared)
 
-	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User)
+	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Config.NodeName)
 	api.Replication.EventsC = containerShared.Watcher.EventChannel
 	api.Replication.DnsUpdatesC = api.DnsCache.Records
 
 	api.Manager.Replication = api.Replication
 
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Badger, api.Manager.Http, proposeC, commitC, errorC, api.Replication.DataC)
+	var err error
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Manager.Http, proposeC, commitC, errorC, api.Replication.DataC)
 
 	if err != nil {
 		return err

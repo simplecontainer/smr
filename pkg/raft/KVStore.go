@@ -19,7 +19,6 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/distributed"
 	"log"
@@ -39,12 +38,12 @@ type KVStore struct {
 	Node        uint64
 	mu          sync.RWMutex
 	client      *client.Http
-	kvStore     *badger.DB
+	kvStore     map[string]string
 	snapshotter *snap.Snapshotter
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, badger *badger.DB, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan distributed.KV) (*KVStore, error) {
-	s := &KVStore{proposeC: proposeC, DataC: dataC, kvStore: badger, client: client, snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan distributed.KV) (*KVStore, error) {
+	s := &KVStore{proposeC: proposeC, DataC: dataC, kvStore: make(map[string]string), client: client, snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {

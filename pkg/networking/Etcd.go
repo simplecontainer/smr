@@ -24,14 +24,14 @@ func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 	return embed.StartEtcd(cfg)
 }
 
-func Flannel(network string) error {
+func Flannel(network string, backend string) error {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,
 	})
 
 	if err != nil {
-		return nil
+		return err
 	}
 
 	timeout, err := time.ParseDuration("10s")
@@ -41,7 +41,7 @@ func Flannel(network string) error {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	_, err = cli.Put(ctx, "/coreos.com/network/config", fmt.Sprintf("{\"Network\": \"%s\", \"Backend\": {\"Type\": \"vxlan\"}}", network))
+	_, err = cli.Put(ctx, "/coreos.com/network/config", fmt.Sprintf("{\"Network\": \"%s\", \"Backend\": {\"Type\": \"%s\"}}", network, backend))
 	cancel()
 
 	if err != nil {

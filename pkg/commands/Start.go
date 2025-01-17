@@ -263,7 +263,7 @@ func Start() {
 
 				tlsConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
 
-				api.SetupEncryptedDatabase(api.Keys.Server.PrivateKeyBytes[:32])
+				api.SetupEtcd()
 
 				server := http.Server{
 					Addr:      fmt.Sprintf("%s:%s", api.Config.HostPort.Host, api.Config.HostPort.Port),

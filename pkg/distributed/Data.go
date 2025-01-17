@@ -17,9 +17,10 @@ import (
 	"strings"
 )
 
-func New(client *client.Client, user *authentication.User) *Replication {
+func New(client *client.Client, user *authentication.User, node string) *Replication {
 	return &Replication{
 		Client: client,
+		Node:   node,
 		User:   user,
 		DataC:  make(chan KV),
 	}
@@ -149,33 +150,36 @@ func (replication *Replication) HandlePlain(data KV) {
 	}
 }
 
+// HandleEtcd handles the case when data is entered into etcd via other means than simplecontainer
 func (replication *Replication) HandleEtcd(data KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_ETCD_STRING)
 	obj := objects.New(replication.Client, replication.User)
 
-	if data.Val == nil {
-		_, err := obj.RemoveLocal(format)
+	if !data.IsLocal() {
+		if data.Val == nil {
+			_, err := obj.RemoveLocal(format)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
 
-		err = EtcDelete(data.Key)
+			err = EtcDelete(data.Key)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	} else {
-		err := obj.AddLocal(format, data.Val)
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+		} else {
+			err := obj.AddLocal(format, data.Val)
 
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
 
-		err = EtcdPut(data.Key, string(data.Val))
+			err = EtcdPut(data.Key, string(data.Val))
 
-		if err != nil {
-			logger.Log.Error(err.Error())
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
 		}
 	}
 }

@@ -35,7 +35,6 @@ func Create() {
 				}
 
 				api.Config.Platform = viper.GetString("platform")
-				api.Config.OverlayNetwork = viper.GetString("overlay")
 				api.Config.HostPort.Host, api.Config.HostPort.Port, err = net.SplitHostPort(viper.GetString("port"))
 
 				if err != nil {

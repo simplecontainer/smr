@@ -1,7 +1,6 @@
 package distributed
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -72,21 +71,7 @@ func EtcdPut(key string, value string) error {
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
-
-	etcdValue, err := cli.Get(ctx, key)
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
-
-	// Put only if applied value is different from the previous value to avoid trigger replication flow again
-	if len(etcdValue.Kvs) == 0 || !bytes.Equal(etcdValue.Kvs[len(etcdValue.Kvs)-1].Value, []byte(value)) {
-		_, err = cli.Put(ctx, key, value)
-
-		if err != nil {
-			return err
-		}
-	}
+	_, err = cli.Put(ctx, key, value)
 
 	return nil
 }

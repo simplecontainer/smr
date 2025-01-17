@@ -73,7 +73,6 @@ func SetFlags() {
 
 	flag.String("name", "", "Node container name")
 	flag.String("cluster", "", "SMR Cluster")
-	flag.String("overlay", "10.10.0.0/16", "Overlay network for flannel to use")
 	flag.Int("node", 0, "Distributed KVStore Node ID")
 	flag.Bool("join", false, "Join the cluster")
 	flag.Bool("restore", false, "Restore cluster")

@@ -8,6 +8,7 @@ import (
 type Replication struct {
 	Client      *client.Client
 	User        *authentication.User
+	Node        string
 	DataC       chan KV
 	EventsC     chan KV
 	DnsUpdatesC chan KV

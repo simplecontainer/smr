@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/dgraph-io/badger/v4"
 	_ "github.com/simplecontainer/smr/docs"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/commands"
@@ -33,8 +32,7 @@ func main() {
 	conf.Environment = startup.GetEnvironmentInfo()
 	startup.ReadFlags(conf)
 
-	var db *badger.DB
-	api := api.NewApi(conf, db)
+	api := api.NewApi(conf)
 	api.VersionServer = SMR_VERSION
 	api.Manager.LogLevel = helpers.GetLogLevel(logLevel)
 

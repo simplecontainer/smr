@@ -1,14 +1,15 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/dgraph-io/badger/v4"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/helpers"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"io"
 	"net/http"
 	"strings"
@@ -27,30 +28,8 @@ import (
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key} [get]
 func (api *Api) SecretsGet(c *gin.Context) {
-	api.BadgerSync.RLock()
-
 	key := strings.TrimPrefix(c.Param("key"), "/")
-
-	var value []byte
-
-	err := api.Badger.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-
-		var valueCopy []byte
-		valueCopy, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-
-		value = valueCopy
-
-		return nil
-	})
-
-	api.BadgerSync.RUnlock()
+	response, err := api.Etcd.Get(context.Background(), key)
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, contracts.Response{
@@ -61,13 +40,23 @@ func (api *Api) SecretsGet(c *gin.Context) {
 			Data:             nil,
 		})
 	} else {
-		c.JSON(http.StatusOK, contracts.Response{
-			Explanation:      "found key in the key-value store",
-			ErrorExplanation: "",
-			Error:            false,
-			Success:          true,
-			Data:             network.ToJson(value),
-		})
+		if response.Count == 0 {
+			c.JSON(http.StatusNotFound, contracts.Response{
+				Explanation:      "failed to read from the key-value store",
+				ErrorExplanation: errors.New("key not found").Error(),
+				Error:            true,
+				Success:          false,
+				Data:             nil,
+			})
+		} else {
+			c.JSON(http.StatusOK, contracts.Response{
+				Explanation:      "found key in the key-value store",
+				ErrorExplanation: "",
+				Error:            false,
+				Success:          true,
+				Data:             network.ToJson(response.Kvs[0].Value),
+			})
+		}
 	}
 }
 
@@ -94,14 +83,7 @@ func (api *Api) SecretsSet(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	if err == nil {
-		api.BadgerSync.Lock()
-
-		err = api.Badger.Update(func(txn *badger.Txn) error {
-			err = txn.Set([]byte(key), data)
-			return err
-		})
-
-		api.BadgerSync.Unlock()
+		_, err = api.Etcd.Put(context.Background(), key, string(data))
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, contracts.Response{
@@ -169,7 +151,7 @@ func (api *Api) ProposeSecrets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, contracts.Response{
-		Explanation:      "secret proposed to the key value store",
+		Explanation:      "value proposed to the key value store",
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
@@ -189,27 +171,15 @@ func (api *Api) ProposeSecrets(c *gin.Context) {
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key}/{prefix} [get]
 func (api *Api) SecretsGetKeysPrefix(c *gin.Context) {
-	var keys []string
-
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
-	api.BadgerSync.RLock()
+	response, err := api.Etcd.Get(context.Background(), string(prefix), clientv3.WithPrefix())
 
-	err := api.Badger.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
+	var keys []string
 
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			k := item.Key()
-
-			keys = append(keys, string(k))
-		}
-
-		return nil
-	})
-
-	api.BadgerSync.RUnlock()
+	for _, kv := range response.Kvs {
+		keys = append(keys, string(kv.Key))
+	}
 
 	if err == nil {
 		c.JSON(http.StatusOK, contracts.Response{
@@ -244,26 +214,13 @@ func (api *Api) SecretsGetKeysPrefix(c *gin.Context) {
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/keys [get]
 func (api *Api) SecretsGetKeys(c *gin.Context) {
+	response, err := api.Etcd.Get(context.Background(), "", clientv3.WithPrefix())
+
 	var keys []string
 
-	api.BadgerSync.RLock()
-
-	err := api.Badger.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-
-			keys = append(keys, string(k))
-		}
-
-		return nil
-	})
-
-	api.BadgerSync.RUnlock()
+	for _, kv := range response.Kvs {
+		keys = append(keys, string(kv.Key))
+	}
 
 	if err == nil {
 		c.JSON(http.StatusOK, contracts.Response{
@@ -300,30 +257,14 @@ func (api *Api) SecretsRemoveKeys(c *gin.Context) {
 
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
-	api.BadgerSync.Lock()
+	response, err := api.Etcd.Delete(context.Background(), string(prefix), clientv3.WithPrefix())
+	if err != nil {
+		return
+	}
 
-	err := api.Badger.Update(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		var err error
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			err = txn.Delete(it.Item().KeyCopy(nil))
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-				return err
-			}
-		}
-
-		return err
-	})
-
-	api.BadgerSync.Unlock()
+	for _, kv := range response.PrevKvs {
+		keys = append(keys, string(kv.Key))
+	}
 
 	if err == nil {
 		c.JSON(http.StatusOK, contracts.Response{
