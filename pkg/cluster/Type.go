@@ -10,6 +10,7 @@ type Cluster struct {
 	Node     *node.Node
 	Cluster  *node.Nodes
 	Client   *client.Http
+	NodeConf chan node.Node
 	KVStore  *raft.KVStore
 	RaftNode *raft.RaftNode
 	Started  bool

@@ -27,6 +27,7 @@ type Gitops struct {
 	Context         string
 	Definition      *v1.GitopsDefinition
 	Definitions     []common.Request
+	Ghost           bool
 }
 
 type Auth struct {

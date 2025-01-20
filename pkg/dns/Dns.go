@@ -91,12 +91,20 @@ func (r *Records) Find(domain string) ([]string, error) {
 }
 
 func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
+	if strings.HasSuffix(m.Question[0].Name, ".private.") {
+		return LookupLocal(records, m)
+	} else {
+		return LookupRemote(records, m)
+	}
+}
+
+func LookupLocal(records *Records, m *dns.Msg) (*dns.Msg, error) {
 	for _, q := range m.Question {
 		switch q.Qtype {
 		case dns.TypeA:
 			addresses, err := records.Find(q.Name)
 
-			if err == nil && len(addresses) > 0 {
+			if err == nil {
 				var rr dns.RR
 				var err error
 
@@ -110,43 +118,40 @@ func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
 
 				return m, nil
 			} else {
-				if err != nil {
-					if errors.Is(err, ErrNotFound) {
-						config := dns.ClientConfig{
-							Servers:  records.Nameservers,
-							Port:     "53",
-							Ndots:    0,
-							Timeout:  1,
-							Attempts: 3,
-						}
-
-						c := new(dns.Client)
-
-						ms := new(dns.Msg)
-						ms.SetQuestion(dns.Fqdn(q.Name), q.Qtype)
-						ms.RecursionDesired = false
-
-						var r *dns.Msg
-						r, _, err = c.Exchange(ms, net.JoinHostPort(config.Servers[0], config.Port))
-
-						if err != nil {
-							return r, err
-						}
-
-						if r.Rcode != dns.RcodeSuccess {
-							return r, errors.New("request failed")
-						}
-
-						for _, a := range r.Answer {
-							m.Answer = append(m.Answer, a)
-						}
-
-						return nil, nil
-					}
-				}
+				return m, err
 			}
+		default:
+			return m, ErrNotFound
 		}
 	}
 
-	return nil, nil
+	return m, errors.New("questions empty")
+}
+
+func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, error) {
+	config := dns.ClientConfig{
+		Servers:  records.Nameservers,
+		Port:     "53",
+		Ndots:    0,
+		Timeout:  5,
+		Attempts: 5,
+	}
+
+	c := new(dns.Client)
+	m.RecursionDesired = true
+
+	var r *dns.Msg
+	var err error
+
+	r, _, err = c.Exchange(m, net.JoinHostPort(config.Servers[0], config.Port))
+
+	if err != nil {
+		return m, err
+	}
+
+	if r.Rcode != dns.RcodeSuccess {
+		return r, errors.New("request failed")
+	}
+
+	return r.SetReply(m), nil
 }

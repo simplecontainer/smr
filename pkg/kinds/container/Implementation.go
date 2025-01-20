@@ -8,12 +8,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	replication "github.com/simplecontainer/smr/pkg/distributed"
+	"github.com/simplecontainer/smr/pkg/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/events"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/replicas"
 	"github.com/simplecontainer/smr/pkg/kinds/container/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
@@ -32,9 +31,7 @@ import (
 func (container *Container) Start() error {
 	container.Started = true
 
-	container.Shared.Watcher = &watcher.ContainerWatcher{
-		EventChannel: make(chan replication.KV),
-	}
+	container.Shared.Watcher = &watcher.ContainerWatcher{}
 	container.Shared.Watcher.Container = make(map[string]*watcher.Container)
 
 	container.Shared.Registry = &registry.Registry{
@@ -56,7 +53,6 @@ func (container *Container) Start() error {
 
 	// Start listening events based on the platform and for internal events
 	go events.NewPlatformEventsListener(container.Shared, container.Shared.Manager.Config.Platform)
-	go events.NewEventsListener(container.Shared, container.Shared.Watcher.EventChannel)
 
 	logger.Log.Info(fmt.Sprintf("started listening events for simplecontainer and platform: %s", container.Shared.Manager.Config.Platform))
 

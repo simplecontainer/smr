@@ -4,12 +4,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/cluster"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/events"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/networking"
@@ -27,29 +29,11 @@ var starting = false
 
 func (api *Api) StartCluster(c *gin.Context) {
 	if starting {
-		c.JSON(http.StatusConflict, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "cluster is in the process of starting on this node",
-			Error:            true,
-			Success:          false,
-			Data: network.ToJson(map[string]any{
-				"name": api.Config.NodeName,
-			}),
-		})
-
+		c.JSON(http.StatusConflict, common.Response(http.StatusConflict, "", errors.New("cluster is in the process of starting on this node"), nil))
 		return
 	} else {
 		if api.Cluster != nil && api.Cluster.Started {
-			c.JSON(http.StatusConflict, contracts.Response{
-				Explanation:      "",
-				ErrorExplanation: "cluster is already started on this node",
-				Error:            true,
-				Success:          false,
-				Data: network.ToJson(map[string]any{
-					"name": api.Config.NodeName,
-				}),
-			})
-
+			c.JSON(http.StatusConflict, common.Response(http.StatusConflict, "", errors.New("cluster already started"), nil))
 			return
 		}
 	}
@@ -58,14 +42,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
 
@@ -73,14 +50,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	err = json.Unmarshal(data, &request)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
 
@@ -90,7 +60,12 @@ func (api *Api) StartCluster(c *gin.Context) {
 		api.Cluster = cluster.New()
 	}
 
-	currentNode := api.Cluster.Cluster.NewNode(request["node"])
+	parsed, err := url.Parse(request["node"])
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+	}
+
+	currentNode := api.Cluster.Cluster.NewNode(api.Config.NodeName, request["node"], fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
 
 	if request["join"] != "" {
 		user := &authentication.User{}
@@ -119,22 +94,29 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		if user == nil {
-			c.JSON(http.StatusBadRequest, contracts.Response{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      "user not found for remote agent",
-				ErrorExplanation: "",
-				Error:            false,
-				Success:          false,
-				Data:             nil,
-			})
-
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
 			return
 		}
 
-		d, _ := json.Marshal(map[string]string{"node": request["node"]})
+		d, _ := json.Marshal(map[string]string{"node": request["node"], "nodeName": api.Config.NodeName, "API": fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port)})
+
+		if _, ok := api.Manager.Http.Clients[user.Username]; !ok {
+			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New("certificate not found"), nil))
+			return
+		}
+
 		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, d)
 
 		if response.Error {
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		currentNode = node.NewNode()
+
+		err = json.Unmarshal(response.Data, &currentNode)
+
+		if err != nil {
 			c.JSON(http.StatusBadRequest, response)
 			return
 		}
@@ -144,37 +126,23 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 		if response.Success {
 			var bytes []byte
-			var peers map[string][]*node.Node
+			var peers []*node.Node
 
 			bytes, err = json.Marshal(response.Data)
 
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, contracts.Response{
-					Explanation:      "",
-					ErrorExplanation: err.Error(),
-					Error:            true,
-					Success:          false,
-					Data:             nil,
-				})
-
+				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 				return
 			}
 
 			err = json.Unmarshal(bytes, &peers)
 
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, contracts.Response{
-					Explanation:      "",
-					ErrorExplanation: err.Error(),
-					Error:            true,
-					Success:          false,
-					Data:             nil,
-				})
-
+				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 				return
 			}
 
-			for _, n := range peers["cluster"] {
+			for _, n := range peers {
 				api.Cluster.Cluster.Add(n)
 
 				if n.URL == currentNode.URL {
@@ -185,11 +153,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, response)
 			return
 		}
-	} else {
-		// If not joining generate node yourself
-		api.Cluster.Node = currentNode
-		api.Cluster.Cluster.Add(currentNode)
 	}
+
+	api.Cluster.Node = currentNode
+	api.Cluster.Cluster.Add(currentNode)
 
 	api.Manager.Cluster = api.Cluster
 
@@ -208,14 +175,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
 
@@ -226,48 +186,28 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.SaveClusterConfiguration()
 
+	go api.ListenNode()
+	go events.NewEventsListener(api.Manager.KindsRegistry, api.Replication.EventsC)
 	go api.Replication.ListenEtcd(api.Config.NodeName)
 	go api.Replication.ListenData(api.Config.NodeName)
 
 	err = networking.Flannel(request["overlay"], request["backend"])
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, contracts.Response{
-			Explanation:      "",
-			ErrorExplanation: "flannel overlay network failed to start",
-			Error:            true,
-			Success:          false,
-			Data:             nil,
-		})
-
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New("flannel overlay network failed to start"), nil))
 		return
 	}
 
 	api.Cluster.Started = true
 
-	c.JSON(http.StatusOK, contracts.Response{
-		Explanation:      "",
-		ErrorExplanation: "everything went ok",
-		Error:            false,
-		Success:          true,
-		Data: network.ToJson(map[string]string{
-			"name": api.Config.NodeName,
-		}),
-	})
-
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJson(map[string]string{
+		"name": api.Config.NodeName,
+	})))
 	return
 }
 
 func (api *Api) GetCluster(c *gin.Context) {
-	c.JSON(http.StatusOK, contracts.Response{
-		Explanation:      "",
-		ErrorExplanation: "list of peers",
-		Error:            false,
-		Success:          true,
-		Data: network.ToJson(map[string]any{
-			"cluster": api.Cluster.Cluster.Nodes,
-		}),
-	})
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster starte", nil, network.ToJson(api.Cluster.Cluster.Nodes)))
 }
 
 func (api *Api) SaveClusterConfiguration() {

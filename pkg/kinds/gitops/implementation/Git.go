@@ -14,18 +14,23 @@ var (
 	ErrPoolingInterval = errors.New("sleep interval didn't pass")
 )
 
-func (gitops *Gitops) Fetch() error {
-	if _, err := os.Stat(gitops.Path); errors.Is(err, os.ErrNotExist) {
-		err = gitops.Clone(gitops.AuthResolved)
+func (gitops *Gitops) Fetch(logpath string) error {
+	if _, err := git.PlainOpen(gitops.Path); err != nil {
+		err = gitops.Clone(gitops.AuthResolved, logpath)
+
+		fmt.Println(err)
 
 		if err != nil {
 			if errors.Is(err, git.ErrRepositoryAlreadyExists) {
-				err = gitops.Pull(gitops.AuthResolved)
+				err = gitops.Pull(gitops.AuthResolved, logpath)
 
 				if err != nil {
 					if errors.Is(err, git.NoErrAlreadyUpToDate) {
+						fmt.Println(err)
 						return nil
 					}
+
+					fmt.Println(err)
 
 					return err
 				}
@@ -34,7 +39,7 @@ func (gitops *Gitops) Fetch() error {
 			return err
 		}
 
-		return gitops.Pull(gitops.AuthResolved)
+		return gitops.Pull(gitops.AuthResolved, logpath)
 	} else {
 		var sleepDuration time.Duration
 		sleepDuration, err = time.ParseDuration(gitops.PoolingInterval)
@@ -44,17 +49,26 @@ func (gitops *Gitops) Fetch() error {
 		}
 
 		if time.Now().Sub(gitops.LastPoll) > sleepDuration || gitops.ForcePoll {
-			return gitops.Pull(gitops.AuthResolved)
+			return gitops.Pull(gitops.AuthResolved, logpath)
 		} else {
 			return ErrPoolingInterval
 		}
 	}
 }
 
-func (gitops *Gitops) Clone(auth transport.AuthMethod) error {
-	_, err := git.PlainClone(gitops.Path, false, &git.CloneOptions{
+func (gitops *Gitops) Clone(auth transport.AuthMethod, logpath string) error {
+	file, err := os.OpenFile(logpath, os.O_RDWR, 0644)
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = git.PlainClone(gitops.Path, false, &git.CloneOptions{
 		URL:           gitops.RepoURL,
-		Progress:      os.Stdout,
+		Progress:      file,
 		ReferenceName: plumbing.NewBranchReferenceName(gitops.Revision),
 		Auth:          auth,
 	})
@@ -66,7 +80,16 @@ func (gitops *Gitops) Clone(auth transport.AuthMethod) error {
 	return nil
 }
 
-func (gitops *Gitops) Pull(auth transport.AuthMethod) error {
+func (gitops *Gitops) Pull(auth transport.AuthMethod, logpath string) error {
+	file, err := os.OpenFile(logpath, os.O_RDWR, 0644)
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+
+	if err != nil {
+		return err
+	}
+
 	repository, err := git.PlainOpen(gitops.Path)
 
 	if err != nil {
@@ -82,15 +105,20 @@ func (gitops *Gitops) Pull(auth transport.AuthMethod) error {
 		Auth:          auth,
 		SingleBranch:  true,
 		Force:         true,
+		Progress:      file,
 		ReferenceName: plumbing.NewBranchReferenceName(gitops.Revision),
 	})
 
 	gitops.LastPoll = time.Now()
 	gitops.ForcePoll = false
 
-	ref, _ = repository.Head()
-	gitops.Commit, err = repository.CommitObject(ref.Hash())
+	ref, err = repository.Head()
 
+	if err != nil {
+		return err
+	}
+
+	gitops.Commit, err = repository.CommitObject(ref.Hash())
 	return err
 }
 

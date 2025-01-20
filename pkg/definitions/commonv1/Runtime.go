@@ -1,8 +1,9 @@
 package commonv1
 
 type Runtime struct {
-	Owner Owner  `json:"owner"`
-	Node  uint64 `json:"node"`
+	Owner    Owner  `json:"owner"`
+	Node     uint64 `json:"node"`
+	NodeName string `json:"nodeName"`
 }
 
 func (runtime *Runtime) SetNode(node uint64) {
@@ -11,6 +12,14 @@ func (runtime *Runtime) SetNode(node uint64) {
 
 func (runtime *Runtime) GetNode() uint64 {
 	return runtime.Node
+}
+
+func (runtime *Runtime) SetNodeName(nodeName string) {
+	runtime.NodeName = nodeName
+}
+
+func (runtime *Runtime) GetNodeName() string {
+	return runtime.NodeName
 }
 
 func (runtime *Runtime) SetOwner(kind string, group string, name string) {

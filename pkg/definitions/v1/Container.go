@@ -17,7 +17,7 @@ type ContainerDefinition struct {
 type ContainerMeta struct {
 	Name    string            `validate:"required" json:"name"`
 	Group   string            `validate:"required" json:"group"`
-	Labels  map[string]string `json:"labels"`
+	Labels  map[string]string `json:"labels,omitempty"`
 	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
@@ -28,23 +28,23 @@ type ContainerSpec struct {
 type ContainerInternal struct {
 	Image         string               `validate:"required" json:"image"`
 	Tag           string               `validate:"required" json:"tag"`
-	Envs          []string             `json:"envs"`
-	Entrypoint    []string             `json:"entrypoint"`
-	Args          []string             `json:"args"`
-	Dependencies  []ContainerDependsOn `json:"dependencies"`
-	Readiness     []ContainerReadiness `json:"readiness"`
-	Networks      []ContainerNetwork   `json:"networks"`
-	Ports         []ContainerPort      `json:"ports"`
-	Volumes       []ContainerVolume    `json:"volumes"`
-	Configuration map[string]string    `json:"configuration"`
-	Resources     []ContainerResource  `json:"resources"`
+	Envs          []string             `json:"envs,omitempty"`
+	Entrypoint    []string             `json:"entrypoint,omitempty"`
+	Args          []string             `json:"args,omitempty"`
+	Dependencies  []ContainerDependsOn `json:"dependencies,omitempty"`
+	Readiness     []ContainerReadiness `json:"readiness,omitempty"`
+	Networks      []ContainerNetwork   `json:"networks,omitempty"`
+	Ports         []ContainerPort      `json:"ports,omitempty"`
+	Volumes       []ContainerVolume    `json:"volumes,omitempty"`
+	Configuration map[string]string    `json:"configuration,omitempty"`
+	Resources     []ContainerResource  `json:"resources,omitempty"`
 	Replicas      uint64               `validate:"required" json:"replicas"`
-	Capabilities  []string             `json:"capabilities"`
-	Privileged    bool                 `json:"privileged"`
-	NetworkMode   string               `json:"network_mode"`
-	Spread        ContainerSpread      `json:"spread"`
-	Nodes         []string             `json:"nodes"`
-	Dns           []string             `json:"dns"`
+	Capabilities  []string             `json:"capabilities,omitempty"`
+	Privileged    bool                 `json:"privileged,omitempty"`
+	NetworkMode   string               `json:"network_mode,omitempty"`
+	Spread        ContainerSpread      `json:"spread,omitempty"`
+	Nodes         []string             `json:"nodes,omitempty"`
+	Dns           []string             `json:"dns,omitempty"`
 }
 
 type ContainerDependsOn struct {
@@ -63,7 +63,7 @@ type ContainerReadiness struct {
 
 type ContainerSpread struct {
 	Spread string   `json:"spread"`
-	Agents []uint64 `json:"agents"`
+	Agents []uint64 `json:"agents,omitempty"`
 }
 
 type ContainerNetwork struct {

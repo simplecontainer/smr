@@ -84,9 +84,6 @@ sudo mv client /usr/local/bin/smr
 Explore `/scripts/production/smrmgr.sh` to see how you can utilize smr client to configure and start simplecontainer nodes.
 
 ## Running simplecontainer
-The simplecontainer can be started in a single node or cluster mode.
-
-### Cluster mode
 Simplecontainer can run in single and cluster mode. Cluster mode allows users to deploy Docker daemons on different hosts and connect them via simplecontainer. An overlay network is created using flannel to enable inter-host communication.
 
 Simplecontainer uses RAFT protocol to enable distributed state using the Badger key-value store.
@@ -100,7 +97,46 @@ Ports exposed:
 - `:::1443->1443/tcp` (Simplecontainer control plane ipv6)
 - `127.0.0.1:2379->2379/tcp` (Etcd exposed only on the localhost)
 
-#### How to run it?
+
+### Single node mode
+The simplecontainer can also be run as a single node without clustering enabled and additional overhead if it is not mandatory to have multiple nodes, high availability, and disaster recovery in place for the application.
+
+The control plane can be exposed:
+- On the localhost only to prevent control plane communication from being done outside localhost
+- On the 0.0.0.0:1443 which means all interfaces that include all endpoints localhost or from another network.
+
+#### How to run it? (Control plane exposed to all networks)
+Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
+```bash
+smrmgr start -a smr-agent-1 -d smr.example.com
+# Copy the content of the export
+smr context export <<< https://smr.example.com:1443
+# Copy the decryption key
+cat $HOME/smr/smr/contexts/$(smr context).key
+```
+
+On the external machine run:
+```bash
+smr context import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
+smr ps
+```
+
+#### How to run it? (Control plane exposed to the localhost only)
+Exposing the control plane only to the localhost:
+
+```bash
+smrmgr start -a smr-agent-1 -e localhost:1443
+```
+
+Now the contorl plane is accesible from the localhost.
+
+```bash
+smr ps
+NODE  GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  ENGINE STATE  SMR STATE  
+```
+
+### Cluster mode
+#### How to run it? (Production cluster with public domains)
 
 > [!IMPORTANT]
 > The smrmgr script must be run on the host directly.
@@ -134,39 +170,9 @@ smr context fetch
 smrmgr start -a smr-agent-2 -d smr2.example.com -j smr1.example.com:1443
 ```
 
-Afterward, the cluster is started. Badger key-value store is now distributed using RAFT protocol. Flannel will start and the agent will create a docker network named cluster. 
+Afterward, the cluster is started. Flannel will start and the agent will create a docker network named cluster. 
 
 To connect containers with cluster network in the container definition specify that you want the container to connect to the cluster network.
-
-### Single node mode
-The simplecontainer can also be run as a single node without clustering enabled and additional overhead if it is not mandatory to have multiple nodes, high availability, and disaster recovery in place for the application.
-
-The control plane can be exposed:
-- On the localhost only to prevent control plane communication from being done outside localhost
-- On the 0.0.0.0:1443 which means all interfaces that include all endpoints localhost or from another network.
-
-#### How to run it? (Control plane exposed to all networks)
-Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
-```bash
-smrmgr start -a smr-agent-1 -d smr.example.com
-# Copy the content of the export
-smr context export <<< https://smr.example.com:1443
-# Copy the decryption key
-cat $HOME/smr/smr/contexts/$(smr context).key
-```
-
-On the external machine run:
-```bash
-smr context import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
-smr ps
-```
-
-#### How to run it? (Control plane exposed to the localhost only)
-Exposing the control plane only to the localhost:
-
-```bash
-smrmgr start -a smr-agent-1 -e localhost:1443
-```
 
 ## How to manipulate containers?
 The simplecontainer introduces objects which can be defined as YAML definition and sent to the simplecontainer manager to produce containers on the engine via reconciliation:

@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-git/go-git/v5/plumbing"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -41,4 +42,8 @@ func New(definition *v1.GitopsDefinition) *Gitops {
 	}
 
 	return gitops
+}
+
+func (gitops *Gitops) ToJson() ([]byte, error) {
+	return json.Marshal(gitops)
 }

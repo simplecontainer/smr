@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
@@ -12,8 +11,7 @@ import (
 )
 
 type ContainerWatcher struct {
-	Container    map[string]*Container
-	EventChannel chan distributed.KV
+	Container map[string]*Container
 }
 
 type Container struct {

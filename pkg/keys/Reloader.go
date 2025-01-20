@@ -2,7 +2,8 @@ package keys
 
 import (
 	"crypto/tls"
-	"log"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"go.uber.org/zap"
 	"os"
 	"sync"
 )
@@ -33,10 +34,10 @@ func NewKeypairReloader(certPath, keyPath string) (*keypairReloader, error) {
 			case <-result.ReloadC:
 
 				if err = result.maybeReload(); err != nil {
-					log.Printf("Keeping old TLS certificate because the new one could not be loaded: %v", err)
+					logger.Log.Error("Keeping old TLS certificate because the new one could not be loaded: %v", zap.Error(err))
 				}
 
-				log.Printf("Reloaded TLS certificates")
+				logger.Log.Info("Reloaded TLS certificates")
 			}
 		}
 	}()

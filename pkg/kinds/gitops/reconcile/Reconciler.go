@@ -21,7 +21,8 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)}, []string{fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)})
+	logpath := fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{logpath}, []string{logpath})
 
 	return &watcher.Gitops{
 		Gitops:      gitopsObj,
@@ -32,6 +33,7 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 		Cancel:      fn,
 		Ticker:      time.NewTicker(interval),
 		Logger:      loggerObj,
+		LogPath:     logpath,
 	}
 }
 
@@ -84,6 +86,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	switch gitopsWatcher.Gitops.Status.GetState() {
 	case status.STATUS_CREATED:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Info(fmt.Sprintf("%s is created", name))
 
 		err := gitopsWatcher.Gitops.Prepare(shared.Client, gitopsWatcher.User)
@@ -101,9 +104,10 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_CLONING_GIT:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Debug(fmt.Sprintf("attempting to clone/pull the: %s", gitopsWatcher.Gitops.RepoURL))
 
-		err := gitopsWatcher.Gitops.Fetch()
+		err := gitopsWatcher.Gitops.Fetch(gitopsWatcher.LogPath)
 
 		if err != nil {
 			if errors.Is(err, implementation.ErrPoolingInterval) || errors.Is(err, git.NoErrAlreadyUpToDate) {
@@ -122,6 +126,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_CLONED_GIT:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Debug(fmt.Sprintf("successfully cloned/pulled the: %s", gitopsWatcher.Gitops.RepoURL))
 
 		if gitopsWatcher.ShouldSync() {
@@ -140,14 +145,17 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		gitopsWatcher.Ticker.Stop()
 		break
 	case status.STATUS_INVALID_GIT:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Info("git configuration is invalid or pull failed")
 
 		break
 	case status.STATUS_INVALID_DEFINITIONS:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Info("definitions are invalid")
 
 		break
 	case status.STATUS_SYNCING:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gitopsWatcher.Gitops.Commit.ID()))
 
 		if gitopsWatcher.Gitops.Status.LastSyncedCommit != gitopsWatcher.Gitops.Commit.ID() || !gitopsWatcher.Gitops.Status.InSync {
@@ -175,6 +183,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 					gitopsWatcher.Gitops.Status.LastSyncedCommit = gitopsWatcher.Gitops.Commit.ID()
 					gitopsWatcher.Gitops.Status.InSync = true
+					gitopsWatcher.Gitops.ManualSync = false
 
 					gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
 					gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_INSYNC)
@@ -188,6 +197,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_INSPECTING:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		remoteHeadHash, err := gitopsWatcher.Gitops.RemoteHead()
 
 		if err != nil {
@@ -225,9 +235,12 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		Loop(gitopsWatcher)
 		break
 	case status.STATUS_INSYNC:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
+		gitopsWatcher.Gitops.Status.Reconciling = false
 		// NO-OP
 		break
 	case status.STATUS_DRIFTED:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		if gitopsWatcher.Gitops.AutomaticSync {
 			gitopsWatcher.Logger.Info("drift detected")
 			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONED_GIT)
@@ -240,6 +253,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 		break
 	case status.STATUS_PENDING_DELETE:
+		shared.Registry.Sync(gitopsWatcher.Gitops)
 		gitopsWatcher.Logger.Info("delete is in process")
 		gitopsWatcher.Cancel()
 		break

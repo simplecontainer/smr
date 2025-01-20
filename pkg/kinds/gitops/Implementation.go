@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/reconcile"
+	"github.com/simplecontainer/smr/pkg/kinds/gitops/registry"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -26,6 +27,12 @@ func (gitops *Gitops) Start() error {
 
 	gitops.Shared.Watcher = &watcher.RepositoryWatcher{
 		Repositories: make(map[string]*watcher.Gitops),
+	}
+
+	gitops.Shared.Registry = &registry.Registry{
+		Gitopses: make(map[string]map[string]*implementation.Gitops),
+		Client:   gitops.Shared.Client,
+		User:     gitops.Shared.Manager.User,
 	}
 
 	return nil
@@ -104,12 +111,17 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 	GroupIdentifier := fmt.Sprintf("%s.%s", definition.Meta.Group, definition.Meta.Name)
 	gitopsWatcherFromRegistry := gitops.Shared.Watcher.Find(GroupIdentifier)
 
+	fmt.Println(definition.GetRuntime().GetNode())
+	fmt.Println(gitops.Shared.Manager.Cluster.Node.NodeID)
+	if definition.GetRuntime().GetNode() != gitops.Shared.Manager.Cluster.Node.NodeID {
+		return common.Response(http.StatusOK, "object applied", nil, nil), nil
+	}
+
 	if obj.Exists() {
 		if obj.ChangeDetected() || gitopsWatcherFromRegistry == nil {
 			if gitopsWatcherFromRegistry == nil {
 				gitopsWatcherFromRegistry = reconcile.NewWatcher(implementation.New(definition), gitops.Shared.Manager, user)
 				go reconcile.HandleTickerAndEvents(gitops.Shared, gitopsWatcherFromRegistry)
-
 				gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			} else {
@@ -119,6 +131,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 			}
 
 			gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
+			gitops.Shared.Registry.AddOrUpdate(gitopsWatcherFromRegistry.Gitops.GetGroup(), gitopsWatcherFromRegistry.Gitops.GetName(), gitopsWatcherFromRegistry.Gitops)
 			reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 		}
 	} else {
@@ -127,6 +140,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 
 		gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 		gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
+		gitops.Shared.Registry.AddOrUpdate(gitopsWatcherFromRegistry.Gitops.GetGroup(), gitopsWatcherFromRegistry.Gitops.GetName(), gitopsWatcherFromRegistry.Gitops)
 		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
 		reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 	}

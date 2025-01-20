@@ -9,9 +9,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
-	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/networking"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/startup"
@@ -82,16 +82,15 @@ func (api *Api) SetupEtcd() {
 func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *cluster.Cluster, join string) error {
 	proposeC := make(chan string)
 	confChangeC := make(chan raftpb.ConfChange)
+	nodeUpdate := make(chan node.Node)
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
 	api.Cluster.RaftNode = &raft.RaftNode{}
-	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC)
-
-	containerShared := api.Manager.KindsRegistry["container"].GetShared().(*shared.Shared)
+	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC, nodeUpdate)
 
 	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Config.NodeName)
-	api.Replication.EventsC = containerShared.Watcher.EventChannel
+	api.Replication.EventsC = make(chan distributed.KV)
 	api.Replication.DnsUpdatesC = api.DnsCache.Records
 
 	api.Manager.Replication = api.Replication
@@ -104,6 +103,7 @@ func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	}
 
 	api.Cluster.KVStore.ConfChangeC = confChangeC
+	api.Cluster.NodeConf = nodeUpdate
 	api.Cluster.KVStore.Node = api.Config.KVStore.Node
 
 	api.Manager.Cluster = api.Cluster

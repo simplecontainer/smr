@@ -4,8 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/distributed"
+	"github.com/simplecontainer/smr/pkg/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -20,13 +23,14 @@ func (gitops *Gitops) ListSupported(request contracts.Control) contracts.Respons
 }
 
 func (gitops *Gitops) List(request contracts.Control) contracts.Response {
-	data := make(map[string]any)
+	var reg map[string]map[string]*implementation.Gitops
+	reg = gitops.Shared.Registry.All()
 
-	for key, gitopsInstance := range gitops.Shared.Watcher.Repositories {
-		data[key] = gitopsInstance.Gitops
+	if len(reg) > 0 {
+		return common.Response(http.StatusOK, "", nil, network.ToJson(reg))
+	} else {
+		return common.Response(http.StatusOK, "", nil, nil)
 	}
-
-	return common.Response(http.StatusOK, "", nil, network.ToJson(data))
 }
 
 func (gitops *Gitops) Get(request contracts.Control) contracts.Response {
@@ -90,33 +94,38 @@ func (gitops *Gitops) Remove(data contracts.Control) contracts.Response {
 }
 
 func (gitops *Gitops) Refresh(request contracts.Control) contracts.Response {
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
-	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
+	gitopsObj := gitops.Shared.Registry.Find(request.Group, request.Name)
 
-	if gitopsWatcher == nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("gitops doesn't exist"), nil)
-	} else {
-		gitopsWatcher.Gitops.ForcePoll = true
-		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
-		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+	if gitopsObj != nil {
+
+		event := events.New(events.EVENT_REFRESH, static.KIND_CONTAINER, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
+
+		bytes, err := event.ToJson()
+
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
+		}
+
+		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, gitopsObj.Definition.GetRuntime().GetNode())
 	}
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_REFRESHED, nil, nil)
 }
-func (gitops *Gitops) Sync(request contracts.Control) contracts.Response {
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
-	gitopsWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
 
-	if gitopsWatcher == nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, errors.New("gitops doesn't exist"), nil)
-	} else {
-		if gitopsWatcher.Gitops.AutomaticSync == false {
-			gitopsWatcher.Gitops.ManualSync = true
+func (gitops *Gitops) Sync(request contracts.Control) contracts.Response {
+	gitopsObj := gitops.Shared.Registry.Find(request.Group, request.Name)
+
+	if gitopsObj != nil {
+		event := events.New(events.EVENT_SYNC, static.KIND_CONTAINER, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
+
+		bytes, err := event.ToJson()
+
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 		}
 
-		gitopsWatcher.Gitops.ForcePoll = true
-		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
-		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+		gitops.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, gitops.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
+		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, gitopsObj.Definition.GetRuntime().GetNode())
 	}
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_SYNCED, nil, nil)

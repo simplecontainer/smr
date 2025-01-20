@@ -150,7 +150,7 @@ func (replication *Replication) HandlePlain(data KV) {
 	}
 }
 
-// HandleEtcd handles the case when data is entered into etcd via other means than simplecontainer
+// HandleEtcd handles the case when data is entered into etcd via other means than simplecontainer - flannel only
 func (replication *Replication) HandleEtcd(data KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_ETCD_STRING)
 	obj := objects.New(replication.Client, replication.User)

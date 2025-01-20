@@ -7,6 +7,7 @@ import (
 
 type Http struct {
 	Clients map[string]*Client
+	Nodes   map[uint64]string
 }
 
 type Client struct {

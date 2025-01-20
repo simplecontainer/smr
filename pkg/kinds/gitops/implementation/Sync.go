@@ -31,6 +31,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 		request, err := common.NewRequest(file.Kind)
 		request.Definition.FromJson(definition)
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
 
 		requests = append(requests, request)
 
@@ -41,7 +42,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 			return requests, err
 		}
 
-		response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
+		response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://localhost:1443/api/v1/propose/apply"), http.MethodPost, bytes)
 
 		if !response.Success {
 			if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {

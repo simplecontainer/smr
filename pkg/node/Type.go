@@ -5,6 +5,8 @@ type Nodes struct {
 }
 
 type Node struct {
-	NodeID uint64
-	URL    string
+	NodeID   uint64
+	NodeName string
+	API      string
+	URL      string
 }

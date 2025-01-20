@@ -3,6 +3,7 @@ package raft
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -38,8 +39,9 @@ type Commit struct {
 type RaftNode struct {
 	proposeC    <-chan string            // proposed messages (k,v)
 	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
-	commitC     chan<- *Commit           // entries committed to log (k,v)
-	errorC      chan<- error             // errors from raft session
+	nodeUpdate  chan node.Node
+	commitC     chan<- *Commit // entries committed to log (k,v)
+	errorC      chan<- error   // errors from raft session
 
 	id          int      // client ID for raft session
 	Peers       []string // raft peer URLs
@@ -79,13 +81,14 @@ var defaultSnapshotCount uint64 = 10000
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
+	confChangeC <-chan raftpb.ConfChange, nodeUpdateC chan node.Node) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *Commit)
 	errorC := make(chan error)
 
 	raftnode = &RaftNode{
 		proposeC:    proposeC,
 		confChangeC: confChangeC,
+		nodeUpdate:  nodeUpdateC,
 		commitC:     commitC,
 		errorC:      errorC,
 		id:          int(id),
@@ -167,13 +170,27 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 			switch cc.Type {
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
-					rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
+					n := node.NewNode()
+					err := json.Unmarshal(cc.Context, &n)
+
+					if err != nil {
+						log.Println("Invalid node configuration sent - conf change ignored.")
+					} else {
+						fmt.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXAAAAAAAAAAAA")
+						fmt.Println(n)
+						rc.nodeUpdate <- *n
+						fmt.Println("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
+						rc.transport.AddPeer(types.ID(cc.NodeID), []string{n.URL})
+					}
 				}
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == uint64(rc.id) {
 					log.Println("I've been removed from the cluster! Shutting down.")
 					return nil, false
 				}
+
+				n := node.NewNode()
+				n.NodeID = cc.NodeID
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
 			}
 		}
