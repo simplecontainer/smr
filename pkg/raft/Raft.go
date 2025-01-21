@@ -176,10 +176,7 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 					if err != nil {
 						log.Println("Invalid node configuration sent - conf change ignored.")
 					} else {
-						fmt.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXAAAAAAAAAAAA")
-						fmt.Println(n)
 						rc.nodeUpdate <- *n
-						fmt.Println("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
 						rc.transport.AddPeer(types.ID(cc.NodeID), []string{n.URL})
 					}
 				}

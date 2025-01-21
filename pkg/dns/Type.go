@@ -1,9 +1,9 @@
 package dns
 
 import (
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/smaps"
 )
 
@@ -12,7 +12,7 @@ type Records struct {
 	Client      *client.Http
 	User        *authentication.User
 	Nameservers []string
-	Records     chan distributed.KV
+	Records     chan KV.KV
 }
 
 type ARecord struct {

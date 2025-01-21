@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/tls"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
@@ -79,24 +80,24 @@ func (api *Api) SetupEtcd() {
 	}
 }
 
-func (api *Api) SetupKVStore(TLSConfig *tls.Config, nodeID uint64, cluster *cluster.Cluster, join string) error {
+func (api *Api) SetupCluster(TLSConfig *tls.Config, nodeID uint64, cluster *cluster.Cluster, join string) error {
 	proposeC := make(chan string)
 	confChangeC := make(chan raftpb.ConfChange)
 	nodeUpdate := make(chan node.Node)
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
-	api.Cluster.RaftNode = &raft.RaftNode{}
-	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(api.Cluster.RaftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC, nodeUpdate)
+	raftNode := &raft.RaftNode{}
+	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC, nodeUpdate)
 
 	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Config.NodeName)
-	api.Replication.EventsC = make(chan distributed.KV)
+	api.Replication.EventsC = make(chan KV.KV)
 	api.Replication.DnsUpdatesC = api.DnsCache.Records
 
 	api.Manager.Replication = api.Replication
 
 	var err error
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, api.Manager.Http, proposeC, commitC, errorC, api.Replication.DataC)
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, api.Replication.DataC)
 
 	if err != nil {
 		return err

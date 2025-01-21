@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -17,17 +17,10 @@ func (api *Api) CreateUser(c *gin.Context) {
 
 	if err == nil {
 		var httpClient *http.Client
-		httpClient, _, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[c.Param("username")])
+		httpClient, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[c.Param("username")])
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, contracts.Response{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))),
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			})
-
+			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))), nil, nil))
 			return
 		}
 
@@ -36,20 +29,9 @@ func (api *Api) CreateUser(c *gin.Context) {
 			Http: httpClient,
 		})
 
-		c.JSON(http.StatusOK, contracts.Response{
-			HttpStatus:       http.StatusOK,
-			Explanation:      fmt.Sprintf("user created, run: cat %s", strings.Replace(path, "/home/smr-agent", "$HOME", 1)),
-			ErrorExplanation: "",
-			Error:            true,
-			Success:          false,
-		})
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, fmt.Sprintf("user created, run: cat %s", strings.Replace(path, "/home/smr-agent", "$HOME", 1)), nil, nil))
 	} else {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))),
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		})
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))), nil, nil))
+
 	}
 }

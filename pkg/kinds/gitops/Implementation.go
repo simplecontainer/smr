@@ -111,8 +111,6 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 	GroupIdentifier := fmt.Sprintf("%s.%s", definition.Meta.Group, definition.Meta.Name)
 	gitopsWatcherFromRegistry := gitops.Shared.Watcher.Find(GroupIdentifier)
 
-	fmt.Println(definition.GetRuntime().GetNode())
-	fmt.Println(gitops.Shared.Manager.Cluster.Node.NodeID)
 	if definition.GetRuntime().GetNode() != gitops.Shared.Manager.Cluster.Node.NodeID {
 		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}

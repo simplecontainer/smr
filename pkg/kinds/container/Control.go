@@ -3,8 +3,8 @@ package container
 import (
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/contracts"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
@@ -95,7 +95,7 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
-	container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
+	container.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_RESTART, nil, nil)
 }
@@ -111,7 +111,7 @@ func (container *Container) Remove(request contracts.Control) contracts.Response
 	bytes, err := event.ToJson()
 
 	if err != nil {
-		container.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
+		container.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
 	}
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)

@@ -1,4 +1,4 @@
-package distributed
+package KV
 
 import (
 	"encoding/gob"

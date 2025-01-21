@@ -7,7 +7,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
-	"io"
 	"net/http"
 	"strconv"
 )
@@ -26,97 +25,76 @@ func (api *Api) Logs(c *gin.Context) {
 	container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(group, identifier)
 
 	if container == nil {
-		_, err := w.Write([]byte("container is not found"))
+		err := network.StreamByte([]byte("container is not found"), w)
 
 		if err != nil {
 			logger.Log.Error(err.Error())
 		}
-
-		w.(http.Flusher).Flush()
-		w.CloseNotify()
-		return
 	} else {
 		if container.IsGhost() {
-			resp, err := network.Raw(api.Manager.Http.Clients[container.GetRuntime().NodeName].Http, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().NodeName].API, group, identifier, follow), http.MethodGet, nil)
+			client, ok := api.Manager.Http.Clients[container.GetRuntime().NodeName]
 
-			var bytes int
-			buff := make([]byte, 512)
-
-			for {
-				bytes, err = resp.Body.Read(buff)
-
-				if bytes == 0 || err == io.EOF {
-					err = resp.Body.Close()
-
-					if err != nil {
-						logger.Log.Error(err.Error())
-					}
-
-					w.CloseNotify()
-					break
-				}
-
-				_, err = w.Write(buff[:bytes])
+			if !ok {
+				err := network.StreamByte([]byte("container is not found"), w)
 
 				if err != nil {
 					logger.Log.Error(err.Error())
-					w.CloseNotify()
-					break
 				}
-
-				w.(http.Flusher).Flush()
 			}
+
+			resp, err := network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/logs/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().NodeName].API, group, identifier, follow), http.MethodGet, nil)
+
+			if err != nil {
+				err = network.StreamByte([]byte(err.Error()), w)
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
+			}
+
+			err = network.StreamHttp(resp.Body, w)
+
+			if err != nil {
+				err = network.StreamByte([]byte(err.Error()), w)
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
+			}
+
+			network.StreamClose(w)
 		} else {
 			followBool, err := strconv.ParseBool(follow)
 
 			if err != nil {
-				_, err = w.Write([]byte(err.Error()))
+				err = network.StreamByte([]byte(err.Error()), w)
 
 				if err != nil {
 					logger.Log.Error(err.Error())
 				}
-
-				w.(http.Flusher).Flush()
-				w.CloseNotify()
-				return
 			}
 
 			reader, err := container.Logs(followBool)
 
 			if err != nil {
-				_, err = w.Write([]byte(err.Error()))
+				err = network.StreamByte([]byte(err.Error()), w)
 
 				if err != nil {
 					logger.Log.Error(err.Error())
 				}
-
-				w.(http.Flusher).Flush()
-				w.CloseNotify()
-				return
 			}
 
-			var bytes int
-			buff := make([]byte, 512)
+			err = network.StreamHttp(reader, w)
 
-			for {
-				bytes, err = reader.Read(buff)
-
-				if bytes == 0 || err == io.EOF {
-					logger.Log.Info(err.Error())
-					w.CloseNotify()
-					break
-				}
-
-				_, err = w.Write(buff[:bytes])
+			if err != nil {
+				err = network.StreamByte([]byte(err.Error()), w)
 
 				if err != nil {
 					logger.Log.Error(err.Error())
-					w.CloseNotify()
-					break
 				}
-
-				w.(http.Flusher).Flush()
 			}
+
+			network.StreamClose(w)
 		}
 	}
 }

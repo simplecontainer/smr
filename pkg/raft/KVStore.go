@@ -19,8 +19,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/distributed"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"log"
 	"strings"
 	"sync"
@@ -32,18 +31,17 @@ import (
 // a key-value store backed by raft
 type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
-	DataC       chan distributed.KV
-	EventsC     chan distributed.KV
+	DataC       chan KV.KV
+	EventsC     chan KV.KV
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
 	Node        uint64
 	mu          sync.RWMutex
-	client      *client.Http
 	kvStore     map[string]string
 	snapshotter *snap.Snapshotter
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, client *client.Http, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan distributed.KV) (*KVStore, error) {
-	s := &KVStore{proposeC: proposeC, DataC: dataC, kvStore: make(map[string]string), client: client, snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV) (*KVStore, error) {
+	s := &KVStore{proposeC: proposeC, DataC: dataC, kvStore: make(map[string]string), snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
@@ -65,7 +63,7 @@ func NewKVStore(snapshotter *snap.Snapshotter, client *client.Http, proposeC cha
 func (s *KVStore) Propose(k string, v []byte, category int, node uint64) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(distributed.NewEncode(k, v, node, category)); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(KV.NewEncode(k, v, node, category)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -91,7 +89,7 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 
 		for _, data := range commit.data {
 			s.mu.Lock()
-			s.DataC <- distributed.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node)
+			s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node)
 			s.mu.Unlock()
 		}
 		close(commit.applyDoneC)
@@ -128,7 +126,7 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 
 	for _, v := range store {
 		s.mu.Lock()
-		s.DataC <- distributed.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node)
+		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node)
 		s.mu.Unlock()
 	}
 

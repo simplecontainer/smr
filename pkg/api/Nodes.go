@@ -2,8 +2,8 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -32,9 +32,6 @@ func (api *Api) AddNode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		return
 	}
-
-	fmt.Println(api.Cluster.Cluster)
-	fmt.Println(newNode)
 
 	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
@@ -85,6 +82,8 @@ func (api *Api) ListenNode() {
 						api.Cluster.Regenerate(api.Config, api.Keys)
 						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
+						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+
 						logger.Log.Info("added new node")
 					}
 				} else {
@@ -98,6 +97,8 @@ func (api *Api) ListenNode() {
 
 						api.Cluster.Regenerate(api.Config, api.Keys)
 						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+
+						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
 
 						logger.Log.Info("removed node")
 					}

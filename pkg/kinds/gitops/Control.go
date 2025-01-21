@@ -3,8 +3,8 @@ package gitops
 import (
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/contracts"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
@@ -98,7 +98,7 @@ func (gitops *Gitops) Refresh(request contracts.Control) contracts.Response {
 
 	if gitopsObj != nil {
 
-		event := events.New(events.EVENT_REFRESH, static.KIND_CONTAINER, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
+		event := events.New(events.EVENT_REFRESH, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
 
 		bytes, err := event.ToJson()
 
@@ -107,16 +107,17 @@ func (gitops *Gitops) Refresh(request contracts.Control) contracts.Response {
 		}
 
 		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, gitopsObj.Definition.GetRuntime().GetNode())
+		return common.Response(http.StatusOK, static.STATUS_RESPONSE_REFRESHED, nil, nil)
+	} else {
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil)
 	}
-
-	return common.Response(http.StatusOK, static.STATUS_RESPONSE_REFRESHED, nil, nil)
 }
 
 func (gitops *Gitops) Sync(request contracts.Control) contracts.Response {
 	gitopsObj := gitops.Shared.Registry.Find(request.Group, request.Name)
 
 	if gitopsObj != nil {
-		event := events.New(events.EVENT_SYNC, static.KIND_CONTAINER, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
+		event := events.New(events.EVENT_SYNC, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
 
 		bytes, err := event.ToJson()
 
@@ -124,9 +125,11 @@ func (gitops *Gitops) Sync(request contracts.Control) contracts.Response {
 			return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 		}
 
-		gitops.Shared.Manager.Replication.EventsC <- distributed.NewEncode(event.GetKey(), bytes, gitops.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
+		gitops.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, gitops.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
 		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, gitopsObj.Definition.GetRuntime().GetNode())
-	}
 
-	return common.Response(http.StatusOK, static.STATUS_RESPONSE_SYNCED, nil, nil)
+		return common.Response(http.StatusOK, static.STATUS_RESPONSE_SYNCED, nil, nil)
+	} else {
+		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil)
+	}
 }

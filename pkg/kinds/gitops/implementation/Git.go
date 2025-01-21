@@ -18,19 +18,14 @@ func (gitops *Gitops) Fetch(logpath string) error {
 	if _, err := git.PlainOpen(gitops.Path); err != nil {
 		err = gitops.Clone(gitops.AuthResolved, logpath)
 
-		fmt.Println(err)
-
 		if err != nil {
 			if errors.Is(err, git.ErrRepositoryAlreadyExists) {
 				err = gitops.Pull(gitops.AuthResolved, logpath)
 
 				if err != nil {
 					if errors.Is(err, git.NoErrAlreadyUpToDate) {
-						fmt.Println(err)
 						return nil
 					}
-
-					fmt.Println(err)
 
 					return err
 				}

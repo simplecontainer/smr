@@ -3,6 +3,7 @@ package distributed
 import (
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -22,7 +23,7 @@ func New(client *client.Client, user *authentication.User, node string) *Replica
 		Client: client,
 		Node:   node,
 		User:   user,
-		DataC:  make(chan KV),
+		DataC:  make(chan KV.KV),
 	}
 }
 
@@ -69,7 +70,7 @@ func (replication *Replication) ListenData(agent string) {
 	}
 }
 
-func (replication *Replication) HandleObject(data KV) {
+func (replication *Replication) HandleObject(data KV.KV) {
 	format := f.NewFromString(data.Key)
 
 	request, _ := common.NewRequest(format.Kind)
@@ -106,7 +107,7 @@ func (replication *Replication) HandleObject(data KV) {
 	}
 }
 
-func (replication *Replication) HandleObjectDelete(data KV) {
+func (replication *Replication) HandleObjectDelete(data KV.KV) {
 	format := f.NewFromString(data.Key)
 
 	request, _ := common.NewRequest(format.Kind)
@@ -131,7 +132,7 @@ func (replication *Replication) HandleObjectDelete(data KV) {
 	}
 }
 
-func (replication *Replication) HandlePlain(data KV) {
+func (replication *Replication) HandlePlain(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_PLAIN_STRING)
 	obj := objects.New(replication.Client, replication.User)
 
@@ -151,7 +152,7 @@ func (replication *Replication) HandlePlain(data KV) {
 }
 
 // HandleEtcd handles the case when data is entered into etcd via other means than simplecontainer - flannel only
-func (replication *Replication) HandleEtcd(data KV) {
+func (replication *Replication) HandleEtcd(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_ETCD_STRING)
 	obj := objects.New(replication.Client, replication.User)
 
@@ -184,7 +185,7 @@ func (replication *Replication) HandleEtcd(data KV) {
 	}
 }
 
-func (replication *Replication) HandleSecret(data KV) {
+func (replication *Replication) HandleSecret(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_SECRET_STRING)
 	obj := secrets.New(replication.Client, replication.User)
 
@@ -203,7 +204,7 @@ func (replication *Replication) HandleSecret(data KV) {
 	}
 }
 
-func (replication *Replication) HandleDns(data KV) {
+func (replication *Replication) HandleDns(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
 	obj := secrets.New(replication.Client, replication.User)
 
@@ -222,6 +223,6 @@ func (replication *Replication) HandleDns(data KV) {
 	}
 }
 
-func (replication *Replication) HandleInvalid(data KV) {
+func (replication *Replication) HandleInvalid(data KV.KV) {
 	logger.Log.Error("invalid replication category", zap.String("key", data.Key), zap.String("value", string(data.Val)), zap.Int("Category", data.Category))
 }

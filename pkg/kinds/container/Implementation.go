@@ -168,6 +168,8 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 
 					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
 					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+
+					go reconcile.Container(container.Shared, existingWatcher)
 				} else {
 					logger.Log.Info("no change detected in the containers definition")
 				}
@@ -192,9 +194,9 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 					existingWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
 					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
 				}
-			}
 
-			go reconcile.Container(container.Shared, existingWatcher)
+				go reconcile.Container(container.Shared, existingWatcher)
+			}
 		}
 	}
 

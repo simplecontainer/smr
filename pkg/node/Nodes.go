@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/docker/docker/client"
 	"io"
 )
@@ -36,8 +35,6 @@ func (nodes *Nodes) NewNodeRequest(body io.ReadCloser, id uint64) (*Node, error)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(request)
 
 	node := &Node{
 		NodeID:   nodes.generateID(id),

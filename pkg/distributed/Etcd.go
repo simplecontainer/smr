@@ -12,14 +12,15 @@ import (
 	"time"
 )
 
-func (replication *Replication) ListenEtcd(agent string) error {
+func (replication *Replication) ListenEtcd(agent string) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,
 	})
 
 	if err != nil {
-		return nil
+		logger.Log.Error(err.Error())
+		return
 	}
 
 	ctx, _ := context.WithCancel(context.Background())

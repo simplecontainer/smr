@@ -2,9 +2,8 @@ package events
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/contracts"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	containerShared "github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	containerStatus "github.com/simplecontainer/smr/pkg/kinds/container/status"
 	gitopsShared "github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
@@ -13,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewEventsListener(kr map[string]contracts.Kind, e chan distributed.KV) {
+func NewEventsListener(kr map[string]contracts.Kind, e chan KV.KV) {
 	for {
 		select {
 		case data := <-e:
@@ -107,8 +106,6 @@ func HandleRefresh(shared *gitopsShared.Shared, event Events, node uint64) {
 }
 
 func HandleSync(shared *gitopsShared.Shared, event Events, node uint64) {
-	fmt.Println("SYNCINGO")
-
 	gitops := shared.Registry.FindLocal(event.Group, event.Name)
 
 	if gitops == nil {
@@ -121,7 +118,7 @@ func HandleSync(shared *gitopsShared.Shared, event Events, node uint64) {
 	if gitopsWatcher != nil {
 		gitopsWatcher.Gitops.ManualSync = true
 
-		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, gitopsStatus.STATUS_SYNCING)
+		gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, gitopsStatus.STATUS_CLONING_GIT)
 		gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
 	}
 }

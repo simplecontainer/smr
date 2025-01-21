@@ -2,6 +2,13 @@ package authentication
 
 import "encoding/json"
 
+func New(username string, domain string) *User {
+	return &User{
+		Username: username,
+		Domain:   domain,
+	}
+}
+
 func (user *User) FromString(str string) error {
 	return json.Unmarshal([]byte(str), &user)
 }

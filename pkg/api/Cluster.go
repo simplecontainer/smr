@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/events"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -60,61 +61,47 @@ func (api *Api) StartCluster(c *gin.Context) {
 		api.Cluster = cluster.New()
 	}
 
-	parsed, err := url.Parse(request["node"])
+	var parsed *url.URL
+	parsed, err = url.Parse(request["node"])
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 	}
 
-	currentNode := api.Cluster.Cluster.NewNode(api.Config.NodeName, request["node"], fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+	thisNode := api.Cluster.Cluster.NewNode(api.Config.NodeName, request["node"], fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
 
 	if request["join"] != "" {
 		user := &authentication.User{}
 
-		var URL *url.URL
-		URL, err = url.Parse(request["join"])
+		// Find any valid certificate for the domain or ip
+		clientObj := api.Manager.Http.FindValidFor(request["join"])
 
-		for _, client := range api.Manager.Http.Clients {
-			for _, domain := range client.Domains {
-				if domain == URL.Hostname() {
-					user = &authentication.User{
-						Username: client.Username,
-						Domain:   domain,
-					}
-				}
-			}
-
-			for _, ip := range client.IPs {
-				if ip.String() == URL.Hostname() {
-					user = &authentication.User{
-						Username: client.Username,
-						Domain:   ip.String(),
-					}
-				}
-			}
+		if clientObj != nil {
+			user = authentication.New(clientObj.Username, clientObj.API)
 		}
 
-		if user == nil {
+		if user.Username == "" {
 			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
 			return
 		}
 
-		d, _ := json.Marshal(map[string]string{"node": request["node"], "nodeName": api.Config.NodeName, "API": fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port)})
+		data, _ := json.Marshal(map[string]string{
+			"node":     request["node"],
+			"nodeName": api.Config.NodeName,
+			"API":      fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port),
+		})
 
-		if _, ok := api.Manager.Http.Clients[user.Username]; !ok {
-			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New("certificate not found"), nil))
-			return
-		}
+		fmt.Println(api.Manager.Http.Clients)
+		fmt.Println(user)
 
-		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, d)
+		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, data)
 
 		if response.Error {
 			c.JSON(http.StatusBadRequest, response)
 			return
 		}
 
-		currentNode = node.NewNode()
-
-		err = json.Unmarshal(response.Data, &currentNode)
+		err = json.Unmarshal(response.Data, &thisNode)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response)
@@ -145,7 +132,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			for _, n := range peers {
 				api.Cluster.Cluster.Add(n)
 
-				if n.URL == currentNode.URL {
+				if n.URL == thisNode.URL {
 					api.Cluster.Node = n
 				}
 			}
@@ -155,8 +142,8 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 	}
 
-	api.Cluster.Node = currentNode
-	api.Cluster.Cluster.Add(currentNode)
+	api.Cluster.Node = thisNode
+	api.Cluster.Cluster.Add(thisNode)
 
 	api.Manager.Cluster = api.Cluster
 
@@ -171,8 +158,14 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Cluster.Regenerate(api.Config, api.Keys)
 	api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+	api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
 
-	err = api.SetupKVStore(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+		return
+	}
+
+	err = api.SetupCluster(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -186,8 +179,9 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.SaveClusterConfiguration()
 
-	go api.ListenNode()
 	go events.NewEventsListener(api.Manager.KindsRegistry, api.Replication.EventsC)
+
+	go api.ListenNode()
 	go api.Replication.ListenEtcd(api.Config.NodeName)
 	go api.Replication.ListenData(api.Config.NodeName)
 

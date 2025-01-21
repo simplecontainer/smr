@@ -13,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
+	"github.com/simplecontainer/smr/pkg/logger"
 	middleware "github.com/simplecontainer/smr/pkg/middlewares"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -119,44 +120,26 @@ func Start() {
 					os.Exit(1)
 				}
 
-				var httpClient *http.Client
-				var APIEndpoint string
+				// Cluster information is unknown, this only enables localhost to talk to itself via https
+				api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, nil)
 
-				for username, c := range api.Keys.Clients {
-					httpClient, APIEndpoint, err = client.GenerateHttpClient(api.Keys.CA, api.Keys.Clients[username])
-
-					if err != nil {
-						panic(err)
-					}
-
-					if username == api.Config.NodeName {
-						APIEndpoint = "localhost"
-					}
-
-					api.Manager.Http.Append(username, &client.Client{
-						Http:     httpClient,
-						Username: username,
-						API:      fmt.Sprintf("%s:%s", APIEndpoint, api.Config.HostPort.Port),
-						Domains:  c.Certificate.DNSNames,
-						IPs:      c.Certificate.IPAddresses,
-					})
+				if err != nil {
+					panic(err)
 				}
 
 				api.DnsCache = dns.New(api.Config.NodeName, api.Manager.Http, api.User)
 				api.DnsCache.Client = api.Manager.Http
 
-				// Listen Records from RAFT
-				go api.DnsCache.ListenRecords()
-
 				api.Manager.DnsCache = api.DnsCache
+				go api.DnsCache.ListenRecords()
 
 				mdns.HandleFunc(".", api.HandleDns)
 
 				port := 53
-				DNSserver := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
+				DNSServer := &mdns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
 
 				go func() {
-					err = DNSserver.ListenAndServe()
+					err = DNSServer.ListenAndServe()
 					if err != nil {
 						panic(err)
 					}
@@ -164,10 +147,12 @@ func Start() {
 
 				defer func(DNSserver *mdns.Server) {
 					err = DNSserver.Shutdown()
+
 					if err != nil {
+						logger.Log.Error(err.Error())
 						return
 					}
-				}(DNSserver)
+				}(DNSServer)
 
 				router := gin.New()
 				router.Use(middleware.TLSAuth())

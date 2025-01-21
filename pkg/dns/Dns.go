@@ -5,9 +5,9 @@ import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/network/nameservers"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -35,7 +35,7 @@ func New(agent string, client *client.Http, user *authentication.User) *Records 
 		Client:      client,
 		User:        user,
 		Nameservers: ns.ToString(),
-		Records:     make(chan distributed.KV),
+		Records:     make(chan KV.KV),
 	}
 
 	return r

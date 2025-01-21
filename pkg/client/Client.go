@@ -3,9 +3,12 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
+	"fmt"
+	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/keys"
+	"net"
 	"net/http"
+	"net/url"
 )
 
 func NewHttpClients() *Http {
@@ -20,7 +23,82 @@ func (http *Http) Append(username string, client *Client) {
 	http.Clients[username] = client
 }
 
-func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, string, error) {
+func (http *Http) FindValidFor(DomainOrIp string) *Client {
+	u, err := url.Parse(DomainOrIp)
+
+	if err != nil {
+		return nil
+	}
+
+	if ip := net.ParseIP(u.Hostname()); ip != nil {
+		for _, h := range http.Clients {
+			for _, i := range h.IPs {
+				if i.Equal(ip) {
+					return h
+				}
+			}
+		}
+	} else {
+		for _, h := range http.Clients {
+			for _, d := range h.Domains {
+				if d == u.Hostname() {
+					return h
+				}
+			}
+		}
+	}
+
+	fmt.Println("found 0 results")
+	return nil
+}
+
+func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Cluster) (*Http, error) {
+	hc := NewHttpClients()
+
+	// Configure custom users
+	for username, c := range keys.Clients {
+		httpClient, err := GenerateHttpClient(keys.CA, c)
+
+		if err != nil {
+			return nil, err
+		}
+
+		hc.Append(username, &Client{
+			Http:     httpClient,
+			Username: username,
+			API:      fmt.Sprintf("%s:%s", c.Certificate.DNSNames[0], "1443"),
+			Domains:  c.Certificate.DNSNames,
+			IPs:      c.Certificate.IPAddresses,
+		})
+	}
+
+	// Configure node users
+	if cluster != nil {
+		for _, c := range cluster.Cluster.Nodes {
+			httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[c.NodeName])
+
+			if err != nil {
+				return nil, err
+			}
+
+			hc.Append(c.NodeName, &Client{
+				Http:     httpClient,
+				Username: c.NodeName,
+				API:      c.API,
+				Domains:  keys.Clients[c.NodeName].Certificate.DNSNames,
+				IPs:      keys.Clients[c.NodeName].Certificate.IPAddresses,
+			})
+
+			fmt.Println(c.NodeName)
+			fmt.Println(c.API)
+		}
+	}
+
+	fmt.Println(hc)
+	return hc, nil
+}
+
+func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, error) {
 	var PEMCertificate []byte = make([]byte, 0)
 	var PEMPrivateKey []byte = make([]byte, 0)
 
@@ -31,23 +109,11 @@ func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, string,
 
 	cert, err := tls.X509KeyPair(PEMCertificate, PEMPrivateKey)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	CAPool := x509.NewCertPool()
 	CAPool.AddCert(ca.Certificate)
-
-	var endpoint = ""
-
-	if len(client.Certificate.DNSNames) == 0 {
-		if len(client.Certificate.IPAddresses) == 0 {
-			return nil, "", errors.New("certificate doesn't contain any domains or ip addresess which it is valid for")
-		}
-
-		endpoint = client.Certificate.IPAddresses[0].String()
-	} else {
-		endpoint = client.Certificate.DNSNames[0]
-	}
 
 	return &http.Client{
 		Transport: &http.Transport{
@@ -56,5 +122,5 @@ func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, string,
 				Certificates: []tls.Certificate{cert},
 			},
 		},
-	}, endpoint, nil
+	}, nil
 }
