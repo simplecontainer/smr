@@ -75,7 +75,7 @@ func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Clus
 	// Configure node users
 	if cluster != nil {
 		for _, c := range cluster.Cluster.Nodes {
-			httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[c.NodeName])
+			httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[cluster.Node.NodeName])
 
 			if err != nil {
 				return nil, err
@@ -85,16 +85,12 @@ func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Clus
 				Http:     httpClient,
 				Username: c.NodeName,
 				API:      c.API,
-				Domains:  keys.Clients[c.NodeName].Certificate.DNSNames,
-				IPs:      keys.Clients[c.NodeName].Certificate.IPAddresses,
+				Domains:  keys.Clients[cluster.Node.NodeName].Certificate.DNSNames,
+				IPs:      keys.Clients[cluster.Node.NodeName].Certificate.IPAddresses,
 			})
-
-			fmt.Println(c.NodeName)
-			fmt.Println(c.API)
 		}
 	}
 
-	fmt.Println(hc)
 	return hc, nil
 }
 
