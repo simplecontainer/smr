@@ -13,7 +13,7 @@ func NewDecode(decoder *gob.Decoder, node uint64) KV {
 		logger.Log.Error("raftexample: could not decode message (%v)", zap.Error(err))
 	}
 
-	if node != data.Node {
+	if node == data.Node {
 		data.Local = true
 	}
 

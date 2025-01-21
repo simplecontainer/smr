@@ -16,19 +16,20 @@ import (
 )
 
 type Api struct {
-	Server        *embed.Etcd
-	Etcd          *clientv3.Client
-	User          *authentication.User
-	Config        *configuration.Configuration
-	Keys          *keys.Keys
-	DnsCache      *dns.Records
-	confChangeC   chan raftpb.ConfChange
-	Cluster       *cluster.Cluster
-	Replication   *distributed.Replication
-	Kinds         *relations.RelationRegistry
-	KindsRegistry map[string]contracts.Kind
-	Manager       *manager.Manager
-	VersionServer string
+	Server          *embed.Etcd
+	Etcd            *clientv3.Client
+	LeaseIdentifier *clientv3.LeaseGrantResponse
+	User            *authentication.User
+	Config          *configuration.Configuration
+	Keys            *keys.Keys
+	DnsCache        *dns.Records
+	confChangeC     chan raftpb.ConfChange
+	Cluster         *cluster.Cluster
+	Replication     *distributed.Replication
+	Kinds           *relations.RelationRegistry
+	KindsRegistry   map[string]contracts.Kind
+	Manager         *manager.Manager
+	VersionServer   string
 }
 
 type Kv struct {

@@ -24,7 +24,7 @@ func (replication *Replication) ListenEtcd(agent string) {
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
-	watcher := cli.Watch(ctx, "/coreos.com", clientv3.WithPrefix())
+	watcher := cli.Watch(ctx, "/coreos.com/subnets", clientv3.WithPrefix())
 
 	for {
 		select {
@@ -62,6 +62,8 @@ func (replication *Replication) ListenEtcd(agent string) {
 }
 
 func EtcdPut(key string, value string) error {
+	format := f.NewUnformated(key, static.CATEGORY_ETCD_STRING)
+
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,
@@ -72,12 +74,14 @@ func EtcdPut(key string, value string) error {
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
-	_, err = cli.Put(ctx, key, value)
+	_, err = cli.Put(ctx, format.ToString(), value)
 
 	return nil
 }
 
 func EtcDelete(key string) error {
+	format := f.NewUnformated(key, static.CATEGORY_ETCD_STRING)
+
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,
@@ -89,7 +93,7 @@ func EtcDelete(key string) error {
 
 	ctx, _ := context.WithCancel(context.Background())
 
-	_, err = cli.Delete(ctx, key)
+	_, err = cli.Delete(ctx, format.ToString())
 
 	if err != nil {
 		return err

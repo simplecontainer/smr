@@ -13,15 +13,16 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/secrets"
 	"github.com/simplecontainer/smr/pkg/static"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
 
-func New(client *client.Client, user *authentication.User, node string) *Replication {
+func New(client *client.Client, user *authentication.User, node uint64, lease *clientv3.LeaseGrantResponse) *Replication {
 	return &Replication{
 		Client: client,
-		Node:   node,
+		NodeID: node,
 		User:   user,
 		DataC:  make(chan KV.KV),
 	}
@@ -163,20 +164,8 @@ func (replication *Replication) HandleEtcd(data KV.KV) {
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}
-
-			err = EtcDelete(data.Key)
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
 		} else {
 			err := obj.AddLocal(format, data.Val)
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-
-			err = EtcdPut(data.Key, string(data.Val))
 
 			if err != nil {
 				logger.Log.Error(err.Error())

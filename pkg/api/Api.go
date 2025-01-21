@@ -90,7 +90,7 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	raftNode := &raft.RaftNode{}
 	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC, nodeUpdate)
 
-	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Config.NodeName)
+	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Cluster.Node.NodeID, api.LeaseIdentifier)
 	api.Replication.EventsC = make(chan KV.KV)
 	api.Replication.DnsUpdatesC = api.DnsCache.Records
 
