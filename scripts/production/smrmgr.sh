@@ -168,7 +168,7 @@ Manager(){
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --domain ${DOMAIN} --ip ${IP}" --name "${NODE}" --wait
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --name "${NODE}"
 
-        sudo nohup smr node cluster start --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+        sudo nohup smr node cluster start --name "${NODE}" --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
 
         echo "The simplecontainer is started in single mode."
       fi

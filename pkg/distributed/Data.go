@@ -12,19 +12,20 @@ import (
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/secrets"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
 
-func New(client *client.Client, user *authentication.User, node uint64, lease *clientv3.LeaseGrantResponse) *Replication {
+func New(client *client.Client, user *authentication.User, nodeName string) *Replication {
 	return &Replication{
-		Client: client,
-		NodeID: node,
-		User:   user,
-		DataC:  make(chan KV.KV),
+		Client:     client,
+		NodeName:   nodeName,
+		User:       user,
+		DataC:      make(chan KV.KV),
+		Replicated: smaps.New(),
 	}
 }
 
@@ -156,6 +157,8 @@ func (replication *Replication) HandlePlain(data KV.KV) {
 func (replication *Replication) HandleEtcd(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_ETCD_STRING)
 	obj := objects.New(replication.Client, replication.User)
+
+	replication.Replicated.Map.Store(format.ToString(), 1)
 
 	if !data.IsLocal() {
 		if data.Val == nil {
