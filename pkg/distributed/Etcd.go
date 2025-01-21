@@ -25,7 +25,7 @@ func (replication *Replication) ListenEtcd(agent string) {
 	}
 
 	ctx, _ := context.WithCancel(context.Background())
-	watcher := cli.Watch(ctx, fmt.Sprintf("/coreos.com/network/%s", replication.NodeName), clientv3.WithPrefix())
+	watcher := cli.Watch(ctx, "/coreos.com", clientv3.WithPrefix())
 
 	for {
 		select {
@@ -38,6 +38,8 @@ func (replication *Replication) ListenEtcd(agent string) {
 						fmt.Println("came from replication")
 						replication.Replicated.Map.Delete(string(event.Kv.Key))
 					} else {
+						fmt.Println("no replication")
+
 						switch event.Type {
 						case mvccpb.PUT:
 							obj := objects.New(replication.Client, replication.User)
