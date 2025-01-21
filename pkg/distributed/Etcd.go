@@ -3,7 +3,6 @@ package distributed
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -35,11 +34,8 @@ func (replication *Replication) ListenEtcd(agent string) {
 					_, ok := replication.Replicated.Map.Load(string(event.Kv.Key))
 
 					if ok {
-						fmt.Println("came from replication")
 						replication.Replicated.Map.Delete(string(event.Kv.Key))
 					} else {
-						fmt.Println("no replication")
-
 						switch event.Type {
 						case mvccpb.PUT:
 							obj := objects.New(replication.Client, replication.User)
