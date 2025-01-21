@@ -13,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/static"
 	"os"
 	"time"
 )
@@ -21,8 +22,10 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	logpath := fmt.Sprintf("/tmp/gitops.%s.%s.log", gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)
+	logpath := fmt.Sprintf("/tmp/%s.%s.%s.log", static.KIND_GITOPS, gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)
 	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{logpath}, []string{logpath})
+
+	gitopsObj.Status.Logger = loggerObj
 
 	return &watcher.Gitops{
 		Gitops:      gitopsObj,

@@ -24,7 +24,10 @@ func NewWatcher(containerObj platforms.IContainer, mgr *manager.Manager, user *a
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{fmt.Sprintf("/tmp/container.%s.%s.log", containerObj.GetGroup(), containerObj.GetGeneratedName())}, []string{fmt.Sprintf("/tmp/container.%s.%s.log", containerObj.GetGroup(), containerObj.GetGeneratedName())})
+	logpath := fmt.Sprintf("/tmp/%s.%s.%s.log", static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName())
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{logpath}, []string{logpath})
+
+	containerObj.GetStatus().Logger = loggerObj
 
 	return &watcher.Container{
 		Container:      containerObj,

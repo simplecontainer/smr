@@ -3,13 +3,14 @@ package status
 import (
 	"errors"
 	"github.com/hmdsefi/gograph"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"time"
 )
 
 func NewStatus() *Status {
-	return &Status{}
+	return &Status{
+		Logger: nil,
+	}
 }
 
 func (status *Status) CreateGraph() {
@@ -87,7 +88,7 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				logger.Log.Info("gitops transitioned state",
+				status.Logger.Info("gitops transitioned state",
 					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
 					zap.String("gitops", gitops),
@@ -103,7 +104,7 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 		}
 
 		if status.State.State != destination {
-			logger.Log.Info("gitops failed to transition state",
+			status.Logger.Info("gitops failed to transition state",
 				zap.String("old-state", status.State.State),
 				zap.String("new-state", destination),
 				zap.String("gitops", gitops),

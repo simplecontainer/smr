@@ -2,6 +2,7 @@ package status
 
 import (
 	"github.com/hmdsefi/gograph"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type Status struct {
 	Reconciling                bool
 	PulledImage                bool
 	LastUpdate                 time.Time
+	Logger                     *zap.Logger `json:"-"`
 }
 
 type StatusState struct {

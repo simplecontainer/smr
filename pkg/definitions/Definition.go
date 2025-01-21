@@ -39,10 +39,12 @@ func NewImplementation(kind string) contracts.IDefinition {
 		def = nil
 	}
 
-	def.SetRuntime(&commonv1.Runtime{
-		Owner: commonv1.Owner{},
-		Node:  0,
-	})
+	if def != nil {
+		def.SetRuntime(&commonv1.Runtime{
+			Owner: commonv1.Owner{},
+			Node:  0,
+		})
+	}
 
 	return def
 }

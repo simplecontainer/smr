@@ -68,6 +68,36 @@ func (api *Api) Debug(c *gin.Context) {
 
 					network.StreamClose(w)
 				}
+			} else {
+				var t *tail.Tail
+				var err error
+
+				t, err = tail.TailFile(fmt.Sprintf("/tmp/%s.%s.%s.log", kind, group, identifier),
+					tail.Config{
+						Follow: true,
+					},
+				)
+
+				if err != nil {
+					err = network.StreamByte([]byte(err.Error()), w)
+
+					if err != nil {
+						logger.Log.Error(err.Error())
+					}
+				}
+
+				for line := range t.Lines {
+					select {
+					case <-w.CloseNotify():
+						return
+					default:
+						err = network.StreamByte([]byte(fmt.Sprintf("%s\n", line.Text)), w)
+
+						if err != nil {
+							logger.Log.Error(err.Error())
+						}
+					}
+				}
 			}
 		}
 	} else {
@@ -76,16 +106,15 @@ func (api *Api) Debug(c *gin.Context) {
 
 		obj.Find(format)
 
-		request, err := common.NewRequest(kind)
-
-		if err != nil {
-			err = network.StreamByte([]byte(err.Error()), w)
+		if !obj.Exists() {
+			err := network.StreamByte([]byte("object is not found"), w)
 
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}
 		} else {
-			err = request.Definition.FromJson(obj.GetDefinitionByte())
+
+			request, err := common.NewRequest(kind)
 
 			if err != nil {
 				err = network.StreamByte([]byte(err.Error()), w)
@@ -94,28 +123,53 @@ func (api *Api) Debug(c *gin.Context) {
 					logger.Log.Error(err.Error())
 				}
 			} else {
-				if request.Definition.GetRuntime().GetNode() != api.Cluster.Node.NodeID {
-					var nodeName string
+				err = request.Definition.FromJson(obj.GetDefinitionByte())
 
-					for _, node := range api.Cluster.Cluster.Nodes {
-						if node.NodeID == request.Definition.GetRuntime().GetNode() {
-							nodeName = node.NodeName
-						}
+				if err != nil {
+					err = network.StreamByte([]byte(err.Error()), w)
+
+					if err != nil {
+						logger.Log.Error(err.Error())
 					}
+				} else {
+					if request.Definition.GetRuntime().GetNode() != api.Cluster.Node.NodeID {
+						var nodeName string
 
-					client, ok := api.Manager.Http.Clients[nodeName]
+						for _, node := range api.Cluster.Cluster.Nodes {
+							if node.NodeID == request.Definition.GetRuntime().GetNode() {
+								nodeName = node.NodeName
+							}
+						}
 
-					if !ok {
-						err := network.StreamByte([]byte("object is not found"), w)
+						client, ok := api.Manager.Http.Clients[nodeName]
 
-						if err != nil {
-							logger.Log.Error(err.Error())
+						if !ok {
+							err := network.StreamByte([]byte("object is not found x"), w)
+
+							if err != nil {
+								logger.Log.Error(err.Error())
+							}
+						} else {
+							var resp *http.Response
+							resp, err = network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/debug/%s/%s/%s/%s", api.Manager.Http.Clients[nodeName].API, kind, group, identifier, follow), http.MethodGet, nil)
+
+							err = network.StreamHttp(resp.Body, w)
+
+							if err != nil {
+								err = network.StreamByte([]byte(err.Error()), w)
+
+								if err != nil {
+									logger.Log.Error(err.Error())
+								}
+							}
 						}
 					} else {
-						var resp *http.Response
-						resp, err = network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/debug/%s/%s/%s/%s", api.Manager.Http.Clients[nodeName].API, kind, group, identifier, follow), http.MethodGet, nil)
-
-						err = network.StreamHttp(resp.Body, w)
+						var t *tail.Tail
+						t, err = tail.TailFile(fmt.Sprintf("/tmp/%s.%s.%s.log", kind, group, identifier),
+							tail.Config{
+								Follow: true,
+							},
+						)
 
 						if err != nil {
 							err = network.StreamByte([]byte(err.Error()), w)
@@ -124,32 +178,17 @@ func (api *Api) Debug(c *gin.Context) {
 								logger.Log.Error(err.Error())
 							}
 						}
-					}
-				} else {
-					var t *tail.Tail
-					t, err = tail.TailFile(fmt.Sprintf("/tmp/%s.%s.%s.log", kind, group, identifier),
-						tail.Config{
-							Follow: true,
-						},
-					)
 
-					if err != nil {
-						err = network.StreamByte([]byte(err.Error()), w)
+						for line := range t.Lines {
+							select {
+							case <-w.CloseNotify():
+								return
+							default:
+								err = network.StreamByte([]byte(fmt.Sprintf("%s\n", line.Text)), w)
 
-						if err != nil {
-							logger.Log.Error(err.Error())
-						}
-					}
-
-					for line := range t.Lines {
-						select {
-						case <-w.CloseNotify():
-							return
-						default:
-							err = network.StreamByte([]byte(fmt.Sprintf("%s\n", line.Text)), w)
-
-							if err != nil {
-								logger.Log.Error(err.Error())
+								if err != nil {
+									logger.Log.Error(err.Error())
+								}
 							}
 						}
 					}

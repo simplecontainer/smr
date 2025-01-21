@@ -16,7 +16,7 @@ func NewRequest(kind string) (*Request, error) {
 		Definition: definitions.New(kind),
 	}
 
-	if request.Definition == nil {
+	if request.Definition.Definition == nil {
 		return nil, errors.New(fmt.Sprintf("kind is not defined as definition %s", kind))
 	}
 

@@ -3,7 +3,6 @@ package status
 import (
 	"errors"
 	"github.com/hmdsefi/gograph"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ func New() *Status {
 	s := &Status{
 		State:      &StatusState{},
 		LastUpdate: time.Now(),
+		Logger:     nil,
 	}
 
 	s.CreateGraph()
@@ -168,7 +168,7 @@ func (status *Status) TransitionState(group string, container string, destinatio
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				logger.Log.Info("container transitioned state",
+				status.Logger.Info("container transitioned state",
 					zap.String("old-state", status.State.State),
 					zap.String("new-state", destination),
 					zap.String("group", group),
@@ -187,7 +187,7 @@ func (status *Status) TransitionState(group string, container string, destinatio
 		}
 
 		if status.State.State != destination {
-			logger.Log.Info("container failed to transition state",
+			status.Logger.Info("container failed to transition state",
 				zap.String("old-state", status.State.State),
 				zap.String("new-state", destination),
 				zap.String("container", container),
