@@ -155,6 +155,7 @@ func Start() {
 				}(DNSServer)
 
 				router := gin.New()
+				routerHttp := gin.New()
 				router.Use(middleware.TLSAuth())
 				router.Use(api.ClusterCheck())
 
@@ -234,9 +235,13 @@ func Start() {
 				router.GET("/connect", api.Health)
 				router.GET("/fetch/certs", api.ExportClients)
 
-				router.GET("/metrics", api.Metrics())
+				router.GET("/metrics", api.MetricsHandle())
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+
+				routerHttp.GET("/metrics", api.MetricsHandle())
+				routerHttp.GET("/healthz", api.Health)
+				routerHttp.GET("/version", api.Version)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)
@@ -273,8 +278,18 @@ func Start() {
 					}
 				}(&server)
 
-				err = server.ListenAndServeTLS("", "")
+				go func() {
+					httpServer := http.Server{
+						Handler: routerHttp,
+					}
 
+					err = httpServer.ListenAndServe()
+					if err != nil {
+						panic(err)
+					}
+				}()
+
+				err = server.ListenAndServeTLS("", "")
 				if err != nil {
 					panic(err)
 				}

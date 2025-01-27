@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/helpers"
+	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/network"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"io"
@@ -40,6 +41,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 			Data:             nil,
 		})
 	} else {
+		metrics.DatabaseGet.Increment()
 		if response.Count == 0 {
 			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "failed to read from the key-value store",
@@ -83,6 +85,7 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	if err == nil {
+		metrics.DatabaseSet.Increment()
 		_, err = api.Etcd.Put(context.Background(), key, string(data))
 
 		if err != nil {
@@ -140,6 +143,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 		return
 	}
 
+	metrics.DatabasePropose.Increment()
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	format := f.NewFromString(key)
@@ -173,6 +177,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
+	metrics.DatabaseGetKeysPrefix.Increment()
 	response, err := api.Etcd.Get(context.Background(), string(prefix), clientv3.WithPrefix())
 
 	var keys []string
@@ -257,6 +262,7 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
+	metrics.DatabaseRemove.Increment()
 	response, err := api.Etcd.Delete(context.Background(), string(prefix), clientv3.WithPrefix())
 	if err != nil {
 		return

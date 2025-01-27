@@ -408,6 +408,8 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			return
 		}
 
+		fmt.Println("RUNNNINNNNNGZ")
+
 		ReconcileLoop(containerWatcher)
 		break
 	case status.STATUS_DEAD:

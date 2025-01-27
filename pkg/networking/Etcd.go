@@ -18,6 +18,10 @@ func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 
 	cfg.AdvertiseClientUrls = []url.URL{*URLC}
 	cfg.ListenClientUrls = []url.URL{*URLC}
+	cfg.AutoCompactionMode = "periodic"
+	cfg.AutoCompactionRetention = "1h"
+	cfg.EnableV2 = false
+	cfg.EnableGRPCGateway = false
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{"/tmp/etcd.log"}
 

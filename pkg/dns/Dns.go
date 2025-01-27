@@ -80,7 +80,7 @@ func (r *Records) Save(bytes []byte, domain string) error {
 
 func (r *Records) Find(domain string) ([]string, error) {
 	var record = &ARecord{}
-	tmp, ok := r.ARecords.Map.Load(domain)
+	tmp, ok := r.ARecords.Map.Load(strings.TrimSuffix(domain, "."))
 
 	if ok {
 		record = tmp.(*ARecord)
