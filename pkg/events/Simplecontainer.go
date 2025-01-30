@@ -3,12 +3,15 @@ package events
 import (
 	"encoding/json"
 	"github.com/simplecontainer/smr/pkg/KV"
+	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/f"
 	containerShared "github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	containerStatus "github.com/simplecontainer/smr/pkg/kinds/container/status"
 	gitopsShared "github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	gitopsStatus "github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 )
 
@@ -17,6 +20,9 @@ func NewEventsListener(kr map[string]contracts.Kind, e chan KV.KV) {
 		select {
 		case data := <-e:
 			var event Events
+
+			format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
+			acks.ACKS.Ack(format.GetUUID())
 
 			err := json.Unmarshal(data.Val, &event)
 

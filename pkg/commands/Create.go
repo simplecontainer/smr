@@ -11,7 +11,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
 	"net"
-	"os"
 	"strings"
 )
 
@@ -29,11 +28,6 @@ func Create() {
 					panic(err)
 				}
 
-				hostHomeDir := ""
-				if os.Getenv("HOMEDIR") != "" {
-					hostHomeDir = os.Getenv("HOMEDIR")
-				}
-
 				api.Config.Platform = viper.GetString("platform")
 				api.Config.HostPort.Host, api.Config.HostPort.Port, err = net.SplitHostPort(viper.GetString("port"))
 
@@ -42,15 +36,12 @@ func Create() {
 				}
 
 				api.Config.NodeName = viper.GetString("name")
-				api.Config.Target = viper.GetString("target")
-				api.Config.Root = api.Config.Environment.PROJECTDIR
 				api.Config.Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
 				api.Config.Certificates.IPs = configuration.NewIPs(strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean))
-				api.Config.HostHome = hostHomeDir
 
 				// Internal domains needed
 				api.Config.Certificates.Domains.Add("localhost")
-				api.Config.Certificates.Domains.Add(fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN))
+				api.Config.Certificates.Domains.Add(fmt.Sprintf("%s.%s", static.SMR_ENDPOINT_NAME, static.SMR_LOCAL_DOMAIN))
 
 				// Internal IPs needed
 				api.Config.Certificates.IPs.Add("127.0.0.1")

@@ -1,17 +1,19 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
+set -e
+
 echo "Doing work in directory $PWD"
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 TAG="$(git rev-parse --short "$BRANCH")"
 
-docker stop smr-agent-1 smr-agent-2 smr-agent-3
-docker rm smr-agent-1 smr-agent-2 smr-agent-3
+docker stop smr-agent-1 smr-agent-2 smr-agent-3 || echo
+docker rm smr-agent-1 smr-agent-2 smr-agent-3 || echo
 
-rm -rf ~/.smr-agent-1
-rm -rf ~/.smr-agent-2
-rm -rf ~/.smr-agent-3
+rm -rf ~/.smr-agent-1  || echo
+rm -rf ~/.smr-agent-2  || echo
+rm -rf ~/.smr-agent-3  || echo
 
 ../production/smrmgr.sh start -a smr-agent-1 -d localhost -c https://localhost:1443 -p 9212 -m cluster -x '--overlayport 0.0.0.0:9212' -r smr -t $TAG
 CLUSTER_DOMAIN_1="$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-agent-1):1443"

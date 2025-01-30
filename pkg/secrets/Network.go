@@ -38,7 +38,7 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       0,
-			Explanation:      "failed to connect to the smr-agent",
+			Explanation:      "failed to connect to the node",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -51,7 +51,7 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       0,
-			Explanation:      "invalid response from the smr-agent",
+			Explanation:      "invalid response from the node",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -65,7 +65,7 @@ func SendRequest(client *http.Client, URL string, method string, data []byte) *c
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       resp.StatusCode,
-			Explanation:      "failed to unmarshal body response from smr-agent",
+			Explanation:      "failed to unmarshal body response from node",
 			ErrorExplanation: generateResponse(URL, method, marshaled, body, err),
 			Error:            true,
 			Success:          false,

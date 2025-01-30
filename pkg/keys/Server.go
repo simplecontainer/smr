@@ -53,7 +53,7 @@ func (server *Server) Generate(ca *CA, domains *configuration.Domains, ips *conf
 			Organization: []string{"simplecontainer"},
 			CommonName:   CN,
 		},
-		DNSNames:     append(domains.ToStringSlice(), []string{fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}...),
+		DNSNames:     append(domains.ToStringSlice(), []string{fmt.Sprintf("%s.%s", static.SMR_ENDPOINT_NAME, static.SMR_LOCAL_DOMAIN)}...),
 		IPAddresses:  append(ips.ToIPNetSlice(), net.IPv6loopback),
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),

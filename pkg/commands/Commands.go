@@ -9,7 +9,6 @@ var Commands []Command
 
 func PreloadCommands() {
 	Create()
-	Delete()
 	Start()
 }
 

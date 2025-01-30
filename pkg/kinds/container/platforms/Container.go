@@ -24,7 +24,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 
 	switch platform {
 	case static.PLATFORM_DOCKER:
-		dockerPlatform, err := docker.New(name, config, definition)
+		dockerPlatform, err := docker.New(name, definition)
 
 		if err != nil {
 			return nil, err
@@ -109,11 +109,14 @@ func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
 func (c *Container) GetContainerState() (string, error) {
 	return c.Platform.GetContainerState()
 }
-func (c *Container) Run(config *configuration.Configuration, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
-	return c.Platform.Run(config, http, records, user)
+func (c *Container) Run() (*TDTypes.Container, error) {
+	return c.Platform.Run()
 }
-func (c *Container) Prepare(client *client.Http, user *authentication.User) error {
-	return c.Platform.Prepare(client, user, c.General.Runtime)
+func (c *Container) Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+	return c.Platform.Prepare(config, client, user, c.General.Runtime)
+}
+func (c *Container) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
+	return c.Platform.PostRun(config, dnsCache)
 }
 
 func (c *Container) AttachToNetworks(agentContainerName string) error {

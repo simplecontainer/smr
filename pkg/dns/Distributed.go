@@ -2,7 +2,7 @@ package dns
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/domains"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -17,6 +17,9 @@ func (r *Records) ListenRecords() {
 			// Be careful to not break or return we want this to run forever
 			d := Distributed{}
 			err := json.Unmarshal(data.Val, &d)
+
+			format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
+			acks.ACKS.Ack(format.GetUUID())
 
 			if err != nil {
 				logger.Log.Error(err.Error())
@@ -57,14 +60,7 @@ func (r *Records) Propose(domain string, ip string, action uint8) error {
 		return err
 	}
 
-	var UUID uuid.UUID
-	UUID, err = obj.Propose(format, bytes)
-
-	if err != nil {
-		return err
-	}
-
-	return obj.Wait(UUID)
+	return obj.Wait(format, bytes)
 }
 func (r *Records) AddAndSave(domain string, ip string) {
 	var addresses []byte

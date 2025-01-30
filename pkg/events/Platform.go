@@ -16,7 +16,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-var listeners map[string]string = make(map[string]string)
+var listeners = make(map[string]string)
 
 func NewPlatformEventsListener(shared *shared.Shared, platform string) {
 	_, ok := listeners[platform]
@@ -123,28 +123,35 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, eve
 }
 
 func HandleStart(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
-		// NO OP
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
+		!container.GetStatus().Reconciling {
+		container.GetStatus().Recreated = false
 	}
 }
 
 func HandleKill(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
+		!container.GetStatus().Reconciling {
 		logger.Log.Info(fmt.Sprintf("container is killed - reconcile %s", container.GetGeneratedName()))
+		container.GetStatus().Recreated = false
 		//container.GetStatus().TransitionState(container.GetGeneratedName(), status.STATUS_KILL)
 	}
 }
 
 func HandleStop(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
+		!container.GetStatus().Reconciling {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
+		container.GetStatus().Recreated = false
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 
 func HandleDie(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
+		!container.GetStatus().Reconciling {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
+		container.GetStatus().Recreated = false
 		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }

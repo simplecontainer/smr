@@ -23,8 +23,9 @@ type IContainer interface {
 	Logs(bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
-	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
-	Prepare(client *client.Http, user *authentication.User) error
+	Run() (*TDTypes.Container, error)
+	Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User) error
+	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
 
 	AttachToNetworks(string) error
 	UpdateDns(dnsCache *dns.Records) error
@@ -67,8 +68,9 @@ type IPlatform interface {
 	Logs(bool) (io.ReadCloser, error)
 
 	GetContainerState() (string, error)
-	Run(*configuration.Configuration, *client.Http, *dns.Records, *authentication.User) (*TDTypes.Container, error)
-	Prepare(client *client.Http, user *authentication.User, runtime *types.Runtime) error
+	Run() (*TDTypes.Container, error)
+	Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error
+	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
 
 	AttachToNetworks(string) error
 	UpdateDns(dnsCache *dns.Records) error

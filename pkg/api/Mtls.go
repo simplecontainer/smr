@@ -29,7 +29,7 @@ func (api *Api) CreateUser(c *gin.Context) {
 			Http: httpClient,
 		})
 
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, fmt.Sprintf("user created, run: cat %s", strings.Replace(path, "/home/smr-agent", "$HOME", 1)), nil, nil))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, fmt.Sprintf("user created, run: cat %s", strings.Replace(path, api.Config.Environment.Home, "$HOME", 1)), nil, nil))
 	} else {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, fmt.Sprintf("failed to create user credentials for: %s", filepath.Clean(c.Param("username"))), nil, nil))
 

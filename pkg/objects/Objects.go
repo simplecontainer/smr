@@ -3,7 +3,6 @@ package objects
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/acks"
@@ -15,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/network"
 	"go.uber.org/zap"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -49,21 +49,48 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Propose(format contracts.Format, data []byte) (uuid.UUID, error) {
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
+func (obj *Object) Propose(format contracts.Format, data []byte) error {
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToStringWithUUID())
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		return format.GetUUID(), nil
+		return nil
 	} else {
-		return uuid.UUID{}, errors.New(response.ErrorExplanation)
+		return errors.New(response.ErrorExplanation)
 	}
 }
 
-func (obj *Object) Wait(UUID uuid.UUID) error {
-	return acks.ACKS.Wait(UUID)
+func (obj *Object) Wait(format contracts.Format, data []byte) error {
+	started := time.Now()
+	var wg sync.WaitGroup
+	var errWait error
+
+	fmt.Println(fmt.Sprintf("waiting for the UUID %s", format.GetUUID().String()))
+
+	go func() {
+		wg.Add(1)
+		errWait = acks.ACKS.Wait(format.GetUUID())
+		wg.Done()
+	}()
+
+	err := obj.Propose(format, data)
+
+	if err != nil {
+		return err
+	}
+
+	wg.Wait()
+	elapsed := time.Since(started)
+
+	if errWait != nil {
+		fmt.Println(fmt.Sprintf("waited for %s lasted %s - never got back", format.GetUUID().String(), elapsed.String()))
+	} else {
+		fmt.Println(fmt.Sprintf("waited for %s got back after %s", format.GetUUID().String(), elapsed.String()))
+	}
+
+	return errWait
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
@@ -73,7 +100,7 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		return acks.ACKS.Ack(format.GetUUID())
+		return nil
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -33,14 +32,11 @@ func (registry *Registry) Sync(gitops *implementation.Gitops) error {
 
 	bytes, err := gitops.ToJson()
 
-	var UUID uuid.UUID
-	UUID, err = obj.Propose(format, bytes)
-
 	if err != nil {
 		return err
 	}
 
-	return obj.Wait(UUID)
+	return obj.Wait(format, bytes)
 }
 
 func (registry *Registry) Remove(group string, name string) error {
@@ -59,7 +55,7 @@ func (registry *Registry) Remove(group string, name string) error {
 		format := f.NewUnformated(fmt.Sprintf("state.gitops.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		_, err := obj.Propose(format, nil)
+		err := obj.Propose(format, nil)
 
 		if err != nil {
 			return err

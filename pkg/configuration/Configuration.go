@@ -1,21 +1,24 @@
 package configuration
 
 import (
-	"net/url"
+	"fmt"
+	ips "github.com/simplecontainer/smr/pkg/network/ip"
+	"github.com/simplecontainer/smr/pkg/static"
 )
 
 func NewConfig() *Configuration {
-	return &Configuration{
-		Certificates: &Certificates{},
-	}
-}
-
-func (configuration *Configuration) GetDomainOrIP() string {
-	URL, err := url.Parse(configuration.KVStore.URL)
+	IPs, err := ips.NewfromEtcHosts()
 
 	if err != nil {
 		panic(err)
 	}
 
-	return URL.Hostname()
+	return &Configuration{
+		Environment: &Environment{
+			Home:          "/home/node",
+			NodeDirectory: fmt.Sprintf("%s/%s", "/home/node", static.ROOTDIR),
+			NodeIP:        IPs.IPs[len(IPs.IPs)-1].String(),
+		},
+		Certificates: &Certificates{},
+	}
 }

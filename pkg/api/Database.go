@@ -4,17 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/smaps"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"io"
 	"net/http"
 	"strings"
 )
+
+var counts = smaps.New()
 
 // DatabaseGet godoc
 //
@@ -41,7 +45,7 @@ func (api *Api) DatabaseGet(c *gin.Context) {
 			Data:             nil,
 		})
 	} else {
-		metrics.DatabaseGet.Increment()
+		go metrics.DatabaseGet.Increment()
 		if response.Count == 0 {
 			c.JSON(http.StatusNotFound, contracts.Response{
 				Explanation:      "failed to read from the key-value store",
@@ -85,7 +89,20 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	if err == nil {
-		metrics.DatabaseSet.Increment()
+		val, ok := counts.Map.Load(key)
+
+		var x = 1
+		if ok {
+			x = val.(int)
+			x++
+
+			counts.Map.Store(key, x)
+		} else {
+			counts.Map.Store(key, x)
+		}
+
+		fmt.Println(fmt.Sprintf("%s: %d", key, x))
+		go metrics.DatabaseSet.Increment()
 		_, err = api.Etcd.Put(context.Background(), key, string(data))
 
 		if err != nil {
@@ -143,7 +160,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 		return
 	}
 
-	metrics.DatabasePropose.Increment()
+	go metrics.DatabasePropose.Increment()
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	format := f.NewFromString(key)
@@ -177,7 +194,7 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
-	metrics.DatabaseGetKeysPrefix.Increment()
+	go metrics.DatabaseGetKeysPrefix.Increment()
 	response, err := api.Etcd.Get(context.Background(), string(prefix), clientv3.WithPrefix())
 
 	var keys []string
@@ -262,11 +279,12 @@ func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 
 	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
 
-	metrics.DatabaseRemove.Increment()
 	response, err := api.Etcd.Delete(context.Background(), string(prefix), clientv3.WithPrefix())
 	if err != nil {
 		return
 	}
+
+	go metrics.DatabaseRemove.Increment()
 
 	for _, kv := range response.PrevKvs {
 		keys = append(keys, string(kv.Key))

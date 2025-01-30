@@ -24,6 +24,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -47,7 +48,10 @@ func (container *Container) Start() error {
 	// Check if everything alright with the daemon
 	switch container.Shared.Manager.Config.Platform {
 	case static.PLATFORM_DOCKER:
-		docker.IsDaemonRunning()
+		if err := docker.IsDaemonRunning(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 		break
 	}
 

@@ -141,13 +141,19 @@ Manager(){
         fi
 
         smr node rename "${NODE}-create-${ID}" --name "${NODE}"
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${NODE}" -w started
+
+        sleep 5
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --entrypoint="/dlv" --args="--listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /opt/smr/smr -- start" $CLIENT_ARGS --name "${NODE}" -w started
 
         if [[ $NODE_DOMAIN == "localhost" ]]; then
           NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${NODE_PORT}"
         else
           NODE_DOMAIN="https://${NODE_DOMAIN}:${NODE_PORT}"
         fi
+
+        echo "Press any key to continue when debugger is connected..."
+        read -n 1 -s
+        echo "Continuing..."
 
         while :
         do

@@ -176,7 +176,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		break
 	case status.STATUS_PREPARE:
 		shared.Registry.Sync(containerObj)
-		err := containerObj.Prepare(shared.Client, containerWatcher.User)
+		err := containerObj.Prepare(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err == nil {
 			go func() {
@@ -276,18 +276,26 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			break
 		default:
 			containerWatcher.Logger.Info("container attempt to start")
-			_, err = containerObj.Run(shared.Manager.Config, shared.Client, shared.DnsCache, containerWatcher.User)
+			_, err = containerObj.Run()
 
 			if err == nil {
-				containerWatcher.Logger.Info("container started")
-				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READINESS_CHECKING)
+				err = containerObj.PostRun(shared.Manager.Config, shared.Manager.DnsCache)
 
-				go func() {
-					_, err = readiness.Ready(shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
-					if err != nil {
-						containerWatcher.Logger.Error(err.Error())
-					}
-				}()
+				if err != nil {
+					containerWatcher.Logger.Info("container failed to update dns - proceed with restart")
+					containerWatcher.Logger.Error(err.Error())
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+				} else {
+					containerWatcher.Logger.Info("container started")
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READINESS_CHECKING)
+
+					go func() {
+						_, err = readiness.Ready(shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
+						if err != nil {
+							containerWatcher.Logger.Error(err.Error())
+						}
+					}()
+				}
 			} else {
 				containerWatcher.Logger.Info("container start failed", zap.Error(err))
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_RUNTIME_PENDING)
@@ -392,23 +400,22 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 			break
 		case "dead":
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
-			containerWatcher.Logger.Info("container died while readiness checking")
+			containerWatcher.Logger.Info("container died while running")
 			break
 		case "removing":
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
-			containerWatcher.Logger.Info("container died while readiness checking")
+			containerWatcher.Logger.Info("container died while running")
 			break
 		case "removed":
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
-			containerWatcher.Logger.Info("container died while readiness checking")
+			containerWatcher.Logger.Info("container died while running")
 			break
 		case "running":
-			containerWatcher.Logger.Debug("container is running")
+			containerWatcher.Logger.Info("container is running - reconciler going to sleep")
 			containerObj.GetStatus().Reconciling = false
+			containerWatcher.Ticker.Stop()
 			return
 		}
-
-		fmt.Println("RUNNNINNNNNGZ")
 
 		ReconcileLoop(containerWatcher)
 		break
@@ -493,7 +500,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	case status.STATUS_PENDING:
 		shared.Registry.Sync(containerObj)
 		containerWatcher.Logger.Info("container invalid configuration")
-		err := containerObj.Prepare(shared.Client, containerWatcher.User)
+		err := containerObj.Prepare(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err == nil {
 			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)

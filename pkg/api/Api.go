@@ -15,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
-	"github.com/simplecontainer/smr/pkg/startup"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"time"
@@ -31,8 +30,6 @@ func NewApi(config *configuration.Configuration) *Api {
 		KindsRegistry: nil,
 		Manager:       &manager.Manager{},
 	}
-
-	api.Config.Environment = startup.GetEnvironmentInfo()
 
 	api.Manager.User = api.User
 	api.Manager.Config = api.Config
@@ -104,8 +101,8 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	}
 
 	api.Cluster.KVStore.ConfChangeC = confChangeC
-	api.Cluster.NodeConf = nodeUpdate
 	api.Cluster.KVStore.Node = api.Config.KVStore.Node
+	api.Cluster.NodeConf = nodeUpdate
 
 	api.Manager.Cluster = api.Cluster
 

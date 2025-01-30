@@ -1,4 +1,13 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} alpine:latest as initial
+FROM golang:1.23-alpine AS build
+
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+WORKDIR /
+COPY . .
+
+RUN CGO_ENABLED=0 go build -gcflags "all=-N -l" -o ./smr
+
+FROM alpine
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -10,7 +19,8 @@ RUN mkdir /opt/smr && \
     mkdir -p /home/node/smr && \
     mkdir -p /home/node/.ssh/simplecontainer
 
-COPY smr-$TARGETOS-$TARGETARCH/smr /opt/smr/smr
+COPY --from=build /go/bin/dlv /dlv
+COPY --from=build /smr /opt/smr/smr
 
 RUN chmod +x /opt/smr/smr && \
     chown -R node /opt/smr/smr && \
@@ -19,10 +29,6 @@ RUN chmod +x /opt/smr/smr && \
     touch /home/node/.ssh/known_hosts
 
 RUN apk add busybox-extras
-
-FROM scratch
-
-COPY --from=initial / /
 
 USER node
 

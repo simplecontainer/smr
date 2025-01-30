@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
+	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -74,6 +75,7 @@ func (replication *Replication) ListenData(agent string) {
 
 func (replication *Replication) HandleObject(data KV.KV) {
 	format := f.NewFromString(data.Key)
+	acks.ACKS.Ack(format.GetUUID())
 
 	request, _ := common.NewRequest(format.Kind)
 	request.Definition.FromJson(data.Val)
@@ -111,6 +113,7 @@ func (replication *Replication) HandleObject(data KV.KV) {
 
 func (replication *Replication) HandleObjectDelete(data KV.KV) {
 	format := f.NewFromString(data.Key)
+	acks.ACKS.Ack(format.GetUUID())
 
 	request, _ := common.NewRequest(format.Kind)
 	request.Definition.FromJson(data.Val)
@@ -136,6 +139,8 @@ func (replication *Replication) HandleObjectDelete(data KV.KV) {
 
 func (replication *Replication) HandlePlain(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_PLAIN_STRING)
+	acks.ACKS.Ack(format.GetUUID())
+
 	obj := objects.New(replication.Client, replication.User)
 
 	if data.Val == nil {
@@ -156,6 +161,8 @@ func (replication *Replication) HandlePlain(data KV.KV) {
 // HandleEtcd handles the case when data is entered into etcd via other means than simplecontainer - flannel only
 func (replication *Replication) HandleEtcd(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_ETCD_STRING)
+	acks.ACKS.Ack(format.GetUUID())
+
 	obj := objects.New(replication.Client, replication.User)
 
 	replication.Replicated.Map.Store(format.ToString(), 1)
@@ -179,6 +186,8 @@ func (replication *Replication) HandleEtcd(data KV.KV) {
 
 func (replication *Replication) HandleSecret(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_SECRET_STRING)
+	acks.ACKS.Ack(format.GetUUID())
+
 	obj := secrets.New(replication.Client, replication.User)
 
 	if data.Val == nil {
@@ -198,6 +207,8 @@ func (replication *Replication) HandleSecret(data KV.KV) {
 
 func (replication *Replication) HandleDns(data KV.KV) {
 	format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
+	acks.ACKS.Ack(format.GetUUID())
+
 	obj := secrets.New(replication.Client, replication.User)
 
 	if data.Val == nil {

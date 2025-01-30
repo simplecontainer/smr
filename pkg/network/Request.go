@@ -37,7 +37,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       0,
-			Explanation:      "failed to connect to the smr-agent",
+			Explanation:      "failed to connect to the node",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -50,7 +50,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       0,
-			Explanation:      "invalid response from the smr-agent",
+			Explanation:      "invalid response from the node",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,

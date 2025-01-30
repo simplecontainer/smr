@@ -31,11 +31,9 @@ func TestGetEnvironmentInfo(t *testing.T) {
 			},
 			Wanted{
 				environment: &configuration.Environment{
-					HOMEDIR:    "",
-					OPTDIR:     "/opt/smr",
-					PROJECTDIR: "",
-					PROJECT:    static.PROJECT,
-					AGENTIP:    "",
+					Home:          "",
+					NodeIP:        "",
+					NodeDirectory: "",
 				},
 			},
 			Parameters{},
@@ -51,8 +49,8 @@ func TestGetEnvironmentInfo(t *testing.T) {
 				panic(err.Error())
 			}
 
-			tc.wanted.environment.HOMEDIR = HOMEDIR
-			tc.wanted.environment.PROJECTDIR = fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, tc.wanted.environment.PROJECT)
+			tc.wanted.environment.Home = HOMEDIR
+			tc.wanted.environment.NodeDirectory = fmt.Sprintf("%s/%s/%s", HOMEDIR, static.ROOTDIR, tc.wanted.environment.PROJECT)
 			tc.wanted.environment.AGENTIP = GetOutboundIP().String()
 
 			environment := GetEnvironmentInfo()

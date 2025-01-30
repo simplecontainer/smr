@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -15,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -47,21 +47,37 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Propose(format contracts.Format, data []byte) (uuid.UUID, error) {
+func (obj *Object) Propose(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
-		return format.GetUUID(), nil
+		return nil
 	} else {
-		return uuid.UUID{}, errors.New(response.ErrorExplanation)
+		return errors.New(response.ErrorExplanation)
 	}
 }
 
-func (obj *Object) Wait(UUID uuid.UUID) error {
-	return acks.ACKS.Wait(UUID)
+func (obj *Object) Wait(format contracts.Format, data []byte) error {
+	var wg sync.WaitGroup
+	var errWait error
+
+	go func() {
+		wg.Add(1)
+		errWait = acks.ACKS.Wait(format.GetUUID())
+		wg.Done()
+	}()
+
+	err := obj.Propose(format, data)
+
+	if err != nil {
+		return err
+	}
+
+	wg.Wait()
+	return errWait
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {

@@ -1,6 +1,8 @@
 package docker
 
 import (
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/go-connections/nat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/smaps"
@@ -32,4 +34,12 @@ type Docker struct {
 	Capabilities  []string
 	Definition    v1.ContainerDefinition
 	Auth          string
+	Docker        DockerInternal
+}
+
+type DockerInternal struct {
+	DNS          []string
+	PortsExposed nat.PortSet
+	PortsMapped  nat.PortMap
+	Mounts       []mount.Mount
 }

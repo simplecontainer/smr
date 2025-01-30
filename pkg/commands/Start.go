@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
@@ -32,16 +33,16 @@ func Start() {
 		},
 		functions: []func(*api.Api, []string){
 			func(api *api.Api, args []string) {
-				conf, err := startup.Load(api.Config.Environment)
+				var conf = configuration.NewConfig()
+				var err error
+
+				conf, err = startup.Load(api.Config.Environment)
 
 				if err != nil {
 					panic(err)
 				}
 
 				api.Config = conf
-				api.Config.Environment = startup.GetEnvironmentInfo()
-				startup.ReadFlags(api.Config)
-
 				api.Manager.Config = api.Config
 
 				api.Keys = keys.NewKeys()
@@ -262,7 +263,7 @@ func Start() {
 				}
 
 				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
-				_, err = api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
+				_, err = api.DnsCache.AddARecord(static.SMR_NODE_DOMAIN, api.Config.Environment.NodeIP)
 
 				if err != nil {
 					panic(err)
