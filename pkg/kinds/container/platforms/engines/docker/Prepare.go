@@ -62,7 +62,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 	}
 
 	for k, v := range container.Resources.Resources {
-		format := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
+		format, _ := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
 
 		obj := objects.New(client.Get(user.Username), user)
 		err = obj.Find(format)
@@ -133,11 +133,11 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 		}
 
 		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.Format{
-			Prefix:     static.SMR_PREFIX,
-			Category:   static.CATEGORY_KIND,
-			Kind:       "resource",
-			Group:      container.Resources.Resources[k].Reference.Group,
-			Identifier: container.Resources.Resources[k].Reference.Name,
+			Prefix:   static.SMR_PREFIX,
+			Category: static.CATEGORY_KIND,
+			Kind:     "resource",
+			Group:    container.Resources.Resources[k].Reference.Group,
+			Name:     container.Resources.Resources[k].Reference.Name,
 		})
 	}
 
@@ -193,7 +193,7 @@ func (container *Docker) PrepareReadiness(runtime *types.Runtime) {
 			matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
 			if len(matches) > 0 {
-				format := f.NewFromString(matches[0][1])
+				format, _ := f.NewFromString(matches[0][1])
 
 				if format.IsValid() && format.Kind == "secret" {
 					continue

@@ -9,14 +9,8 @@ import (
 )
 
 type NetworkDefinition struct {
-	Meta NetworkMeta `json:"meta" validate:"required"`
-	Spec NetworkSpec `json:"spec" validate:"required"`
-}
-
-type NetworkMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Meta commonv1.Meta `json:"meta" validate:"required"`
+	Spec NetworkSpec   `json:"spec" validate:"required"`
 }
 
 type NetworkSpec struct {
@@ -30,6 +24,10 @@ func (network *NetworkDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (network *NetworkDefinition) GetRuntime() *commonv1.Runtime {
 	return network.Meta.Runtime
+}
+
+func (network *NetworkDefinition) GetMeta() commonv1.Meta {
+	return network.Meta
 }
 
 func (network *NetworkDefinition) GetKind() string {

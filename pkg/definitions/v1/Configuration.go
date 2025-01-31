@@ -9,7 +9,7 @@ import (
 )
 
 type ConfigurationDefinition struct {
-	Meta ConfigurationMeta `json:"meta" validate:"required"`
+	Meta commonv1.Meta     `json:"meta" validate:"required"`
 	Spec ConfigurationSpec `json:"spec" validate:"required"`
 }
 
@@ -29,6 +29,10 @@ func (configuration *ConfigurationDefinition) SetRuntime(runtime *commonv1.Runti
 
 func (configuration *ConfigurationDefinition) GetRuntime() *commonv1.Runtime {
 	return configuration.Meta.Runtime
+}
+
+func (configuration *ConfigurationDefinition) GetMeta() commonv1.Meta {
+	return configuration.Meta
 }
 
 func (configuration *ConfigurationDefinition) GetKind() string {

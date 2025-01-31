@@ -19,7 +19,7 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 	var parsed string = template
 
 	for _, placeholder := range placeholders {
-		pf := f.NewFromString(placeholder)
+		pf, _ := f.NewFromString(placeholder)
 
 		switch pf.Kind {
 		case "secret":
@@ -53,7 +53,7 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
 			break
 		case "configuration":
-			cf := f.NewFromString(pf.ToString())
+			cf, _ := f.NewFromString(pf.ToString())
 
 			err := obj.Find(cf)
 
@@ -71,15 +71,15 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 				return template, nil, err
 			}
 
-			_, ok := configuration.Spec.Data[pf.Identifier]
+			_, ok := configuration.Spec.Data[pf.Name]
 
 			if !ok {
 				return template, nil, errors.New(
-					fmt.Sprintf("missing field in the configuration resource: %s", pf.Identifier),
+					fmt.Sprintf("missing field in the configuration resource: %s", ""),
 				)
 			}
 
-			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.Identifier], -1)
+			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.Name], -1)
 			break
 		}
 	}
@@ -91,7 +91,7 @@ func ParseSecretTemplate(obj contracts.ObjectInterface, value string) (string, e
 	placeholders := GetTemplatePlaceholders(value)
 
 	for _, placeholder := range placeholders {
-		format := f.NewFromString(placeholder)
+		format, _ := f.NewFromString(placeholder)
 
 		if format.Kind == "secret" {
 			obj.Find(format)
@@ -115,7 +115,7 @@ func GetTemplatePlaceholders(template string) []string {
 
 	if len(matches) > 0 {
 		for index, _ := range matches {
-			format := f.NewFromString(matches[index][1])
+			format, _ := f.NewFromString(matches[index][1])
 			placeholders = append(placeholders, format.ToString())
 		}
 	}

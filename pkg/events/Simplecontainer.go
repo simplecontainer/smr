@@ -20,7 +20,7 @@ func NewEventsListener(kr map[string]contracts.Kind, e chan KV.KV) {
 		case data := <-e:
 			var event Events
 
-			format := f.NewFromString(data.Key)
+			format, _ := f.NewFromString(data.Key)
 			acks.ACKS.Ack(format.GetUUID())
 
 			err := json.Unmarshal(data.Val, &event)

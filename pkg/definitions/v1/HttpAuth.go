@@ -10,14 +10,8 @@ import (
 )
 
 type HttpAuthDefinition struct {
-	Meta HttpAuthMeta `json:"meta" validate:"required"`
-	Spec HttpAuthSpec `json:"spec" validate:"required"`
-}
-
-type HttpAuthMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Meta commonv1.Meta `json:"meta" validate:"required"`
+	Spec HttpAuthSpec  `json:"spec" validate:"required"`
 }
 
 type HttpAuthSpec struct {
@@ -31,6 +25,9 @@ func (httpauth *HttpAuthDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (httpauth *HttpAuthDefinition) GetRuntime() *commonv1.Runtime {
 	return httpauth.Meta.Runtime
+}
+func (httpauth *HttpAuthDefinition) GetMeta() commonv1.Meta {
+	return httpauth.Meta
 }
 
 func (httpauth *HttpAuthDefinition) GetKind() string {

@@ -182,7 +182,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	go events.NewEventsListener(api.Manager.KindsRegistry, api.Replication.EventsC)
 
 	go api.ListenNode()
-	go api.Replication.ListenEtcd(api.Config.NodeName)
+	go api.Replication.ListenOutside(api.Config.NodeName)
 	go api.Replication.ListenData(api.Config.NodeName)
 
 	err = networking.Flannel(request["overlay"], request["backend"])
@@ -210,7 +210,7 @@ func (api *Api) SaveClusterConfiguration() {
 		logger.Log.Error(err.Error())
 	}
 
-	format := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
+	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
 	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)

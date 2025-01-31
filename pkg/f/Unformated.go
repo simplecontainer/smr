@@ -30,6 +30,18 @@ func (format Unformated) GetType() string {
 	return format.Type
 }
 
+func (format Unformated) GetKind() string {
+	return ""
+}
+
+func (format Unformated) GetGroup() string {
+	return ""
+}
+
+func (format Unformated) GetName() string {
+	return ""
+}
+
 func (format Unformated) GetUUID() uuid.UUID {
 	return format.UUID
 }

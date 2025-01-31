@@ -10,14 +10,8 @@ import (
 )
 
 type GitopsDefinition struct {
-	Meta GitopsMeta `json:"meta" validate:"required"`
-	Spec GitopsSpec `json:"spec" validate:"required"`
-}
-
-type GitopsMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Meta commonv1.Meta `json:"meta" validate:"required"`
+	Spec GitopsSpec    `json:"spec" validate:"required"`
 }
 
 type GitopsSpec struct {
@@ -50,6 +44,10 @@ func (gitops *GitopsDefinition) GetRuntime() *commonv1.Runtime {
 	return gitops.Meta.Runtime
 }
 
+func (gitops *GitopsDefinition) GetMeta() commonv1.Meta {
+	return gitops.Meta
+}
+
 func (gitops *GitopsDefinition) GetKind() string {
 	return static.KIND_GITOPS
 }
@@ -59,7 +57,7 @@ func (gitops *GitopsDefinition) ResolveReferences(obj contracts.ObjectInterface)
 
 	if gitops.Spec.HttpAuthRef.Group != "" && gitops.Spec.HttpAuthRef.Name != "" {
 		/*
-			format := f.New("httpauth", gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name, "object")
+			format, _ := f.New("httpauth", gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name, "object")
 
 			request, err := common.NewRequest(static.KIND_HTTPAUTH)
 
@@ -77,7 +75,7 @@ func (gitops *GitopsDefinition) ResolveReferences(obj contracts.ObjectInterface)
 
 	if gitops.Spec.CertKeyRef.Group != "" && gitops.Spec.CertKeyRef.Name != "" {
 		/*
-			format := f.New("certkey", gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name, "object")
+			format, _ := f.New("certkey", gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name, "object")
 
 			request, err := common.NewRequest(static.KIND_CERTKEY)
 

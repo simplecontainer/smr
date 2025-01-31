@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (replication *Replication) ListenEtcd(agent string) {
+func (replication *Replication) ListenOutside(agent string) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,

@@ -35,6 +35,8 @@ func NewImplementation(kind string) contracts.IDefinition {
 		def = &v1.CertKeyDefinition{}
 	case static.KIND_NETWORK:
 		def = &v1.NetworkDefinition{}
+	case static.KIND_SECRET:
+		def = &v1.SecretDefinition{}
 	default:
 		def = nil
 	}
@@ -134,6 +136,10 @@ func (definition *Definition) SetRuntime(runtime *commonv1.Runtime) {
 }
 func (definition *Definition) GetRuntime() *commonv1.Runtime {
 	return definition.Definition.GetRuntime()
+}
+
+func (definition *Definition) GetMeta() commonv1.Meta {
+	return definition.Definition.GetMeta()
 }
 
 func (definition *Definition) GetKind() string {

@@ -21,7 +21,7 @@ func (network *Network) ListSupported(request contracts.Control) contracts.Respo
 func (network *Network) List(request contracts.Control) contracts.Response {
 	data := make(map[string]any)
 
-	format := f.New(KIND, "", "", "")
+	format, _ := f.New(KIND, "", "", "")
 
 	obj := objects.New(network.Shared.Client.Get(request.User.Username), request.User)
 	objs, err := obj.FindMany(format)
@@ -38,7 +38,7 @@ func (network *Network) List(request contracts.Control) contracts.Response {
 }
 
 func (network *Network) Get(request contracts.Control) contracts.Response {
-	format := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
+	format, _ := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(network.Shared.Client.Get(request.User.Username), request.User)
 	obj.Find(format)
@@ -70,7 +70,7 @@ func (network *Network) Get(request contracts.Control) contracts.Response {
 
 func (network *Network) Remove(request contracts.Control) contracts.Response {
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Group, request.Name)
-	format := f.NewFromString(GroupIdentifier)
+	format, _ := f.NewFromString(GroupIdentifier)
 
 	obj := objects.New(network.Shared.Client.Get(request.User.Username), request.User)
 	err := obj.Find(format)

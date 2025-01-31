@@ -9,14 +9,8 @@ import (
 )
 
 type CertKeyDefinition struct {
-	Meta CertKeyMeta `json:"meta" validate:"required"`
-	Spec CertKeySpec `json:"spec" validate:"required"`
-}
-
-type CertKeyMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Meta commonv1.Meta `json:"meta" validate:"required"`
+	Spec CertKeySpec   `json:"spec" validate:"required"`
 }
 
 type CertKeySpec struct {
@@ -36,6 +30,10 @@ func (certkey *CertKeyDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (certkey *CertKeyDefinition) GetRuntime() *commonv1.Runtime {
 	return certkey.Meta.Runtime
+}
+
+func (certkey *CertKeyDefinition) GetMeta() commonv1.Meta {
+	return certkey.Meta
 }
 
 func (certkey *CertKeyDefinition) GetKind() string {

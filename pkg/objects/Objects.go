@@ -51,10 +51,8 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Propose(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s", obj.client.API, format.ToStringWithUUID())
+	URL := fmt.Sprintf("https://%s/api/v1/kind/propose/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
-
-	fmt.Println(URL)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -66,11 +64,8 @@ func (obj *Object) Propose(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) Wait(format contracts.Format, data []byte) error {
-	started := time.Now()
 	var wg sync.WaitGroup
 	var errWait error
-
-	fmt.Println(fmt.Sprintf("waiting for the UUID %s", format.GetUUID().String()))
 
 	go func() {
 		wg.Add(1)
@@ -85,27 +80,24 @@ func (obj *Object) Wait(format contracts.Format, data []byte) error {
 	}
 
 	wg.Wait()
-	elapsed := time.Since(started)
-
-	if errWait != nil {
-		fmt.Println(fmt.Sprintf("waited for %s lasted %s - never got back", format.GetUUID().String(), elapsed.String()))
-	} else {
-		fmt.Println(fmt.Sprintf("waited for %s got back after %s", format.GetUUID().String(), elapsed.String()))
-	}
 
 	return errWait
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, strings.TrimPrefix(format.ToString(), "/"))
+	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
+
+	fmt.Println(URL)
+	fmt.Println()
+	fmt.Println(response.Data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {
 		return nil
 	} else {
-		return errors.New(response.ErrorExplanation)
+		return errors.New(fmt.Sprintf("%s: %s", response.ErrorExplanation, string(response.Data)))
 	}
 }
 
@@ -117,7 +109,7 @@ func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 		prefix += "."
 	}
 
-	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, prefix)
+	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
@@ -125,12 +117,12 @@ func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 	if response.Success {
 		return true, nil
 	} else {
-		return false, errors.New(response.ErrorExplanation)
+		return false, errors.New(fmt.Sprintf("%s: %s", response.ErrorExplanation, string(response.Data)))
 	}
 }
 
 func (obj *Object) Find(format contracts.Format) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", obj.client.API, strings.TrimPrefix(format.ToString(), "/"))
+	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
@@ -149,7 +141,7 @@ func (obj *Object) Find(format contracts.Format) error {
 		obj.exists = true
 	} else {
 		if response.HttpStatus != http.StatusNotFound {
-			return errors.New(response.ErrorExplanation)
+			return errors.New(fmt.Sprintf("%s: %s", response.ErrorExplanation, string(response.Data)))
 		}
 	}
 
@@ -159,7 +151,7 @@ func (obj *Object) Find(format contracts.Format) error {
 func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.ObjectInterface, error) {
 	var objects = make(map[string]contracts.ObjectInterface)
 
-	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, strings.TrimPrefix(format.ToString(), "/"))
+	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
@@ -178,7 +170,8 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 			if format.GetType() == f.TYPE_FORMATED {
 				for _, key := range keys {
 					objTmp := New(obj.client, obj.User)
-					err = objTmp.Find(f.NewFromString(key))
+					format, _ = f.NewFromString(key)
+					err = objTmp.Find(format)
 
 					if err != nil {
 						return objects, err
@@ -189,7 +182,9 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 			} else {
 				for _, key := range keys {
 					objTmp := New(obj.client, obj.User)
-					err = objTmp.Find(f.NewFromString(key))
+
+					format, _ = f.NewFromString(key)
+					err = objTmp.Find(format)
 
 					if err != nil {
 						return objects, err
@@ -200,7 +195,7 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 			}
 		}
 	} else {
-		return nil, errors.New(response.ErrorExplanation)
+		return nil, errors.New(fmt.Sprintf("%s: %s", response.ErrorExplanation, string(response.Data)))
 	}
 
 	return objects, nil

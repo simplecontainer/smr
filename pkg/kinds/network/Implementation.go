@@ -1,7 +1,6 @@
 package network
 
 import (
-	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -27,10 +26,6 @@ func (network *Network) GetShared() interface{} {
 	return network.Shared
 }
 
-func (network *Network) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	return network.Apply(user, jsonData, agent)
-}
-
 func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_NETWORK)
 
@@ -50,7 +45,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
+	format, _ := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -94,7 +89,7 @@ func (network *Network) Compare(user *authentication.User, jsonData []byte) (con
 
 	definition := request.Definition.Definition.(*v1.NetworkDefinition)
 
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
+	format, _ := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -123,7 +118,7 @@ func (network *Network) Delete(user *authentication.User, jsonData []byte, agent
 
 	definition := request.Definition.Definition.(*v1.NetworkDefinition)
 
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
+	format, _ := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_NETWORK)

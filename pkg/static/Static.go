@@ -42,6 +42,7 @@ const KIND_CERTKEY = "certkey"
 const KIND_HTTPAUTH = "httpauth"
 const KIND_GITOPS = "gitops"
 const KIND_NETWORK = "network"
+const KIND_SECRET = "secret"
 
 const STATUS_RESPONSE_APPLIED = "object is applied"
 const STATUS_RESPONSE_BAD_REQUEST = "request sent is invalid"

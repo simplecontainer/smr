@@ -8,6 +8,7 @@ type IDefinition interface {
 	FromJson([]byte) error
 	SetRuntime(*commonv1.Runtime)
 	GetRuntime() *commonv1.Runtime
+	GetMeta() commonv1.Meta
 	GetKind() string
 	ResolveReferences(ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)
@@ -23,6 +24,7 @@ type TDefinition interface {
 	FromJson([]byte) error
 	SetRuntime(*commonv1.Runtime)
 	GetRuntime() *commonv1.Runtime
+	GetMeta() commonv1.Meta
 	GetKind() string
 	ResolveReferences(ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)

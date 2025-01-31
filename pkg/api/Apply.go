@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"io"
 	"net/http"
 )
@@ -14,102 +16,27 @@ func (api *Api) Apply(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 	} else {
 		data := make(map[string]interface{})
 		err = json.Unmarshal(jsonData, &data)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, contracts.Response{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      "invalid definition sent",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			})
-
-			return
-		}
-
-		if data != nil {
-			kind := ""
-
-			if c.Param("kind") != "" {
-				kind = c.Param("kind")
-			} else {
-				if data["kind"] != nil {
-					kind = data["kind"].(string)
-				} else {
-					c.JSON(http.StatusBadRequest, contracts.Response{
-						HttpStatus:       http.StatusBadRequest,
-						Explanation:      "",
-						ErrorExplanation: "invalid definition sent - kind is not defined",
-						Error:            true,
-						Success:          false,
-					})
-
-					return
-				}
-			}
-
-			api.ImplementationWrapperApply(authentication.NewUser(c.Request.TLS), kind, jsonData, c)
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		} else {
-			c.JSON(http.StatusBadRequest, contracts.Response{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      "invalid definition sent",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			})
+			kind := data["kind"].(string)
+			kindObj, ok := api.KindsRegistry[kind]
+
+			if !ok {
+				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
+			} else {
+				var response contracts.Response
+
+				fmt.Println("SENDING APPLY")
+
+				response, err = kindObj.Apply(authentication.NewUser(c.Request.TLS), jsonData, api.Config.NodeName)
+				c.JSON(response.HttpStatus, response)
+			}
 		}
 	}
-}
-
-func (api *Api) ImplementationWrapperApply(user *authentication.User, kind string, jsonData []byte, c *gin.Context) {
-	var err error
-	kindObj, ok := api.KindsRegistry[kind]
-
-	if !ok {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      "",
-			ErrorExplanation: fmt.Sprintf("kind is not present on the server: %s", kind),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
-	}
-
-	agent := api.Config.NodeName
-
-	if c.Param("agent") != "" {
-		agent = c.Param("agent")
-	}
-
-	var response contracts.Response
-	response, err = kindObj.Apply(user, jsonData, agent)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      err.Error(),
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
-	}
-
-	c.JSON(response.HttpStatus, response)
-	return
 }

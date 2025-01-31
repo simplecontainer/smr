@@ -67,9 +67,9 @@ func (domain Domain) IsValid() bool {
 }
 
 func (domain Domain) ToString() string {
-	return fmt.Sprintf("/%s/%s/%s/%s", domain.Network, domain.Group, domain.Identifier, domain.TLD)
+	return fmt.Sprintf("%s.%s.%s.%s", domain.Network, domain.Group, domain.Identifier, domain.TLD)
 }
 
 func (domain Domain) ToHeadles() string {
-	return fmt.Sprintf("/%s/%s/%s/%s", domain.Network, domain.Group, domain.Group, domain.TLD)
+	return fmt.Sprintf("%s.%s.%s.%s", domain.Network, domain.Group, domain.Group, domain.TLD)
 }

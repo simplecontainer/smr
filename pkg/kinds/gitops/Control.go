@@ -34,7 +34,7 @@ func (gitops *Gitops) List(request contracts.Control) contracts.Response {
 }
 
 func (gitops *Gitops) Get(request contracts.Control) contracts.Response {
-	format := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
+	format, _ := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(gitops.Shared.Client.Get(request.User.Username), request.User)
 	obj.Find(format)
@@ -71,7 +71,7 @@ func (gitops *Gitops) Remove(data contracts.Control) contracts.Response {
 		return common.Response(http.StatusBadRequest, static.STATUS_RESPONSE_BAD_REQUEST, err, nil)
 	}
 
-	format := f.New("gitops", data.Group, data.Name, "object")
+	format, _ := f.New("gitops", data.Group, data.Name, "object")
 	obj := objects.New(gitops.Shared.Client.Get(data.User.Username), data.User)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_GITOPS)

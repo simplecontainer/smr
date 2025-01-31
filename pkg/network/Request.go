@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
@@ -120,9 +119,4 @@ func Raw(client *http.Client, URL string, method string, data interface{}) (*htt
 	}
 
 	return resp, nil
-}
-
-func generateResponse(URL string, status int, method string, data []byte, body []byte, err error) string {
-	debug := fmt.Sprintf("URL: %s RESPONSE_CODE: %d, METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, status, method, string(data), string(body))
-	return fmt.Sprintf("database returned malformed response - " + debug + "\n" + err.Error())
 }

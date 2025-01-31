@@ -10,15 +10,8 @@ import (
 )
 
 type ContainerDefinition struct {
-	Meta ContainerMeta `json:"meta"  validate:"required"`
+	Meta commonv1.Meta `json:"meta"  validate:"required"`
 	Spec ContainerSpec `json:"spec"  validate:"required"`
-}
-
-type ContainerMeta struct {
-	Name    string            `validate:"required" json:"name"`
-	Group   string            `validate:"required" json:"group"`
-	Labels  map[string]string `json:"labels,omitempty"`
-	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 type ContainerSpec struct {
@@ -96,6 +89,10 @@ func (container *ContainerDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (container *ContainerDefinition) GetRuntime() *commonv1.Runtime {
 	return container.Meta.Runtime
+}
+
+func (container *ContainerDefinition) GetMeta() commonv1.Meta {
+	return container.Meta
 }
 
 func (container *ContainerDefinition) GetKind() string {

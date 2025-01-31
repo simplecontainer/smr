@@ -10,13 +10,14 @@ package f
 */
 
 import (
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"strings"
 )
 
-func New(elements ...string) Format {
+func New(elements ...string) (Format, error) {
 	builder := ""
 
 	for _, member := range elements {
@@ -28,25 +29,25 @@ func New(elements ...string) Format {
 	return NewFromString(builder)
 }
 
-func NewFromString(data string) Format {
-	UUID, f := parseUUID(strings.TrimPrefix(data, "/"))
+func NewFromString(data string) (Format, error) {
+	UUID, f := parseUUID(data)
 
 	elements, nonEmptyCount := BuildElements(strings.SplitN(f, "/", 5))
 	format := Format{
-		Prefix:     strings.TrimSpace(elements[0]),
-		Category:   strings.TrimSpace(elements[1]),
-		Kind:       strings.TrimSpace(elements[2]),
-		Group:      strings.TrimSpace(elements[3]),
-		Identifier: strings.TrimSpace(elements[4]),
-		Elems:      nonEmptyCount,
-		UUID:       UUID,
-		Type:       TYPE_FORMATED,
+		Prefix:   strings.TrimSpace(elements[0]),
+		Category: strings.TrimSpace(elements[1]),
+		Kind:     strings.TrimSpace(elements[2]),
+		Group:    strings.TrimSpace(elements[3]),
+		Name:     strings.TrimSpace(elements[4]),
+		Elems:    nonEmptyCount,
+		UUID:     UUID,
+		Type:     TYPE_FORMATED,
 	}
 
 	if format.IsValid() {
-		return format
+		return format, nil
 	} else {
-		return Format{}
+		return Format{}, errors.New(fmt.Sprintf("invalid format provided: %s", data))
 	}
 }
 
@@ -64,7 +65,6 @@ func parseUUID(f string) (uuid.UUID, string) {
 		//Format started with valid UUID return UUID and rest of the format
 		return UUID, f[36:]
 	} else {
-		fmt.Println("No data")
 		UUID := uuid.New()
 
 		//Format didn't start with UUID so return new UUID and f as it was since it only had data
@@ -94,11 +94,23 @@ func BuildElements(splitted []string) ([]string, int) {
 }
 
 func (format Format) GetCategory() string {
-	return format.Prefix
+	return format.Category
 }
 
 func (format Format) GetType() string {
 	return format.Type
+}
+
+func (format Format) GetKind() string {
+	return format.Kind
+}
+
+func (format Format) GetGroup() string {
+	return format.Group
+}
+
+func (format Format) GetName() string {
+	return format.Name
 }
 
 func (format Format) GetUUID() uuid.UUID {
@@ -106,7 +118,7 @@ func (format Format) GetUUID() uuid.UUID {
 }
 
 func (format Format) IsValid() bool {
-	split := strings.SplitN(strings.TrimPrefix(format.ToString(), "/"), "/", 5)
+	split := strings.SplitN(format.ToString(), "/", 4)
 
 	for _, element := range split {
 		if element == "" {
@@ -127,16 +139,16 @@ func (format Format) WithPrefix(prefix string) contracts.Format {
 }
 
 func (format Format) ToString() string {
-	output := fmt.Sprintf("/%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Identifier)
+	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Name)
 	return output
 }
 
 func (format Format) ToStringWithUUID() string {
-	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Identifier)
+	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Name)
 	return fmt.Sprintf("%s%s", format.UUID, output)
 }
 
 func (format Format) ToBytes() []byte {
-	output := fmt.Sprintf("/%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Identifier)
+	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Name)
 	return []byte(output)
 }

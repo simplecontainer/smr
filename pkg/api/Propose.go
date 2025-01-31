@@ -2,114 +2,58 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 	"net/http"
 )
 
-func (api *Api) ProposeObject(c *gin.Context) {
+func (api *Api) Propose(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      "invalid definition sent",
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 	} else {
 		data := make(map[string]interface{})
 		err = json.Unmarshal(jsonData, &data)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, contracts.Response{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      "invalid definition sent",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			})
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+		} else {
+			kind := data["kind"].(string)
+			_, ok := api.KindsRegistry[kind]
 
-			return
-		}
-
-		if data != nil {
-			kind := ""
-
-			if c.Param("kind") != "" {
-				kind = c.Param("kind")
+			if !ok {
+				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
 			} else {
-				if data["kind"] != nil {
-					kind = data["kind"].(string)
-				} else {
-					c.JSON(http.StatusBadRequest, contracts.Response{
-						HttpStatus:       http.StatusBadRequest,
-						Explanation:      "",
-						ErrorExplanation: "invalid definition sent - kind is not defined",
-						Error:            true,
-						Success:          false,
-					})
+				var request *common.Request
+				request, err = common.NewRequest(kind)
 
-					return
+				if err != nil {
+					c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+				} else {
+					if err = request.Definition.FromJson(jsonData); err != nil {
+						c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "invalid definition sent", err, nil))
+						return
+					}
+
+					valid, err := request.Definition.Validate()
+
+					if !valid {
+						c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "invalid definition sent", err, nil))
+						return
+					}
+
+					var bytes []byte
+					bytes, err = request.Definition.ToJsonWithKind()
+
+					format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+					api.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, api.Manager.Config.KVStore.Node)
 				}
 			}
-
-			api.ImplementationWrapperPropose(authentication.NewUser(c.Request.TLS), kind, jsonData, c)
-		} else {
-			c.JSON(http.StatusBadRequest, contracts.Response{
-				HttpStatus:       http.StatusBadRequest,
-				Explanation:      "invalid definition sent",
-				ErrorExplanation: err.Error(),
-				Error:            true,
-				Success:          false,
-			})
 		}
 	}
-}
-
-func (api *Api) ImplementationWrapperPropose(user *authentication.User, kind string, jsonData []byte, c *gin.Context) {
-	var err error
-	kindObj, ok := api.KindsRegistry[kind]
-
-	if !ok {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusBadRequest,
-			Explanation:      "",
-			ErrorExplanation: fmt.Sprintf("kind is not present on the server: %s", kind),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
-	}
-
-	agent := api.Config.NodeName
-
-	if c.Param("agent") != "" {
-		agent = c.Param("agent")
-	}
-
-	var response contracts.Response
-	response, err = kindObj.Propose(c, user, jsonData, agent)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, contracts.Response{
-			HttpStatus:       http.StatusInternalServerError,
-			Explanation:      err.Error(),
-			ErrorExplanation: err.Error(),
-			Error:            true,
-			Success:          false,
-		})
-
-		return
-	}
-
-	c.JSON(response.HttpStatus, response)
-	return
 }

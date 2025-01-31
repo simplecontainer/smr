@@ -23,7 +23,7 @@ func (container *Container) ListSupported(request contracts.Control) contracts.R
 func (container *Container) List(request contracts.Control) contracts.Response {
 	data := make(map[string]any)
 
-	format := f.New(KIND, "", "", "")
+	format, _ := f.New(KIND, "", "", "")
 
 	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
 	objs, err := obj.FindMany(format)
@@ -39,7 +39,7 @@ func (container *Container) List(request contracts.Control) contracts.Response {
 	return common.Response(http.StatusOK, "", nil, network.ToJson(data))
 }
 func (container *Container) Get(request contracts.Control) contracts.Response {
-	format := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
+	format, _ := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
 	obj.Find(format)

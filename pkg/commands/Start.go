@@ -174,6 +174,17 @@ func Start() {
 						database.DELETE("keys/*key", api.DatabaseRemoveKeys)
 					}
 
+					kind := v1.Group("kind")
+					{
+						kind.GET("/:prefix/:category/:kind", api.ListKind)
+						kind.GET("/:prefix/:category/:kind/:group", api.ListKindGroup)
+						kind.GET("/:prefix/:category/:kind/:group/:name", api.GetKind)
+						kind.POST("/propose/:prefix/:category/:kind/:group/:name", api.ProposeKind)
+						kind.POST("/:prefix/:category/:kind/:group/:name", api.SetKind)
+						kind.PUT("/:prefix/:category/:kind/:group/:name", api.SetKind)
+						kind.DELETE("/:prefix/:category/:kind/:group/:name", api.DeleteKind)
+					}
+
 					cluster := v1.Group("cluster")
 					{
 						cluster.GET("/", api.GetCluster)
@@ -182,15 +193,15 @@ func Start() {
 						cluster.DELETE("/node/:node", api.RemoveNode)
 					}
 
-					kinds := v1.Group("/")
+					definitions := v1.Group("/")
 					{
-						kinds.POST("apply", api.Apply)
-						kinds.POST("compare", api.Compare)
-						kinds.DELETE("delete", api.Delete)
-						kinds.POST("propose/apply", api.ProposeObject)
-						kinds.DELETE("propose/remove", api.ProposeObject)
-						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
-						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
+						definitions.POST("apply", api.Apply)
+						definitions.POST("compare", api.Compare)
+						definitions.DELETE("delete", api.Delete)
+						definitions.POST("propose/apply", api.Propose)
+						definitions.DELETE("propose/remove", api.Propose)
+						definitions.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
+						definitions.GET("logs/:group/:identifier/:follow", api.Logs)
 					}
 
 					operators := v1.Group("/control")
@@ -201,18 +212,6 @@ func Start() {
 						operators.POST(":kind/:operation/:group/:name", api.RunControl)
 						operators.PUT(":kind/:operation/:group/:name", api.RunControl)
 						operators.DELETE(":kind/:operation/:group/:name", api.RunControl)
-					}
-
-					secrets := v1.Group("secrets")
-					{
-						secrets.POST("create/*key", api.SecretsSet)
-						secrets.PUT("update/*key", api.SecretsSet)
-						secrets.POST("propose/:type/*key", api.ProposeSecrets)
-						secrets.PUT("propose/:type/*key", api.ProposeSecrets)
-						secrets.GET("get/*key", api.SecretsGet)
-						secrets.GET("keys", api.SecretsGet)
-						secrets.GET("keys/*prefix", api.SecretsGetKeysPrefix)
-						secrets.DELETE("keys/*prefix", api.SecretsRemoveKeys)
 					}
 
 					containers := v1.Group("/")

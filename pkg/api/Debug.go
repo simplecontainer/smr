@@ -101,7 +101,7 @@ func (api *Api) Debug(c *gin.Context) {
 			}
 		}
 	} else {
-		format := f.New(kind, group, identifier, "object")
+		format, _ := f.New(kind, group, identifier, "object")
 		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 		obj.Find(format)

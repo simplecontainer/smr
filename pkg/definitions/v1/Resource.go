@@ -10,14 +10,8 @@ import (
 )
 
 type ResourceDefinition struct {
-	Meta ResourceMeta `json:"meta" validate:"required"`
-	Spec ResourceSpec `json:"spec" validate:"required"`
-}
-
-type ResourceMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Meta commonv1.Meta `json:"meta" validate:"required"`
+	Spec ResourceSpec  `json:"spec" validate:"required"`
 }
 
 type ResourceSpec struct {
@@ -30,6 +24,10 @@ func (resource *ResourceDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (resource *ResourceDefinition) GetRuntime() *commonv1.Runtime {
 	return resource.Meta.Runtime
+}
+
+func (resource *ResourceDefinition) GetMeta() commonv1.Meta {
+	return resource.Meta
 }
 
 func (resource *ResourceDefinition) GetKind() string {

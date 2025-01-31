@@ -33,7 +33,7 @@ func (AR *ARecord) Remove(ip string) {
 }
 
 func (AR *ARecord) Fetch(client *client.Http, user *authentication.User, domain string) ([]string, error) {
-	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
+	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(client.Clients[user.Username], user)
 
 	obj.Find(format)

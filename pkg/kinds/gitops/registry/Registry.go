@@ -26,7 +26,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, gitops *impleme
 }
 
 func (registry *Registry) Sync(gitops *implementation.Gitops) error {
-	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	bytes, err := gitops.ToJson()
@@ -51,7 +51,7 @@ func (registry *Registry) Remove(group string, name string) error {
 			delete(registry.Gitopses, group)
 		}
 
-		format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
+		format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		err := obj.Propose(format, nil)
@@ -80,7 +80,7 @@ func (registry *Registry) FindLocal(group string, name string) *implementation.G
 }
 
 func (registry *Registry) Find(group string, name string) *implementation.Gitops {
-	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
+	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.GitopsLock.RLock()
@@ -115,7 +115,7 @@ func (registry *Registry) Find(group string, name string) *implementation.Gitops
 }
 
 func (registry *Registry) All() map[string]map[string]*implementation.Gitops {
-	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS)
+	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result = make(map[string]map[string]*implementation.Gitops)

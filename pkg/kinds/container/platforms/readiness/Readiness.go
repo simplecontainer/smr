@@ -76,7 +76,7 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
 		if len(matches) > 0 {
-			format := f.NewFromString(matches[0][1])
+			format, _ := f.NewFromString(matches[0][1])
 
 			if format.IsValid() && format.Kind == "secret" {
 				continue

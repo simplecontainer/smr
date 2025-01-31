@@ -2,20 +2,21 @@ package f
 
 import (
 	"github.com/go-playground/assert/v2"
-
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
 	type Wanted struct {
-		format *Format
+		format contracts.Format
 	}
 
 	type Parameters struct {
-		kind       string
-		group      string
-		identifier string
-		key        string
+		prefix   string
+		category string
+		kind     string
+		group    string
+		name     string
 	}
 
 	testCases := []struct {
@@ -29,13 +30,14 @@ func TestNew(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
 			},
 			Parameters{
-				kind:       "container",
-				group:      "mysql",
-				key:        "mysql",
-				identifier: "object",
+				prefix:   "simplecontainer.io",
+				category: "secret",
+				kind:     "secret",
+				group:    "test",
+				name:     "test",
 			},
 		},
 	}
@@ -44,15 +46,21 @@ func TestNew(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			format := New(tc.parameters.kind, tc.parameters.group, tc.parameters.key, tc.parameters.identifier)
-			assert.Equal(t, tc.wanted.format, format)
+			format := New(tc.parameters.prefix, tc.parameters.category, tc.parameters.kind, tc.parameters.group, tc.parameters.name)
+
+			// UUID will be different for two new formats so match them to pass test
+			format.UUID = tc.wanted.format.GetUUID()
+
+			assert.Equal(t, tc.wanted.format.ToString(), format.ToString())
+			assert.Equal(t, tc.wanted.format.ToBytes(), format.ToBytes())
+			assert.Equal(t, tc.wanted.format.ToStringWithUUID(), format.ToStringWithUUID())
 		})
 	}
 }
 
 func TestNewFromString(t *testing.T) {
 	type Wanted struct {
-		format *Format
+		format contracts.Format
 	}
 
 	type Parameters struct {
@@ -70,10 +78,10 @@ func TestNewFromString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
 			},
 			Parameters{
-				format: "container.mysql.mysql.object",
+				format: "simplecontainer.io/secret/secret/test/test",
 			},
 		},
 		{
@@ -81,10 +89,10 @@ func TestNewFromString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("container", "mysql", "mysql", ""),
+				format: New("simplecontainer.io", "secret", "secret", "test"),
 			},
 			Parameters{
-				format: "container.mysql.mysql",
+				format: "simplecontainer.io/secret/secret/test",
 			},
 		},
 		{
@@ -116,7 +124,7 @@ func TestToString(t *testing.T) {
 	}
 
 	type Parameters struct {
-		format *Format
+		format contracts.Format
 	}
 
 	testCases := []struct {
@@ -130,10 +138,10 @@ func TestToString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				string: "container.mysql.mysql.object",
+				string: "simplecontainer.io/secret/secret/test/test",
 			},
 			Parameters{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
 			},
 		},
 		{
@@ -144,7 +152,7 @@ func TestToString(t *testing.T) {
 				string: "",
 			},
 			Parameters{
-				format: New("", "mysql", "mysql", "object"),
+				format: New("", "secret", "", "test"),
 			},
 		},
 	}
@@ -165,7 +173,7 @@ func TestToBytes(t *testing.T) {
 	}
 
 	type Parameters struct {
-		format *Format
+		format contracts.Format
 	}
 
 	testCases := []struct {
@@ -179,10 +187,10 @@ func TestToBytes(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				bytes: []byte("container.mysql.mysql.object"),
+				bytes: []byte("simplecontainer.io/secret/secret/test/test"),
 			},
 			Parameters{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
 			},
 		},
 		{
@@ -193,7 +201,7 @@ func TestToBytes(t *testing.T) {
 				bytes: []byte(""),
 			},
 			Parameters{
-				format: New("", "mysql", "mysql", "object"),
+				format: New("", "secret", "", "test"),
 			},
 		},
 	}
@@ -202,8 +210,8 @@ func TestToBytes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			formatToBytes := tc.parameters.format.ToBytes()
-			assert.Equal(t, tc.wanted.bytes, formatToBytes)
+			formatToString := tc.parameters.format.ToBytes()
+			assert.Equal(t, tc.wanted.bytes, formatToString)
 		})
 	}
 }

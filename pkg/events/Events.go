@@ -17,7 +17,8 @@ func New(event string, kind string, group string, name string, data []byte) Even
 }
 
 func (event *Events) GetKey() string {
-	return f.New(static.SMR_PREFIX, static.CATEGORY_EVENT, event.Kind, event.Group, event.Name).ToString()
+	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_EVENT, event.Kind, event.Group, event.Name)
+	return format.ToString()
 }
 
 func (event *Events) ToJson() ([]byte, error) {

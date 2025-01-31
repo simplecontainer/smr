@@ -11,16 +11,8 @@ import (
 
 type ContainersDefinition struct {
 	Kind string                         `json:"kind"  validate:"required"`
-	Meta ContainersMeta                 `json:"meta"  validate:"required"`
+	Meta commonv1.Meta                  `json:"meta"  validate:"required"`
 	Spec map[string]ContainerDefinition `json:"spec"  validate:"required"`
-}
-
-type ContainersMeta struct {
-	Enabled bool              `json:"enabled"`
-	Name    string            `validate:"required" json:"name"`
-	Group   string            `validate:"required" json:"group"`
-	Labels  map[string]string `json:"labels"`
-	Runtime *commonv1.Runtime `json:"runtime"`
 }
 
 func (containers *ContainersDefinition) SetRuntime(runtime *commonv1.Runtime) {
@@ -29,6 +21,10 @@ func (containers *ContainersDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (containers *ContainersDefinition) GetRuntime() *commonv1.Runtime {
 	return containers.Meta.Runtime
+}
+
+func (containers *ContainersDefinition) GetMeta() commonv1.Meta {
+	return containers.Meta
 }
 
 func (containers *ContainersDefinition) GetKind() string {
