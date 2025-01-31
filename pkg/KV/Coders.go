@@ -20,13 +20,12 @@ func NewDecode(decoder *gob.Decoder, node uint64) KV {
 	return data
 }
 
-func NewEncode(key string, value []byte, node uint64, category int) KV {
+func NewEncode(key string, value []byte, node uint64) KV {
 	return KV{
-		Key:      key,
-		Val:      value,
-		Node:     node,
-		Category: category,
-		Local:    false,
+		Key:   key,
+		Val:   value,
+		Node:  node,
+		Local: false,
 	}
 }
 

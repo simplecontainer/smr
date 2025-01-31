@@ -166,12 +166,12 @@ func Start() {
 					{
 						database.POST("create/*key", api.DatabaseSet)
 						database.PUT("update/*key", api.DatabaseSet)
-						database.POST("propose/:type/*key", api.ProposeDatabase)
-						database.PUT("propose/:type/*key", api.ProposeDatabase)
+						database.POST("propose/*key", api.ProposeDatabase)
+						database.PUT("propose/*key", api.ProposeDatabase)
 						database.GET("get/*key", api.DatabaseGet)
 						database.GET("keys", api.DatabaseGetKeys)
-						database.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
-						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
+						database.GET("keys/*key", api.DatabaseGetKeysPrefix)
+						database.DELETE("keys/*key", api.DatabaseRemoveKeys)
 					}
 
 					cluster := v1.Group("cluster")
@@ -185,10 +185,10 @@ func Start() {
 					kinds := v1.Group("/")
 					{
 						kinds.POST("apply", api.Apply)
-						kinds.POST("propose/apply", api.ProposeObject)
-						kinds.DELETE("propose/remove", api.ProposeObject)
 						kinds.POST("compare", api.Compare)
 						kinds.DELETE("delete", api.Delete)
+						kinds.POST("propose/apply", api.ProposeObject)
+						kinds.DELETE("propose/remove", api.ProposeObject)
 						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
 						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
 					}

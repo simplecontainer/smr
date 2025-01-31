@@ -3,17 +3,23 @@ package f
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"strings"
 )
 
-func NewUnformated(key string, category string) Unformated {
+func NewUnformated(key string) Unformated {
 	UUID, f := parseUUID(key)
 
 	return Unformated{
-		Key:      f,
-		Category: category,
-		UUID:     UUID,
-		Type:     TYPE_UNFORMATED,
+		Key:  strings.TrimPrefix(f, "/"),
+		UUID: UUID,
+		Type: TYPE_UNFORMATED,
 	}
+}
+
+func (format Unformated) WithPrefix(prefix string) contracts.Format {
+	format.Prefix = prefix
+	return format
 }
 
 func (format Unformated) GetCategory() string {
@@ -37,13 +43,13 @@ func (format Unformated) Full() bool {
 }
 
 func (format Unformated) ToString() string {
-	return format.Key
+	return fmt.Sprintf("%s%s", format.Prefix, format.Key)
 }
 
 func (format Unformated) ToStringWithUUID() string {
-	return fmt.Sprintf("%s%s", format.UUID, format.Key)
+	return fmt.Sprintf("%s%s", format.UUID, fmt.Sprintf("%s%s", format.Prefix, format.Key))
 }
 
 func (format Unformated) ToBytes() []byte {
-	return []byte(format.Key)
+	return []byte(fmt.Sprintf("%s%s", format.Prefix, format.Key))
 }

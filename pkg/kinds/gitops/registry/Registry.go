@@ -3,7 +3,6 @@ package registry
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -27,7 +26,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, gitops *impleme
 }
 
 func (registry *Registry) Sync(gitops *implementation.Gitops) error {
-	format := f.NewUnformated(fmt.Sprintf("state.gitops.%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Name), static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	bytes, err := gitops.ToJson()
@@ -52,7 +51,7 @@ func (registry *Registry) Remove(group string, name string) error {
 			delete(registry.Gitopses, group)
 		}
 
-		format := f.NewUnformated(fmt.Sprintf("state.gitops.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
+		format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		err := obj.Propose(format, nil)
@@ -81,7 +80,7 @@ func (registry *Registry) FindLocal(group string, name string) *implementation.G
 }
 
 func (registry *Registry) Find(group string, name string) *implementation.Gitops {
-	format := f.NewUnformated(fmt.Sprintf("state.gitops.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.GitopsLock.RLock()
@@ -116,7 +115,7 @@ func (registry *Registry) Find(group string, name string) *implementation.Gitops
 }
 
 func (registry *Registry) All() map[string]map[string]*implementation.Gitops {
-	format := f.NewUnformated("state.gitops", static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_GITOPS)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result = make(map[string]map[string]*implementation.Gitops)

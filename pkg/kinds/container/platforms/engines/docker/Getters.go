@@ -31,9 +31,9 @@ func (container *Docker) GetGroupIdentifier() string {
 }
 
 func (container *Docker) GetDomain(network string) string {
-	return fmt.Sprintf("%s.%s.%s.%s", network, container.Group, container.GeneratedName, static.SMR_LOCAL_DOMAIN)
+	return fmt.Sprintf("/%s/%s/%s/%s", network, container.Group, container.GeneratedName, static.SMR_LOCAL_DOMAIN)
 }
 
 func (container *Docker) GetHeadlessDomain(network string) string {
-	return fmt.Sprintf("%s.%s.%s.%s", network, container.Group, container.Name, static.SMR_LOCAL_DOMAIN)
+	return fmt.Sprintf("/%s/%s/%s/%s", network, container.Group, container.Name, static.SMR_LOCAL_DOMAIN)
 }

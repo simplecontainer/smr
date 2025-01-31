@@ -6,7 +6,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"time"
@@ -39,7 +38,7 @@ func (replication *Replication) ListenEtcd(agent string) {
 						switch event.Type {
 						case mvccpb.PUT:
 							obj := objects.New(replication.Client, replication.User)
-							format := f.NewUnformated(string(event.Kv.Key), static.CATEGORY_ETCD_STRING)
+							format := f.NewUnformated(string(event.Kv.Key))
 
 							err = obj.Propose(format, event.Kv.Value)
 
@@ -49,7 +48,7 @@ func (replication *Replication) ListenEtcd(agent string) {
 							break
 						case mvccpb.DELETE:
 							obj := objects.New(replication.Client, replication.User)
-							format := f.NewUnformated(string(event.Kv.Key), static.CATEGORY_ETCD_STRING)
+							format := f.NewUnformated(string(event.Kv.Key))
 
 							err = obj.Propose(format, nil)
 

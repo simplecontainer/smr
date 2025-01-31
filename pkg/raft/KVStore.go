@@ -60,10 +60,10 @@ func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <
 	return s, nil
 }
 
-func (s *KVStore) Propose(k string, v []byte, category int, node uint64) {
+func (s *KVStore) Propose(k string, v []byte, node uint64) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(KV.NewEncode(k, v, node, category)); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(KV.NewEncode(k, v, node)); err != nil {
 		log.Fatal(err)
 	}
 

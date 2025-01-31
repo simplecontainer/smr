@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/network"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"io"
@@ -28,7 +27,9 @@ import (
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key} [get]
 func (api *Api) SecretsGet(c *gin.Context) {
-	key := strings.TrimPrefix(c.Param("key"), "/")
+	format := f.NewFromString(c.Param("key"))
+	key := format.ToString()
+
 	response, err := api.Etcd.Get(context.Background(), key)
 
 	if err != nil {
@@ -80,7 +81,8 @@ func (api *Api) SecretsSet(c *gin.Context) {
 
 	data, err = io.ReadAll(c.Request.Body)
 
-	key := strings.TrimPrefix(c.Param("key"), "/")
+	format := f.NewFromString(c.Param("key"))
+	key := format.ToString()
 
 	if err == nil {
 		_, err = api.Etcd.Put(context.Background(), key, string(data))
@@ -143,7 +145,7 @@ func (api *Api) ProposeSecrets(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	format := f.NewFromString(key)
-	api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, helpers.Category(c.Param("type")), api.Cluster.Node.NodeID)
+	api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, api.Cluster.Node.NodeID)
 
 	// To prevent empty responses since Json.RawMessage is in the response
 	if len(data) == 0 {

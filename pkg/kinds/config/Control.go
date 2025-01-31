@@ -36,7 +36,7 @@ func (config *Config) List(request contracts.Control) contracts.Response {
 	return common.Response(http.StatusOK, "", err, network.ToJson(data))
 }
 func (config *Config) Get(request contracts.Control) contracts.Response {
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
+	format := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(config.Shared.Client.Get(request.User.Username), request.User)
 	obj.Find(format)

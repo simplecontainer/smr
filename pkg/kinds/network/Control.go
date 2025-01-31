@@ -38,7 +38,7 @@ func (network *Network) List(request contracts.Control) contracts.Response {
 }
 
 func (network *Network) Get(request contracts.Control) contracts.Response {
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
+	format := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(network.Shared.Client.Get(request.User.Username), request.User)
 	obj.Find(format)

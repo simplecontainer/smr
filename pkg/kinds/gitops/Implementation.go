@@ -59,17 +59,17 @@ func (gitops *Gitops) Propose(c *gin.Context, user *authentication.User, jsonDat
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 
 	var bytes []byte
 	bytes, err = definition.ToJsonWithKind()
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, gitops.Shared.Manager.Config.KVStore.Node)
+		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, gitops.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, gitops.Shared.Manager.Config.KVStore.Node)
+		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, gitops.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -94,7 +94,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -158,7 +158,7 @@ func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contr
 
 	definition := request.Definition.Definition.(*v1.GitopsDefinition)
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -192,7 +192,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_GITOPS)

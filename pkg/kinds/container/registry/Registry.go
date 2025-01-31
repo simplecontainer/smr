@@ -29,7 +29,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 }
 
 func (registry *Registry) Sync(container platforms.IContainer) error {
-	format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", container.GetGroup(), container.GetGeneratedName()), static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, container.GetGroup(), container.GetGeneratedName())
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	bytes, err := container.ToJson()
@@ -54,7 +54,7 @@ func (registry *Registry) Remove(group string, name string) error {
 			delete(registry.Containers, group)
 		}
 
-		format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
+		format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		err := obj.Propose(format, nil)
@@ -83,7 +83,7 @@ func (registry *Registry) FindLocal(group string, name string) platforms.IContai
 }
 
 func (registry *Registry) Find(group string, name string) platforms.IContainer {
-	format := f.NewUnformated(fmt.Sprintf("state.container.%s.%s", group, name), static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, group, name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.ContainersLock.RLock()
@@ -112,7 +112,7 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 }
 
 func (registry *Registry) FindGroup(group string) []platforms.IContainer {
-	format := f.NewFromString(fmt.Sprintf("state.container.%s", group))
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, group)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result []platforms.IContainer
@@ -135,7 +135,7 @@ func (registry *Registry) FindGroup(group string) []platforms.IContainer {
 }
 
 func (registry *Registry) All() map[string]map[string]platforms.IContainer {
-	format := f.NewUnformated("state.container", static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result = make(map[string]map[string]platforms.IContainer)

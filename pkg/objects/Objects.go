@@ -14,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/network"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -50,8 +51,10 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Propose(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToStringWithUUID())
+	URL := fmt.Sprintf("https://%s/api/v1/database/propose/%s", obj.client.API, format.ToStringWithUUID())
 	response := network.Send(obj.client.Http, URL, "POST", data)
+
+	fmt.Println(URL)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -94,7 +97,7 @@ func (obj *Object) Wait(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/create/%s", obj.client.API, strings.TrimPrefix(format.ToString(), "/"))
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
@@ -107,7 +110,7 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
-	prefix := format.ToString()
+	prefix := strings.TrimPrefix(format.ToString(), "/")
 
 	if !format.Full() {
 		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
@@ -127,7 +130,7 @@ func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 }
 
 func (obj *Object) Find(format contracts.Format) error {
-	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/get/%s", obj.client.API, strings.TrimPrefix(format.ToString(), "/"))
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
@@ -156,7 +159,7 @@ func (obj *Object) Find(format contracts.Format) error {
 func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.ObjectInterface, error) {
 	var objects = make(map[string]contracts.ObjectInterface)
 
-	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/database/keys/%s", obj.client.API, strings.TrimPrefix(format.ToString(), "/"))
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))
@@ -186,7 +189,7 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 			} else {
 				for _, key := range keys {
 					objTmp := New(obj.client, obj.User)
-					err = objTmp.Find(f.NewUnformated(key, format.GetCategory()))
+					err = objTmp.Find(f.NewFromString(key))
 
 					if err != nil {
 						return objects, err

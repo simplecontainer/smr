@@ -15,28 +15,21 @@ var STRUCTURE = []string{
 
 const SMR_SSH_HOME = "/home/node/.ssh/simplecontainer"
 
+const SMR_PREFIX = "simplecontainer.io"
 const SMR_ENDPOINT_NAME = "node"
 const SMR_NODE_DOMAIN = "node.private"
 const SMR_LOCAL_DOMAIN string = "private"
 
 const PLATFORM_DOCKER = "docker"
 
-const CATEGORY_OBJECT = 0x0
-const CATEGORY_ETCD = 0x1
-const CATEGORY_PLAIN = 0x2
-const CATEGORY_EVENT = 0x3
-const CATEGORY_SECRET = 0x4
-const CATEGORY_DNS = 0x5
-const CATEGORY_OBJECT_DELETE = 0x8
-const CATEGORY_INVALID = 0x9
-
-const CATEGORY_OBJECT_STRING = "object"
-const CATEGORY_ETCD_STRING = "etcd"
-const CATEGORY_PLAIN_STRING = "plain"
-const CATEGORY_EVENT_STRING = "event"
-const CATEGORY_SECRET_STRING = "secret"
-const CATEGORY_DNS_STRING = "dns"
-const CATEGORY_INVALID_STRING = "invalid"
+const CATEGORY_KIND = "kind"
+const CATEGORY_STATE = "state"
+const CATEGORY_ETCD = "etcd"
+const CATEGORY_PLAIN = "plain"
+const CATEGORY_EVENT = "event"
+const CATEGORY_SECRET = "secret"
+const CATEGORY_DNS = "dns"
+const CATEGORY_INVALID = "invalid"
 
 const SIGTERM = "SIGTERM"
 const SIGKILL = "SIGKILL"

@@ -54,7 +54,6 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 			break
 		case "configuration":
 			cf := f.NewFromString(pf.ToString())
-			cf.Key = "object"
 
 			err := obj.Find(cf)
 
@@ -72,15 +71,15 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 				return template, nil, err
 			}
 
-			_, ok := configuration.Spec.Data[pf.Key]
+			_, ok := configuration.Spec.Data[pf.Identifier]
 
 			if !ok {
 				return template, nil, errors.New(
-					fmt.Sprintf("missing field in the configuration resource: %s", pf.Key),
+					fmt.Sprintf("missing field in the configuration resource: %s", pf.Identifier),
 				)
 			}
 
-			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.Key], -1)
+			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.Identifier], -1)
 			break
 		}
 	}

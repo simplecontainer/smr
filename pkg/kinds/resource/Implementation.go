@@ -46,17 +46,17 @@ func (resource *Resource) Propose(c *gin.Context, user *authentication.User, jso
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
 
 	var bytes []byte
 	bytes, err = definition.ToJsonWithKind()
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, resource.Shared.Manager.Config.KVStore.Node)
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, resource.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, resource.Shared.Manager.Config.KVStore.Node)
+		resource.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, resource.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -82,7 +82,7 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -106,7 +106,7 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 			logger.Log.Debug("failed to dispatch event", zap.Error(err))
 		} else {
 			if resource.Shared.Manager.Cluster.Node.NodeID == definition.GetRuntime().GetNode() {
-				resource.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, static.CATEGORY_EVENT, definition.GetRuntime().GetNode())
+				resource.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, definition.GetRuntime().GetNode())
 			}
 		}
 	}
@@ -127,7 +127,7 @@ func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (c
 
 	definition := request.Definition.Definition.(*v1.ResourceDefinition)
 
-	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -156,7 +156,7 @@ func (resource *Resource) Delete(user *authentication.User, jsonData []byte, age
 
 	definition := request.Definition.Definition.(*v1.ResourceDefinition)
 
-	format := f.New("resource", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_RESOURCE)

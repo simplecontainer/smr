@@ -49,7 +49,7 @@ func (obj *Object) GetDefinitionByte() []byte {
 
 func (obj *Object) Propose(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/secrets/propose/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
-	response := SendRequest(obj.client.Http, URL, "POST", []byte(data))
+	response := SendRequest(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 

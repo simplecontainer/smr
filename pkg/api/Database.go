@@ -8,14 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"io"
 	"net/http"
-	"strings"
 )
 
 var counts = smaps.New()
@@ -33,7 +31,12 @@ var counts = smaps.New()
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key} [get]
 func (api *Api) DatabaseGet(c *gin.Context) {
-	key := strings.TrimPrefix(c.Param("key"), "/")
+	format := f.NewUnformated(c.Param("key"))
+	key := format.ToString()
+
+	fmt.Println(format)
+	fmt.Println(key)
+
 	response, err := api.Etcd.Get(context.Background(), key)
 
 	if err != nil {
@@ -86,7 +89,10 @@ func (api *Api) DatabaseSet(c *gin.Context) {
 
 	data, err = io.ReadAll(c.Request.Body)
 
-	key := strings.TrimPrefix(c.Param("key"), "/")
+	format := f.NewFromString(c.Param("key"))
+	key := format.ToString()
+
+	fmt.Println(key)
 
 	if err == nil {
 		val, ok := counts.Map.Load(key)
@@ -161,10 +167,9 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 	}
 
 	go metrics.DatabasePropose.Increment()
-	key := strings.TrimPrefix(c.Param("key"), "/")
 
-	format := f.NewFromString(key)
-	api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, helpers.Category(c.Param("type")), api.Cluster.Node.NodeID)
+	format := f.NewFromString(c.Param("key"))
+	api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, api.Cluster.Node.NodeID)
 
 	// To prevent empty responses since Json.RawMessage is in the response
 	if len(data) == 0 {
@@ -192,7 +197,8 @@ func (api *Api) ProposeDatabase(c *gin.Context) {
 //	@Failure		500	{object}	  contracts.Response
 //	@Router			/database/{key}/{prefix} [get]
 func (api *Api) DatabaseGetKeysPrefix(c *gin.Context) {
-	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
+	format := f.NewFromString(c.Param("key"))
+	prefix := format.ToBytes()
 
 	go metrics.DatabaseGetKeysPrefix.Increment()
 	response, err := api.Etcd.Get(context.Background(), string(prefix), clientv3.WithPrefix())
@@ -277,7 +283,8 @@ func (api *Api) DatabaseGetKeys(c *gin.Context) {
 func (api *Api) DatabaseRemoveKeys(c *gin.Context) {
 	var keys []string
 
-	prefix := []byte(strings.TrimPrefix(c.Param("prefix"), "/"))
+	format := f.NewFromString(c.Param("key"))
+	prefix := format.ToBytes()
 
 	response, err := api.Etcd.Delete(context.Background(), string(prefix), clientv3.WithPrefix())
 	if err != nil {

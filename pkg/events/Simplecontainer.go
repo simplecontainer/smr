@@ -11,7 +11,6 @@ import (
 	gitopsShared "github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	gitopsStatus "github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 )
 
@@ -21,7 +20,7 @@ func NewEventsListener(kr map[string]contracts.Kind, e chan KV.KV) {
 		case data := <-e:
 			var event Events
 
-			format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
+			format := f.NewFromString(data.Key)
 			acks.ACKS.Ack(format.GetUUID())
 
 			err := json.Unmarshal(data.Val, &event)

@@ -42,17 +42,17 @@ func (httpauth *Httpauth) Propose(c *gin.Context, user *authentication.User, jso
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_HTTPAUTH, definition.Meta.Group, definition.Meta.Name)
 
 	var bytes []byte
 	bytes, err = definition.ToJsonWithKind()
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, httpauth.Shared.Manager.Config.KVStore.Node)
+		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, httpauth.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, httpauth.Shared.Manager.Config.KVStore.Node)
+		httpauth.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, httpauth.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -78,7 +78,7 @@ func (httpauth *Httpauth) Apply(user *authentication.User, jsonData []byte, agen
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_HTTPAUTH, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -107,7 +107,7 @@ func (httpauth *Httpauth) Compare(user *authentication.User, jsonData []byte) (c
 
 	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
 
-	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_HTTPAUTH, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -135,7 +135,7 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, age
 
 	definition := request.Definition.Definition.(*v1.HttpAuthDefinition)
 
-	format := f.New("httpauth", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_HTTPAUTH, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(httpauth.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_HTTPAUTH)

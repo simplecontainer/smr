@@ -210,7 +210,7 @@ func (api *Api) SaveClusterConfiguration() {
 		logger.Log.Error(err.Error())
 	}
 
-	format := f.NewUnformated("smr.cluster", static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
 	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)

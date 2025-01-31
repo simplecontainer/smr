@@ -45,14 +45,14 @@ func (certkey *Certkey) Propose(c *gin.Context, user *authentication.User, jsonD
 	var bytes []byte
 	bytes, err = definition.ToJsonWithKind()
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.KVStore.Node)
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, certkey.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, certkey.Shared.Manager.Config.KVStore.Node)
+		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, certkey.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -77,7 +77,7 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -106,7 +106,7 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 
 	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -134,7 +134,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 
 	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_CERTKEY)

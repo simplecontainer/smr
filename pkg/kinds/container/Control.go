@@ -39,7 +39,7 @@ func (container *Container) List(request contracts.Control) contracts.Response {
 	return common.Response(http.StatusOK, "", nil, network.ToJson(data))
 }
 func (container *Container) Get(request contracts.Control) contracts.Response {
-	format := f.NewFromString(fmt.Sprintf("%s.%s.%s.%s", KIND, request.Group, request.Name, "object"))
+	format := f.NewFromString(fmt.Sprintf("/%s/%s/%s/%s", KIND, request.Group, request.Name, "object"))
 
 	obj := objects.New(container.Shared.Client.Get(request.User.Username), request.User)
 	obj.Find(format)
@@ -95,7 +95,7 @@ func (container *Container) Restart(request contracts.Control) contracts.Respons
 		return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
 	}
 
-	container.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
+	container.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node)
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_RESTART, nil, nil)
 }
@@ -111,7 +111,7 @@ func (container *Container) Remove(request contracts.Control) contracts.Response
 	bytes, err := event.ToJson()
 
 	if err != nil {
-		container.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node, static.CATEGORY_EVENT)
+		container.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, container.Shared.Manager.Config.KVStore.Node)
 	}
 
 	return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil)

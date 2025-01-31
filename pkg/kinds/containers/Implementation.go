@@ -51,17 +51,17 @@ func (containers *Containers) Propose(c *gin.Context, user *authentication.User,
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 
 	var bytes []byte
 	bytes, err = definition.ToJsonWithKind()
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, containers.Shared.Manager.Config.KVStore.Node)
+		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, containers.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, containers.Shared.Manager.Config.KVStore.Node)
+		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, containers.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -86,7 +86,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte, 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -151,7 +151,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -179,7 +179,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINERS)

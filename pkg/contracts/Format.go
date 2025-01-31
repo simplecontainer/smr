@@ -9,6 +9,7 @@ type Format interface {
 	ToString() string
 	ToStringWithUUID() string
 	Full() bool
+	WithPrefix(prefix string) Format
 	IsValid() bool
 	ToBytes() []byte
 }

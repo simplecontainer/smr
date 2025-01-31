@@ -221,7 +221,7 @@ func (container *Docker) Delete() error {
 	}
 }
 func (container *Docker) Rename(newName string) error {
-	if c, _ := container.Get(); c != nil && c.State != "exited" {
+	if c, _ := container.Get(); c != nil {
 		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
@@ -238,7 +238,7 @@ func (container *Docker) Rename(newName string) error {
 		container.GeneratedName = newName
 		return cli.ContainerRename(ctx, c.ID, newName)
 	} else {
-		return errors.New("container is not in exited state")
+		return errors.New("container is not found")
 	}
 }
 func (container *Docker) Exec(command []string) (types.ExecResult, error) {

@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/domains"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -18,7 +17,7 @@ func (r *Records) ListenRecords() {
 			d := Distributed{}
 			err := json.Unmarshal(data.Val, &d)
 
-			format := f.NewUnformated(data.Key, static.CATEGORY_DNS_STRING)
+			format := f.NewFromString(data.Key)
 			acks.ACKS.Ack(format.GetUUID())
 
 			if err != nil {
@@ -44,7 +43,7 @@ func (r *Records) ListenRecords() {
 }
 
 func (r *Records) Propose(domain string, ip string, action uint8) error {
-	format := f.NewUnformated(fmt.Sprintf("dns.%s", domain), static.CATEGORY_DNS_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 	d := domains.NewFromString(domain)

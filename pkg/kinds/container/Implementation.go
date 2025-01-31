@@ -84,17 +84,17 @@ func (container *Container) Propose(c *gin.Context, user *authentication.User, j
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
 
 	var bytes []byte
 	bytes, err = definition.ToJsonWithKind()
 
 	switch c.Request.Method {
 	case http.MethodPost:
-		container.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, container.Shared.Manager.Config.KVStore.Node)
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, container.Shared.Manager.Config.KVStore.Node)
 		break
 	case http.MethodDelete:
-		container.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, container.Shared.Manager.Config.KVStore.Node)
+		container.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, container.Shared.Manager.Config.KVStore.Node)
 		break
 	}
 
@@ -120,7 +120,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -222,7 +222,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 
 	definition := request.Definition.Definition.(*v1.ContainerDefinition)
 
-	format := f.New("container", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 
 	var destroy []platforms.IContainer

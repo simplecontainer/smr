@@ -46,7 +46,7 @@ func (api *Api) Debug(c *gin.Context) {
 						logger.Log.Error(err.Error())
 					}
 				} else {
-					resp, err := network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/debug/%s/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().NodeName].API, kind, group, identifier, follow), http.MethodGet, nil)
+					resp, err := network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/debug//%s/%s/%s/%s", api.Manager.Http.Clients[container.GetRuntime().NodeName].API, kind, group, identifier, follow), http.MethodGet, nil)
 
 					if err != nil {
 						err = network.StreamByte([]byte(err.Error()), w)
@@ -151,7 +151,7 @@ func (api *Api) Debug(c *gin.Context) {
 							}
 						} else {
 							var resp *http.Response
-							resp, err = network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/debug/%s/%s/%s/%s", api.Manager.Http.Clients[nodeName].API, kind, group, identifier, follow), http.MethodGet, nil)
+							resp, err = network.Raw(client.Http, fmt.Sprintf("https://%s/api/v1/debug//%s/%s/%s/%s", api.Manager.Http.Clients[nodeName].API, kind, group, identifier, follow), http.MethodGet, nil)
 
 							err = network.StreamHttp(resp.Body, w)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/smaps"
+	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/template"
 	"os"
 	"regexp"
@@ -132,10 +133,11 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 		}
 
 		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.Format{
+			Prefix:     static.SMR_PREFIX,
+			Category:   static.CATEGORY_KIND,
 			Kind:       "resource",
 			Group:      container.Resources.Resources[k].Reference.Group,
 			Identifier: container.Resources.Resources[k].Reference.Name,
-			Key:        "",
 		})
 	}
 
