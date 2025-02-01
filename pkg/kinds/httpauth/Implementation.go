@@ -11,8 +11,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (httpauth *Httpauth) Start() error {
@@ -111,27 +109,6 @@ func (httpauth *Httpauth) Delete(user *authentication.User, jsonData []byte, age
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
-func (httpauth *Httpauth) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(httpauth)
-	reflectedValue := reflect.ValueOf(httpauth)
-
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == method.Name {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(strings.ToTitle(operation)).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (httpauth *Httpauth) Event(event contracts.Event) error {
+	return nil
 }

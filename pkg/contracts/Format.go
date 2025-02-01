@@ -3,6 +3,7 @@ package contracts
 import "github.com/google/uuid"
 
 type Format interface {
+	GetPrefix() string
 	GetCategory() string
 	GetType() string
 	GetKind() string

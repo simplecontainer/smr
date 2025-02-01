@@ -7,7 +7,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/events"
+	"github.com/simplecontainer/smr/pkg/events/events"
+	"github.com/simplecontainer/smr/pkg/events/platform"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
@@ -24,8 +25,6 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"os"
-	"reflect"
-	"strings"
 )
 
 func (container *Container) Start() error {
@@ -55,7 +54,7 @@ func (container *Container) Start() error {
 	}
 
 	// Start listening events based on the platform and for internal events
-	go events.NewPlatformEventsListener(container.Shared, container.Shared.Manager.Config.Platform)
+	go platform.Listen(container.Shared, container.Shared.Manager.Config.Platform)
 
 	logger.Log.Info(fmt.Sprintf("started listening events for simplecontainer and platform: %s", container.Shared.Manager.Config.Platform))
 
@@ -223,22 +222,30 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 
 	}
 }
-func (container *Container) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(container)
-	reflectedValue := reflect.ValueOf(container)
-
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
+func (container *Container) Event(event contracts.Event) error {
+	switch event.GetType() {
+	case events.EVENT_CHANGE:
+		for _, containerWatcher := range container.Shared.Watcher.Container {
+			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
+				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.STATUS_CHANGE)
+				container.Shared.Watcher.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
+			}
 		}
+		break
+	case events.EVENT_RESTART:
+		containerObj := container.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
+
+		if containerObj == nil {
+			return errors.New("container not found event is ignored")
+		}
+
+		containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
+		container.Shared.Watcher.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
+
+		break
 	}
 
-	return common.Response(http.StatusBadRequest, "server doesn't support requested functionality", errors.New("implementation is missing"), nil)
+	return nil
 }
 
 func GenerateContainers(shared *shared.Shared, definition *v1.ContainerDefinition, changelog diff.Changelog) ([]platforms.IContainer, []platforms.IContainer, error) {

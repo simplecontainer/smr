@@ -1,10 +1,12 @@
 package gitops
 
 import (
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
@@ -17,8 +19,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (gitops *Gitops) Start() error {
@@ -175,27 +175,40 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 
 }
-func (gitops *Gitops) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(gitops)
-	reflectedValue := reflect.ValueOf(gitops)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
+func (gitops *Gitops) Event(event contracts.Event) error {
+	switch event.GetType() {
+	case events.EVENT_REFRESH:
+		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
+		if gitopsObj == nil {
+			return errors.New("gitops is not controlled on this instance")
 		}
+
+		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+
+		if gitopsWatcher != nil {
+			gitopsWatcher.Gitops.ForcePoll = true
+			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
+			gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+		}
+		break
+	case events.EVENT_SYNC:
+		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
+
+		if gitopsObj == nil {
+			return errors.New("gitops is not controlled on this instance")
+		}
+
+		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+
+		if gitopsWatcher != nil {
+			gitopsWatcher.Gitops.ManualSync = true
+			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
+			gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+		}
+		break
 	}
 
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+	return nil
 }

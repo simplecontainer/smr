@@ -47,7 +47,7 @@ func NewFromString(data string) (Format, error) {
 	if format.IsValid() {
 		return format, nil
 	} else {
-		return Format{}, errors.New(fmt.Sprintf("invalid format provided: %s", data))
+		return format, errors.New(fmt.Sprintf("invalid format provided: %s", data))
 	}
 }
 
@@ -92,6 +92,8 @@ func BuildElements(splitted []string) ([]string, int) {
 
 	return elements, nonEmptyCount
 }
+
+func (format Format) GetPrefix() string { return format.Prefix }
 
 func (format Format) GetCategory() string {
 	return format.Category

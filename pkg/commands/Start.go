@@ -162,18 +162,6 @@ func Start() {
 
 				v1 := router.Group("/api/v1")
 				{
-					database := v1.Group("database")
-					{
-						database.POST("create/*key", api.DatabaseSet)
-						database.PUT("update/*key", api.DatabaseSet)
-						database.POST("propose/*key", api.ProposeDatabase)
-						database.PUT("propose/*key", api.ProposeDatabase)
-						database.GET("get/*key", api.DatabaseGet)
-						database.GET("keys", api.DatabaseGetKeys)
-						database.GET("keys/*key", api.DatabaseGetKeysPrefix)
-						database.DELETE("keys/*key", api.DatabaseRemoveKeys)
-					}
-
 					kind := v1.Group("kind")
 					{
 						kind.GET("/:prefix/:category/:kind", api.ListKind)
@@ -202,21 +190,6 @@ func Start() {
 						definitions.DELETE("propose/remove", api.Propose)
 						definitions.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
 						definitions.GET("logs/:group/:identifier/:follow", api.Logs)
-					}
-
-					operators := v1.Group("/control")
-					{
-						operators.GET(":kind", api.ListSupported)
-						operators.GET(":kind/:operation", api.RunControl)
-						operators.GET(":kind/:operation/:group/:name", api.RunControl)
-						operators.POST(":kind/:operation/:group/:name", api.RunControl)
-						operators.PUT(":kind/:operation/:group/:name", api.RunControl)
-						operators.DELETE(":kind/:operation/:group/:name", api.RunControl)
-					}
-
-					containers := v1.Group("/")
-					{
-						containers.GET("ps", api.Ps)
 					}
 
 					users := v1.Group("/user")

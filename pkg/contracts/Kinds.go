@@ -10,5 +10,5 @@ type Kind interface {
 	Compare(*authentication.User, []byte) (Response, error)
 	Delete(*authentication.User, []byte, string) (Response, error)
 	GetShared() interface{}
-	Run(string, Control) Response
+	Event(events Event) error
 }

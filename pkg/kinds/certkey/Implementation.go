@@ -11,8 +11,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (certkey *Certkey) Start() error {
@@ -110,27 +108,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
-func (certkey *Certkey) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(certkey)
-	reflectedValue := reflect.ValueOf(certkey)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       http.StatusBadRequest,
-		Explanation:      "",
-		ErrorExplanation: "server doesn't support requested functionality or permission suffice",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (certkey *Certkey) Event(event contracts.Event) error {
+	return nil
 }

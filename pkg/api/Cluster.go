@@ -10,7 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
-	"github.com/simplecontainer/smr/pkg/events"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -179,7 +179,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.SaveClusterConfiguration()
 
-	go events.NewEventsListener(api.Manager.KindsRegistry, api.Replication.EventsC)
+	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC)
 
 	go api.ListenNode()
 	go api.Replication.ListenOutside(api.Config.NodeName)

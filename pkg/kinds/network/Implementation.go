@@ -13,8 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (network *Network) Start() error {
@@ -130,27 +128,6 @@ func (network *Network) Delete(user *authentication.User, jsonData []byte, agent
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
-func (network *Network) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(network)
-	reflectedValue := reflect.ValueOf(network)
-
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (network *Network) Event(event contracts.Event) error {
+	return nil
 }

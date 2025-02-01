@@ -15,8 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (containers *Containers) Start() error {
@@ -172,27 +170,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 
 	return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 }
-func (containers *Containers) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(containers)
-	reflectedValue := reflect.ValueOf(containers)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (containers *Containers) Event(event contracts.Event) error {
+	return nil
 }

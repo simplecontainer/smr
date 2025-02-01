@@ -4,7 +4,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/events"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -12,8 +12,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (config *Config) Start() error {
@@ -60,7 +58,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, definition.GetKind(), definition.Meta.Group, definition.Meta.Name, nil)
+		event := events.New(events.EVENT_CHANGE, static.KIND_CONTAINER, definition.GetKind(), definition.Meta.Group, definition.Meta.Name, nil)
 
 		var bytes []byte
 		bytes, err = event.ToJson()
@@ -128,27 +126,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte, agent s
 
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
-func (config *Config) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(config)
-	reflectedValue := reflect.ValueOf(config)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (config *Config) Event(event contracts.Event) error {
+	return nil
 }

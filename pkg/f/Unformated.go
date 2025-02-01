@@ -22,6 +22,8 @@ func (format Unformated) WithPrefix(prefix string) contracts.Format {
 	return format
 }
 
+func (format Unformated) GetPrefix() string { return format.Prefix }
+
 func (format Unformated) GetCategory() string {
 	return format.Category
 }

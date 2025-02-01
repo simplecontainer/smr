@@ -1,11 +1,12 @@
 package events
 
-type Events struct {
-	Type  string
-	Kind  string
-	Group string
-	Name  string
-	Data  []byte
+type Event struct {
+	Type   string
+	Target string
+	Kind   string
+	Group  string
+	Name   string
+	Data   []byte
 }
 
 const EVENT_CHANGE = "change"
