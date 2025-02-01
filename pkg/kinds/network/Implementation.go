@@ -43,7 +43,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_NETWORK, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte

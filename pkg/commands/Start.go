@@ -174,6 +174,13 @@ func Start() {
 						kind.DELETE("/:prefix/:version/:category/:kind/:group/:name", api.DeleteKind)
 					}
 
+					key := v1.Group("key")
+					{
+						key.GET("/*key", api.GetKey)
+						key.POST("/*key", api.SetKey)
+						key.DELETE("/*key", api.DeleteKey)
+					}
+
 					cluster := v1.Group("cluster")
 					{
 						cluster.GET("/", api.GetCluster)

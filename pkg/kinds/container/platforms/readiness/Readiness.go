@@ -153,7 +153,7 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 		}
 	case TYPE_COMMAND:
 		c, err := container.GetContainerState()
-		if err == nil && c == "running" {
+		if err == nil && c.State == "running" {
 			var result types.ExecResult
 			result, err = container.Exec(readiness.Command)
 

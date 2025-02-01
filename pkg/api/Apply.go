@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -31,8 +30,6 @@ func (api *Api) Apply(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
 			} else {
 				var response contracts.Response
-
-				fmt.Println("SENDING APPLY")
 
 				response, err = kindObj.Apply(authentication.NewUser(c.Request.TLS), jsonData, api.Config.NodeName)
 				c.JSON(response.HttpStatus, response)

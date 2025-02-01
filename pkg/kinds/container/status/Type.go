@@ -48,6 +48,7 @@ const STATUS_READY string = "readiness_ready"
 const STATUS_RUNNING string = "running"
 const STATUS_DEAD string = "dead"
 const STATUS_BACKOFF string = "backoff"
+const STATUS_DAEMON_FAILURE string = "daemon_failure"
 
 const STATUS_DEPENDS_FAILED string = "depends_failed"
 const STATUS_READINESS_FAILED string = "readiness_failed"

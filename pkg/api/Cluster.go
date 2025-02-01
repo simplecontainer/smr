@@ -91,9 +91,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 			"API":      fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port),
 		})
 
-		fmt.Println(api.Manager.Http.Clients)
-		fmt.Println(user)
-
 		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, data)
 
 		if response.Error {

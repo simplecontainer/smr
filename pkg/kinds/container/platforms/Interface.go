@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/dns"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"io"
@@ -22,7 +23,7 @@ type IContainer interface {
 	Exec(command []string) (types.ExecResult, error)
 	Logs(bool) (io.ReadCloser, error)
 
-	GetContainerState() (string, error)
+	GetContainerState() (state.State, error)
 	Run() (*TDTypes.Container, error)
 	Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
@@ -67,7 +68,8 @@ type IPlatform interface {
 	Exec(command []string) (types.ExecResult, error)
 	Logs(bool) (io.ReadCloser, error)
 
-	GetContainerState() (string, error)
+	GetContainerState() (state.State, error)
+
 	Run() (*TDTypes.Container, error)
 	Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error

@@ -54,7 +54,7 @@ func (replication *Replication) ListenData(agent string) {
 							replication.HandleObject(format, data)
 							break
 						default:
-							replication.HandleOutside(format, data)
+							replication.HandleOutside(data)
 							break
 						case static.CATEGORY_DNS:
 							replication.DnsUpdatesC <- data
@@ -75,9 +75,6 @@ func (replication *Replication) ListenData(agent string) {
 func (replication *Replication) HandleObject(format contracts.Format, data KV.KV) {
 	acks.ACKS.Ack(format.GetUUID())
 
-	fmt.Println(format)
-	fmt.Println(format.GetKind())
-
 	request, _ := common.NewRequest(format.GetKind())
 	request.Definition.FromJson(data.Val)
 	request.Definition.GetRuntime().SetNode(data.Node)
@@ -92,8 +89,6 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 	if data.Val == nil {
 		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodPost, bytes)
 
-		fmt.Println(string(bytes))
-
 		if response != nil {
 			if !response.Success {
 				if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
@@ -103,8 +98,6 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 		}
 	} else {
 		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
-
-		fmt.Println(string(bytes))
 
 		if response != nil {
 			if !response.Success {
@@ -139,8 +132,6 @@ func (replication *Replication) HandlePlain(format contracts.Format, data KV.KV)
 func (replication *Replication) HandleSecret(format contracts.Format, data KV.KV) {
 	acks.ACKS.Ack(format.GetUUID())
 
-	fmt.Println(format.ToString())
-
 	obj := objects.New(replication.Client, replication.User)
 
 	if data.Val == nil {
@@ -161,8 +152,6 @@ func (replication *Replication) HandleSecret(format contracts.Format, data KV.KV
 func (replication *Replication) HandleDns(format contracts.Format, data KV.KV) {
 	acks.ACKS.Ack(format.GetUUID())
 
-	fmt.Println(format.ToString())
-
 	obj := objects.New(replication.Client, replication.User)
 
 	if data.Val == nil {
@@ -181,22 +170,20 @@ func (replication *Replication) HandleDns(format contracts.Format, data KV.KV) {
 }
 
 // HandleEtcd handles the case when data is entered into etcd via other means than simplecontainer - flannel only
-func (replication *Replication) HandleOutside(format contracts.Format, data KV.KV) {
-	acks.ACKS.Ack(format.GetUUID())
-
+func (replication *Replication) HandleOutside(data KV.KV) {
 	obj := objects.New(replication.Client, replication.User)
 
-	replication.Replicated.Map.Store(format.ToString(), 1)
+	replication.Replicated.Map.Store(data.Key, 1)
 
 	if !data.IsLocal() {
 		if data.Val == nil {
-			_, err := obj.RemoveLocal(format)
+			_, err := obj.RemoveLocalKey(data.Key)
 
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}
 		} else {
-			err := obj.AddLocal(format, data.Val)
+			err := obj.AddLocalKey(data.Key, data.Val)
 
 			if err != nil {
 				logger.Log.Error(err.Error())

@@ -12,6 +12,8 @@ type ObjectInterface interface {
 	Wait(Format, []byte) error
 	AddLocal(format Format, data []byte) error
 	RemoveLocal(format Format) (bool, error)
+	AddLocalKey(key string, data []byte) error
+	RemoveLocalKey(key string) (bool, error)
 	Find(format Format) error
 	FindMany(format Format) (map[string]ObjectInterface, error)
 	Diff(definition []byte) bool

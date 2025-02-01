@@ -20,6 +20,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/smaps"
@@ -343,17 +344,27 @@ func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 	}
 }
 
-func (container *Docker) GetContainerState() (string, error) {
+func (container *Docker) GetContainerState() (state.State, error) {
 	dockerContainer, err := DockerGet(container.GeneratedName)
 
 	if err != nil {
-		return "", err
+		return state.State{}, err
 	}
 
 	container.DockerID = dockerContainer.ID
 	container.DockerState = dockerContainer.State
 
-	return dockerContainer.State, nil
+	var inspected TDTypes.ContainerJSON
+	inspected, err = DockerInspect(container.DockerID)
+
+	if err != nil {
+		return state.State{}, err
+	}
+
+	return state.State{
+		State: dockerContainer.State,
+		Error: inspected.State.Error,
+	}, nil
 }
 
 func (container *Docker) Get() (*TDTypes.Container, error) {

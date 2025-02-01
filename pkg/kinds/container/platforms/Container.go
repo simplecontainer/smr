@@ -12,6 +12,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/smaps"
@@ -106,7 +107,7 @@ func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(follow)
 }
 
-func (c *Container) GetContainerState() (string, error) {
+func (c *Container) GetContainerState() (state.State, error) {
 	return c.Platform.GetContainerState()
 }
 func (c *Container) Run() (*TDTypes.Container, error) {
