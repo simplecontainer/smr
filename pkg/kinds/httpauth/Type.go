@@ -17,8 +17,3 @@ type Shared struct {
 }
 
 const KIND string = static.KIND_HTTPAUTH
-
-var invalidOperators []string = []string{
-	"Run",
-	"ListSupported",
-}

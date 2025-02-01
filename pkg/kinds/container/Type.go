@@ -11,8 +11,3 @@ type Container struct {
 }
 
 const KIND string = static.KIND_CONTAINER
-
-var invalidOperators []string = []string{
-	"Run",
-	"ListSupported",
-}

@@ -10,9 +10,13 @@ import (
 )
 
 type ContainersDefinition struct {
-	Kind string                         `json:"kind"  validate:"required"`
-	Meta commonv1.Meta                  `json:"meta"  validate:"required"`
-	Spec map[string]ContainerDefinition `json:"spec"  validate:"required"`
+	Prefix string                         `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta                  `json:"meta"  validate:"required"`
+	Spec   map[string]ContainerDefinition `json:"spec"  validate:"required"`
+}
+
+func (containers *ContainersDefinition) GetPrefix() string {
+	return containers.Prefix
 }
 
 func (containers *ContainersDefinition) SetRuntime(runtime *commonv1.Runtime) {

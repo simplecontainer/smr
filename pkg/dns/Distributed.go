@@ -17,7 +17,7 @@ func (r *Records) ListenRecords() {
 			d := Distributed{}
 			err := json.Unmarshal(data.Val, &d)
 
-			format, _ := f.NewFromString(data.Key)
+			format := f.NewFromString(data.Key)
 			acks.ACKS.Ack(format.GetUUID())
 
 			if err != nil {
@@ -43,7 +43,7 @@ func (r *Records) ListenRecords() {
 }
 
 func (r *Records) Propose(domain string, ip string, action uint8) error {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 	d := domains.NewFromString(domain)

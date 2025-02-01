@@ -10,12 +10,17 @@ import (
 )
 
 type ResourceDefinition struct {
-	Meta commonv1.Meta `json:"meta" validate:"required"`
-	Spec ResourceSpec  `json:"spec" validate:"required"`
+	Prefix string        `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta `json:"meta" validate:"required"`
+	Spec   ResourceSpec  `json:"spec" validate:"required"`
 }
 
 type ResourceSpec struct {
 	Data map[string]string `json:"data"`
+}
+
+func (resource *ResourceDefinition) GetPrefix() string {
+	return resource.Prefix
 }
 
 func (resource *ResourceDefinition) SetRuntime(runtime *commonv1.Runtime) {

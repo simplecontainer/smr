@@ -62,7 +62,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 	}
 
 	for k, v := range container.Resources.Resources {
-		format, _ := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
+		format := f.New("resource", v.Reference.Group, v.Reference.Name, "object")
 
 		obj := objects.New(client.Get(user.Username), user)
 		err = obj.Find(format)
@@ -132,13 +132,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
-		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.Format{
-			Prefix:   static.SMR_PREFIX,
-			Category: static.CATEGORY_KIND,
-			Kind:     "resource",
-			Group:    container.Resources.Resources[k].Reference.Group,
-			Name:     container.Resources.Resources[k].Reference.Name,
-		})
+		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, "resource", container.Resources.Resources[k].Reference.Group, container.Resources.Resources[k].Reference.Name))
 	}
 
 	return nil
@@ -193,13 +187,13 @@ func (container *Docker) PrepareReadiness(runtime *types.Runtime) {
 			matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
 			if len(matches) > 0 {
-				format, _ := f.NewFromString(matches[0][1])
+				format := f.NewFromString(matches[0][1])
 
-				if format.IsValid() && format.Kind == "secret" {
+				if format.IsValid() && format.GetKind() == "secret" {
 					continue
 				} else {
 					container.Lock.Lock()
-					runtimeValue, _ := runtime.Configuration.Map.Load(format.Group)
+					runtimeValue, _ := runtime.Configuration.Map.Load(format.GetGroup())
 
 					container.Readiness.Readinesses[indexReadiness].Docker.Body[index] = strings.Replace(container.Readiness.Readinesses[indexReadiness].Docker.Body[index], matches[0][0], runtimeValue.(string), 1)
 					container.Lock.Unlock()

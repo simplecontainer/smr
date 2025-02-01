@@ -72,7 +72,7 @@ func (r *Records) RemoveARecord(domain string, ip string) ([]byte, error) {
 }
 
 func (r *Records) Save(bytes []byte, domain string) error {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 	return obj.AddLocal(format, bytes)

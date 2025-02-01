@@ -9,8 +9,9 @@ import (
 )
 
 type ConfigurationDefinition struct {
-	Meta commonv1.Meta     `json:"meta" validate:"required"`
-	Spec ConfigurationSpec `json:"spec" validate:"required"`
+	Prefix string            `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta     `json:"meta" validate:"required"`
+	Spec   ConfigurationSpec `json:"spec" validate:"required"`
 }
 
 type ConfigurationMeta struct {
@@ -21,6 +22,10 @@ type ConfigurationMeta struct {
 
 type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
+}
+
+func (configuration *ConfigurationDefinition) GetPrefix() string {
+	return configuration.Prefix
 }
 
 func (configuration *ConfigurationDefinition) SetRuntime(runtime *commonv1.Runtime) {

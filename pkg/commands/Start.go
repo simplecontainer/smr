@@ -164,13 +164,14 @@ func Start() {
 				{
 					kind := v1.Group("kind")
 					{
-						kind.GET("/:prefix/:category/:kind", api.ListKind)
-						kind.GET("/:prefix/:category/:kind/:group", api.ListKindGroup)
-						kind.GET("/:prefix/:category/:kind/:group/:name", api.GetKind)
-						kind.POST("/propose/:prefix/:category/:kind/:group/:name", api.ProposeKind)
-						kind.POST("/:prefix/:category/:kind/:group/:name", api.SetKind)
-						kind.PUT("/:prefix/:category/:kind/:group/:name", api.SetKind)
-						kind.DELETE("/:prefix/:category/:kind/:group/:name", api.DeleteKind)
+						kind.GET("/", api.List)
+						kind.GET("/:prefix/:version/:category/:kind", api.ListKind)
+						kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKindGroup)
+						kind.GET("/:prefix/:version/:category/:kind/:group/:name", api.GetKind)
+						kind.POST("/propose/:prefix/:version/:category/:kind/:group/:name", api.ProposeKind)
+						kind.POST("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
+						kind.PUT("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
+						kind.DELETE("/:prefix/:version/:category/:kind/:group/:name", api.DeleteKind)
 					}
 
 					cluster := v1.Group("cluster")

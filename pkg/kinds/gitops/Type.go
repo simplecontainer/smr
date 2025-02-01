@@ -11,8 +11,3 @@ type Gitops struct {
 }
 
 const KIND string = static.KIND_GITOPS
-
-var invalidOperators []string = []string{
-	"Run",
-	"ListSupported",
-}

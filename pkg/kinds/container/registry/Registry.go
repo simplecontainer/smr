@@ -29,7 +29,7 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 }
 
 func (registry *Registry) Sync(container platforms.IContainer) error {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, container.GetGroup(), container.GetGeneratedName())
+	format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINER, container.GetGroup(), container.GetGeneratedName())
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	bytes, err := container.ToJson()
@@ -41,7 +41,7 @@ func (registry *Registry) Sync(container platforms.IContainer) error {
 	return obj.Wait(format, bytes)
 }
 
-func (registry *Registry) Remove(group string, name string) error {
+func (registry *Registry) Remove(prefix string, group string, name string) error {
 	registry.ContainersLock.Lock()
 	defer registry.ContainersLock.Unlock()
 
@@ -54,7 +54,7 @@ func (registry *Registry) Remove(group string, name string) error {
 			delete(registry.Containers, group)
 		}
 
-		format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, group, name)
+		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINER, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		err := obj.Propose(format, nil)
@@ -82,8 +82,8 @@ func (registry *Registry) FindLocal(group string, name string) platforms.IContai
 	}
 }
 
-func (registry *Registry) Find(group string, name string) platforms.IContainer {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, group, name)
+func (registry *Registry) Find(prefix string, group string, name string) platforms.IContainer {
+	format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINER, group, name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.ContainersLock.RLock()
@@ -111,8 +111,8 @@ func (registry *Registry) Find(group string, name string) platforms.IContainer {
 	}
 }
 
-func (registry *Registry) FindGroup(group string) []platforms.IContainer {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER, group)
+func (registry *Registry) FindGroup(prefix string, group string) []platforms.IContainer {
+	format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINER, group)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	var result []platforms.IContainer
@@ -128,36 +128,6 @@ func (registry *Registry) FindGroup(group string) []platforms.IContainer {
 			}
 
 			result = append(result, instance)
-		}
-	}
-
-	return result
-}
-
-func (registry *Registry) All() map[string]map[string]platforms.IContainer {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_STATE, static.KIND_CONTAINER)
-	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
-
-	var result = make(map[string]map[string]platforms.IContainer)
-	objs, _ := obj.FindMany(format)
-
-	if len(objs) > 0 {
-		for _, o := range objs {
-			instance, err := platforms.NewGhost(o.GetDefinition())
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-				continue
-			}
-
-			if result[instance.GetGroup()] != nil {
-				result[instance.GetGroup()][instance.GetGeneratedName()] = instance
-			} else {
-				tmp := make(map[string]platforms.IContainer)
-				tmp[instance.GetGeneratedName()] = instance
-
-				result[instance.GetGroup()] = tmp
-			}
 		}
 	}
 

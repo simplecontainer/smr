@@ -45,7 +45,7 @@ func (event Event) GetData() []byte {
 }
 
 func (event Event) GetKey() string {
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_EVENT, event.Kind, event.Group, event.Name)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_EVENT, event.Kind, event.Group, event.Name)
 	return format.ToString()
 }
 

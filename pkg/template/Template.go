@@ -19,9 +19,9 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 	var parsed string = template
 
 	for _, placeholder := range placeholders {
-		pf, _ := f.NewFromString(placeholder)
+		pf := f.NewFromString(placeholder)
 
-		switch pf.Kind {
+		switch pf.GetKind() {
 		case "secret":
 			// Ignore since secret unpacking is done on container runtime
 			continue
@@ -53,7 +53,7 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", placeholder), obj.GetDefinitionString(), -1)
 			break
 		case "configuration":
-			cf, _ := f.NewFromString(pf.ToString())
+			cf := f.NewFromString(pf.ToString())
 
 			err := obj.Find(cf)
 
@@ -71,7 +71,7 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 				return template, nil, err
 			}
 
-			_, ok := configuration.Spec.Data[pf.Name]
+			_, ok := configuration.Spec.Data[pf.GetName()]
 
 			if !ok {
 				return template, nil, errors.New(
@@ -79,7 +79,7 @@ func ParseTemplate(obj contracts.ObjectInterface, template string, runtime *smap
 				)
 			}
 
-			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.Name], -1)
+			parsed = strings.Replace(parsed, fmt.Sprintf("{{ %s }}", pf.ToString()), configuration.Spec.Data[pf.GetName()], -1)
 			break
 		}
 	}
@@ -91,9 +91,9 @@ func ParseSecretTemplate(obj contracts.ObjectInterface, value string) (string, e
 	placeholders := GetTemplatePlaceholders(value)
 
 	for _, placeholder := range placeholders {
-		format, _ := f.NewFromString(placeholder)
+		format := f.NewFromString(placeholder)
 
-		if format.Kind == "secret" {
+		if format.GetKind() == "secret" {
 			obj.Find(format)
 
 			if !obj.Exists() {
@@ -115,7 +115,7 @@ func GetTemplatePlaceholders(template string) []string {
 
 	if len(matches) > 0 {
 		for index, _ := range matches {
-			format, _ := f.NewFromString(matches[index][1])
+			format := f.NewFromString(matches[index][1])
 			placeholders = append(placeholders, format.ToString())
 		}
 	}

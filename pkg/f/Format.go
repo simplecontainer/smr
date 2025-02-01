@@ -2,22 +2,16 @@ package f
 
 /*
 	All database keys should follow the format:
-	category/kind/group/identifier/key
-
-	eg:
-
-
+	prefix/version/category/kind/group/identifier/key
 */
 
 import (
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/simplecontainer/smr/pkg/contracts"
 	"strings"
 )
 
-func New(elements ...string) (Format, error) {
+func New(elements ...string) Format {
 	builder := ""
 
 	for _, member := range elements {
@@ -29,26 +23,43 @@ func New(elements ...string) (Format, error) {
 	return NewFromString(builder)
 }
 
-func NewFromString(data string) (Format, error) {
+func NewFromString(data string) Format {
 	UUID, f := parseUUID(data)
 
-	elements, nonEmptyCount := BuildElements(strings.SplitN(f, "/", 5))
+	elements, nonEmptyCount := buildElements(strings.SplitN(f, "/", 6))
 	format := Format{
-		Prefix:   strings.TrimSpace(elements[0]),
-		Category: strings.TrimSpace(elements[1]),
-		Kind:     strings.TrimSpace(elements[2]),
-		Group:    strings.TrimSpace(elements[3]),
-		Name:     strings.TrimSpace(elements[4]),
+		Elements: elements,
 		Elems:    nonEmptyCount,
 		UUID:     UUID,
 		Type:     TYPE_FORMATED,
 	}
 
 	if format.IsValid() {
-		return format, nil
+		return format
 	} else {
-		return format, errors.New(fmt.Sprintf("invalid format provided: %s", data))
+		return Format{}
 	}
+}
+
+func buildElements(splitted []string) ([]string, int) {
+	elements := make([]string, 6)
+
+	lengthSplitted := len(splitted)
+	nonEmptyCount := 0
+
+	for k, _ := range elements {
+		if k < lengthSplitted {
+			elements[k] = splitted[k]
+
+			if splitted[k] != "" {
+				nonEmptyCount += 1
+			}
+		} else {
+			elements[k] = ""
+		}
+	}
+
+	return elements, nonEmptyCount
 }
 
 func parseUUID(f string) (uuid.UUID, string) {
@@ -72,47 +83,28 @@ func parseUUID(f string) (uuid.UUID, string) {
 	}
 }
 
-func BuildElements(splitted []string) ([]string, int) {
-	elements := make([]string, 5)
+func (format Format) GetPrefix() string { return format.Elements[0] }
 
-	lengthSplitted := len(splitted)
-	nonEmptyCount := 0
-
-	for k, _ := range elements {
-		if k < lengthSplitted {
-			elements[k] = splitted[k]
-
-			if splitted[k] != "" {
-				nonEmptyCount += 1
-			}
-		} else {
-			elements[k] = ""
-		}
-	}
-
-	return elements, nonEmptyCount
-}
-
-func (format Format) GetPrefix() string { return format.Prefix }
+func (format Format) GetVersion() string { return format.Elements[1] }
 
 func (format Format) GetCategory() string {
-	return format.Category
+	return format.Elements[2]
+}
+
+func (format Format) GetKind() string {
+	return format.Elements[3]
+}
+
+func (format Format) GetGroup() string {
+	return format.Elements[4]
+}
+
+func (format Format) GetName() string {
+	return format.Elements[5]
 }
 
 func (format Format) GetType() string {
 	return format.Type
-}
-
-func (format Format) GetKind() string {
-	return format.Kind
-}
-
-func (format Format) GetGroup() string {
-	return format.Group
-}
-
-func (format Format) GetName() string {
-	return format.Name
 }
 
 func (format Format) GetUUID() uuid.UUID {
@@ -120,37 +112,63 @@ func (format Format) GetUUID() uuid.UUID {
 }
 
 func (format Format) IsValid() bool {
-	split := strings.SplitN(format.ToString(), "/", 4)
+	split := strings.SplitN(format.ToString(), "/", 6)
 
-	for _, element := range split {
-		if element == "" {
-			return false
+	if len(split) > 0 {
+		for _, element := range split {
+			if element == "" {
+				return false
+			}
 		}
-	}
 
-	return true
+		return true
+	} else {
+		return false
+	}
 }
 
 func (format Format) Full() bool {
-	return format.Elems == 5
-}
-
-func (format Format) WithPrefix(prefix string) contracts.Format {
-	format.Prefix = prefix
-	return format
+	return format.Elems == 6
 }
 
 func (format Format) ToString() string {
-	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Name)
-	return output
+	output := ""
+
+	for _, s := range format.Elements {
+		if s == "" {
+			break
+		}
+
+		output += fmt.Sprintf("%s/", s)
+	}
+
+	return strings.TrimSuffix(output, "/")
 }
 
 func (format Format) ToStringWithUUID() string {
-	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Name)
-	return fmt.Sprintf("%s%s", format.UUID, output)
+	output := ""
+
+	for _, s := range format.Elements {
+		if s == "" {
+			break
+		}
+
+		output += fmt.Sprintf("%s/", s)
+	}
+
+	return fmt.Sprintf("%s%s", format.UUID, strings.TrimSuffix(output, "/"))
 }
 
 func (format Format) ToBytes() []byte {
-	output := fmt.Sprintf("%s/%s/%s/%s/%s", format.Prefix, format.Category, format.Kind, format.Group, format.Name)
-	return []byte(output)
+	output := ""
+
+	for _, s := range format.Elements {
+		if s == "" {
+			break
+		}
+
+		output += fmt.Sprintf("%s/", s)
+	}
+
+	return []byte(strings.TrimSuffix(output, "/"))
 }

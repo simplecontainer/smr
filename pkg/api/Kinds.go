@@ -14,6 +14,34 @@ import (
 	"net/http"
 )
 
+// List godoc
+//
+//	@Summary		List kind objects
+//	@Description	list kind objects in the store
+//	@Tags			database
+//	@Produce		json
+
+// @Success		200	{object}	  contracts.Response
+// @Failure		400	{object}	  contracts.Response
+// @Failure		404	{object}	  contracts.Response
+// @Failure		500	{object}	  contracts.Response
+// @Router			/kind/{prefix}/{category}/{kind} [get]
+func (api *Api) List(c *gin.Context) {
+	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/"), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+	} else {
+		kinds := make([]string, 0)
+
+		for _, kv := range response.Kvs {
+			kinds = append(kinds, string(kv.Key))
+		}
+
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(kinds)))
+	}
+}
+
 // ListKind godoc
 //
 //	@Summary		List kind objects
@@ -28,10 +56,11 @@ import (
 // @Router			/kind/{prefix}/{category}/{kind} [get]
 func (api *Api) ListKind(c *gin.Context) {
 	prefix := c.Param("prefix")
+	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s", prefix, category, kind), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s", prefix, version, category, kind), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -42,7 +71,7 @@ func (api *Api) ListKind(c *gin.Context) {
 			kinds = append(kinds, kv.Value)
 		}
 
-		c.JSON(http.StatusOK, common.Response(http.StatusInternalServerError, "", nil, network.ToJson(kinds)))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(kinds)))
 	}
 }
 
@@ -60,11 +89,12 @@ func (api *Api) ListKind(c *gin.Context) {
 // @Router		/kind/{prefix}/{category}/{kind}/{group} [get]
 func (api *Api) ListKindGroup(c *gin.Context) {
 	prefix := c.Param("prefix")
+	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
 	group := c.Param("group")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s", prefix, category, kind, group), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, version, category, kind, group), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -75,7 +105,7 @@ func (api *Api) ListKindGroup(c *gin.Context) {
 			kinds = append(kinds, kv.Value)
 		}
 
-		c.JSON(http.StatusOK, common.Response(http.StatusInternalServerError, "", nil, network.ToJson(kinds)))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(kinds)))
 	}
 }
 
@@ -93,12 +123,13 @@ func (api *Api) ListKindGroup(c *gin.Context) {
 // @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [get]
 func (api *Api) GetKind(c *gin.Context) {
 	prefix := c.Param("prefix")
+	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, category, kind, group, name))
+	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -133,12 +164,16 @@ func (api *Api) ProposeKind(c *gin.Context) {
 		common.Response(http.StatusInternalServerError, "", err, nil)
 	} else {
 		prefix := c.Param("prefix")
+		version := c.Param("version")
 		category := c.Param("category")
 		kind := c.Param("kind")
 		group := c.Param("group")
 		name := c.Param("name")
 
-		format, _ := f.New(prefix, category, kind, group, name)
+		format := f.New(prefix, version, category, kind, group, name)
+
+		fmt.Println(format.ToStringWithUUID())
+
 		api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, api.Cluster.Node.NodeID)
 
 		c.JSON(http.StatusOK, common.Response(http.StatusOK, "object stored", nil, nil))
@@ -164,12 +199,13 @@ func (api *Api) SetKind(c *gin.Context) {
 		common.Response(http.StatusInternalServerError, "", err, nil)
 	} else {
 		prefix := c.Param("prefix")
+		version := c.Param("version")
 		category := c.Param("category")
 		kind := c.Param("kind")
 		group := c.Param("group")
 		name := c.Param("name")
 
-		_, err = api.Etcd.Put(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, category, kind, group, name), string(data))
+		_, err = api.Etcd.Put(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name), string(data))
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -193,12 +229,13 @@ func (api *Api) SetKind(c *gin.Context) {
 // @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [delete]
 func (api *Api) DeleteKind(c *gin.Context) {
 	prefix := c.Param("prefix")
+	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
 
-	_, err := api.Etcd.Delete(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, category, kind, group, name))
+	_, err := api.Etcd.Delete(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))

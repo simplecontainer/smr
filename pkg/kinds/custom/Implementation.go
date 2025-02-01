@@ -1,4 +1,4 @@
-package certkey
+package custom
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -13,15 +13,15 @@ import (
 	"net/http"
 )
 
-func (certkey *Certkey) Start() error {
-	certkey.Started = true
+func (custom *Custom) Start() error {
+	custom.Started = true
 	return nil
 }
-func (certkey *Certkey) GetShared() interface{} {
-	return certkey.Shared
+func (custom *Custom) GetShared() interface{} {
+	return custom.Shared
 }
 
-func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (custom *Custom) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CERTKEY)
 
 	if err != nil {
@@ -41,12 +41,12 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 	}
 
 	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
+	obj := objects.New(custom.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
 	jsonStringFromRequest, err = definition.ToJson()
 
-	logger.Log.Debug("server received certkey object", zap.String("definition", string(jsonStringFromRequest)))
+	logger.Log.Debug("server received custom object", zap.String("definition", string(jsonStringFromRequest)))
 
 	_, err = request.Definition.Apply(format, obj, static.KIND_CERTKEY)
 
@@ -56,7 +56,7 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
-func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
+func (custom *Custom) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CERTKEY)
 
 	if err != nil {
@@ -70,7 +70,7 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
 	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
+	obj := objects.New(custom.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
 
@@ -84,7 +84,7 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 
 	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
-func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
+func (custom *Custom) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CERTKEY)
 
 	if err != nil {
@@ -98,7 +98,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
 	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
+	obj := objects.New(custom.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_CERTKEY)
 
@@ -109,6 +109,6 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
-func (certkey *Certkey) Event(event contracts.Event) error {
+func (custom *Custom) Event(event contracts.Event) error {
 	return nil
 }

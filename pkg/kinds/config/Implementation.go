@@ -41,7 +41,7 @@ func (config *Config) Apply(user *authentication.User, jsonData []byte, agent st
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONFIGURATION, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONFIGURATION, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 
 	err = obj.Find(format)
@@ -87,7 +87,7 @@ func (config *Config) Compare(user *authentication.User, jsonData []byte) (contr
 
 	definition := request.Definition.Definition.(*v1.ConfigurationDefinition)
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONFIGURATION, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONFIGURATION, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -115,7 +115,7 @@ func (config *Config) Delete(user *authentication.User, jsonData []byte, agent s
 
 	definition := request.Definition.Definition.(*v1.ConfigurationDefinition)
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONFIGURATION, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONFIGURATION, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(config.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_CONFIGURATION)

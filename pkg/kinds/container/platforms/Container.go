@@ -134,7 +134,7 @@ func (c *Container) SyncNetworkInformation() error {
 
 func (c *Container) HasDependencyOn(kind string, group string, name string) bool {
 	for _, format := range c.GetRuntime().ObjectDependencies {
-		if format.Name == name && format.Group == group && format.Kind == kind {
+		if format.GetName() == name && format.GetGroup() == group && format.GetKind() == kind {
 			return true
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/config"
 	"github.com/simplecontainer/smr/pkg/kinds/container"
 	"github.com/simplecontainer/smr/pkg/kinds/containers"
+	"github.com/simplecontainer/smr/pkg/kinds/custom"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops"
 	"github.com/simplecontainer/smr/pkg/kinds/httpauth"
 	"github.com/simplecontainer/smr/pkg/kinds/network"
@@ -18,6 +19,8 @@ import (
 
 func New(kind string, mgr *manager.Manager) (contracts.Kind, error) {
 	switch kind {
+	case "custom":
+		return custom.New(mgr), nil
 	case "certkey":
 		return certkey.New(mgr), nil
 	case "configuration":

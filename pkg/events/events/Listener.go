@@ -16,7 +16,7 @@ func Listen(kindRegistry map[string]contracts.Kind, e chan KV.KV) {
 		case data := <-e:
 			var event Event
 
-			format, _ := f.NewFromString(data.Key)
+			format := f.NewFromString(data.Key)
 			acks.ACKS.Ack(format.GetUUID())
 
 			err := json.Unmarshal(data.Val, &event)

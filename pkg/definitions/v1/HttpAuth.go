@@ -10,13 +10,18 @@ import (
 )
 
 type HttpAuthDefinition struct {
-	Meta commonv1.Meta `json:"meta" validate:"required"`
-	Spec HttpAuthSpec  `json:"spec" validate:"required"`
+	Prefix string        `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta `json:"meta" validate:"required"`
+	Spec   HttpAuthSpec  `json:"spec" validate:"required"`
 }
 
 type HttpAuthSpec struct {
 	Username string
 	Password string
+}
+
+func (httpauth *HttpAuthDefinition) GetPrefix() string {
+	return httpauth.Prefix
 }
 
 func (httpauth *HttpAuthDefinition) SetRuntime(runtime *commonv1.Runtime) {

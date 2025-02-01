@@ -76,12 +76,12 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 		matches := regexDetectBigBrackets.FindAllStringSubmatch(value, -1)
 
 		if len(matches) > 0 {
-			format, _ := f.NewFromString(matches[0][1])
+			format := f.NewFromString(matches[0][1])
 
-			if format.IsValid() && format.Kind == "secret" {
+			if format.IsValid() && format.GetKind() == "secret" {
 				continue
 			} else {
-				runtimeValue, ok := container.GetRuntime().Configuration.Map.Load(format.Group)
+				runtimeValue, ok := container.GetRuntime().Configuration.Map.Load(format.GetGroup())
 
 				if ok {
 					readiness.Command[index] = strings.Replace(readiness.Command[index], matches[0][0], runtimeValue.(string), 1)

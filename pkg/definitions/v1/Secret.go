@@ -9,12 +9,17 @@ import (
 )
 
 type SecretDefinition struct {
-	Meta commonv1.Meta `json:"meta" validate:"required"`
-	Spec SecretSpec    `json:"spec" validate:"required"`
+	Prefix string        `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta `json:"meta" validate:"required"`
+	Spec   SecretSpec    `json:"spec" validate:"required"`
 }
 
 type SecretSpec struct {
 	Value []byte
+}
+
+func (secret *SecretDefinition) GetPrefix() string {
+	return secret.Prefix
 }
 
 func (secret *SecretDefinition) SetRuntime(runtime *commonv1.Runtime) {

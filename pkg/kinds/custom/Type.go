@@ -1,16 +1,14 @@
-package config
+package custom
 
 import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/static"
-	"net/http"
 )
 
-type Config struct {
+type Custom struct {
 	Started bool
 	Shared  *Shared
-	Client  *http.Client
 }
 
 type Shared struct {
@@ -18,4 +16,4 @@ type Shared struct {
 	Client  *client.Http
 }
 
-const KIND string = static.KIND_CONFIGURATION
+const KIND string = static.KIND_CUSTOM

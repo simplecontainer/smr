@@ -57,6 +57,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 				}()
 			}
 
+			shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 			logger.Log.Debug("gitops watcher deleted - proceed with deleting children")
 

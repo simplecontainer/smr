@@ -15,7 +15,7 @@ var STRUCTURE = []string{
 
 const SMR_SSH_HOME = "/home/node/.ssh/simplecontainer"
 
-const SMR_PREFIX = "simplecontainer.io"
+const SMR_PREFIX = "simplecontainer.io/v1"
 const SMR_ENDPOINT_NAME = "node"
 const SMR_NODE_DOMAIN = "node.private"
 const SMR_LOCAL_DOMAIN string = "private"
@@ -43,6 +43,7 @@ const KIND_HTTPAUTH = "httpauth"
 const KIND_GITOPS = "gitops"
 const KIND_NETWORK = "network"
 const KIND_SECRET = "secret"
+const KIND_CUSTOM = "custom"
 
 const STATUS_RESPONSE_APPLIED = "object is applied"
 const STATUS_RESPONSE_BAD_REQUEST = "request sent is invalid"

@@ -14,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
@@ -34,12 +35,12 @@ func (replication *Replication) ListenData(agent string) {
 		case data, ok := <-replication.DataC:
 			if ok {
 				go func() {
-					format, err := f.NewFromString(data.Key)
+					format := f.NewFromString(data.Key)
 
-					if err != nil {
-						logger.Log.Error(err.Error())
+					if !format.IsValid() {
+						logger.Log.Error("invalid format distributed", zap.String("format", data.Key))
 					} else {
-						switch format.Category {
+						switch format.GetCategory() {
 						case static.CATEGORY_PLAIN:
 							replication.HandlePlain(format, data)
 							break
@@ -73,6 +74,9 @@ func (replication *Replication) ListenData(agent string) {
 
 func (replication *Replication) HandleObject(format contracts.Format, data KV.KV) {
 	acks.ACKS.Ack(format.GetUUID())
+
+	fmt.Println(format)
+	fmt.Println(format.GetKind())
 
 	request, _ := common.NewRequest(format.GetKind())
 	request.Definition.FromJson(data.Val)

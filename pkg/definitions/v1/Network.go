@@ -9,13 +9,18 @@ import (
 )
 
 type NetworkDefinition struct {
-	Meta commonv1.Meta `json:"meta" validate:"required"`
-	Spec NetworkSpec   `json:"spec" validate:"required"`
+	Prefix string        `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta `json:"meta" validate:"required"`
+	Spec   NetworkSpec   `json:"spec" validate:"required"`
 }
 
 type NetworkSpec struct {
 	Driver          string
 	IPV4AddressPool string
+}
+
+func (network *NetworkDefinition) GetPrefix() string {
+	return network.Prefix
 }
 
 func (network *NetworkDefinition) SetRuntime(runtime *commonv1.Runtime) {

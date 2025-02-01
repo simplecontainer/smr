@@ -51,8 +51,10 @@ func (obj *Object) GetDefinitionByte() []byte {
 }
 
 func (obj *Object) Propose(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/kind/propose/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/kind/propose/%s", obj.client.API, format.ToStringWithUUID())
 	response := network.Send(obj.client.Http, URL, "POST", data)
+
+	fmt.Println(URL)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -70,6 +72,9 @@ func (obj *Object) Wait(format contracts.Format, data []byte) error {
 	go func() {
 		wg.Add(1)
 		errWait = acks.ACKS.Wait(format.GetUUID())
+
+		fmt.Println(errWait)
+		fmt.Println(format.ToString())
 		wg.Done()
 	}()
 
@@ -87,10 +92,6 @@ func (obj *Object) Wait(format contracts.Format, data []byte) error {
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
-
-	fmt.Println(URL)
-	fmt.Println()
-	fmt.Println(response.Data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -170,7 +171,7 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 			if format.GetType() == f.TYPE_FORMATED {
 				for _, key := range keys {
 					objTmp := New(obj.client, obj.User)
-					format, _ = f.NewFromString(key)
+					format = f.NewFromString(key)
 					err = objTmp.Find(format)
 
 					if err != nil {
@@ -183,7 +184,7 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 				for _, key := range keys {
 					objTmp := New(obj.client, obj.User)
 
-					format, _ = f.NewFromString(key)
+					format = f.NewFromString(key)
 					err = objTmp.Find(format)
 
 					if err != nil {

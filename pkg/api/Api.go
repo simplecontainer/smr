@@ -47,6 +47,7 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Kinds.Register("resource", []string{"configuration"})
 	api.Kinds.Register("certkey", []string{})
 	api.Kinds.Register("httpauth", []string{})
+	api.Kinds.Register("custom", []string{})
 
 	return api
 }

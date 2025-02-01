@@ -9,8 +9,9 @@ import (
 )
 
 type CommonDefinition struct {
-	Meta commonv1.Meta `json:"meta" validate:"required"`
-	Spec CommonSpec    `json:"spec" validate:"required"`
+	Prefix string        `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta `json:"meta" validate:"required"`
+	Spec   CommonSpec    `json:"spec" validate:"required"`
 }
 
 type CommonSpec struct {
@@ -23,6 +24,10 @@ func (common *CommonDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (common *CommonDefinition) GetRuntime() *commonv1.Runtime {
 	return common.Meta.Runtime
+}
+
+func (common *CommonDefinition) GetPrefix() string {
+	return common.Prefix
 }
 
 func (common *CommonDefinition) GetMeta() commonv1.Meta {

@@ -25,6 +25,7 @@ func NewDependencyFromDefinition(depend v1.ContainerDependsOn) *Dependency {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	return &Dependency{
+		Prefix:  depend.Prefix,
 		Name:    depend.Name,
 		Group:   depend.Group,
 		Timeout: depend.Timeout,
@@ -33,11 +34,11 @@ func NewDependencyFromDefinition(depend v1.ContainerDependsOn) *Dependency {
 	}
 }
 
-func Ready(registry *registry.Registry, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
+func Ready(registry *registry.Registry, prefix string, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
-			err := SolveDepends(registry, group, name, dependency, channel)
+			err := SolveDepends(registry, prefix, group, name, dependency, channel)
 
 			if err != nil {
 				logger.Log.Info(err.Error())
@@ -69,19 +70,20 @@ func Ready(registry *registry.Registry, group string, name string, dependsOn []v
 	return true, nil
 }
 
-func SolveDepends(registry *registry.Registry, myGroup string, myName string, depend *Dependency, channel chan *State) error {
-	myContainer := registry.Find(myGroup, myName)
+func SolveDepends(registry *registry.Registry, myPrefix string, myGroup string, myName string, depend *Dependency, channel chan *State) error {
+	myContainer := registry.Find(myPrefix, myGroup, myName)
 
 	if myContainer == nil {
 		depend.Cancel()
 		return errors.New("container not found")
 	}
 
+	otherPrefix := depend.Prefix
 	otherGroup := depend.Group
 	otherName := depend.Name
 
 	if otherName == "*" {
-		containers := registry.FindGroup(otherGroup)
+		containers := registry.FindGroup(otherPrefix, otherGroup)
 
 		if len(containers) == 0 {
 			return errors.New("waiting for atleast one container from group to show up")
@@ -107,7 +109,7 @@ func SolveDepends(registry *registry.Registry, myGroup string, myName string, de
 			}
 		}
 	} else {
-		container := registry.Find(otherGroup, otherName)
+		container := registry.Find(otherPrefix, otherGroup, otherName)
 
 		if container == nil {
 			channel <- &State{

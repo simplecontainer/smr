@@ -13,6 +13,7 @@ func TestNew(t *testing.T) {
 
 	type Parameters struct {
 		prefix   string
+		version  string
 		category string
 		kind     string
 		group    string
@@ -30,10 +31,11 @@ func TestNew(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 			Parameters{
 				prefix:   "simplecontainer.io",
+				version:  "v1",
 				category: "secret",
 				kind:     "secret",
 				group:    "test",
@@ -46,7 +48,7 @@ func TestNew(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			format := New(tc.parameters.prefix, tc.parameters.category, tc.parameters.kind, tc.parameters.group, tc.parameters.name)
+			format := New(tc.parameters.prefix, tc.parameters.version, tc.parameters.category, tc.parameters.kind, tc.parameters.group, tc.parameters.name)
 
 			// UUID will be different for two new formats so match them to pass test
 			format.UUID = tc.wanted.format.GetUUID()
@@ -78,10 +80,10 @@ func TestNewFromString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 			Parameters{
-				format: "simplecontainer.io/secret/secret/test/test",
+				format: "simplecontainer.io/v1/secret/secret/test/test",
 			},
 		},
 		{
@@ -89,10 +91,10 @@ func TestNewFromString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("simplecontainer.io", "secret", "secret", "test"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test"),
 			},
 			Parameters{
-				format: "simplecontainer.io/secret/secret/test",
+				format: "simplecontainer.io/v1/secret/secret/test",
 			},
 		},
 		{
@@ -100,10 +102,10 @@ func TestNewFromString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: &Format{},
+				format: NewFromString(""),
 			},
 			Parameters{
-				format: "..x.x.x..",
+				format: "//x/x/x//",
 			},
 		},
 	}
@@ -113,7 +115,9 @@ func TestNewFromString(t *testing.T) {
 			tc.mockFunc()
 
 			format := NewFromString(tc.parameters.format)
-			assert.Equal(t, tc.wanted.format, format)
+
+			assert.Equal(t, tc.wanted.format.ToString(), format.ToString())
+			assert.Equal(t, tc.wanted.format.ToBytes(), format.ToBytes())
 		})
 	}
 }
@@ -138,10 +142,10 @@ func TestToString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				string: "simplecontainer.io/secret/secret/test/test",
+				string: "simplecontainer.io/v1/secret/secret/test/test",
 			},
 			Parameters{
-				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 		},
 		{
@@ -187,10 +191,10 @@ func TestToBytes(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				bytes: []byte("simplecontainer.io/secret/secret/test/test"),
+				bytes: []byte("simplecontainer.io/v1/secret/secret/test/test"),
 			},
 			Parameters{
-				format: New("simplecontainer.io", "secret", "secret", "test", "test"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 		},
 		{

@@ -3,7 +3,6 @@ package f
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/simplecontainer/smr/pkg/contracts"
 	"strings"
 )
 
@@ -17,12 +16,9 @@ func NewUnformated(key string) Unformated {
 	}
 }
 
-func (format Unformated) WithPrefix(prefix string) contracts.Format {
-	format.Prefix = prefix
-	return format
-}
-
 func (format Unformated) GetPrefix() string { return format.Prefix }
+
+func (format Unformated) GetVersion() string { return format.Version }
 
 func (format Unformated) GetCategory() string {
 	return format.Category

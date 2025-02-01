@@ -22,7 +22,7 @@ func (api *Api) Logs(c *gin.Context) {
 	header.Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(group, identifier)
+	container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, identifier)
 
 	if container == nil {
 		err := network.StreamByte([]byte("container is not found"), w)

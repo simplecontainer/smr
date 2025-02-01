@@ -83,7 +83,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -125,7 +125,7 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
 					existingWatcher.Logger.Info("container object modified")
 
-					existingContainer := container.Shared.Registry.Find(containerObj.GetGroup(), containerObj.GetGeneratedName())
+					existingContainer := container.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 					if existingContainer != nil && existingContainer.IsGhost() {
 						existingWatcher.Container.GetStatus().SetState(status.STATUS_TRANSFERING)
 					} else {
@@ -185,7 +185,7 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 
 	definition := request.Definition.Definition.(*v1.ContainerDefinition)
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(container.Shared.Client.Get(user.Username), user)
 
 	var destroy []platforms.IContainer

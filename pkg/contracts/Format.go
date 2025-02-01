@@ -4,6 +4,7 @@ import "github.com/google/uuid"
 
 type Format interface {
 	GetPrefix() string
+	GetVersion() string
 	GetCategory() string
 	GetType() string
 	GetKind() string
@@ -13,7 +14,6 @@ type Format interface {
 	ToString() string
 	ToStringWithUUID() string
 	Full() bool
-	WithPrefix(prefix string) Format
 	IsValid() bool
 	ToBytes() []byte
 }

@@ -7,11 +7,7 @@ const TYPE_UNFORMATED = "u"
 
 type Format struct {
 	UUID     uuid.UUID
-	Prefix   string
-	Category string
-	Kind     string
-	Group    string
-	Name     string
+	Elements []string
 	Elems    int
 	Type     string
 }
@@ -19,6 +15,7 @@ type Format struct {
 type Unformated struct {
 	UUID     uuid.UUID
 	Prefix   string
+	Version  string
 	Key      string
 	Category string
 	Type     string

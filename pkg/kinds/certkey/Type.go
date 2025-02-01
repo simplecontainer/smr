@@ -17,8 +17,3 @@ type Shared struct {
 }
 
 const KIND string = static.KIND_CERTKEY
-
-var invalidOperators []string = []string{
-	"Run",
-	"ListSupported",
-}

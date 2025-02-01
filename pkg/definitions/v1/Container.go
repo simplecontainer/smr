@@ -10,8 +10,9 @@ import (
 )
 
 type ContainerDefinition struct {
-	Meta commonv1.Meta `json:"meta"  validate:"required"`
-	Spec ContainerSpec `json:"spec"  validate:"required"`
+	Prefix string        `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta `json:"meta"  validate:"required"`
+	Spec   ContainerSpec `json:"spec"  validate:"required"`
 }
 
 type ContainerSpec struct {
@@ -41,6 +42,7 @@ type ContainerInternal struct {
 }
 
 type ContainerDependsOn struct {
+	Prefix  string `json:"prefix" default:"simplecontainer.io/v1"`
 	Name    string `validate:"required" json:"name"`
 	Group   string `validate:"required" json:"group"`
 	Timeout string `validate:"required" json:"timeout"`
@@ -81,6 +83,10 @@ type ContainerResource struct {
 	Group      string
 	Key        string
 	MountPoint string
+}
+
+func (container *ContainerDefinition) GetPrefix() string {
+	return container.Prefix
 }
 
 func (container *ContainerDefinition) SetRuntime(runtime *commonv1.Runtime) {

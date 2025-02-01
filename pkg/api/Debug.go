@@ -27,7 +27,7 @@ func (api *Api) Debug(c *gin.Context) {
 	w.WriteHeader(http.StatusOK)
 
 	if kind == static.KIND_CONTAINER {
-		container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(group, identifier)
+		container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, identifier)
 
 		if container == nil {
 			err := network.StreamByte([]byte("container is not found"), w)
@@ -101,7 +101,7 @@ func (api *Api) Debug(c *gin.Context) {
 			}
 		}
 	} else {
-		format, _ := f.New(kind, group, identifier, "object")
+		format := f.New(kind, group, identifier, "object")
 		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 		obj.Find(format)

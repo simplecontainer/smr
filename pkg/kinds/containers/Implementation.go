@@ -49,7 +49,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte, 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -114,7 +114,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -142,7 +142,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINERS)

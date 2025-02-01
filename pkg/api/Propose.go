@@ -50,7 +50,7 @@ func (api *Api) Propose(c *gin.Context) {
 					var bytes []byte
 					bytes, err = request.Definition.ToJsonWithKind()
 
-					format, _ := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+					format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 					api.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, api.Manager.Config.KVStore.Node)
 				}
 			}
