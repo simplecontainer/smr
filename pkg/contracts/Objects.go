@@ -5,7 +5,6 @@ import (
 )
 
 type ObjectInterface interface {
-	GetDefinitionString() string
 	GetDefinition() map[string]any
 	GetDefinitionByte() []byte
 	Propose(Format, []byte) error
@@ -15,7 +14,7 @@ type ObjectInterface interface {
 	AddLocalKey(key string, data []byte) error
 	RemoveLocalKey(key string) (bool, error)
 	Find(format Format) error
-	FindMany(format Format) (map[string]ObjectInterface, error)
+	FindMany(format Format) ([]ObjectInterface, error)
 	Diff(definition []byte) bool
 	GetDiff() []diff.Change
 	Exists() bool

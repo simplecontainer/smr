@@ -15,7 +15,7 @@ type SecretDefinition struct {
 }
 
 type SecretSpec struct {
-	Value []byte
+	Data map[string]string `json:"data" validate:"required"`
 }
 
 func (secret *SecretDefinition) GetPrefix() string {

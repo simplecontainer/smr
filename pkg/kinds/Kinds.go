@@ -13,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/httpauth"
 	"github.com/simplecontainer/smr/pkg/kinds/network"
 	"github.com/simplecontainer/smr/pkg/kinds/resource"
+	"github.com/simplecontainer/smr/pkg/kinds/secret"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 )
@@ -37,6 +38,8 @@ func New(kind string, mgr *manager.Manager) (contracts.Kind, error) {
 		return network.New(mgr), nil
 	case "resource":
 		return resource.New(mgr), nil
+	case "secret":
+		return secret.New(mgr), nil
 	default:
 		return nil, errors.New(fmt.Sprintf("%s kind does not exist", kind))
 	}

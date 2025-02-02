@@ -115,6 +115,8 @@ func (registry *Registry) FindGroup(prefix string, group string) []platforms.ICo
 	format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINER, group)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
+	fmt.Println(format.ToString())
+
 	var result []platforms.IContainer
 	objs, _ := obj.FindMany(format)
 

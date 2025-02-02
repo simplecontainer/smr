@@ -188,7 +188,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if err == nil {
 			go func() {
-				_, err = dependency.Ready(shared.Registry, containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
+				_, err = dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
@@ -514,7 +514,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		err := containerObj.Prepare(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err == nil {
-			go dependency.Ready(shared.Registry, containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
+			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
 
 			containerWatcher.Logger.Info("container prepared")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)

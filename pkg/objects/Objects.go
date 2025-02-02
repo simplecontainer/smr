@@ -1,6 +1,7 @@
 package objects
 
 import (
+	json2 "encoding/json"
 	"errors"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
@@ -25,25 +26,22 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
-		Changelog:  diff.Changelog{},
-		client:     client,
-		Definition: map[string]any{},
-		String:     "",
-		Byte:       make([]byte, 0),
-		exists:     false,
-		changed:    false,
-		Created:    time.Now(),
-		Updated:    time.Now(),
-		User:       user,
+		Changelog: diff.Changelog{},
+		client:    client,
+		Byte:      make([]byte, 0),
+		exists:    false,
+		changed:   false,
+		Created:   time.Now(),
+		Updated:   time.Now(),
+		User:      user,
 	}
 }
 
-func (obj *Object) GetDefinitionString() string {
-	return obj.String
-}
-
 func (obj *Object) GetDefinition() map[string]any {
-	return obj.Definition
+	var definition map[string]any
+	json.Unmarshal(obj.Byte, &definition)
+
+	return definition
 }
 
 func (obj *Object) GetDefinitionByte() []byte {
@@ -92,7 +90,7 @@ func (obj *Object) Wait(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/key/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
@@ -107,12 +105,12 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 	prefix := strings.TrimPrefix(format.ToString(), "/")
 
-	if !format.Full() {
+	if !format.Compliant() {
 		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
 		prefix += "."
 	}
 
-	URL := fmt.Sprintf("https://%s/api/v1/key/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
@@ -158,17 +156,12 @@ func (obj *Object) Find(format contracts.Format) error {
 
 	if response.Success {
 		obj.Byte, _ = response.Data.MarshalJSON()
-		obj.String = string(obj.Byte)
-
-		err := json.Unmarshal(obj.Byte, &obj.Definition)
-
-		if err != nil {
-			logger.Log.Debug("failed to unmarshal json from object find to map[string]interface{}", zap.String("data", obj.String))
-		}
 
 		obj.changed = false
 		obj.exists = true
 	} else {
+		obj.exists = false
+
 		if response.HttpStatus != http.StatusNotFound {
 			return errors.New(fmt.Sprintf("%s: %s", response.ErrorExplanation, string(response.Data)))
 		}
@@ -177,8 +170,8 @@ func (obj *Object) Find(format contracts.Format) error {
 	return nil
 }
 
-func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.ObjectInterface, error) {
-	var objects = make(map[string]contracts.ObjectInterface)
+func (obj *Object) FindMany(format contracts.Format) ([]contracts.ObjectInterface, error) {
+	var objects = make([]contracts.ObjectInterface, 0)
 
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
@@ -187,41 +180,21 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 
 	if response.Success {
 		if response.Data != nil {
-			var keys []string
+			var tmp []json2.RawMessage
+			err := json.Unmarshal(response.Data, &tmp)
 
-			bytes, _ := response.Data.MarshalJSON()
-			err := json.Unmarshal(bytes, &keys)
+			for _, j := range tmp {
+				objTmp := New(obj.client, obj.User).(*Object)
+				objTmp.Byte, _ = j.MarshalJSON()
+
+				objects = append(objects, objTmp)
+			}
 
 			if err != nil {
 				return nil, err
 			}
 
-			if format.GetType() == f.TYPE_FORMATED {
-				for _, key := range keys {
-					objTmp := New(obj.client, obj.User)
-					format = f.NewFromString(key)
-					err = objTmp.Find(format)
-
-					if err != nil {
-						return objects, err
-					}
-
-					objects[key] = objTmp
-				}
-			} else {
-				for _, key := range keys {
-					objTmp := New(obj.client, obj.User)
-
-					format = f.NewFromString(key)
-					err = objTmp.Find(format)
-
-					if err != nil {
-						return objects, err
-					}
-
-					objects[key] = objTmp
-				}
-			}
+			return objects, nil
 		}
 	} else {
 		return nil, errors.New(fmt.Sprintf("%s: %s", response.ErrorExplanation, string(response.Data)))
@@ -231,14 +204,7 @@ func (obj *Object) FindMany(format contracts.Format) (map[string]contracts.Objec
 }
 
 func (obj *Object) Diff(definition []byte) bool {
-	data := make(map[string]any)
-	err := json.Unmarshal(definition, &data)
-
-	if err != nil {
-		return true
-	}
-
-	obj.Changelog, _ = diff.Diff(obj.Definition, data)
+	obj.Changelog, _ = diff.Diff(obj.Byte, definition)
 
 	if len(obj.Changelog) > 0 {
 		obj.changed = true

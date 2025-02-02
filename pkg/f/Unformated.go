@@ -3,6 +3,7 @@ package f
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"strings"
 )
 
@@ -40,6 +41,10 @@ func (format Unformated) GetName() string {
 	return ""
 }
 
+func (format Unformated) Inverse() contracts.Format {
+	return format
+}
+
 func (format Unformated) GetUUID() uuid.UUID {
 	return format.UUID
 }
@@ -48,7 +53,7 @@ func (format Unformated) IsValid() bool {
 	return format.Key != ""
 }
 
-func (format Unformated) Full() bool {
+func (format Unformated) Compliant() bool {
 	return format.Key != ""
 }
 

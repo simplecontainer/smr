@@ -49,6 +49,8 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(transfering, created)
 
+	status.StateMachine.AddEdge(change, created)
+
 	status.StateMachine.AddEdge(created, change)
 	status.StateMachine.AddEdge(created, prepare)
 	status.StateMachine.AddEdge(created, kill)

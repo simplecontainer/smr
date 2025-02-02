@@ -19,7 +19,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker/internal"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -473,13 +472,7 @@ func (container *Docker) Prepare(config *configuration.Configuration, client *cl
 
 	runtime.ObjectDependencies = make([]f.Format, 0)
 
-	err := container.PrepareNetwork(client, user, runtime)
-
-	if err != nil {
-		return err
-	}
-
-	err = container.PrepareConfiguration(client, user, runtime)
+	err := container.PrepareConfiguration(client, user, runtime)
 
 	if err != nil {
 		return err
@@ -491,11 +484,23 @@ func (container *Docker) Prepare(config *configuration.Configuration, client *cl
 		return err
 	}
 
-	container.PrepareLabels(runtime)
-	container.PrepareEnvs(runtime)
-	container.PrepareReadiness(runtime)
+	err = container.PrepareLabels(runtime)
 
-	container.Env, err = secrets.UnpackSecretsEnvs(client, user, container.Env)
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareEnvs(runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareReadiness(runtime)
+
+	if err != nil {
+		return err
+	}
 
 	return err
 }

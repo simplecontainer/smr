@@ -60,6 +60,46 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestInverse(t *testing.T) {
+	type Wanted struct {
+		format contracts.Format
+	}
+
+	type Parameters struct {
+		format string
+	}
+
+	testCases := []struct {
+		name       string
+		mockFunc   func()
+		wanted     Wanted
+		parameters Parameters
+	}{
+		{
+			"Valid format",
+			func() {
+			},
+			Wanted{
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
+			},
+			Parameters{
+				format: "secret/test/test",
+			},
+		}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.mockFunc()
+
+			format := NewFromString(tc.parameters.format).Inverse().(Format)
+
+			assert.Equal(t, tc.wanted.format.GetKind(), format.GetKind())
+			assert.Equal(t, tc.wanted.format.GetGroup(), format.GetGroup())
+			assert.Equal(t, tc.wanted.format.GetName(), format.GetName())
+		})
+	}
+}
+
 func TestNewFromString(t *testing.T) {
 	type Wanted struct {
 		format contracts.Format

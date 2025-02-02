@@ -11,7 +11,6 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/secrets"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"go.uber.org/zap"
@@ -90,18 +89,10 @@ func NewReadinessFromDefinition(client *client.Http, user *authentication.User, 
 		}
 	}
 
-	var commandUnpack []string
-	commandUnpack, err = secrets.UnpackSecretsReadiness(client, user, readiness.Command)
-
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
 	return &Readiness{
 		Name:    readiness.Name,
 		URL:     readiness.URL,
-		Command: commandUnpack,
+		Command: readiness.Command,
 		Timeout: readiness.Timeout,
 		Ctx:     ctx,
 		Cancel:  cancel,

@@ -34,11 +34,11 @@ func NewDependencyFromDefinition(depend v1.ContainerDependsOn) *Dependency {
 	}
 }
 
-func Ready(registry *registry.Registry, prefix string, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
+func Ready(registry *registry.Registry, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
-			err := SolveDepends(registry, prefix, group, name, dependency, channel)
+			err := SolveDepends(registry, depend.Prefix, group, name, dependency, channel)
 
 			if err != nil {
 				logger.Log.Info(err.Error())

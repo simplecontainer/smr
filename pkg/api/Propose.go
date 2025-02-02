@@ -50,6 +50,11 @@ func (api *Api) Propose(c *gin.Context) {
 					var bytes []byte
 					bytes, err = request.Definition.ToJsonWithKind()
 
+					if err != nil {
+						c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "invalid definition sent", err, nil))
+						return
+					}
+
 					format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 					api.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, api.Manager.Config.KVStore.Node)
 

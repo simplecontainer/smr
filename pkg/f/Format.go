@@ -8,6 +8,7 @@ package f
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"strings"
 )
 
@@ -42,24 +43,21 @@ func NewFromString(data string) Format {
 }
 
 func buildElements(splitted []string) ([]string, int) {
-	elements := make([]string, 6)
+	var size = 6
 
-	lengthSplitted := len(splitted)
-	nonEmptyCount := 0
+	elements := make([]string, size)
 
-	for k, _ := range elements {
-		if k < lengthSplitted {
-			elements[k] = splitted[k]
-
-			if splitted[k] != "" {
-				nonEmptyCount += 1
-			}
+	nonempty := 0
+	for k, v := range splitted {
+		if strings.TrimSpace(v) != "" {
+			elements[k] = v
+			nonempty++
 		} else {
 			elements[k] = ""
 		}
 	}
 
-	return elements, nonEmptyCount
+	return elements, nonempty
 }
 
 func parseUUID(f string) (uuid.UUID, string) {
@@ -107,6 +105,33 @@ func (format Format) GetType() string {
 	return format.Type
 }
 
+func (format Format) Inverse() contracts.Format {
+	size := len(format.Elements)
+
+	count := 0
+	for _, el := range format.Elements {
+		if el != "_" {
+			count++
+		}
+	}
+
+	result := make([]string, size)
+	for i := range result {
+		result[i] = ""
+	}
+
+	index := size - 1
+	for i := size - 1; i >= 0; i-- {
+		if format.Elements[i] != "" {
+			result[index] = format.Elements[i]
+			index--
+		}
+	}
+
+	format.Elements = result
+	return format
+}
+
 func (format Format) GetUUID() uuid.UUID {
 	return format.UUID
 }
@@ -127,7 +152,7 @@ func (format Format) IsValid() bool {
 	}
 }
 
-func (format Format) Full() bool {
+func (format Format) Compliant() bool {
 	return format.Elems == 6
 }
 
@@ -136,7 +161,7 @@ func (format Format) ToString() string {
 
 	for _, s := range format.Elements {
 		if s == "" {
-			break
+			continue
 		}
 
 		output += fmt.Sprintf("%s/", s)
@@ -150,7 +175,7 @@ func (format Format) ToStringWithUUID() string {
 
 	for _, s := range format.Elements {
 		if s == "" {
-			break
+			continue
 		}
 
 		output += fmt.Sprintf("%s/", s)
@@ -164,7 +189,7 @@ func (format Format) ToBytes() []byte {
 
 	for _, s := range format.Elements {
 		if s == "" {
-			break
+			continue
 		}
 
 		output += fmt.Sprintf("%s/", s)

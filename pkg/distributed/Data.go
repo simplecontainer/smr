@@ -53,15 +53,16 @@ func (replication *Replication) ListenData(agent string) {
 						case static.CATEGORY_KIND:
 							replication.HandleObject(format, data)
 							break
-						default:
-							replication.HandleOutside(data)
-							break
 						case static.CATEGORY_DNS:
 							replication.DnsUpdatesC <- data
 							break
 						case static.CATEGORY_EVENT:
 							replication.EventsC <- data
 							break
+						default:
+							replication.HandleOutside(data)
+							break
+
 						}
 					}
 				}()
@@ -86,17 +87,7 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 		return
 	}
 
-	if data.Val == nil {
-		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodPost, bytes)
-
-		if response != nil {
-			if !response.Success {
-				if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
-					logger.Log.Error(response.ErrorExplanation)
-				}
-			}
-		}
-	} else {
+	if data.Val != nil {
 		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
 
 		if response != nil {
@@ -105,6 +96,18 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 					logger.Log.Error(response.ErrorExplanation)
 				}
 			}
+		} else {
+			logger.Log.Error("apply response is nil")
+		}
+	} else {
+		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodPost, bytes)
+
+		if response != nil {
+			if !response.Success {
+				logger.Log.Error(response.ErrorExplanation)
+			}
+		} else {
+			logger.Log.Error("delete response is nil")
 		}
 	}
 }
