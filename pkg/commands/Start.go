@@ -15,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
 	"github.com/simplecontainer/smr/pkg/logger"
-	middleware "github.com/simplecontainer/smr/pkg/middlewares"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	swaggerFiles "github.com/swaggo/files"
@@ -157,8 +156,8 @@ func Start() {
 
 				router := gin.New()
 				routerHttp := gin.New()
-				router.Use(middleware.TLSAuth())
 				router.Use(api.ClusterCheck())
+				router.Use(api.InterceptKind())
 
 				v1 := router.Group("/api/v1")
 				{

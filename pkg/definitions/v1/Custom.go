@@ -9,9 +9,11 @@ import (
 )
 
 type CustomDefinition struct {
-	Prefix string         `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta  `json:"meta" validate:"required"`
-	Spec   map[string]any `json:"spec" validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   map[string]any  `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 func (custom *CustomDefinition) GetPrefix() string {
@@ -30,6 +32,14 @@ func (custom *CustomDefinition) GetMeta() commonv1.Meta {
 	return custom.Meta
 }
 
+func (custom *CustomDefinition) GetState() *commonv1.State {
+	return custom.State
+}
+
+func (custom *CustomDefinition) SetState(state *commonv1.State) {
+	custom.State = state
+}
+
 func (custom *CustomDefinition) GetKind() string {
 	return static.KIND_CERTKEY
 }
@@ -45,28 +55,6 @@ func (custom *CustomDefinition) FromJson(bytes []byte) error {
 func (custom *CustomDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(custom)
 	return bytes, err
-}
-
-func (custom *CustomDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(custom)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "custom"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (custom *CustomDefinition) ToJsonString() (string, error) {

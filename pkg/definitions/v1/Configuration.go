@@ -9,9 +9,11 @@ import (
 )
 
 type ConfigurationDefinition struct {
+	Kind   string            `json:"kind" validate:"required"`
 	Prefix string            `json:"prefix" validate:"required"`
 	Meta   commonv1.Meta     `json:"meta" validate:"required"`
 	Spec   ConfigurationSpec `json:"spec" validate:"required"`
+	State  *commonv1.State   `json:"state"`
 }
 
 type ConfigurationMeta struct {
@@ -40,6 +42,14 @@ func (configuration *ConfigurationDefinition) GetMeta() commonv1.Meta {
 	return configuration.Meta
 }
 
+func (configuration *ConfigurationDefinition) GetState() *commonv1.State {
+	return configuration.State
+}
+
+func (configuration *ConfigurationDefinition) SetState(state *commonv1.State) {
+	configuration.State = state
+}
+
 func (configuration *ConfigurationDefinition) GetKind() string {
 	return static.KIND_CONFIGURATION
 }
@@ -55,28 +65,6 @@ func (configuration *ConfigurationDefinition) FromJson(bytes []byte) error {
 func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(configuration)
 	return bytes, err
-}
-
-func (configuration *ConfigurationDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(configuration)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "configuration"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {

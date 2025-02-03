@@ -14,7 +14,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func Lookup(placeholder string, client *client.Http, user *authentication.User, runtime *smaps.Smap, dependencies []f.Format) (string, error) {
+func Lookup(placeholder string, client *client.Http, user *authentication.User, runtime *smaps.Smap, dependencies []f.Format, depth int) (string, error) {
+	if depth > 1 {
+		return placeholder, errors.New("depth is too big consider restructuring definition files")
+	}
+
 	format := f.NewFromString(placeholder)
 
 	if !format.Compliant() {
@@ -113,7 +117,10 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 			)
 		}
 
-		return configuration.Spec.Data[key], nil
+		// Since configuration can also have templated values parse it. eg container config-> configuration-> secret
+		parsed, _, err := Parse(placeholder, configuration.Spec.Data[key], client, user, runtime, depth+1)
+
+		return parsed, nil
 	case "runtime":
 		// Handle case when format is specified in kind non-compliant format
 		// eg:

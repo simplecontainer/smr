@@ -219,11 +219,13 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 		}
 	} else {
 		return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
-
 	}
 }
 func (container *Container) Event(event contracts.Event) error {
 	switch event.GetType() {
+	case events.EVENT_DELETE:
+
+		break
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range container.Shared.Watcher.Container {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {

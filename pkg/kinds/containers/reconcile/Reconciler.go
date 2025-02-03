@@ -67,8 +67,9 @@ func Container(shared *shared.Shared, user *authentication.User, containers *wat
 		definition.SetRuntime(&commonv1.Runtime{})
 		definition.GetRuntime().SetOwner(static.KIND_CONTAINERS, containers.Definition.Meta.Group, containers.Definition.Meta.Name)
 		definition.GetRuntime().SetNode(containers.Definition.GetRuntime().GetNode())
+		definition.Kind = static.KIND_CONTAINER
 
-		definitionJSON, err := definition.ToJsonWithKind()
+		definitionJSON, err := definition.ToJson()
 
 		if err != nil {
 			containers.Logger.Info(err.Error())

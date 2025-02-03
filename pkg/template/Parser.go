@@ -2,6 +2,7 @@ package template
 
 import (
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -10,16 +11,28 @@ import (
 	"strings"
 )
 
-func Parse(name string, value string, client *client.Http, user *authentication.User, runtime *smaps.Smap) (string, []f.Format, error) {
+func Parse(name string, value string, client *client.Http, user *authentication.User, runtime *smaps.Smap, depth int) (string, []f.Format, error) {
 	var dependencies = make([]f.Format, 0)
 
-	t := New(name, value, Variables{}, template.FuncMap{
+	variables := Variables{Values: make(map[string]interface{})}
+
+	fmt.Println("--------------------------------------")
+	fmt.Println(name)
+
+	if runtime != nil {
+		runtime.Map.Range(func(key any, value any) bool {
+			variables.Values[key.(string)] = value.(string)
+			return true
+		})
+	}
+
+	t := New(name, value, variables, template.FuncMap{
 		"lookup": func(placeholder string) (string, error) {
-			return Lookup(placeholder, client, user, runtime, dependencies)
+			return Lookup(placeholder, client, user, runtime, dependencies, depth)
 		},
 	})
 
-	parsed, err := t.Parse()
+	parsed, err := t.Parse("((", "))")
 
 	if err != nil {
 		return value, dependencies, err

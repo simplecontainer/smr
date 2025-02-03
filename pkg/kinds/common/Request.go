@@ -24,7 +24,7 @@ func NewRequest(kind string) (*Request, error) {
 }
 
 func (request *Request) Apply(client *client.Http, user *authentication.User) error {
-	bytes, err := request.Definition.ToJsonWithKind()
+	bytes, err := request.Definition.ToJson()
 
 	if err != nil {
 		return err

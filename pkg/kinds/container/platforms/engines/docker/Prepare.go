@@ -22,7 +22,7 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 	var err error
 
 	container.Configuration.Map.Range(func(key, value any) bool {
-		parsed, dependencies, err = template.Parse(key.(string), value.(string), client, user, nil)
+		parsed, dependencies, err = template.Parse(key.(string), value.(string), client, user, nil, 0)
 
 		if err != nil {
 			return false
@@ -65,7 +65,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 
 		container.Resources.Resources[k].Docker.Data.Map.Range(func(key, value any) bool {
 			var parsed string
-			parsed, _, err = template.Parse(key.(string), value.(string), client, user, runtime.Configuration)
+			parsed, _, err = template.Parse(key.(string), value.(string), client, user, runtime.Configuration, 0)
 
 			container.Resources.Resources[k].Docker.Data.Map.Store(key, parsed)
 
@@ -118,7 +118,7 @@ func (container *Docker) PrepareLabels(runtime *types.Runtime) error {
 	var err error
 
 	container.Labels.Map.Range(func(key, value any) bool {
-		parsed, _, err = template.Parse(key.(string), value.(string), nil, nil, runtime.Configuration)
+		parsed, _, err = template.Parse(key.(string), value.(string), nil, nil, runtime.Configuration, 0)
 
 		if err != nil {
 			return false
@@ -135,7 +135,7 @@ func (container *Docker) PrepareEnvs(runtime *types.Runtime) error {
 	var err error
 
 	for index, value := range container.Env {
-		container.Env[index], _, err = template.Parse(value, value, nil, nil, runtime.Configuration)
+		container.Env[index], _, err = template.Parse(value, value, nil, nil, runtime.Configuration, 0)
 
 		if err != nil {
 			return err
@@ -151,7 +151,7 @@ func (container *Docker) PrepareReadiness(runtime *types.Runtime) error {
 	for indexReadiness, _ := range container.Readiness.Readinesses {
 		for index, _ := range container.Readiness.Readinesses[indexReadiness].Reference.Data {
 			container.Lock.Lock()
-			container.Readiness.Readinesses[indexReadiness].Docker.Body[index], _, err = template.Parse(index, container.Readiness.Readinesses[indexReadiness].Docker.Body[index], nil, nil, runtime.Configuration)
+			container.Readiness.Readinesses[indexReadiness].Docker.Body[index], _, err = template.Parse(index, container.Readiness.Readinesses[indexReadiness].Docker.Body[index], nil, nil, runtime.Configuration, 0)
 			container.Lock.Unlock()
 
 			if err != nil {

@@ -9,9 +9,11 @@ import (
 )
 
 type NetworkDefinition struct {
-	Prefix string        `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta `json:"meta" validate:"required"`
-	Spec   NetworkSpec   `json:"spec" validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   NetworkSpec     `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type NetworkSpec struct {
@@ -35,6 +37,14 @@ func (network *NetworkDefinition) GetMeta() commonv1.Meta {
 	return network.Meta
 }
 
+func (network *NetworkDefinition) GetState() *commonv1.State {
+	return network.State
+}
+
+func (network *NetworkDefinition) SetState(state *commonv1.State) {
+	network.State = state
+}
+
 func (network *NetworkDefinition) GetKind() string {
 	return static.KIND_NETWORK
 }
@@ -50,28 +60,6 @@ func (network *NetworkDefinition) FromJson(bytes []byte) error {
 func (network *NetworkDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(network)
 	return bytes, err
-}
-
-func (network *NetworkDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(network)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "network"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (network *NetworkDefinition) ToJsonString() (string, error) {

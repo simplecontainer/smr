@@ -48,7 +48,7 @@ func (api *Api) Propose(c *gin.Context) {
 					}
 
 					var bytes []byte
-					bytes, err = request.Definition.ToJsonWithKind()
+					bytes, err = request.Definition.ToJson()
 
 					if err != nil {
 						c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "invalid definition sent", err, nil))

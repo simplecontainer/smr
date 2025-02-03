@@ -10,9 +10,11 @@ import (
 )
 
 type ContainersDefinition struct {
+	Kind   string                         `json:"kind" validate:"required"`
 	Prefix string                         `json:"prefix" validate:"required"`
 	Meta   commonv1.Meta                  `json:"meta"  validate:"required"`
 	Spec   map[string]ContainerDefinition `json:"spec"  validate:"required"`
+	State  *commonv1.State                `json:"state"`
 }
 
 func (containers *ContainersDefinition) GetPrefix() string {
@@ -31,6 +33,14 @@ func (containers *ContainersDefinition) GetMeta() commonv1.Meta {
 	return containers.Meta
 }
 
+func (containers *ContainersDefinition) GetState() *commonv1.State {
+	return containers.State
+}
+
+func (containers *ContainersDefinition) SetState(state *commonv1.State) {
+	containers.State = state
+}
+
 func (containers *ContainersDefinition) GetKind() string {
 	return static.KIND_CONTAINERS
 }
@@ -46,28 +56,6 @@ func (containers *ContainersDefinition) FromJson(bytes []byte) error {
 func (containers *ContainersDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(containers)
 	return bytes, err
-}
-
-func (containers *ContainersDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(containers)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "containers"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (containers *ContainersDefinition) ToJsonString() (string, error) {

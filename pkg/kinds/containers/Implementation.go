@@ -159,7 +159,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 	}
 
 	for _, container := range existingDefinition.(*v1.ContainersDefinition).Spec {
-		def, _ := container.ToJsonWithKind()
+		def, _ := container.ToJson()
 		go func() {
 			_, err = containers.Shared.Manager.KindsRegistry["container"].Delete(user, def, agent)
 			if err != nil {

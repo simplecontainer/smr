@@ -84,16 +84,19 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 			if gitopsWatcherFromRegistry == nil {
 				gitopsWatcherFromRegistry = reconcile.NewWatcher(implementation.New(definition), gitops.Shared.Manager, user)
 				go reconcile.HandleTickerAndEvents(gitops.Shared, gitopsWatcherFromRegistry)
+
 				gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			} else {
 				gitops.Shared.Watcher.Find(GroupIdentifier).Gitops = implementation.New(definition)
+
 				gitopsWatcherFromRegistry.Logger.Info("gitops object modified")
 				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			}
 
 			gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
 			gitops.Shared.Registry.AddOrUpdate(gitopsWatcherFromRegistry.Gitops.GetGroup(), gitopsWatcherFromRegistry.Gitops.GetName(), gitopsWatcherFromRegistry.Gitops)
+
 			reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 		}
 	} else {
@@ -102,8 +105,10 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 
 		gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 		gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
+
 		gitops.Shared.Registry.AddOrUpdate(gitopsWatcherFromRegistry.Gitops.GetGroup(), gitopsWatcherFromRegistry.Gitops.GetName(), gitopsWatcherFromRegistry.Gitops)
 		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
+
 		reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 	}
 
@@ -178,6 +183,9 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 
 func (gitops *Gitops) Event(event contracts.Event) error {
 	switch event.GetType() {
+	case events.EVENT_DELETE:
+
+		break
 	case events.EVENT_REFRESH:
 		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 

@@ -10,9 +10,11 @@ import (
 )
 
 type ResourceDefinition struct {
-	Prefix string        `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta `json:"meta" validate:"required"`
-	Spec   ResourceSpec  `json:"spec" validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   ResourceSpec    `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type ResourceSpec struct {
@@ -35,6 +37,14 @@ func (resource *ResourceDefinition) GetMeta() commonv1.Meta {
 	return resource.Meta
 }
 
+func (resource *ResourceDefinition) GetState() *commonv1.State {
+	return resource.State
+}
+
+func (resource *ResourceDefinition) SetState(state *commonv1.State) {
+	resource.State = state
+}
+
 func (resource *ResourceDefinition) GetKind() string {
 	return static.KIND_RESOURCE
 }
@@ -50,28 +60,6 @@ func (resource *ResourceDefinition) FromJson(bytes []byte) error {
 func (resource *ResourceDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(resource)
 	return bytes, err
-}
-
-func (resource *ResourceDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(resource)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "resource"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (resource *ResourceDefinition) ToJsonString() (string, error) {

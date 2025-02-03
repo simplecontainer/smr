@@ -45,6 +45,8 @@ const KIND_NETWORK = "network"
 const KIND_SECRET = "secret"
 const KIND_CUSTOM = "custom"
 
+const REMOVE_KIND = "remove"
+
 const STATUS_RESPONSE_APPLIED = "object is applied"
 const STATUS_RESPONSE_BAD_REQUEST = "request sent is invalid"
 const STATUS_RESPONSE_DELETED = "object is deleted"

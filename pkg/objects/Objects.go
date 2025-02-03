@@ -15,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/network"
 	"go.uber.org/zap"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -103,13 +102,6 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 }
 
 func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
-	prefix := strings.TrimPrefix(format.ToString(), "/")
-
-	if !format.Compliant() {
-		// Append dot to the end of the format so that we delimit what we deleting from the kv-store
-		prefix += "."
-	}
-
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 

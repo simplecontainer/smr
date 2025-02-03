@@ -10,9 +10,11 @@ import (
 )
 
 type ContainerDefinition struct {
-	Prefix string        `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta `json:"meta"  validate:"required"`
-	Spec   ContainerSpec `json:"spec"  validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta"  validate:"required"`
+	Spec   ContainerSpec   `json:"spec"  validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type ContainerSpec struct {
@@ -101,6 +103,14 @@ func (container *ContainerDefinition) GetMeta() commonv1.Meta {
 	return container.Meta
 }
 
+func (container *ContainerDefinition) GetState() *commonv1.State {
+	return container.State
+}
+
+func (container *ContainerDefinition) SetState(state *commonv1.State) {
+	container.State = state
+}
+
 func (container *ContainerDefinition) GetKind() string {
 	return static.KIND_CONTAINER
 }
@@ -116,28 +126,6 @@ func (container *ContainerDefinition) FromJson(bytes []byte) error {
 func (container *ContainerDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(container)
 	return bytes, err
-}
-
-func (container *ContainerDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(container)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "container"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (container *ContainerDefinition) ToJsonString() (string, error) {

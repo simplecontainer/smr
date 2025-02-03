@@ -9,9 +9,11 @@ import (
 )
 
 type SecretDefinition struct {
-	Prefix string        `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta `json:"meta" validate:"required"`
-	Spec   SecretSpec    `json:"spec" validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   SecretSpec      `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type SecretSpec struct {
@@ -34,6 +36,14 @@ func (secret *SecretDefinition) GetMeta() commonv1.Meta {
 	return secret.Meta
 }
 
+func (secret *SecretDefinition) GetState() *commonv1.State {
+	return secret.State
+}
+
+func (secret *SecretDefinition) SetState(state *commonv1.State) {
+	secret.State = state
+}
+
 func (secret *SecretDefinition) GetKind() string {
 	return static.KIND_SECRET
 }
@@ -49,28 +59,6 @@ func (secret *SecretDefinition) FromJson(bytes []byte) error {
 func (secret *SecretDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(secret)
 	return bytes, err
-}
-
-func (secret *SecretDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(secret)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "secret"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (secret *SecretDefinition) ToJsonString() (string, error) {

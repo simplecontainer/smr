@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"errors"
+	"fmt"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
@@ -33,6 +34,8 @@ func NewImplementation(kind string) contracts.IDefinition {
 		def = &v1.HttpAuthDefinition{}
 	case static.KIND_CERTKEY:
 		def = &v1.CertKeyDefinition{}
+	case static.KIND_CUSTOM:
+		def = &v1.CustomDefinition{}
 	case static.KIND_NETWORK:
 		def = &v1.NetworkDefinition{}
 	case static.KIND_SECRET:
@@ -87,6 +90,8 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
 	err := obj.Find(format)
 
+	fmt.Println("trying delete definition")
+
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +99,14 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 	if obj.Exists() {
 		existing := NewImplementation(kind)
 		err = existing.FromJson(obj.GetDefinitionByte())
+
+		if err != nil {
+			return existing, err
+		}
+
+		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
+			return existing, errors.New("object has owner - direct modification not allowed")
+		}
 
 		if err != nil {
 			return nil, err
@@ -134,12 +147,17 @@ func (definition *Definition) Changed(format contracts.Format, obj contracts.Obj
 func (definition *Definition) SetRuntime(runtime *commonv1.Runtime) {
 	definition.Definition.SetRuntime(runtime)
 }
+
 func (definition *Definition) GetRuntime() *commonv1.Runtime {
 	return definition.Definition.GetRuntime()
 }
 
 func (definition *Definition) GetMeta() commonv1.Meta {
 	return definition.Definition.GetMeta()
+}
+
+func (definition *Definition) GetState() *commonv1.State {
+	return definition.Definition.GetState()
 }
 
 func (definition *Definition) GetKind() string {
@@ -161,6 +179,12 @@ func (definition *Definition) FromJson(bytes []byte) error {
 		})
 	}
 
+	if definition.GetState() == nil {
+		definition.Definition.SetState(&commonv1.State{
+			Options: make([]*commonv1.Opts, 0),
+		})
+	}
+
 	return err
 }
 
@@ -168,12 +192,8 @@ func (definition *Definition) ToJson() ([]byte, error) {
 	return definition.Definition.ToJson()
 }
 
-func (definition *Definition) ToJsonWithKind() ([]byte, error) {
-	return definition.Definition.ToJsonWithKind()
-}
-
 func (definition *Definition) ToJsonForUser() ([]byte, error) {
-	bytes, err := definition.Definition.ToJsonWithKind()
+	bytes, err := definition.Definition.ToJson()
 
 	if err != nil {
 		return nil, err

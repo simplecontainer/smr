@@ -240,3 +240,11 @@ func (api *Api) DeleteKind(c *gin.Context) {
 		c.JSON(http.StatusOK, common.Response(http.StatusOK, "object deleted", nil, nil))
 	}
 }
+
+func (api *Api) InterceptKind() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method == http.MethodPost || c.Request.Method == http.MethodDelete {
+
+		}
+	}
+}

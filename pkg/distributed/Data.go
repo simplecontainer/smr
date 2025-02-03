@@ -62,7 +62,6 @@ func (replication *Replication) ListenData(agent string) {
 						default:
 							replication.HandleOutside(data)
 							break
-
 						}
 					}
 				}()
@@ -80,14 +79,27 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 	request.Definition.FromJson(data.Val)
 	request.Definition.GetRuntime().SetNode(data.Node)
 
-	bytes, err := request.Definition.ToJsonWithKind()
+	bytes, err := request.Definition.ToJson()
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
-	if data.Val != nil {
+	switch request.Definition.GetState().GetOpt("action").Value {
+	case static.REMOVE_KIND:
+		fmt.Println("Trying delete")
+		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodDelete, bytes)
+
+		if response != nil {
+			if !response.Success {
+				logger.Log.Error(response.ErrorExplanation)
+			}
+		} else {
+			logger.Log.Error("delete response is nil")
+		}
+		break
+	default:
 		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
 
 		if response != nil {
@@ -98,16 +110,6 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 			}
 		} else {
 			logger.Log.Error("apply response is nil")
-		}
-	} else {
-		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodPost, bytes)
-
-		if response != nil {
-			if !response.Success {
-				logger.Log.Error(response.ErrorExplanation)
-			}
-		} else {
-			logger.Log.Error("delete response is nil")
 		}
 	}
 }

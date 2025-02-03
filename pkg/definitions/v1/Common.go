@@ -5,13 +5,14 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
-	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type CommonDefinition struct {
-	Prefix string        `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta `json:"meta" validate:"required"`
-	Spec   CommonSpec    `json:"spec" validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   CommonSpec      `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type CommonSpec struct {
@@ -34,8 +35,16 @@ func (common *CommonDefinition) GetMeta() commonv1.Meta {
 	return common.Meta
 }
 
+func (common *CommonDefinition) GetState() *commonv1.State {
+	return common.State
+}
+
+func (common *CommonDefinition) SetState(state *commonv1.State) {
+	common.State = state
+}
+
 func (common *CommonDefinition) GetKind() string {
-	return static.KIND_CERTKEY
+	return common.Kind
 }
 
 func (common *CommonDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
@@ -49,28 +58,6 @@ func (common *CommonDefinition) FromJson(bytes []byte) error {
 func (common *CommonDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(common)
 	return bytes, err
-}
-
-func (common *CommonDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(common)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "common"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (common *CommonDefinition) ToJsonString() (string, error) {

@@ -14,8 +14,8 @@ func New(name string, tmpl string, values Variables, functions template.FuncMap)
 	}
 }
 
-func (tmpl Template) Parse() (string, error) {
-	t, err := template.New(tmpl.Name).Funcs(tmpl.Functions).Parse(tmpl.Templated)
+func (tmpl Template) Parse(left string, right string) (string, error) {
+	t, err := template.New(tmpl.Name).Funcs(tmpl.Functions).Delims(left, right).Parse(tmpl.Templated)
 
 	if err != nil {
 		return tmpl.Templated, err
@@ -23,7 +23,7 @@ func (tmpl Template) Parse() (string, error) {
 
 	var buf bytes.Buffer
 
-	err = t.Execute(&buf, tmpl.Values)
+	err = t.Execute(&buf, tmpl.Values.Values)
 	if err != nil {
 		return tmpl.Templated, err
 	}

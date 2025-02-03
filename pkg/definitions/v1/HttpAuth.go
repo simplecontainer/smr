@@ -10,9 +10,11 @@ import (
 )
 
 type HttpAuthDefinition struct {
-	Prefix string        `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta `json:"meta" validate:"required"`
-	Spec   HttpAuthSpec  `json:"spec" validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   HttpAuthSpec    `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type HttpAuthSpec struct {
@@ -31,8 +33,17 @@ func (httpauth *HttpAuthDefinition) SetRuntime(runtime *commonv1.Runtime) {
 func (httpauth *HttpAuthDefinition) GetRuntime() *commonv1.Runtime {
 	return httpauth.Meta.Runtime
 }
+
 func (httpauth *HttpAuthDefinition) GetMeta() commonv1.Meta {
 	return httpauth.Meta
+}
+
+func (httpauth *HttpAuthDefinition) GetState() *commonv1.State {
+	return httpauth.State
+}
+
+func (httpauth *HttpAuthDefinition) SetState(state *commonv1.State) {
+	httpauth.State = state
 }
 
 func (httpauth *HttpAuthDefinition) GetKind() string {
@@ -50,28 +61,6 @@ func (httpauth *HttpAuthDefinition) FromJson(bytes []byte) error {
 func (httpauth *HttpAuthDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(httpauth)
 	return bytes, err
-}
-
-func (httpauth *HttpAuthDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(httpauth)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "httpauth"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (httpauth *HttpAuthDefinition) ToJsonString() (string, error) {
