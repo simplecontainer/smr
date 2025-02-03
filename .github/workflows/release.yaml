@@ -59,7 +59,7 @@ jobs:
             upx -9 smr
           fi
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: smr-${{ matrix.os}}-${{ matrix.platform }}
           path: |
