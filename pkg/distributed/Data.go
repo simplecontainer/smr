@@ -1,22 +1,19 @@
 package distributed
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
-	"net/http"
-	"strings"
 )
 
 func New(client *client.Client, user *authentication.User, nodeName string) *Replication {
@@ -76,40 +73,22 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 	acks.ACKS.Ack(format.GetUUID())
 
 	request, _ := common.NewRequest(format.GetKind())
-	request.Definition.FromJson(data.Val)
-	request.Definition.GetRuntime().SetNode(data.Node)
-
-	bytes, err := request.Definition.ToJson()
+	err := request.Definition.FromJson(data.Val)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 
+	request.Definition.GetRuntime().SetNode(data.Node)
+
 	switch request.Definition.GetState().GetOpt("action").Value {
 	case static.REMOVE_KIND:
-		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/definition/delete"), http.MethodDelete, bytes)
-
-		if response != nil {
-			if !response.Success {
-				logger.Log.Error(response.ErrorExplanation)
-			}
-		} else {
-			logger.Log.Error("delete response is nil")
-		}
+		helpers.LogIfError(request.Remove(replication.Client.Http, replication.Client.API))
 		break
 	default:
-		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/definition/apply"), http.MethodPost, bytes)
-
-		if response != nil {
-			if !response.Success {
-				if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
-					logger.Log.Error(response.ErrorExplanation)
-				}
-			}
-		} else {
-			logger.Log.Error("apply response is nil")
-		}
+		helpers.LogIfError(request.Apply(replication.Client.Http, replication.Client.API))
+		break
 	}
 }
 

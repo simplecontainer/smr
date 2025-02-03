@@ -3,8 +3,6 @@ package common
 import (
 	"errors"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	"github.com/simplecontainer/smr/pkg/network"
 	"net/http"
@@ -23,32 +21,22 @@ func NewRequest(kind string) (*Request, error) {
 	return request, nil
 }
 
-func (request *Request) Apply(client *client.Http, user *authentication.User) error {
-	bytes, err := request.Definition.ToJson()
-
-	if err != nil {
-		return err
-	}
-
-	response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://%s/api/v1/apply/%s", client.Clients[user.Username].API, request.Definition.GetKind()), http.MethodPost, bytes)
-
-	if !response.Success {
-		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {
-			err = errors.New(response.ErrorExplanation)
-		}
-	}
-
-	return err
+func (request *Request) Apply(client *http.Client, API string) error {
+	return request.Send("apply", http.MethodPost, client, API)
 }
 
-func (request *Request) Delete(client *client.Http, user *authentication.User) error {
+func (request *Request) Remove(client *http.Client, API string) error {
+	return request.Send("delete", http.MethodDelete, client, API)
+}
+
+func (request *Request) Send(action string, method string, client *http.Client, API string) error {
 	bytes, err := request.Definition.ToJson()
 
 	if err != nil {
 		return err
 	}
 
-	response := network.Send(client.Clients[user.Username].Http, fmt.Sprintf("https://%s/api/v1/delete/%s", client.Clients[user.Username].API, request.Definition.GetKind()), http.MethodPost, bytes)
+	response := network.Send(client, fmt.Sprintf("https://%s/api/v1/definition/%s/%s", API, action, request.Definition.GetKind()), method, bytes)
 
 	if !response.Success {
 		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {

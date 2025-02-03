@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -35,29 +36,20 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 
 	switch format.GetKind() {
 	case "secret":
-		obj := objects.New(client.Clients[user.Username], user)
 		name, key, err := Extract(format.GetName())
 
 		if err != nil {
 			return placeholder, err
 		}
 
-		var fc f.Format
-		if format.Compliant() {
-			fc = f.New(format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), name)
-		} else {
-			fc = f.New(static.SMR_PREFIX, "kind", format.GetKind(), format.GetGroup(), name)
-		}
+		bytes, _, err := Fetch(format, name, client, user)
 
-		obj.Find(fc)
-
-		if !obj.Exists() {
-			return placeholder, errors.New(fmt.Sprintf("lookup: object doesn't exists %s", fc.ToString()))
+		if err != nil {
+			return placeholder, err
 		}
 
 		secret := v1.SecretDefinition{}
-
-		err = json.Unmarshal(obj.GetDefinitionByte(), &secret)
+		err = json.Unmarshal(bytes, &secret)
 
 		if err != nil {
 			return placeholder, err
@@ -79,31 +71,23 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 
 		return string(decoded), nil
 	case "configuration":
-		obj := objects.New(client.Clients[user.Username], user)
 		name, key, err := Extract(format.GetName())
 
 		if err != nil {
 			return placeholder, err
 		}
 
-		var fc f.Format
-		if format.Compliant() {
-			fc = f.New(format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), name)
-		} else {
-			fc = f.New(static.SMR_PREFIX, "kind", format.GetKind(), format.GetGroup(), name)
+		bytes, formatClean, err := Fetch(format, name, client, user)
+
+		if err != nil {
+			return placeholder, err
 		}
 
-		obj.Find(fc)
-
-		if !obj.Exists() {
-			return placeholder, errors.New(fmt.Sprintf("lookup: object doesn't exists %s", fc.ToString()))
-		}
-
-		dependencies = append(dependencies, fc)
+		dependencies = append(dependencies, formatClean)
 
 		configuration := v1.ConfigurationDefinition{}
 
-		err = json.Unmarshal(obj.GetDefinitionByte(), &configuration)
+		err = json.Unmarshal(bytes, &configuration)
 
 		if err != nil {
 			return placeholder, err
@@ -154,4 +138,23 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 	default:
 		return placeholder, errors.New(fmt.Sprintf("unsupported lookup: %s", placeholder))
 	}
+}
+
+func Fetch(format contracts.Format, name string, client *client.Http, user *authentication.User) ([]byte, f.Format, error) {
+	obj := objects.New(client.Clients[user.Username], user)
+
+	var formatNoKey f.Format
+	if format.Compliant() {
+		formatNoKey = f.New(format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), name)
+	} else {
+		formatNoKey = f.New(static.SMR_PREFIX, "kind", format.GetKind(), format.GetGroup(), name)
+	}
+
+	obj.Find(formatNoKey)
+
+	if !obj.Exists() {
+		return nil, formatNoKey, errors.New(fmt.Sprintf("lookup: object doesn't exists %s", formatNoKey.ToString()))
+	}
+
+	return obj.GetDefinitionByte(), formatNoKey, nil
 }

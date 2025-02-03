@@ -53,7 +53,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops)
 
 			for _, request := range gitopsWatcher.Children {
 				go func() {
-					err := request.Delete(shared.Manager.Http, shared.Manager.User)
+					err := request.Remove(shared.Manager.Http, shared.Manager.User)
 
 					if err != nil {
 						logger.Log.Error(err.Error())
