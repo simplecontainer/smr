@@ -88,7 +88,7 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 
 	switch request.Definition.GetState().GetOpt("action").Value {
 	case static.REMOVE_KIND:
-		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodDelete, bytes)
+		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/definition/delete"), http.MethodDelete, bytes)
 
 		if response != nil {
 			if !response.Success {
@@ -99,7 +99,7 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 		}
 		break
 	default:
-		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/apply"), http.MethodPost, bytes)
+		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/definition/apply"), http.MethodPost, bytes)
 
 		if response != nil {
 			if !response.Success {

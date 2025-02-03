@@ -156,11 +156,14 @@ func Start() {
 
 				router := gin.New()
 				routerHttp := gin.New()
-				router.Use(api.ClusterCheck())
-				router.Use(api.InterceptKind())
 
 				v1 := router.Group("/api/v1")
 				{
+					definition := v1.Group("/definition")
+					{
+						definition.POST("/:action", api.Kind)
+					}
+
 					kind := v1.Group("kind")
 					{
 						kind.GET("/", api.List)
@@ -175,7 +178,6 @@ func Start() {
 
 					key := v1.Group("key")
 					{
-						key.GET("/*key", api.GetKey)
 						key.POST("/*key", api.SetKey)
 						key.DELETE("/*key", api.DeleteKey)
 					}
@@ -190,13 +192,10 @@ func Start() {
 
 					definitions := v1.Group("/")
 					{
-						definitions.POST("apply", api.Apply)
-						definitions.POST("compare", api.Compare)
-						definitions.DELETE("delete", api.Delete)
 						definitions.POST("propose/apply", api.Propose)
 						definitions.DELETE("propose/remove", api.Propose)
-						definitions.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
-						definitions.GET("logs/:group/:identifier/:follow", api.Logs)
+						definitions.GET("debug/:prefix/:version/:category/:kind/:group/:name/:follow", api.Debug)
+						definitions.GET("logs/:prefix/:version/:category/:kind/:group/:name/:follow", api.Logs)
 					}
 
 					users := v1.Group("/user")

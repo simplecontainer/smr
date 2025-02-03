@@ -2,8 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -11,37 +9,6 @@ import (
 	"net/http"
 	"strings"
 )
-
-// GetKey godoc
-//
-//	@Summary		Get specific kind
-//	@Description	get specific kind from the store
-//	@Tags			database
-//	@Produce		json
-//
-// @Success		200	{object}	  contracts.Response
-// @Failure		400	{object}	  contracts.Response
-// @Failure		404	{object}	  contracts.Response
-// @Failure		500	{object}	  contracts.Response
-// @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [get]
-func (api *Api) GetKey(c *gin.Context) {
-	key := strings.TrimPrefix(c.Param("key"), "/")
-
-	response, err := api.Etcd.Get(context.Background(), key)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-	} else {
-		if len(response.Kvs) == 0 {
-			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("key not found"), nil))
-		} else {
-			var bytes json.RawMessage
-			bytes, err = json.RawMessage(response.Kvs[0].Value).MarshalJSON()
-
-			c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, bytes))
-		}
-	}
-}
 
 // ProposeKey godoc
 //

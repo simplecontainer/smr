@@ -27,7 +27,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User, defi
 		var bytes []byte
 		bytes, err = request.Definition.ToJson()
 
-		response := network.Send(client.Clients[user.Username].Http, "https://localhost:1443/api/v1/compare", http.MethodPost, bytes)
+		response := network.Send(client.Clients[user.Username].Http, "https://localhost:1443/api/v1/definition/compare", http.MethodPost, bytes)
 
 		switch response.HttpStatus {
 		case http.StatusTeapot:

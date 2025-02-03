@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
@@ -15,6 +16,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/static"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -22,8 +24,10 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	logpath := fmt.Sprintf("/tmp/%s.%s.%s.log", static.KIND_GITOPS, gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)
-	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{logpath}, []string{logpath})
+	format := f.New(gitopsObj.Definition.GetPrefix(), "kind", static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName())
+	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
 
 	gitopsObj.Status.Logger = loggerObj
 
@@ -36,7 +40,7 @@ func NewWatcher(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *au
 		Cancel:      fn,
 		Ticker:      time.NewTicker(interval),
 		Logger:      loggerObj,
-		LogPath:     logpath,
+		LogPath:     path,
 	}
 }
 

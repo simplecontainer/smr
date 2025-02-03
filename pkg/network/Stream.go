@@ -17,11 +17,15 @@ func StreamHttp(reader io.ReadCloser, w gin.ResponseWriter) error {
 		bytes, err = reader.Read(buff)
 
 		if err == io.EOF {
+			_, err = w.Write(buff[:bytes])
+
 			err = reader.Close()
 
 			if err != nil {
 				return err
 			}
+
+			return io.EOF
 		} else {
 			_, err = w.Write(buff[:bytes])
 

@@ -6,12 +6,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -19,13 +21,10 @@ func NewWatcher(containers v1.ContainersDefinition, mgr *manager.Manager) *watch
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	cfg := zap.NewProductionConfig()
-	cfg.OutputPaths = []string{fmt.Sprintf("/tmp/containers.%s.%s.log", containers.Meta.Group, containers.Meta.Name)}
+	format := f.New(containers.GetPrefix(), "kind", static.KIND_CONTAINER, containers.Meta.Group, containers.Meta.Group)
+	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
 
-	loggerObj, err := cfg.Build()
-	if err != nil {
-		panic(err)
-	}
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
 
 	return &watcher.Containers{
 		Definition:      containers,

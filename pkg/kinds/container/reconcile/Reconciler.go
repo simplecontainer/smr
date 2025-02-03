@@ -6,6 +6,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
@@ -18,6 +19,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -25,8 +27,10 @@ func NewWatcher(containerObj platforms.IContainer, mgr *manager.Manager, user *a
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	logpath := fmt.Sprintf("/tmp/%s.%s.%s.log", static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName())
-	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{logpath}, []string{logpath})
+	format := f.New(containerObj.GetDefinition().GetPrefix(), "kind", static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName())
+	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
 
 	containerObj.GetStatus().Logger = loggerObj
 
