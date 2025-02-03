@@ -2,7 +2,6 @@ package template
 
 import (
 	"errors"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -15,9 +14,6 @@ func Parse(name string, value string, client *client.Http, user *authentication.
 	var dependencies = make([]f.Format, 0)
 
 	variables := Variables{Values: make(map[string]interface{})}
-
-	fmt.Println("--------------------------------------")
-	fmt.Println(name)
 
 	if runtime != nil {
 		runtime.Map.Range(func(key any, value any) bool {

@@ -2,7 +2,6 @@ package definitions
 
 import (
 	"errors"
-	"fmt"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
@@ -89,8 +88,6 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 }
 func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
 	err := obj.Find(format)
-
-	fmt.Println("trying delete definition")
 
 	if err != nil {
 		return nil, err

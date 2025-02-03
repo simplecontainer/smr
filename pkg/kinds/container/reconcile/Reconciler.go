@@ -148,7 +148,6 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		switch containerState.State {
 		case "created":
-			fmt.Println(containerState)
 			if containerState.Error != "" {
 				containerWatcher.Logger.Info(containerState.Error)
 				containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DAEMON_FAILURE)

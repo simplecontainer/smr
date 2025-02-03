@@ -88,7 +88,6 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 
 	switch request.Definition.GetState().GetOpt("action").Value {
 	case static.REMOVE_KIND:
-		fmt.Println("Trying delete")
 		response := network.Send(replication.Client.Http, fmt.Sprintf("https://localhost:1443/api/v1/delete"), http.MethodDelete, bytes)
 
 		if response != nil {
