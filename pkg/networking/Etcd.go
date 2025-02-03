@@ -12,7 +12,7 @@ import (
 
 func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 	cfg := embed.NewConfig()
-	cfg.Dir = fmt.Sprintf("%s/persistent/etcd", config.Environment.PROJECTDIR)
+	cfg.Dir = fmt.Sprintf("%s/persistent/etcd", config.Environment.NodeDirectory)
 
 	URLC, _ := url.Parse("http://0.0.0.0:2379")
 
@@ -23,7 +23,7 @@ func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 	cfg.EnableV2 = false
 	cfg.EnableGRPCGateway = false
 	cfg.Logger = "zap"
-	cfg.LogOutputs = []string{"/tmp/etcd.log"}
+	cfg.LogOutputs = []string{fmt.Sprintf("/tmp/etcd-%s.log", config.NodeName)}
 
 	return embed.StartEtcd(cfg)
 }

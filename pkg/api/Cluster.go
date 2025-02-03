@@ -10,7 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
-	"github.com/simplecontainer/smr/pkg/events"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -90,9 +90,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 			"nodeName": api.Config.NodeName,
 			"API":      fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port),
 		})
-
-		fmt.Println(api.Manager.Http.Clients)
-		fmt.Println(user)
 
 		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, data)
 
@@ -179,10 +176,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.SaveClusterConfiguration()
 
-	go events.NewEventsListener(api.Manager.KindsRegistry, api.Replication.EventsC)
+	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC)
 
 	go api.ListenNode()
-	go api.Replication.ListenEtcd(api.Config.NodeName)
+	go api.Replication.ListenOutside(api.Config.NodeName)
 	go api.Replication.ListenData(api.Config.NodeName)
 
 	err = networking.Flannel(request["overlay"], request["backend"])
@@ -210,7 +207,7 @@ func (api *Api) SaveClusterConfiguration() {
 		logger.Log.Error(err.Error())
 	}
 
-	format := f.NewUnformated("smr.cluster", static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
 	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)

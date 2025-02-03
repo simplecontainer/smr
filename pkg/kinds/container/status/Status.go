@@ -45,13 +45,18 @@ func (status *Status) CreateGraph() {
 	forceKill := gograph.NewVertex(&StatusState{STATUS_KILL, STATUS_INITIAL, CATEGORY_WHILERUN})
 	pendingDelete := gograph.NewVertex(&StatusState{STATUS_PENDING_DELETE, STATUS_INITIAL, CATEGORY_END})
 
+	daemonFailure := gograph.NewVertex(&StatusState{STATUS_DAEMON_FAILURE, STATUS_INITIAL, CATEGORY_END})
+
 	status.StateMachine.AddEdge(transfering, created)
+
+	status.StateMachine.AddEdge(change, created)
 
 	status.StateMachine.AddEdge(created, change)
 	status.StateMachine.AddEdge(created, prepare)
 	status.StateMachine.AddEdge(created, kill)
 	status.StateMachine.AddEdge(created, dead)
 	status.StateMachine.AddEdge(created, pendingDelete)
+	status.StateMachine.AddEdge(created, daemonFailure)
 
 	status.StateMachine.AddEdge(recreated, change)
 	status.StateMachine.AddEdge(recreated, prepare)
@@ -59,6 +64,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(recreated, kill)
 	status.StateMachine.AddEdge(recreated, dead)
 	status.StateMachine.AddEdge(recreated, pendingDelete)
+	status.StateMachine.AddEdge(recreated, daemonFailure)
 
 	status.StateMachine.AddEdge(prepare, change)
 	status.StateMachine.AddEdge(prepare, dependsChecking)

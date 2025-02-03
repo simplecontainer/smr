@@ -10,11 +10,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
 	"github.com/simplecontainer/smr/pkg/logger"
-	middleware "github.com/simplecontainer/smr/pkg/middlewares"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	swaggerFiles "github.com/swaggo/files"
@@ -32,16 +32,16 @@ func Start() {
 		},
 		functions: []func(*api.Api, []string){
 			func(api *api.Api, args []string) {
-				conf, err := startup.Load(api.Config.Environment)
+				var conf = configuration.NewConfig()
+				var err error
+
+				conf, err = startup.Load(api.Config.Environment)
 
 				if err != nil {
 					panic(err)
 				}
 
 				api.Config = conf
-				api.Config.Environment = startup.GetEnvironmentInfo()
-				startup.ReadFlags(api.Config)
-
 				api.Manager.Config = api.Config
 
 				api.Keys = keys.NewKeys()
@@ -156,21 +156,28 @@ func Start() {
 
 				router := gin.New()
 				routerHttp := gin.New()
-				router.Use(middleware.TLSAuth())
 				router.Use(api.ClusterCheck())
+				router.Use(api.InterceptKind())
 
 				v1 := router.Group("/api/v1")
 				{
-					database := v1.Group("database")
+					kind := v1.Group("kind")
 					{
-						database.POST("create/*key", api.DatabaseSet)
-						database.PUT("update/*key", api.DatabaseSet)
-						database.POST("propose/:type/*key", api.ProposeDatabase)
-						database.PUT("propose/:type/*key", api.ProposeDatabase)
-						database.GET("get/*key", api.DatabaseGet)
-						database.GET("keys", api.DatabaseGetKeys)
-						database.GET("keys/*prefix", api.DatabaseGetKeysPrefix)
-						database.DELETE("keys/*prefix", api.DatabaseRemoveKeys)
+						kind.GET("/", api.List)
+						kind.GET("/:prefix/:version/:category/:kind", api.ListKind)
+						kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKindGroup)
+						kind.GET("/:prefix/:version/:category/:kind/:group/:name", api.GetKind)
+						kind.POST("/propose/:prefix/:version/:category/:kind/:group/:name", api.ProposeKind)
+						kind.POST("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
+						kind.PUT("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
+						kind.DELETE("/:prefix/:version/:category/:kind/:group/:name", api.DeleteKind)
+					}
+
+					key := v1.Group("key")
+					{
+						key.GET("/*key", api.GetKey)
+						key.POST("/*key", api.SetKey)
+						key.DELETE("/*key", api.DeleteKey)
 					}
 
 					cluster := v1.Group("cluster")
@@ -181,42 +188,15 @@ func Start() {
 						cluster.DELETE("/node/:node", api.RemoveNode)
 					}
 
-					kinds := v1.Group("/")
+					definitions := v1.Group("/")
 					{
-						kinds.POST("apply", api.Apply)
-						kinds.POST("propose/apply", api.ProposeObject)
-						kinds.DELETE("propose/remove", api.ProposeObject)
-						kinds.POST("compare", api.Compare)
-						kinds.DELETE("delete", api.Delete)
-						kinds.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
-						kinds.GET("logs/:group/:identifier/:follow", api.Logs)
-					}
-
-					operators := v1.Group("/control")
-					{
-						operators.GET(":kind", api.ListSupported)
-						operators.GET(":kind/:operation", api.RunControl)
-						operators.GET(":kind/:operation/:group/:name", api.RunControl)
-						operators.POST(":kind/:operation/:group/:name", api.RunControl)
-						operators.PUT(":kind/:operation/:group/:name", api.RunControl)
-						operators.DELETE(":kind/:operation/:group/:name", api.RunControl)
-					}
-
-					secrets := v1.Group("secrets")
-					{
-						secrets.POST("create/*key", api.SecretsSet)
-						secrets.PUT("update/*key", api.SecretsSet)
-						secrets.POST("propose/:type/*key", api.ProposeSecrets)
-						secrets.PUT("propose/:type/*key", api.ProposeSecrets)
-						secrets.GET("get/*key", api.SecretsGet)
-						secrets.GET("keys", api.SecretsGet)
-						secrets.GET("keys/*prefix", api.SecretsGetKeysPrefix)
-						secrets.DELETE("keys/*prefix", api.SecretsRemoveKeys)
-					}
-
-					containers := v1.Group("/")
-					{
-						containers.GET("ps", api.Ps)
+						definitions.POST("apply", api.Apply)
+						definitions.POST("compare", api.Compare)
+						definitions.DELETE("delete", api.Delete)
+						definitions.POST("propose/apply", api.Propose)
+						definitions.DELETE("propose/remove", api.Propose)
+						definitions.GET("debug/:kind/:group/:identifier/:follow", api.Debug)
+						definitions.GET("logs/:group/:identifier/:follow", api.Logs)
 					}
 
 					users := v1.Group("/user")
@@ -262,7 +242,7 @@ func Start() {
 				}
 
 				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
-				_, err = api.DnsCache.AddARecord(static.SMR_AGENT_DOMAIN, api.Config.Environment.AGENTIP)
+				_, err = api.DnsCache.AddARecord(static.SMR_NODE_DOMAIN, api.Config.Environment.NodeIP)
 
 				if err != nil {
 					panic(err)

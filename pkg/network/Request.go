@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"io"
 	"net/http"
@@ -37,7 +36,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       0,
-			Explanation:      "failed to connect to the smr-agent",
+			Explanation:      "failed to connect to the node",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -50,7 +49,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 	if err != nil {
 		return &contracts.Response{
 			HttpStatus:       0,
-			Explanation:      "invalid response from the smr-agent",
+			Explanation:      "invalid response from the node",
 			ErrorExplanation: err.Error(),
 			Error:            true,
 			Success:          false,
@@ -120,9 +119,4 @@ func Raw(client *http.Client, URL string, method string, data interface{}) (*htt
 	}
 
 	return resp, nil
-}
-
-func generateResponse(URL string, status int, method string, data []byte, body []byte, err error) string {
-	debug := fmt.Sprintf("URL: %s RESPONSE_CODE: %d, METHOD: %s SEND_DATA: %s RESPONSE: %s", URL, status, method, string(data), string(body))
-	return fmt.Sprintf("database returned malformed response - " + debug + "\n" + err.Error())
 }

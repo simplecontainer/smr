@@ -5,6 +5,7 @@ import (
 )
 
 type Dependency struct {
+	Prefix   string
 	Name     string
 	Group    string
 	Timeout  string

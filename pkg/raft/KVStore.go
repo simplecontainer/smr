@@ -60,10 +60,10 @@ func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <
 	return s, nil
 }
 
-func (s *KVStore) Propose(k string, v []byte, category int, node uint64) {
+func (s *KVStore) Propose(k string, v []byte, node uint64) {
 	var buf strings.Builder
 
-	if err := gob.NewEncoder(&buf).Encode(KV.NewEncode(k, v, node, category)); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(KV.NewEncode(k, v, node)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -87,11 +87,14 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 			continue
 		}
 
+		s.mu.Lock()
+
 		for _, data := range commit.data {
-			s.mu.Lock()
 			s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node)
-			s.mu.Unlock()
 		}
+
+		s.mu.Unlock()
+
 		close(commit.applyDoneC)
 	}
 	if err, ok := <-errorC; ok {
@@ -125,9 +128,7 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 	s.mu.Lock()
 
 	for _, v := range store {
-		s.mu.Lock()
 		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node)
-		s.mu.Unlock()
 	}
 
 	s.mu.Unlock()

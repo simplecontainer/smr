@@ -1,7 +1,6 @@
 package certkey
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -12,8 +11,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (certkey *Certkey) Start() error {
@@ -23,41 +20,7 @@ func (certkey *Certkey) Start() error {
 func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
-func (certkey *Certkey) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_CERTKEY)
 
-	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
-
-	valid, err := definition.Validate()
-
-	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	var bytes []byte
-	bytes, err = definition.ToJsonWithKind()
-
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
-
-	switch c.Request.Method {
-	case http.MethodPost:
-		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, certkey.Shared.Manager.Config.KVStore.Node)
-		break
-	case http.MethodDelete:
-		certkey.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, certkey.Shared.Manager.Config.KVStore.Node)
-		break
-	}
-
-	return common.Response(http.StatusOK, "object applied", nil, nil), nil
-}
 func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CERTKEY)
 
@@ -77,7 +40,7 @@ func (certkey *Certkey) Apply(user *authentication.User, jsonData []byte, agent 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -106,7 +69,7 @@ func (certkey *Certkey) Compare(user *authentication.User, jsonData []byte) (con
 
 	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -134,7 +97,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 
 	definition := request.Definition.Definition.(*v1.CertKeyDefinition)
 
-	format := f.New("certkey", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CERTKEY, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(certkey.Shared.Client.Get(user.Username), user)
 
 	_, err = request.Definition.Delete(format, obj, static.KIND_CERTKEY)
@@ -145,27 +108,7 @@ func (certkey *Certkey) Delete(user *authentication.User, jsonData []byte, agent
 
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
-func (certkey *Certkey) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(certkey)
-	reflectedValue := reflect.ValueOf(certkey)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       http.StatusBadRequest,
-		Explanation:      "",
-		ErrorExplanation: "server doesn't support requested functionality or permission suffice",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (certkey *Certkey) Event(event contracts.Event) error {
+	return nil
 }

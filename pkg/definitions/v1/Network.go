@@ -9,19 +9,20 @@ import (
 )
 
 type NetworkDefinition struct {
-	Meta NetworkMeta `json:"meta" validate:"required"`
-	Spec NetworkSpec `json:"spec" validate:"required"`
-}
-
-type NetworkMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   NetworkSpec     `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type NetworkSpec struct {
 	Driver          string
 	IPV4AddressPool string
+}
+
+func (network *NetworkDefinition) GetPrefix() string {
+	return network.Prefix
 }
 
 func (network *NetworkDefinition) SetRuntime(runtime *commonv1.Runtime) {
@@ -30,6 +31,18 @@ func (network *NetworkDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (network *NetworkDefinition) GetRuntime() *commonv1.Runtime {
 	return network.Meta.Runtime
+}
+
+func (network *NetworkDefinition) GetMeta() commonv1.Meta {
+	return network.Meta
+}
+
+func (network *NetworkDefinition) GetState() *commonv1.State {
+	return network.State
+}
+
+func (network *NetworkDefinition) SetState(state *commonv1.State) {
+	network.State = state
 }
 
 func (network *NetworkDefinition) GetKind() string {
@@ -47,28 +60,6 @@ func (network *NetworkDefinition) FromJson(bytes []byte) error {
 func (network *NetworkDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(network)
 	return bytes, err
-}
-
-func (network *NetworkDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(network)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "network"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (network *NetworkDefinition) ToJsonString() (string, error) {

@@ -8,16 +8,20 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/config"
 	"github.com/simplecontainer/smr/pkg/kinds/container"
 	"github.com/simplecontainer/smr/pkg/kinds/containers"
+	"github.com/simplecontainer/smr/pkg/kinds/custom"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops"
 	"github.com/simplecontainer/smr/pkg/kinds/httpauth"
 	"github.com/simplecontainer/smr/pkg/kinds/network"
 	"github.com/simplecontainer/smr/pkg/kinds/resource"
+	"github.com/simplecontainer/smr/pkg/kinds/secret"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 )
 
 func New(kind string, mgr *manager.Manager) (contracts.Kind, error) {
 	switch kind {
+	case "custom":
+		return custom.New(mgr), nil
 	case "certkey":
 		return certkey.New(mgr), nil
 	case "configuration":
@@ -34,6 +38,8 @@ func New(kind string, mgr *manager.Manager) (contracts.Kind, error) {
 		return network.New(mgr), nil
 	case "resource":
 		return resource.New(mgr), nil
+	case "secret":
+		return secret.New(mgr), nil
 	default:
 		return nil, errors.New(fmt.Sprintf("%s kind does not exist", kind))
 	}

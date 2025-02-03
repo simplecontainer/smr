@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 HelpStart(){
   echo """Usage:
 
@@ -83,21 +85,25 @@ Manager(){
     NODE_DOMAIN="localhost"
   fi
 
-  echo "Agent name: $NODE"
-  echo "Node: $NODE_DOMAIN"
-  echo "Additional arguments: $CLIENT_ARGS"
-  echo "Restart: $RESTART"
-  echo "Upgrade: $UPGRADE"
+  echo "..Node info....................................................................................................."
+  echo "....Agent name:           $NODE"
+  echo "....Node:                 $NODE_DOMAIN"
+  echo "....Additional args:      $CLIENT_ARGS"
+  echo "....Restart:              $RESTART"
+  echo "....Upgrade:              $UPGRADE"
 
   if [[ $JOIN != "" ]]; then
-    echo "Join: $JOIN"
+  echo "....Join:                 $JOIN"
   fi
 
-  smr version
+  echo "....cli version:          $(smr version)"
+  echo "....node logs path:       ~/smr/smr/logs/flannel-${NODE}.log"
+  echo "................................................................................................................"
+
   touch ~/smr/smr/logs/flannel-${NODE}.log
 
-  if ! dpkg -s jq &>/dev/null; then
-    echo 'please install jq manually'
+  if ! dpkg -s curl &>/dev/null; then
+    echo 'please install curl manually'
     exit 1
   fi
 
@@ -106,20 +112,15 @@ Manager(){
     echo
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
-        IMAGETAG=$(smr cli inspect --name smr-agent-1 | jq '.Config.Image' | tr -d /\"//)
-        arrIN=(${IMAGETAG//:/ })
-
-        smr node stop --name "${NODE}" $CLIENT_ARGS --wait
-
         if [[ $RESTART == "true" ]]; then
-          smr node run --image "${arrIN[0]}" --tag "${arrIN[1]}" --args="start --restore true" $CLIENT_ARGS --name "${NODE}"
+          smr node restart --name "${NODE}" $CLIENT_ARGS --w started
         else
-          smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start --restore true" $CLIENT_ARGS --name "${NODE}"
+          smr node upgrade --name "${NODE}" $CLIENT_ARGS --w started
         fi
 
         while :
         do
-          if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --wait --y; then
+          if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --y; then
             break
           else
             echo "Failed to connect to siplecontainer, trying again in 1 second"
@@ -127,19 +128,21 @@ Manager(){
           fi
         done
 
-        sudo nohup smr node cluster restore </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+        #sudo nohup smr node cluster restore </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
     fi
   else
     if [[ ${NODE} != "" ]]; then
       if [[ ${MODE} == "cluster" ]]; then
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${NODE}" $CLIENT_ARGS  --wait
+
+        ID=$(smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${NODE}" $CLIENT_ARGS  --w exited)
 
         if [[ ${?} != 0 ]]; then
           echo "Simplecontainer returned non-zero exit code - check the logs of the node controller container"
           exit
         fi
 
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${NODE}"
+        smr node rename "${NODE}-create-${ID}" --name "${NODE}" --w exited
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${NODE}" -w running
 
         if [[ $NODE_DOMAIN == "localhost" ]]; then
           NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${NODE_PORT}"
@@ -158,9 +161,9 @@ Manager(){
         done
 
         if [[ ${JOIN} == "" ]]; then
-          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+          sudo nohup smr node cluster join --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
         else
-          sudo nohup smr node cluster start --node "${NODE_DOMAIN}" --join "https://${JOIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+          sudo nohup smr node cluster join --node "${NODE_DOMAIN}" --join "https://${JOIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
         fi
 
         echo "The simplecontainer is started in cluster mode."
@@ -168,7 +171,7 @@ Manager(){
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --domain ${DOMAIN} --ip ${IP}" --name "${NODE}" --wait
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --name "${NODE}"
 
-        sudo nohup smr node cluster start --name "${NODE}" --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+        sudo nohup smr node cluster join --name "${NODE}" --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
 
         echo "The simplecontainer is started in single mode."
       fi

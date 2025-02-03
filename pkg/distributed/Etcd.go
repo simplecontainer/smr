@@ -6,13 +6,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
-	"github.com/simplecontainer/smr/pkg/static"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"time"
 )
 
-func (replication *Replication) ListenEtcd(agent string) {
+func (replication *Replication) ListenOutside(agent string) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,
@@ -39,9 +38,9 @@ func (replication *Replication) ListenEtcd(agent string) {
 						switch event.Type {
 						case mvccpb.PUT:
 							obj := objects.New(replication.Client, replication.User)
-							format := f.NewUnformated(string(event.Kv.Key), static.CATEGORY_ETCD_STRING)
+							format := f.NewUnformated(string(event.Kv.Key))
 
-							_, err = obj.Propose(format, event.Kv.Value)
+							err = obj.Propose(format, event.Kv.Value)
 
 							if err != nil {
 								logger.Log.Error(err.Error())
@@ -49,9 +48,9 @@ func (replication *Replication) ListenEtcd(agent string) {
 							break
 						case mvccpb.DELETE:
 							obj := objects.New(replication.Client, replication.User)
-							format := f.NewUnformated(string(event.Kv.Key), static.CATEGORY_ETCD_STRING)
+							format := f.NewUnformated(string(event.Kv.Key))
 
-							_, err = obj.Propose(format, nil)
+							err = obj.Propose(format, nil)
 
 							if err != nil {
 								logger.Log.Error(err.Error())

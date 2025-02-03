@@ -27,11 +27,12 @@ func (acks *Acks) Ack(UUID uuid.UUID) error {
 
 func (acks *Acks) Wait(UUID uuid.UUID) error {
 	// Be CAUTIOUS when using wait since it is blocking till ack received or timeout
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	var ackChan = make(chan bool)
 	acks.Acks.Map.Store(UUID, ackChan)
+
 	for {
 		select {
 		case <-ctxTimeout.Done():
@@ -50,6 +51,7 @@ func (acks *Acks) Wait(UUID uuid.UUID) error {
 				close(ackChanTmp.(chan bool))
 				acks.Acks.Map.Delete(UUID)
 			}
+
 			return nil
 		}
 	}

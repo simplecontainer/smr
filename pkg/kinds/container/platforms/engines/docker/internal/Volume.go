@@ -3,18 +3,14 @@ package internal
 import (
 	"errors"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"os"
-	"strings"
 	"sync"
 )
 
 type Volumes struct {
-	Volumes     []*Volume
-	HomeDir     string
-	HostHomeDir string
-	Lock        sync.RWMutex
+	Volumes []*Volume
+	Lock    sync.RWMutex
 }
 
 type Volume struct {
@@ -24,7 +20,7 @@ type Volume struct {
 	MountPoint string
 }
 
-func NewVolumes(volumes []v1.ContainerVolume, config *configuration.Configuration) (*Volumes, error) {
+func NewVolumes(volumes []v1.ContainerVolume) (*Volumes, error) {
 	volumesObj := &Volumes{
 		Volumes: make([]*Volume, 0),
 	}
@@ -37,8 +33,6 @@ func NewVolumes(volumes []v1.ContainerVolume, config *configuration.Configuratio
 		}
 	}
 
-	volumesObj.HomeDir = config.Environment.HOMEDIR
-	volumesObj.HostHomeDir = config.HostHome
 	volumesObj.Lock = sync.RWMutex{}
 
 	return volumesObj, nil
@@ -83,7 +77,7 @@ func (volumes *Volumes) RemoveResources() error {
 	return nil
 }
 
-func (volumes *Volumes) ToMounts() ([]mount.Mount, error) {
+func (volumes *Volumes) ToMounts() []mount.Mount {
 	mounts := make([]mount.Mount, 0)
 
 	for _, v := range volumes.Volumes {
@@ -91,28 +85,26 @@ func (volumes *Volumes) ToMounts() ([]mount.Mount, error) {
 		case mount.TypeBind:
 			mounts = append(mounts, mount.Mount{
 				Type:   v.Type,
-				Source: strings.Replace(v.HostPath, "~", volumes.HostHomeDir, 1),
-				Target: strings.Replace(v.MountPoint, "~", volumes.HomeDir, 1),
+				Source: v.HostPath,
+				Target: v.MountPoint,
 			})
 			break
 		case mount.TypeVolume:
 			mounts = append(mounts, mount.Mount{
 				Type:   v.Type,
 				Source: v.Name,
-				Target: strings.Replace(v.MountPoint, "~", volumes.HomeDir, 1),
+				Target: v.MountPoint,
 			})
 			break
 		case "resource":
 			mounts = append(mounts, mount.Mount{
 				Type:   mount.TypeBind,
-				Source: strings.Replace(v.HostPath, "~", volumes.HostHomeDir, 1),
-				Target: strings.Replace(v.MountPoint, "~", volumes.HomeDir, 1),
+				Source: v.HostPath,
+				Target: v.MountPoint,
 			})
 			break
-		default:
-			return mounts, errors.New("only supported types are: bind and volume")
 		}
 	}
 
-	return mounts, nil
+	return mounts
 }

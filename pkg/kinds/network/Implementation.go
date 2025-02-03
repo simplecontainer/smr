@@ -1,7 +1,6 @@
 package network
 
 import (
-	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
@@ -14,8 +13,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (network *Network) Start() error {
@@ -25,10 +22,6 @@ func (network *Network) Start() error {
 
 func (network *Network) GetShared() interface{} {
 	return network.Shared
-}
-
-func (network *Network) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	return network.Apply(user, jsonData, agent)
 }
 
 func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
@@ -50,7 +43,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_NETWORK, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(network.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -135,27 +128,6 @@ func (network *Network) Delete(user *authentication.User, jsonData []byte, agent
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
-func (network *Network) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(network)
-	reflectedValue := reflect.ValueOf(network)
-
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (network *Network) Event(event contracts.Event) error {
+	return nil
 }

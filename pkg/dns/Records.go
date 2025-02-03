@@ -1,7 +1,6 @@
 package dns
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -34,7 +33,7 @@ func (AR *ARecord) Remove(ip string) {
 }
 
 func (AR *ARecord) Fetch(client *client.Http, user *authentication.User, domain string) ([]string, error) {
-	format := f.NewUnformated(fmt.Sprintf("dns.%s", domain), static.CATEGORY_PLAIN_STRING)
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(client.Clients[user.Username], user)
 
 	obj.Find(format)

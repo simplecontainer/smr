@@ -15,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
-	"github.com/simplecontainer/smr/pkg/startup"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"time"
@@ -32,8 +31,6 @@ func NewApi(config *configuration.Configuration) *Api {
 		Manager:       &manager.Manager{},
 	}
 
-	api.Config.Environment = startup.GetEnvironmentInfo()
-
 	api.Manager.User = api.User
 	api.Manager.Config = api.Config
 	api.Manager.Kinds = api.Kinds
@@ -46,10 +43,12 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Kinds.Register("containers", []string{"network", "resource", "configuration", "certkey"})
 	api.Kinds.Register("container", []string{})
 	api.Kinds.Register("gitops", []string{"certkey", "httpauth"})
-	api.Kinds.Register("configuration", []string{})
+	api.Kinds.Register("configuration", []string{"secret"})
 	api.Kinds.Register("resource", []string{"configuration"})
 	api.Kinds.Register("certkey", []string{})
 	api.Kinds.Register("httpauth", []string{})
+	api.Kinds.Register("custom", []string{})
+	api.Kinds.Register("secret", []string{})
 
 	return api
 }
@@ -104,8 +103,8 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, nodeID uint64, cluster *clus
 	}
 
 	api.Cluster.KVStore.ConfChangeC = confChangeC
-	api.Cluster.NodeConf = nodeUpdate
 	api.Cluster.KVStore.Node = api.Config.KVStore.Node
+	api.Cluster.NodeConf = nodeUpdate
 
 	api.Manager.Cluster = api.Cluster
 

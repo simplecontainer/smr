@@ -36,7 +36,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 		requests = append(requests, request)
 
 		var bytes []byte
-		bytes, err = request.Definition.ToJsonWithKind()
+		bytes, err = request.Definition.ToJson()
 
 		if err != nil {
 			return requests, err

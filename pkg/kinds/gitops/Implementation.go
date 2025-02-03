@@ -1,11 +1,12 @@
 package gitops
 
 import (
+	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
@@ -18,8 +19,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (gitops *Gitops) Start() error {
@@ -40,41 +39,6 @@ func (gitops *Gitops) Start() error {
 func (gitops *Gitops) GetShared() interface{} {
 	return gitops.Shared
 }
-func (gitops *Gitops) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_GITOPS)
-
-	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.GitopsDefinition)
-
-	valid, err := definition.Validate()
-
-	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
-
-	var bytes []byte
-	bytes, err = definition.ToJsonWithKind()
-
-	switch c.Request.Method {
-	case http.MethodPost:
-		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, gitops.Shared.Manager.Config.KVStore.Node)
-		break
-	case http.MethodDelete:
-		gitops.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, gitops.Shared.Manager.Config.KVStore.Node)
-		break
-	}
-
-	return common.Response(http.StatusOK, "object applied", nil, nil), nil
-}
 func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_GITOPS)
 
@@ -94,7 +58,7 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -120,16 +84,19 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 			if gitopsWatcherFromRegistry == nil {
 				gitopsWatcherFromRegistry = reconcile.NewWatcher(implementation.New(definition), gitops.Shared.Manager, user)
 				go reconcile.HandleTickerAndEvents(gitops.Shared, gitopsWatcherFromRegistry)
+
 				gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			} else {
 				gitops.Shared.Watcher.Find(GroupIdentifier).Gitops = implementation.New(definition)
+
 				gitopsWatcherFromRegistry.Logger.Info("gitops object modified")
 				gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
 			}
 
 			gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
 			gitops.Shared.Registry.AddOrUpdate(gitopsWatcherFromRegistry.Gitops.GetGroup(), gitopsWatcherFromRegistry.Gitops.GetName(), gitopsWatcherFromRegistry.Gitops)
+
 			reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 		}
 	} else {
@@ -138,8 +105,10 @@ func (gitops *Gitops) Apply(user *authentication.User, jsonData []byte, agent st
 
 		gitopsWatcherFromRegistry.Logger.Info("new gitops object created")
 		gitopsWatcherFromRegistry.Gitops.Status.SetState(status.STATUS_CREATED)
+
 		gitops.Shared.Registry.AddOrUpdate(gitopsWatcherFromRegistry.Gitops.GetGroup(), gitopsWatcherFromRegistry.Gitops.GetName(), gitopsWatcherFromRegistry.Gitops)
 		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, gitopsWatcherFromRegistry)
+
 		reconcile.Gitops(gitops.Shared, gitopsWatcherFromRegistry)
 	}
 
@@ -158,7 +127,7 @@ func (gitops *Gitops) Compare(user *authentication.User, jsonData []byte) (contr
 
 	definition := request.Definition.Definition.(*v1.GitopsDefinition)
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -192,7 +161,7 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("gitops", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_GITOPS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(gitops.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_GITOPS)
@@ -211,27 +180,43 @@ func (gitops *Gitops) Delete(user *authentication.User, jsonData []byte, agent s
 	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 
 }
-func (gitops *Gitops) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(gitops)
-	reflectedValue := reflect.ValueOf(gitops)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
+func (gitops *Gitops) Event(event contracts.Event) error {
+	switch event.GetType() {
+	case events.EVENT_DELETE:
 
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
+		break
+	case events.EVENT_REFRESH:
+		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
-			return returnValue[0].Interface().(contracts.Response)
+		if gitopsObj == nil {
+			return errors.New("gitops is not controlled on this instance")
 		}
+
+		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+
+		if gitopsWatcher != nil {
+			gitopsWatcher.Gitops.ForcePoll = true
+			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
+			gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+		}
+		break
+	case events.EVENT_SYNC:
+		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
+
+		if gitopsObj == nil {
+			return errors.New("gitops is not controlled on this instance")
+		}
+
+		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+
+		if gitopsWatcher != nil {
+			gitopsWatcher.Gitops.ManualSync = true
+			gitopsWatcher.Gitops.Status.TransitionState(gitopsWatcher.Gitops.Definition.Meta.Name, status.STATUS_CLONING_GIT)
+			gitopsWatcher.GitopsQueue <- gitopsWatcher.Gitops
+		}
+		break
 	}
 
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+	return nil
 }

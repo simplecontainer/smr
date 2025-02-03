@@ -19,8 +19,3 @@ type Shared struct {
 }
 
 const KIND string = static.KIND_CONFIGURATION
-
-var invalidOperators []string = []string{
-	"Run",
-	"ListSupported",
-}

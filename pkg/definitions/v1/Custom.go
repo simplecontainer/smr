@@ -1,22 +1,78 @@
 package v1
 
-import "github.com/simplecontainer/smr/pkg/definitions/commonv1"
+import (
+	"encoding/json"
+	"github.com/go-playground/validator/v10"
+	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/static"
+)
 
 type CustomDefinition struct {
-	Meta CustomMeta `json:"meta"  validate:"required"`
-	Spec CustomSpec `json:"spec"  validate:"required"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   map[string]any  `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
-type CustomMeta struct {
-	Name    string            `validate:"required" json:"name"`
-	Group   string            `validate:"required" json:"group"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+func (custom *CustomDefinition) GetPrefix() string {
+	return custom.Prefix
 }
 
-type CustomSpec struct {
-	Custom CustomInternal `validate:"required" json:"custom" `
+func (custom *CustomDefinition) SetRuntime(runtime *commonv1.Runtime) {
+	custom.Meta.Runtime = runtime
 }
 
-type CustomInternal struct {
-	Definition []byte
+func (custom *CustomDefinition) GetRuntime() *commonv1.Runtime {
+	return custom.Meta.Runtime
+}
+
+func (custom *CustomDefinition) GetMeta() commonv1.Meta {
+	return custom.Meta
+}
+
+func (custom *CustomDefinition) GetState() *commonv1.State {
+	return custom.State
+}
+
+func (custom *CustomDefinition) SetState(state *commonv1.State) {
+	custom.State = state
+}
+
+func (custom *CustomDefinition) GetKind() string {
+	return static.KIND_CERTKEY
+}
+
+func (custom *CustomDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+	return nil, nil
+}
+
+func (custom *CustomDefinition) FromJson(bytes []byte) error {
+	return json.Unmarshal(bytes, custom)
+}
+
+func (custom *CustomDefinition) ToJson() ([]byte, error) {
+	bytes, err := json.Marshal(custom)
+	return bytes, err
+}
+
+func (custom *CustomDefinition) ToJsonString() (string, error) {
+	bytes, err := json.Marshal(custom)
+	return string(bytes), err
+}
+
+func (custom *CustomDefinition) Validate() (bool, error) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err := validate.Struct(custom)
+	if err != nil {
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return false, err
+		}
+		// from here you can create your own error messages in whatever language you wish
+		return false, err
+	}
+
+	return true, nil
 }

@@ -27,7 +27,7 @@ func (user *User) CreateUser(k *keys.Keys, agent string, username string, domain
 
 			err := client.Generate(
 				k.CA,
-				configuration.NewDomains([]string{domain, fmt.Sprintf("smr-agent.%s", static.SMR_LOCAL_DOMAIN)}),
+				configuration.NewDomains([]string{domain, fmt.Sprintf("%s.%s", static.SMR_ENDPOINT_NAME, static.SMR_LOCAL_DOMAIN)}),
 				configuration.NewIPs([]string{externalIP}),
 				username,
 			)

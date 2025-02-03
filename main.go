@@ -29,8 +29,6 @@ func main() {
 
 	// Prepare configuration for the commands
 	conf := configuration.NewConfig()
-	conf.Environment = startup.GetEnvironmentInfo()
-	startup.ReadFlags(conf)
 
 	api := api.NewApi(conf)
 	api.VersionServer = SMR_VERSION

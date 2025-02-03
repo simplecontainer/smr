@@ -9,14 +9,11 @@ import (
 )
 
 type CertKeyDefinition struct {
-	Meta CertKeyMeta `json:"meta" validate:"required"`
-	Spec CertKeySpec `json:"spec" validate:"required"`
-}
-
-type CertKeyMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   CertKeySpec     `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type CertKeySpec struct {
@@ -38,6 +35,22 @@ func (certkey *CertKeyDefinition) GetRuntime() *commonv1.Runtime {
 	return certkey.Meta.Runtime
 }
 
+func (certkey *CertKeyDefinition) GetPrefix() string {
+	return certkey.Prefix
+}
+
+func (certkey *CertKeyDefinition) GetMeta() commonv1.Meta {
+	return certkey.Meta
+}
+
+func (certkey *CertKeyDefinition) GetState() *commonv1.State {
+	return certkey.State
+}
+
+func (certkey *CertKeyDefinition) SetState(state *commonv1.State) {
+	certkey.State = state
+}
+
 func (certkey *CertKeyDefinition) GetKind() string {
 	return static.KIND_CERTKEY
 }
@@ -53,28 +66,6 @@ func (certkey *CertKeyDefinition) FromJson(bytes []byte) error {
 func (certkey *CertKeyDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(certkey)
 	return bytes, err
-}
-
-func (certkey *CertKeyDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(certkey)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "certkey"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (certkey *CertKeyDefinition) ToJsonString() (string, error) {

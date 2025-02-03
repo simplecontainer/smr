@@ -10,18 +10,19 @@ import (
 )
 
 type ResourceDefinition struct {
-	Meta ResourceMeta `json:"meta" validate:"required"`
-	Spec ResourceSpec `json:"spec" validate:"required"`
-}
-
-type ResourceMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   ResourceSpec    `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type ResourceSpec struct {
 	Data map[string]string `json:"data"`
+}
+
+func (resource *ResourceDefinition) GetPrefix() string {
+	return resource.Prefix
 }
 
 func (resource *ResourceDefinition) SetRuntime(runtime *commonv1.Runtime) {
@@ -30,6 +31,18 @@ func (resource *ResourceDefinition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (resource *ResourceDefinition) GetRuntime() *commonv1.Runtime {
 	return resource.Meta.Runtime
+}
+
+func (resource *ResourceDefinition) GetMeta() commonv1.Meta {
+	return resource.Meta
+}
+
+func (resource *ResourceDefinition) GetState() *commonv1.State {
+	return resource.State
+}
+
+func (resource *ResourceDefinition) SetState(state *commonv1.State) {
+	resource.State = state
 }
 
 func (resource *ResourceDefinition) GetKind() string {
@@ -47,28 +60,6 @@ func (resource *ResourceDefinition) FromJson(bytes []byte) error {
 func (resource *ResourceDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(resource)
 	return bytes, err
-}
-
-func (resource *ResourceDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(resource)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "resource"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (resource *ResourceDefinition) ToJsonString() (string, error) {

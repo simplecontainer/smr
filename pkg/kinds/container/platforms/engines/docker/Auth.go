@@ -9,7 +9,7 @@ import (
 )
 
 func GetAuth(image string, environment *configuration.Environment) string {
-	dockerConfig := fmt.Sprintf("%s/%s", environment.HOMEDIR, ".docker/config.json")
+	dockerConfig := fmt.Sprintf("%s/%s", environment.Home, ".docker/config.json")
 	if _, err := os.Stat(dockerConfig); err == nil {
 		body, err := os.ReadFile(dockerConfig)
 		if err != nil {

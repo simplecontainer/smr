@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"time"
 )
@@ -64,8 +65,9 @@ func Container(shared *shared.Shared, user *authentication.User, containers *wat
 
 	for _, definition := range containers.Definition.Spec {
 		definition.SetRuntime(&commonv1.Runtime{})
-		definition.GetRuntime().SetOwner(containers.Definition.Kind, containers.Definition.Meta.Group, containers.Definition.Meta.Name)
+		definition.GetRuntime().SetOwner(static.KIND_CONTAINERS, containers.Definition.Meta.Group, containers.Definition.Meta.Name)
 		definition.GetRuntime().SetNode(containers.Definition.GetRuntime().GetNode())
+		definition.Kind = static.KIND_CONTAINER
 
 		definitionJSON, err := definition.ToJson()
 

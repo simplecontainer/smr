@@ -8,12 +8,11 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
-	"net"
 	"os"
 )
 
 func Load(environment *configuration.Environment) (*configuration.Configuration, error) {
-	path := fmt.Sprintf("%s/%s/config.yaml", environment.PROJECTDIR, static.CONFIGDIR)
+	path := fmt.Sprintf("%s/%s/config.yaml", environment.NodeDirectory, static.CONFIGDIR)
 
 	file, err := os.Open(path)
 
@@ -40,8 +39,6 @@ func Load(environment *configuration.Environment) (*configuration.Configuration,
 		return nil, err
 	}
 
-	configObj.Environment = GetEnvironmentInfo()
-
 	return configObj, err
 }
 
@@ -52,7 +49,7 @@ func Save(configObj *configuration.Configuration) error {
 		return err
 	}
 
-	path := fmt.Sprintf("%s/%s/%s/config.yaml", configObj.Environment.HOMEDIR, static.ROOTSMR, static.CONFIGDIR)
+	path := fmt.Sprintf("%s/%s/%s/config.yaml", configObj.Environment.Home, static.ROOTSMR, static.CONFIGDIR)
 
 	err = os.WriteFile(path, yamlObj, 0644)
 	if err != nil {
@@ -63,10 +60,7 @@ func Save(configObj *configuration.Configuration) error {
 }
 
 func SetFlags() {
-	flag.String("project", "", "Project name")
-	flag.Bool("opt", false, "Run in opt mode - do it only in containers")
-	flag.String("port", "0.0.0.0:1443", "SMR TLS listening interface and port")
-	flag.String("target", "development", "Development or production environment")
+	flag.String("port", "0.0.0.0:1443", "Simplecontainer TLS listening interface and port")
 	flag.String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
@@ -81,49 +75,4 @@ func SetFlags() {
 	pflag.Parse()
 
 	viper.BindPFlags(pflag.CommandLine)
-}
-
-func ReadFlags(configObj *configuration.Configuration) {
-	configObj.Flags.Opt = viper.GetBool("opt")
-	configObj.Flags.Verbose = viper.GetBool("verbose")
-}
-
-func GetEnvironmentInfo() *configuration.Environment {
-	HOMEDIR, err := os.UserHomeDir()
-	if err != nil {
-		panic(err.Error())
-	}
-
-	OPTDIR := "/opt/smr"
-
-	if viper.GetBool("opt") {
-		if _, err = os.Stat(OPTDIR); err != nil {
-			if err = os.Mkdir(OPTDIR, os.FileMode(0750)); err != nil {
-				panic(err.Error())
-			}
-		}
-	}
-
-	if err != nil {
-		panic(err)
-	}
-
-	return &configuration.Environment{
-		HOMEDIR:    HOMEDIR,
-		OPTDIR:     OPTDIR,
-		PROJECTDIR: fmt.Sprintf("%s/%s", HOMEDIR, static.ROOTDIR),
-		AGENTIP:    GetOutboundIP().String(),
-	}
-}
-
-func GetOutboundIP() net.IP {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-
-	return localAddr.IP
 }

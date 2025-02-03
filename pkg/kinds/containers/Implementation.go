@@ -3,7 +3,6 @@ package containers
 import (
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -16,8 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
-	"strings"
 )
 
 func (containers *Containers) Start() error {
@@ -32,41 +29,7 @@ func (containers *Containers) Start() error {
 func (containers *Containers) GetShared() interface{} {
 	return containers.Shared
 }
-func (containers *Containers) Propose(c *gin.Context, user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_CONTAINERS)
 
-	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.ContainersDefinition)
-
-	valid, err := definition.Validate()
-
-	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
-
-	var bytes []byte
-	bytes, err = definition.ToJsonWithKind()
-
-	switch c.Request.Method {
-	case http.MethodPost:
-		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT, containers.Shared.Manager.Config.KVStore.Node)
-		break
-	case http.MethodDelete:
-		containers.Shared.Manager.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, static.CATEGORY_OBJECT_DELETE, containers.Shared.Manager.Config.KVStore.Node)
-		break
-	}
-
-	return common.Response(http.StatusOK, "object applied", nil, nil), nil
-}
 func (containers *Containers) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequest(static.KIND_CONTAINERS)
 
@@ -86,7 +49,7 @@ func (containers *Containers) Apply(user *authentication.User, jsonData []byte, 
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	var jsonStringFromRequest []byte
@@ -151,7 +114,7 @@ func (containers *Containers) Compare(user *authentication.User, jsonData []byte
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	changed, err := request.Definition.Changed(format, obj)
@@ -179,7 +142,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 
 	definition := request.Definition.Definition.(*v1.ContainersDefinition)
 
-	format := f.New("containers", definition.Meta.Group, definition.Meta.Name, "object")
+	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINERS, definition.Meta.Group, definition.Meta.Name)
 	obj := objects.New(containers.Shared.Client.Get(user.Username), user)
 
 	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINERS)
@@ -196,7 +159,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 	}
 
 	for _, container := range existingDefinition.(*v1.ContainersDefinition).Spec {
-		def, _ := container.ToJsonWithKind()
+		def, _ := container.ToJson()
 		go func() {
 			_, err = containers.Shared.Manager.KindsRegistry["container"].Delete(user, def, agent)
 			if err != nil {
@@ -207,27 +170,7 @@ func (containers *Containers) Delete(user *authentication.User, jsonData []byte,
 
 	return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 }
-func (containers *Containers) Run(operation string, request contracts.Control) contracts.Response {
-	reflected := reflect.TypeOf(containers)
-	reflectedValue := reflect.ValueOf(containers)
 
-	for i := 0; i < reflected.NumMethod(); i++ {
-		method := reflected.Method(i)
-
-		if operation == strings.ToLower(method.Name) {
-			inputs := []reflect.Value{reflect.ValueOf(request)}
-			returnValue := reflectedValue.MethodByName(method.Name).Call(inputs)
-
-			return returnValue[0].Interface().(contracts.Response)
-		}
-	}
-
-	return contracts.Response{
-		HttpStatus:       400,
-		Explanation:      "server doesn't support requested functionality",
-		ErrorExplanation: "implementation is missing",
-		Error:            true,
-		Success:          false,
-		Data:             nil,
-	}
+func (containers *Containers) Event(event contracts.Event) error {
+	return nil
 }

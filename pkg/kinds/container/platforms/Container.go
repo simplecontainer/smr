@@ -12,6 +12,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/smaps"
@@ -24,7 +25,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 
 	switch platform {
 	case static.PLATFORM_DOCKER:
-		dockerPlatform, err := docker.New(name, config, definition)
+		dockerPlatform, err := docker.New(name, definition)
 
 		if err != nil {
 			return nil, err
@@ -106,14 +107,17 @@ func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(follow)
 }
 
-func (c *Container) GetContainerState() (string, error) {
+func (c *Container) GetContainerState() (state.State, error) {
 	return c.Platform.GetContainerState()
 }
-func (c *Container) Run(config *configuration.Configuration, http *client.Http, records *dns.Records, user *authentication.User) (*TDTypes.Container, error) {
-	return c.Platform.Run(config, http, records, user)
+func (c *Container) Run() (*TDTypes.Container, error) {
+	return c.Platform.Run()
 }
-func (c *Container) Prepare(client *client.Http, user *authentication.User) error {
-	return c.Platform.Prepare(client, user, c.General.Runtime)
+func (c *Container) Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+	return c.Platform.Prepare(config, client, user, c.General.Runtime)
+}
+func (c *Container) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
+	return c.Platform.PostRun(config, dnsCache)
 }
 
 func (c *Container) AttachToNetworks(agentContainerName string) error {
@@ -131,7 +135,7 @@ func (c *Container) SyncNetworkInformation() error {
 
 func (c *Container) HasDependencyOn(kind string, group string, name string) bool {
 	for _, format := range c.GetRuntime().ObjectDependencies {
-		if format.Identifier == name && format.Group == group && format.Kind == kind {
+		if format.GetName() == name && format.GetGroup() == group && format.GetKind() == kind {
 			return true
 		}
 	}

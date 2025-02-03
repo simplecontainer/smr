@@ -38,17 +38,17 @@ func (ports *Ports) Add(port v1.ContainerPort) {
 	ports.Ports = append(ports.Ports, NewPort(port))
 }
 
-func (ports *Ports) ToPortExposed() (nat.PortSet, error) {
+func (ports *Ports) ToPortExposed() nat.PortSet {
 	NatSet := nat.PortSet{}
 
 	for _, port := range ports.Ports {
 		NatSet[nat.Port(port.Container)] = struct{}{}
 	}
 
-	return NatSet, nil
+	return NatSet
 }
 
-func (ports *Ports) ToPortMap() (nat.PortMap, error) {
+func (ports *Ports) ToPortMap() nat.PortMap {
 	NatMap := nat.PortMap{}
 
 	for _, port := range ports.Ports {
@@ -57,7 +57,7 @@ func (ports *Ports) ToPortMap() (nat.PortMap, error) {
 			HostPortMapping, err := nat.ParsePortSpec(portSpec)
 
 			if err != nil {
-				return NatMap, err
+				return NatMap
 			}
 
 			var HostPortBinding = make([]nat.PortBinding, 0)
@@ -70,5 +70,5 @@ func (ports *Ports) ToPortMap() (nat.PortMap, error) {
 		}
 	}
 
-	return NatMap, nil
+	return NatMap
 }

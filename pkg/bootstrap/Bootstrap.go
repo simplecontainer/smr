@@ -13,17 +13,7 @@ func CreateProject(agent string, configObj *configuration.Configuration) ([]stri
 		return nil, errors.New("project name cannot be empty")
 	}
 
-	return CreateDirectoryTree(fmt.Sprintf("%s/%s", configObj.Environment.HOMEDIR, agent))
-}
-
-func DeleteProject(project string, configObj *configuration.Configuration) error {
-	if project == "" {
-		return errors.New("project name cannot be empty")
-	}
-
-	projectDir := fmt.Sprintf("%s/%s", configObj.Environment.HOMEDIR, project)
-
-	return ClearDirectoryTree(projectDir)
+	return CreateDirectoryTree(fmt.Sprintf("%s/%s", configObj.Environment.Home, agent))
 }
 
 func CreateDirectoryTree(projectDir string) ([]string, error) {
@@ -46,14 +36,4 @@ func CreateDirectoryTree(projectDir string) ([]string, error) {
 	}
 
 	return created, nil
-}
-
-func ClearDirectoryTree(projectDir string) error {
-	err := os.RemoveAll(projectDir)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

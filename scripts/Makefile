@@ -1,16 +1,23 @@
 build:
 	./development/build.sh
 
-build_docker:
-	./development/docker_build.sh
+build-docker:
+	./development/docker-build.sh
 
-run_standalone:
-	./development/docker_run_standalone.sh
+build-docker-debug:
+	./development/docker-build-debug.sh
 
-run_cluster:
-	./development/docker_run_cluster.sh
+run-standalone:
+	./development/docker-run-standalone.sh
+
+run-cluster:
+	./development/docker-run-cluster.sh
+
+run-cluster-debug:
+	./development/docker-run-cluster-debug.sh
 
 build: build
-docker: build_docker
-standalone: build build_docker run_standalone
-cluster: build build_docker run_cluster
+docker: build-docker
+standalone: build build-docker run-standalone
+cluster: build build-docker run-cluster
+cluster-debug: build-docker-debug run-cluster-debug

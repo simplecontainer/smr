@@ -10,14 +10,11 @@ import (
 )
 
 type GitopsDefinition struct {
-	Meta GitopsMeta `json:"meta" validate:"required"`
-	Spec GitopsSpec `json:"spec" validate:"required"`
-}
-
-type GitopsMeta struct {
-	Group   string            `json:"group" validate:"required"`
-	Name    string            `json:"name" validate:"required"`
-	Runtime *commonv1.Runtime `json:"runtime"`
+	Kind   string          `json:"kind" validate:"required"`
+	Prefix string          `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Spec   GitopsSpec      `json:"spec" validate:"required"`
+	State  *commonv1.State `json:"state"`
 }
 
 type GitopsSpec struct {
@@ -42,12 +39,28 @@ type GitopsHttpauthRef struct {
 	Name  string
 }
 
+func (gitops *GitopsDefinition) GetPrefix() string {
+	return gitops.Prefix
+}
+
 func (gitops *GitopsDefinition) SetRuntime(runtime *commonv1.Runtime) {
 	gitops.Meta.Runtime = runtime
 }
 
 func (gitops *GitopsDefinition) GetRuntime() *commonv1.Runtime {
 	return gitops.Meta.Runtime
+}
+
+func (gitops *GitopsDefinition) GetMeta() commonv1.Meta {
+	return gitops.Meta
+}
+
+func (gitops *GitopsDefinition) GetState() *commonv1.State {
+	return gitops.State
+}
+
+func (gitops *GitopsDefinition) SetState(state *commonv1.State) {
+	gitops.State = state
 }
 
 func (gitops *GitopsDefinition) GetKind() string {
@@ -103,28 +116,6 @@ func (gitops *GitopsDefinition) FromJson(bytes []byte) error {
 func (gitops *GitopsDefinition) ToJson() ([]byte, error) {
 	bytes, err := json.Marshal(gitops)
 	return bytes, err
-}
-
-func (gitops *GitopsDefinition) ToJsonWithKind() ([]byte, error) {
-	bytes, err := json.Marshal(gitops)
-
-	var definition map[string]interface{}
-	err = json.Unmarshal(bytes, &definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	definition["kind"] = "gitops"
-
-	var marshalled []byte
-	marshalled, err = json.Marshal(definition)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return marshalled, err
 }
 
 func (gitops *GitopsDefinition) ToJsonString() (string, error) {

@@ -2,20 +2,22 @@ package f
 
 import (
 	"github.com/go-playground/assert/v2"
-
+	"github.com/simplecontainer/smr/pkg/contracts"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
 	type Wanted struct {
-		format *Format
+		format contracts.Format
 	}
 
 	type Parameters struct {
-		kind       string
-		group      string
-		identifier string
-		key        string
+		prefix   string
+		version  string
+		category string
+		kind     string
+		group    string
+		name     string
 	}
 
 	testCases := []struct {
@@ -29,13 +31,15 @@ func TestNew(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 			Parameters{
-				kind:       "container",
-				group:      "mysql",
-				key:        "mysql",
-				identifier: "object",
+				prefix:   "simplecontainer.io",
+				version:  "v1",
+				category: "secret",
+				kind:     "secret",
+				group:    "test",
+				name:     "test",
 			},
 		},
 	}
@@ -44,15 +48,21 @@ func TestNew(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			format := New(tc.parameters.kind, tc.parameters.group, tc.parameters.key, tc.parameters.identifier)
-			assert.Equal(t, tc.wanted.format, format)
+			format := New(tc.parameters.prefix, tc.parameters.version, tc.parameters.category, tc.parameters.kind, tc.parameters.group, tc.parameters.name)
+
+			// UUID will be different for two new formats so match them to pass test
+			format.UUID = tc.wanted.format.GetUUID()
+
+			assert.Equal(t, tc.wanted.format.ToString(), format.ToString())
+			assert.Equal(t, tc.wanted.format.ToBytes(), format.ToBytes())
+			assert.Equal(t, tc.wanted.format.ToStringWithUUID(), format.ToStringWithUUID())
 		})
 	}
 }
 
-func TestNewFromString(t *testing.T) {
+func TestInverse(t *testing.T) {
 	type Wanted struct {
-		format *Format
+		format contracts.Format
 	}
 
 	type Parameters struct {
@@ -70,53 +80,33 @@ func TestNewFromString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 			Parameters{
-				format: "container.mysql.mysql.object",
+				format: "secret/test/test",
 			},
-		},
-		{
-			"Valid format missing identifier",
-			func() {
-			},
-			Wanted{
-				format: New("container", "mysql", "mysql", ""),
-			},
-			Parameters{
-				format: "container.mysql.mysql",
-			},
-		},
-		{
-			"Invalid format",
-			func() {
-			},
-			Wanted{
-				format: &Format{},
-			},
-			Parameters{
-				format: "..x.x.x..",
-			},
-		},
-	}
+		}}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			format := NewFromString(tc.parameters.format)
-			assert.Equal(t, tc.wanted.format, format)
+			format := NewFromString(tc.parameters.format).Inverse().(Format)
+
+			assert.Equal(t, tc.wanted.format.GetKind(), format.GetKind())
+			assert.Equal(t, tc.wanted.format.GetGroup(), format.GetGroup())
+			assert.Equal(t, tc.wanted.format.GetName(), format.GetName())
 		})
 	}
 }
 
-func TestToString(t *testing.T) {
+func TestNewFromString(t *testing.T) {
 	type Wanted struct {
-		string string
+		format contracts.Format
 	}
 
 	type Parameters struct {
-		format *Format
+		format string
 	}
 
 	testCases := []struct {
@@ -130,10 +120,72 @@ func TestToString(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				string: "container.mysql.mysql.object",
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 			Parameters{
-				format: New("container", "mysql", "mysql", "object"),
+				format: "simplecontainer.io/v1/secret/secret/test/test",
+			},
+		},
+		{
+			"Valid format missing identifier",
+			func() {
+			},
+			Wanted{
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test"),
+			},
+			Parameters{
+				format: "simplecontainer.io/v1/secret/secret/test",
+			},
+		},
+		{
+			"Invalid format",
+			func() {
+			},
+			Wanted{
+				format: NewFromString(""),
+			},
+			Parameters{
+				format: "//x/x/x//",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.mockFunc()
+
+			format := NewFromString(tc.parameters.format)
+
+			assert.Equal(t, tc.wanted.format.ToString(), format.ToString())
+			assert.Equal(t, tc.wanted.format.ToBytes(), format.ToBytes())
+		})
+	}
+}
+
+func TestToString(t *testing.T) {
+	type Wanted struct {
+		string string
+	}
+
+	type Parameters struct {
+		format contracts.Format
+	}
+
+	testCases := []struct {
+		name       string
+		mockFunc   func()
+		wanted     Wanted
+		parameters Parameters
+	}{
+		{
+			"Valid format",
+			func() {
+			},
+			Wanted{
+				string: "simplecontainer.io/v1/secret/secret/test/test",
+			},
+			Parameters{
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 		},
 		{
@@ -144,7 +196,7 @@ func TestToString(t *testing.T) {
 				string: "",
 			},
 			Parameters{
-				format: New("", "mysql", "mysql", "object"),
+				format: New("", "secret", "", "test"),
 			},
 		},
 	}
@@ -165,7 +217,7 @@ func TestToBytes(t *testing.T) {
 	}
 
 	type Parameters struct {
-		format *Format
+		format contracts.Format
 	}
 
 	testCases := []struct {
@@ -179,10 +231,10 @@ func TestToBytes(t *testing.T) {
 			func() {
 			},
 			Wanted{
-				bytes: []byte("container.mysql.mysql.object"),
+				bytes: []byte("simplecontainer.io/v1/secret/secret/test/test"),
 			},
 			Parameters{
-				format: New("container", "mysql", "mysql", "object"),
+				format: New("simplecontainer.io", "v1", "secret", "secret", "test", "test"),
 			},
 		},
 		{
@@ -193,7 +245,7 @@ func TestToBytes(t *testing.T) {
 				bytes: []byte(""),
 			},
 			Parameters{
-				format: New("", "mysql", "mysql", "object"),
+				format: New("", "secret", "", "test"),
 			},
 		},
 	}
@@ -202,8 +254,8 @@ func TestToBytes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			formatToBytes := tc.parameters.format.ToBytes()
-			assert.Equal(t, tc.wanted.bytes, formatToBytes)
+			formatToString := tc.parameters.format.ToBytes()
+			assert.Equal(t, tc.wanted.bytes, formatToString)
 		})
 	}
 }
