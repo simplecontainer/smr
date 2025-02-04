@@ -3,6 +3,7 @@ package status
 import (
 	"errors"
 	"github.com/hmdsefi/gograph"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
 	"strings"
 	"time"
@@ -174,12 +175,21 @@ func (status *Status) TransitionState(group string, container string, destinatio
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				status.Logger.Info("container transitioned state",
-					zap.String("old-state", status.State.State),
-					zap.String("new-state", destination),
-					zap.String("group", group),
-					zap.String("container", container),
-				)
+				if status.Logger != nil {
+					status.Logger.Info("container transitioned state",
+						zap.String("old-state", status.State.State),
+						zap.String("new-state", destination),
+						zap.String("group", group),
+						zap.String("container", container),
+					)
+				} else {
+					logger.Log.Info("container transitioned state",
+						zap.String("old-state", status.State.State),
+						zap.String("new-state", destination),
+						zap.String("group", group),
+						zap.String("container", container),
+					)
+				}
 
 				oldState := strings.Clone(status.State.State)
 
@@ -193,11 +203,19 @@ func (status *Status) TransitionState(group string, container string, destinatio
 		}
 
 		if status.State.State != destination {
-			status.Logger.Info("container failed to transition state",
-				zap.String("old-state", status.State.State),
-				zap.String("new-state", destination),
-				zap.String("container", container),
-			)
+			if status.Logger != nil {
+				status.Logger.Info("container failed to transition state",
+					zap.String("old-state", status.State.State),
+					zap.String("new-state", destination),
+					zap.String("container", container),
+				)
+			} else {
+				logger.Log.Info("container failed to transition state",
+					zap.String("old-state", status.State.State),
+					zap.String("new-state", destination),
+					zap.String("container", container),
+				)
+			}
 
 			return false
 		}

@@ -16,6 +16,7 @@ import (
 
 func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	containerObj := containerWatcher.Container
+	containerObj.GetStatus().Logger = containerWatcher.Logger
 
 	if containerObj.GetStatus().Reconciling {
 		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
