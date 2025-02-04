@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
@@ -30,13 +31,15 @@ type GitopsSpec struct {
 }
 
 type GitopsCertKeyRef struct {
-	Group string
-	Name  string
+	Prefix string
+	Group  string
+	Name   string
 }
 
 type GitopsHttpauthRef struct {
-	Group string
-	Name  string
+	Prefix string
+	Group  string
+	Name   string
 }
 
 func (gitops *GitopsDefinition) GetPrefix() string {
@@ -71,39 +74,22 @@ func (gitops *GitopsDefinition) ResolveReferences(obj contracts.ObjectInterface)
 	references := make([]contracts.IDefinition, 0)
 
 	if gitops.Spec.HttpAuthRef.Group != "" && gitops.Spec.HttpAuthRef.Name != "" {
-		/*
-			format := f.New("httpauth", gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name, "object")
+		format := f.New(gitops.Spec.HttpAuthRef.Prefix, "kind", static.KIND_HTTPAUTH, gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name)
+		obj.Find(format)
 
-			request, err := common.NewRequest(static.KIND_HTTPAUTH)
-
-			if err != nil {
-				return references, err
-			}
-
-			err = request.Resolve(obj, format)
-
-			if err != nil {
-				return references, err
-			}
-		*/
+		if !obj.Exists() {
+			return references, errors.New("gitops reference httpauth not found")
+		}
 	}
 
 	if gitops.Spec.CertKeyRef.Group != "" && gitops.Spec.CertKeyRef.Name != "" {
-		/*
-			format := f.New("certkey", gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name, "object")
+		format := f.New(gitops.Spec.HttpAuthRef.Prefix, "kind", static.KIND_CERTKEY, gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name)
 
-			request, err := common.NewRequest(static.KIND_CERTKEY)
+		obj.Find(format)
 
-			if err != nil {
-				return references, err
-			}
-
-			err = request.Resolve(obj, format)
-
-			if err != nil {
-				return references, err
-			}
-		*/
+		if !obj.Exists() {
+			return references, errors.New("gitops reference httpauth not found")
+		}
 	}
 
 	return references, nil
