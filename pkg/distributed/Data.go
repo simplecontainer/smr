@@ -84,10 +84,10 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 
 	switch request.Definition.GetState().GetOpt("action").Value {
 	case static.REMOVE_KIND:
-		helpers.LogIfError(request.Remove(replication.Client.Http, replication.Client.API))
+		helpers.LogIfError(request.AttemptRemove(replication.Client.Http, replication.Client.API))
 		break
 	default:
-		helpers.LogIfError(request.Apply(replication.Client.Http, replication.Client.API))
+		helpers.LogIfError(request.AttemptApply(replication.Client.Http, replication.Client.API))
 		break
 	}
 }

@@ -4,14 +4,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
-	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -24,50 +20,27 @@ func (resource *Resource) GetShared() interface{} {
 	return resource.Shared
 }
 
-func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_RESOURCE)
+func (resource *Resource) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_RESOURCE, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.ResourceDefinition)
-
-	valid, err := definition.Validate()
-
-	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
-
-	var jsonStringFromRequest []byte
-	jsonStringFromRequest, err = definition.ToJson()
-
-	logger.Log.Debug("server received resource object", zap.String("definition", string(jsonStringFromRequest)))
-
-	obj, err = request.Definition.Apply(format, obj, static.KIND_RESOURCE)
+	obj, err := request.Apply(resource.Shared.Client, user)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, static.KIND_CONTAINER, definition.GetKind(), definition.Meta.Group, definition.Meta.Name, nil)
+		event := events.New(events.EVENT_CHANGE, static.KIND_CONTAINER, request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
 
-		var bytes []byte
-		bytes, err = event.ToJson()
+		if resource.Shared.Manager.Cluster.Node.NodeID == request.Definition.GetRuntime().GetNode() {
+			err = event.Propose(resource.Shared.Manager.Cluster.KVStore, request.Definition.GetRuntime().GetNode())
 
-		if err != nil {
-			logger.Log.Debug("failed to dispatch event", zap.Error(err))
-		} else {
-			if resource.Shared.Manager.Cluster.Node.NodeID == definition.GetRuntime().GetNode() {
-				resource.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, definition.GetRuntime().GetNode())
+			if err != nil {
+				logger.Log.Error(err.Error())
 			}
 		}
 	}
@@ -75,58 +48,36 @@ func (resource *Resource) Apply(user *authentication.User, jsonData []byte, agen
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (resource *Resource) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_RESOURCE)
+func (resource *Resource) Compare(user *authentication.User, definition []byte) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_RESOURCE, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.ResourceDefinition)
-
-	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
-
-	changed, err := request.Definition.Changed(format, obj)
+	_, err = request.Apply(resource.Shared.Client, user)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
-	}
-
-	if changed {
 		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
+	} else {
+		return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 	}
-
-	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 
-func (resource *Resource) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_RESOURCE)
+func (resource *Resource) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_RESOURCE, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.ResourceDefinition)
-
-	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_RESOURCE, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(resource.Shared.Client.Get(user.Username), user)
-
-	_, err = request.Definition.Delete(format, obj, static.KIND_RESOURCE)
+	_, err = request.Remove(resource.Shared.Client, user)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
+		return common.Response(http.StatusInternalServerError, "", err, nil), err
+	} else {
+		return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 	}
-
-	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
 func (resource *Resource) Event(event contracts.Event) error {

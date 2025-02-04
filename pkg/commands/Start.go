@@ -159,7 +159,7 @@ func Start() {
 
 				v1 := router.Group("/api/v1")
 				{
-					definition := v1.Group("/definition")
+					definition := v1.Group("/attempt")
 					{
 						definition.POST("/:action", api.Kind)
 					}

@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
@@ -15,6 +16,17 @@ func New(event string, target string, kind string, group string, name string, da
 		Name:   name,
 		Data:   data,
 	}
+}
+
+func (event Event) Propose(proposeC *raft.KVStore, node uint64) error {
+	bytes, err := json.Marshal(event)
+
+	if err != nil {
+		return err
+	}
+
+	proposeC.Propose(event.GetKey(), bytes, node)
+	return nil
 }
 
 func (event Event) GetType() string {

@@ -53,7 +53,7 @@ func NewImplementation(kind string) contracts.IDefinition {
 	return def
 }
 
-func (definition *Definition) Apply(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.ObjectInterface, error) {
+func (definition *Definition) Apply(format contracts.Format, obj contracts.ObjectInterface) (contracts.ObjectInterface, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -68,7 +68,7 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 	}
 
 	if obj.Exists() {
-		existing := NewImplementation(kind)
+		existing := NewImplementation(definition.GetKind())
 		err = existing.FromJson(obj.GetDefinitionByte())
 
 		if err != nil {
@@ -86,7 +86,7 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 		return obj, nil
 	}
 }
-func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface, kind string) (contracts.IDefinition, error) {
+func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface) (contracts.IDefinition, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -94,7 +94,7 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 	}
 
 	if obj.Exists() {
-		existing := NewImplementation(kind)
+		existing := NewImplementation(definition.GetKind())
 		err = existing.FromJson(obj.GetDefinitionByte())
 
 		if err != nil {
@@ -147,6 +147,10 @@ func (definition *Definition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (definition *Definition) GetRuntime() *commonv1.Runtime {
 	return definition.Definition.GetRuntime()
+}
+
+func (definition *Definition) GetPrefix() string {
+	return definition.Definition.GetPrefix()
 }
 
 func (definition *Definition) GetMeta() commonv1.Meta {

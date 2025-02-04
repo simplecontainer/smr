@@ -9,7 +9,6 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/events/platform"
-	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
@@ -20,9 +19,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 )
@@ -64,46 +61,26 @@ func (container *Container) GetShared() interface{} {
 	return container.Shared
 }
 
-func (container *Container) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_CONTAINER)
+func (container *Container) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_CONTAINER, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.ContainerDefinition)
-
-	_, err = definition.Validate()
+	obj, err := request.Apply(container.Shared.Client, user)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
-
-	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(container.Shared.Client.Get(user.Username), user)
-
-	var jsonStringFromRequest []byte
-	jsonStringFromRequest, err = definition.ToJson()
-
-	logger.Log.Debug("server received container object", zap.String("definition", string(jsonStringFromRequest)))
 
 	var create []platforms.IContainer
 	var destroy []platforms.IContainer
 
-	obj, err = request.Definition.Apply(format, obj, static.KIND_CONTAINER)
+	create, destroy, err = GenerateContainers(container.Shared, request.Definition.Definition.(*v1.ContainerDefinition), obj.GetDiff())
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
-	} else {
-		create, destroy, err = GenerateContainers(container.Shared, definition, obj.GetDiff())
-
-		if err != nil {
-			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
-		}
+		return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
 	}
 
 	if len(destroy) > 0 {
@@ -169,37 +146,39 @@ func (container *Container) Apply(user *authentication.User, jsonData []byte, ag
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
-func (container *Container) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
-}
-func (container *Container) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_CONTAINER)
+func (container *Container) Compare(user *authentication.User, definition []byte) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_CONTAINER, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
+	_, err = request.Apply(container.Shared.Client, user)
+
+	if err != nil {
+		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
+	} else {
+		return common.Response(http.StatusOK, "object in sync", nil, nil), nil
+	}
+}
+func (container *Container) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_CONTAINER, definition)
+
+	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	definition := request.Definition.Definition.(*v1.ContainerDefinition)
+	_, err = request.Remove(container.Shared.Client, user)
 
-	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_CONTAINER, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(container.Shared.Client.Get(user.Username), user)
+	if err != nil {
+		return common.Response(http.StatusTeapot, "", err, nil), err
+	}
 
 	var destroy []platforms.IContainer
-
-	existingDefinition, err := request.Definition.Delete(format, obj, static.KIND_CONTAINER)
+	destroy, err = GetContainers(container.Shared, request.Definition.Definition.(*v1.ContainerDefinition))
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
-	} else {
-		destroy, err = GetContainers(container.Shared, existingDefinition.(*v1.ContainerDefinition))
-
-		if err != nil {
-			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
-		}
+		return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
 	}
 
 	if err == nil {
@@ -215,17 +194,14 @@ func (container *Container) Delete(user *authentication.User, jsonData []byte, a
 
 			return common.Response(http.StatusOK, "object is deleted", nil, nil), nil
 		} else {
-			return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
+			return common.Response(http.StatusNotFound, "object not found", errors.New("object not found"), nil), errors.New("object not found")
 		}
 	} else {
-		return common.Response(http.StatusNotFound, "container is not found on the server definition sent", errors.New("container not found"), nil), errors.New("container not found")
+		return common.Response(http.StatusNotFound, "object not found", errors.New("object not found"), nil), errors.New("object not found")
 	}
 }
 func (container *Container) Event(event contracts.Event) error {
 	switch event.GetType() {
-	case events.EVENT_DELETE:
-
-		break
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range container.Shared.Watcher.Container {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {

@@ -4,14 +4,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
-	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -24,34 +19,14 @@ func (network *Network) GetShared() interface{} {
 	return network.Shared
 }
 
-func (network *Network) Apply(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_NETWORK)
+func (network *Network) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.NetworkDefinition)
-
-	valid, err := definition.Validate()
-
-	if !valid {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	format := f.New(definition.GetPrefix(), static.CATEGORY_KIND, static.KIND_NETWORK, definition.Meta.Group, definition.Meta.Name)
-	obj := objects.New(network.Shared.Client.Get(user.Username), user)
-
-	var jsonStringFromRequest []byte
-	jsonStringFromRequest, err = definition.ToJson()
-
-	logger.Log.Debug("server received network object", zap.String("definition", string(jsonStringFromRequest)))
-
-	obj, err = request.Definition.Apply(format, obj.(*objects.Object), static.KIND_NETWORK)
+	obj, err := request.Apply(network.Shared.Client, user)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "", err, nil), err
@@ -60,7 +35,7 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	var networkObj *implementation.Network
 
 	if obj.ChangeDetected() || !obj.Exists() {
-		networkObj = implementation.New(jsonData)
+		networkObj = implementation.New(definition)
 	} else {
 		networkObj = implementation.New(obj.GetDefinitionByte())
 	}
@@ -74,58 +49,36 @@ func (network *Network) Apply(user *authentication.User, jsonData []byte, agent 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (network *Network) Compare(user *authentication.User, jsonData []byte) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_NETWORK)
+func (network *Network) Compare(user *authentication.User, definition []byte) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.NetworkDefinition)
-
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
-	obj := objects.New(network.Shared.Client.Get(user.Username), user)
-
-	changed, err := request.Definition.Changed(format, obj)
+	_, err = request.Apply(network.Shared.Client, user)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
-	}
-
-	if changed {
 		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
+	} else {
+		return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 	}
-
-	return common.Response(http.StatusOK, "object in sync", nil, nil), nil
 }
 
-func (network *Network) Delete(user *authentication.User, jsonData []byte, agent string) (contracts.Response, error) {
-	request, err := common.NewRequest(static.KIND_NETWORK)
+func (network *Network) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	if err = request.Definition.FromJson(jsonData); err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	definition := request.Definition.Definition.(*v1.NetworkDefinition)
-
-	format := f.New("network", definition.Meta.Group, definition.Meta.Name, "object")
-	obj := objects.New(network.Shared.Client.Get(user.Username), user)
-
-	_, err = request.Definition.Delete(format, obj, static.KIND_NETWORK)
+	_, err = request.Remove(network.Shared.Client, user)
 
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
+		return common.Response(http.StatusInternalServerError, "", err, nil), err
+	} else {
+		return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 	}
-
-	return common.Response(http.StatusOK, "object in deleted", nil, nil), nil
 }
 
 func (network *Network) Event(event contracts.Event) error {
