@@ -87,7 +87,7 @@ func (request *Request) AttemptApply(client *http.Client, API string) error {
 }
 
 func (request *Request) AttemptRemove(client *http.Client, API string) error {
-	return request.Send("delete", http.MethodDelete, client, API)
+	return request.Send("remove", http.MethodDelete, client, API)
 }
 
 func (request *Request) Send(action string, method string, client *http.Client, API string) error {

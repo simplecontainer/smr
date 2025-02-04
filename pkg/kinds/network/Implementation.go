@@ -108,13 +108,43 @@ func (network *Network) Delete(user *authentication.User, definition []byte, age
 		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
 	}
 
-	_, err = request.Remove(network.Shared.Client, user)
+	obj, err := request.Apply(network.Shared.Client, user)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
+	}
+
+	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node {
+		return common.Response(http.StatusOK, "networks are local scoped", err, nil), nil
+	}
+
+	var networkObj *implementation.Network
+
+	if obj.Exists() {
+		networkObj = implementation.New(obj.GetDefinitionByte())
+	} else {
+		networkObj = implementation.New(definition)
+	}
+
+	members, found, err := networkObj.Find()
 
 	if err != nil {
 		return common.Response(http.StatusInternalServerError, "", err, nil), err
-	} else {
-		return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 	}
+
+	if found {
+		if len(members) > 0 {
+			return common.Response(http.StatusBadRequest, "", errors.New("disconnect all container from network and try again"), nil), err
+		} else {
+			err = networkObj.Remove()
+		}
+	}
+
+	if err != nil {
+		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
+	}
+
+	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
 func (network *Network) Event(event contracts.Event) error {

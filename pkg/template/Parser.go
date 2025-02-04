@@ -1,13 +1,15 @@
 package template
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/smaps"
-	"html/template"
 	"strings"
+	"text/template"
 )
 
 func Parse(name string, value string, client *client.Http, user *authentication.User, runtime *smaps.Smap, depth int) (string, []f.Format, error) {
@@ -25,6 +27,22 @@ func Parse(name string, value string, client *client.Http, user *authentication.
 	t := New(name, value, variables, template.FuncMap{
 		"lookup": func(placeholder string) (string, error) {
 			return Lookup(placeholder, client, user, runtime, dependencies, depth)
+		},
+		"base64decode": func(input string) (string, error) {
+			fmt.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+			fmt.Println(input)
+			decoded, err := base64.StdEncoding.DecodeString(input)
+
+			if err != nil {
+				return input, err
+			}
+
+			fmt.Println(string(decoded))
+
+			return string(decoded), nil
+		},
+		"base64encode": func(input string) string {
+			return base64.StdEncoding.EncodeToString([]byte(input))
 		},
 	})
 

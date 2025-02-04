@@ -1,7 +1,6 @@
 package template
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,17 +58,11 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 
 		if !ok {
 			return placeholder, errors.New(
-				fmt.Sprintf("missing field in the configuration resource: %s", placeholder),
+				fmt.Sprintf("missing field in the secret resource: %s", placeholder),
 			)
 		}
 
-		decoded, err := base64.StdEncoding.DecodeString(secret.Spec.Data[key])
-
-		if err != nil {
-			return placeholder, err
-		}
-
-		return string(decoded), nil
+		return secret.Spec.Data[key], nil
 	case "configuration":
 		name, key, err := Extract(format.GetName())
 

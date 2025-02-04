@@ -118,8 +118,6 @@ func (obj *Object) AddLocalKey(key string, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/key/set/%s", obj.client.API, key)
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
-	fmt.Println(URL)
-
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
 	if response.Success {

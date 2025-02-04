@@ -2,7 +2,7 @@ package template
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 )
 
 func New(name string, tmpl string, values Variables, functions template.FuncMap) Template {
