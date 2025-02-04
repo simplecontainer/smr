@@ -80,16 +80,36 @@ func (gitops *GitopsDefinition) ResolveReferences(obj contracts.ObjectInterface)
 		if !obj.Exists() {
 			return references, errors.New("gitops reference httpauth not found")
 		}
+
+		httpauth := &HttpAuthDefinition{}
+
+		err := json.Unmarshal(obj.GetDefinitionByte(), httpauth)
+
+		if err != nil {
+			return references, err
+		}
+
+		references = append(references, httpauth)
 	}
 
 	if gitops.Spec.CertKeyRef.Group != "" && gitops.Spec.CertKeyRef.Name != "" {
-		format := f.New(gitops.Spec.HttpAuthRef.Prefix, "kind", static.KIND_CERTKEY, gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name)
+		format := f.New(gitops.Spec.CertKeyRef.Prefix, "kind", static.KIND_CERTKEY, gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name)
 
 		obj.Find(format)
 
 		if !obj.Exists() {
 			return references, errors.New("gitops reference httpauth not found")
 		}
+
+		certkey := &CertKeyDefinition{}
+
+		err := json.Unmarshal(obj.GetDefinitionByte(), certkey)
+
+		if err != nil {
+			return references, err
+		}
+
+		references = append(references, certkey)
 	}
 
 	return references, nil

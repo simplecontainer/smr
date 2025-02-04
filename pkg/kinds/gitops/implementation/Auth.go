@@ -17,7 +17,7 @@ func (gitops *Gitops) GenerateSshAuth(definition *v1.CertKeyDefinition) (transpo
 		return nil, err
 	}
 
-	auth.HostKeyCallback, err = ssh.NewKnownHostsCallback()
+	auth.HostKeyCallback, err = ssh.NewKnownHostsCallback("~/.ssh/known_hosts")
 
 	return auth, nil
 }
