@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -45,6 +46,17 @@ func (api *Api) Propose(c *gin.Context) {
 					if !valid {
 						c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "invalid definition sent", err, nil))
 						return
+					}
+
+					if request.Definition.GetRuntime() == nil {
+						request.Definition.SetRuntime(&commonv1.Runtime{
+							Owner:    commonv1.Owner{},
+							Node:     api.Cluster.Node.NodeID,
+							NodeName: api.Cluster.Node.NodeName,
+						})
+					} else {
+						request.Definition.Definition.GetRuntime().SetNode(api.Cluster.Node.NodeID)
+						request.Definition.Definition.GetRuntime().SetNodeName(api.Cluster.Node.NodeName)
 					}
 
 					var bytes []byte

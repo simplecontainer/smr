@@ -18,10 +18,11 @@ import (
 	"strings"
 )
 
-func New(client *client.Client, user *authentication.User, nodeName string) *Replication {
+func New(client *client.Client, user *authentication.User, nodeName string, node uint64) *Replication {
 	return &Replication{
 		Client:     client,
 		NodeName:   nodeName,
+		Node:       node,
 		User:       user,
 		DataC:      make(chan KV.KV),
 		Replicated: smaps.New(),
@@ -82,7 +83,17 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 		return
 	}
 
-	request.Definition.GetRuntime().SetNode(data.Node)
+	if request.Definition.GetState() != nil {
+		if request.Definition.GetState().GetOpt("scope").Value == "local" {
+			if data.Node != replication.Node {
+				logger.Log.Info("locally scoped object only", zap.Uint64("node", data.Node))
+				return
+			} else {
+				fmt.Println(data.Node)
+				fmt.Println(string(data.Val))
+			}
+		}
+	}
 
 	switch request.Definition.GetState().GetOpt("action").Value {
 	case static.REMOVE_KIND:
