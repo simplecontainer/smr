@@ -34,7 +34,7 @@ func (api *Api) Kind(c *gin.Context) {
 				case "apply":
 					response, err = kindObj.Apply(authentication.NewUser(c.Request.TLS), definition, api.Config.NodeName)
 					break
-				case "delete":
+				case "remove":
 					response, err = kindObj.Delete(authentication.NewUser(c.Request.TLS), definition, api.Config.NodeName)
 					break
 				case "compare":

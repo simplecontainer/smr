@@ -477,7 +477,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if containerWatcher.Retry > 12 {
 			containerWatcher.Retry = 0
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_KILL)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEAD)
 		} else {
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PREPARE)
 		}
