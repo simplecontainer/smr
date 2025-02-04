@@ -7,7 +7,6 @@ import (
 	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/logger"
 )
 
 func New(bytes []byte) *Network {
@@ -27,43 +26,42 @@ func New(bytes []byte) *Network {
 }
 
 func (network *Network) Create() error {
-	found, err := network.Find()
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 
 	if err != nil {
 		return err
 	}
 
-	if !found {
-		var cli *dockerClient.Client
-		cli, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv)
+	newNetwork := types.NetworkCreate{IPAM: &dockerNetwork.IPAM{
+		Driver: "default",
+		Config: []dockerNetwork.IPAMConfig{dockerNetwork.IPAMConfig{
+			Subnet: network.IPV4AddressPool,
+		}},
+	}}
 
-		if err != nil {
-			logger.Log.Fatal(err.Error())
-		}
+	_, err = cli.NetworkCreate(context.Background(), network.Name, newNetwork)
 
-		newNetwork := types.NetworkCreate{IPAM: &dockerNetwork.IPAM{
-			Driver: "default",
-			Config: []dockerNetwork.IPAMConfig{dockerNetwork.IPAMConfig{
-				Subnet: network.IPV4AddressPool,
-			}},
-		}}
-
-		_, err = cli.NetworkCreate(context.Background(), network.Name, newNetwork)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return err
 }
 
-func (network *Network) Find() (bool, error) {
+func (network *Network) Remove() error {
+	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
+
+	if err != nil {
+		return err
+	}
+
+	err = cli.NetworkRemove(context.Background(), network.Name)
+
+	return err
+}
+
+func (network *Network) Find() (map[string]dockerNetwork.EndpointResource, bool, error) {
 	ctx := context.Background()
 	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
 
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
 	defer func(cli *dockerClient.Client) {
@@ -77,14 +75,14 @@ func (network *Network) Find() (bool, error) {
 	networks, err = cli.NetworkList(ctx, types.NetworkListOptions{})
 
 	if err != nil {
-		panic(err)
+		return nil, false, err
 	}
 
 	for _, ntwrk := range networks {
 		if ntwrk.Name == network.Name {
-			return true, nil
+			return ntwrk.Containers, true, nil
 		}
 	}
 
-	return false, nil
+	return nil, false, nil
 }
