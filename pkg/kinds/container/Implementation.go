@@ -95,51 +95,56 @@ func (container *Container) Apply(user *authentication.User, definition []byte, 
 	if len(create) > 0 {
 		for _, containerObj := range create {
 			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-			existingWatcher := container.Shared.Watcher.Find(GroupIdentifier)
 
 			if obj.Exists() {
-				if obj.ChangeDetected() {
-					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
-					existingWatcher.Logger.Info("container object modified")
+				existingWatcher := container.Shared.Watcher.Find(GroupIdentifier)
 
+				if obj.ChangeDetected() {
+					existingWatcher.Logger.Info("container object modified, reusing watcher")
 					existingContainer := container.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
+
 					if existingContainer != nil && existingContainer.IsGhost() {
 						existingWatcher.Container.GetStatus().SetState(status.STATUS_TRANSFERING)
 					} else {
-						existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
+						//TODO: Implement check if container exists and only replicas raised - to not touch it
+						existingWatcher.Ticker.Stop()
+
+						containerObj.GetStatus().Logger = existingWatcher.Logger
+						containerObj.GetStatus().SetState(status.STATUS_CREATED)
 						container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
+
+						existingWatcher.Container = containerObj
+						existingWatcher.ContainerQueue <- containerObj
 					}
-
-					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
-					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
-
-					go reconcile.Container(container.Shared, existingWatcher)
 				} else {
-					logger.Log.Info("no change detected in the containers definition")
+					existingWatcher.Logger.Info("no change detected in the containers definition")
 				}
 			} else {
 				_, err = containerObj.GetContainerState()
 				container.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
+				// Create new watcher since it doesn't exist
+				var newWatcher *watcher.Container
+
 				if err != nil {
-					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
-					existingWatcher.Logger.Info("container object created")
+					newWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
+					newWatcher.Logger.Info("container object created")
 
-					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
+					go reconcile.HandleTickerAndEvents(container.Shared, newWatcher)
 
-					existingWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
-					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+					newWatcher.Container.GetStatus().SetState(status.STATUS_CREATED)
+					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, newWatcher)
 				} else {
-					existingWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
-					existingWatcher.Logger.Info("container object created but already is existing - manual intervention needed")
+					newWatcher = reconcile.NewWatcher(containerObj, container.Shared.Manager, user)
+					newWatcher.Logger.Info("container object created but already is existing - manual intervention needed")
 
-					go reconcile.HandleTickerAndEvents(container.Shared, existingWatcher)
+					go reconcile.HandleTickerAndEvents(container.Shared, newWatcher)
 
-					existingWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
-					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, existingWatcher)
+					newWatcher.Container.GetStatus().SetState(status.STATUS_RECREATED)
+					container.Shared.Watcher.AddOrUpdate(GroupIdentifier, newWatcher)
 				}
 
-				go reconcile.Container(container.Shared, existingWatcher)
+				go reconcile.Container(container.Shared, newWatcher)
 			}
 		}
 	}

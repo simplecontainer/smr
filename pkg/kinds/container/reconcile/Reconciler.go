@@ -3,7 +3,6 @@ package reconcile
 import (
 	"context"
 	"fmt"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -109,6 +108,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		break
 	case status.STATUS_CREATED:
 		shared.Registry.Sync(containerObj)
+
 		containerState := GetState(containerWatcher)
 		containerObj.GetStatus().Recreated = false
 
@@ -513,11 +513,15 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 		break
 	case status.STATUS_PENDING:
 		shared.Registry.Sync(containerObj)
-		containerWatcher.Logger.Info("container invalid configuration")
 		err := containerObj.Prepare(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err == nil {
-			go dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
+			go func() {
+				_, err = dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
+				if err != nil {
+					containerWatcher.Logger.Error(err.Error())
+				}
+			}()
 
 			containerWatcher.Logger.Info("container prepared")
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_DEPENDS_CHECKING)
@@ -705,13 +709,4 @@ func GetState(containerWatcher *watcher.Container) state.State {
 	}
 
 	return containerStateEngine
-}
-
-func Wait(timeout time.Duration, f func() error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
-
-	return backoff.Retry(f, backOff)
 }

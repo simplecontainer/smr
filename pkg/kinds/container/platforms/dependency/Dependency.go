@@ -7,7 +7,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"time"
 )
 
@@ -38,13 +37,7 @@ func Ready(registry *registry.Registry, group string, name string, dependsOn []v
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
-			err := SolveDepends(registry, depend.Prefix, group, name, dependency, channel)
-
-			if err != nil {
-				logger.Log.Info(err.Error())
-			}
-
-			return err
+			return SolveDepends(registry, depend.Prefix, group, name, dependency, channel)
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), dependency.Ctx)

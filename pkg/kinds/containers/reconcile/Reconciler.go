@@ -21,7 +21,7 @@ func NewWatcher(containers v1.ContainersDefinition, mgr *manager.Manager) *watch
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 
-	format := f.New(containers.GetPrefix(), "kind", static.KIND_CONTAINER, containers.Meta.Group, containers.Meta.Group)
+	format := f.New(containers.GetPrefix(), "kind", static.KIND_CONTAINERS, containers.Meta.Group, containers.Meta.Name)
 	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
 
 	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
@@ -73,11 +73,17 @@ func Container(shared *shared.Shared, user *authentication.User, containers *wat
 		if err != nil {
 			containers.Logger.Info(err.Error())
 		} else {
-			_, err = shared.Manager.KindsRegistry["container"].Apply(user, definitionJSON, agent)
+			response, err := shared.Manager.KindsRegistry["container"].Apply(user, definitionJSON, agent)
 
 			if err != nil {
 				logger.Log.Error(err.Error())
 				return
+			}
+
+			if response.Success {
+				containers.Logger.Info(response.Explanation)
+			} else {
+				containers.Logger.Error(response.ErrorExplanation)
 			}
 		}
 	}

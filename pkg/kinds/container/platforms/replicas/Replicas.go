@@ -5,7 +5,6 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
-	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
 	"slices"
@@ -42,12 +41,7 @@ func (replicas *Replicas) GenerateContainers(registry *registry.Registry, defini
 			return createContainers, destroyContainers, err
 		}
 
-		existing := registry.FindLocal(newContainer.GetGroup(), newContainer.GetGeneratedName())
-
-		if existing == nil || existing.GetStatus().GetCategory() == status.CATEGORY_END {
-			// Since container already exists in local registry don't recreate it - it's good
-			createContainers = append(createContainers, newContainer)
-		}
+		createContainers = append(createContainers, newContainer)
 	}
 
 	for _, index := range destroy {

@@ -5,7 +5,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hpcloud/tail"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"io"
 	"net/http"
@@ -60,10 +59,5 @@ func Bye(w gin.ResponseWriter, err error) {
 	if err != io.EOF {
 		err = network.StreamByte([]byte(err.Error()), w)
 	}
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
-
 	network.StreamClose(w)
 }
