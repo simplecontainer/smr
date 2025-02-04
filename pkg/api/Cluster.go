@@ -55,12 +55,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
-	api.Cluster, err = cluster.Restore(api.Config)
-
-	if err != nil {
-		api.Cluster = cluster.New()
-	}
-
 	var parsed *url.URL
 	parsed, err = url.Parse(request["node"])
 
@@ -68,79 +62,84 @@ func (api *Api) StartCluster(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 	}
 
-	thisNode := api.Cluster.Cluster.NewNode(api.Config.NodeName, request["node"], fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+	api.Cluster, err = cluster.Restore(api.Config)
 
-	if request["join"] != "" {
-		user := &authentication.User{}
+	if err != nil {
+		api.Cluster = cluster.New()
+		thisNode := api.Cluster.Cluster.NewNode(api.Config.NodeName, request["node"], fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
 
-		// Find any valid certificate for the domain or ip
-		clientObj := api.Manager.Http.FindValidFor(request["join"])
+		if request["join"] != "" {
+			user := &authentication.User{}
 
-		if clientObj != nil {
-			user = authentication.New(clientObj.Username, clientObj.API)
-		}
+			// Find any valid certificate for the domain or ip
+			clientObj := api.Manager.Http.FindValidFor(request["join"])
 
-		if user.Username == "" {
-			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
-			return
-		}
+			if clientObj != nil {
+				user = authentication.New(clientObj.Username, clientObj.API)
+			}
 
-		data, _ := json.Marshal(map[string]string{
-			"node":     request["node"],
-			"nodeName": api.Config.NodeName,
-			"API":      fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port),
-		})
-
-		response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, data)
-
-		if response.Error {
-			c.JSON(http.StatusBadRequest, response)
-			return
-		}
-
-		err = json.Unmarshal(response.Data, &thisNode)
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, response)
-			return
-		}
-
-		// Ask join: what is the cluster?
-		response = network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster", request["join"]), http.MethodGet, nil)
-
-		if response.Success {
-			var bytes []byte
-			var peers []*node.Node
-
-			bytes, err = json.Marshal(response.Data)
-
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+			if user.Username == "" {
+				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
 				return
 			}
 
-			err = json.Unmarshal(bytes, &peers)
+			data, _ := json.Marshal(map[string]string{
+				"node":     request["node"],
+				"nodeName": api.Config.NodeName,
+				"API":      fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port),
+			})
 
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+			response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, data)
+
+			if response.Error {
+				c.JSON(http.StatusBadRequest, response)
 				return
 			}
 
-			for _, n := range peers {
-				api.Cluster.Cluster.Add(n)
+			err = json.Unmarshal(response.Data, &thisNode)
 
-				if n.URL == thisNode.URL {
-					api.Cluster.Node = n
+			if err != nil {
+				c.JSON(http.StatusBadRequest, response)
+				return
+			}
+
+			// Ask join: what is the cluster?
+			response = network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster", request["join"]), http.MethodGet, nil)
+
+			if response.Success {
+				var bytes []byte
+				var peers []*node.Node
+
+				bytes, err = json.Marshal(response.Data)
+
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+					return
 				}
-			}
-		} else {
-			c.JSON(http.StatusBadRequest, response)
-			return
-		}
-	}
 
-	api.Cluster.Node = thisNode
-	api.Cluster.Cluster.Add(thisNode)
+				err = json.Unmarshal(bytes, &peers)
+
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+					return
+				}
+
+				for _, n := range peers {
+					api.Cluster.Cluster.Add(n)
+
+					if n.URL == thisNode.URL {
+						api.Cluster.Node = n
+					}
+				}
+			} else {
+				c.JSON(http.StatusBadRequest, response)
+				return
+			}
+		}
+
+		api.Cluster.Node = thisNode
+		api.Cluster.Cluster.Add(thisNode)
+	}
 
 	api.Manager.Cluster = api.Cluster
 

@@ -28,8 +28,9 @@ func Restore(config *configuration.Configuration) (*Cluster, error) {
 
 	return &Cluster{
 		Node: &node.Node{
-			NodeID: config.KVStore.Node,
-			URL:    config.KVStore.URL,
+			NodeID:   config.KVStore.Node,
+			NodeName: config.NodeName,
+			URL:      config.KVStore.URL,
 		},
 		Cluster: cluster,
 	}, nil

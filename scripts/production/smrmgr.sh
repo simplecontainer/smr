@@ -113,9 +113,9 @@ Manager(){
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
         if [[ $RESTART == "true" ]]; then
-          smr node restart --name "${NODE}" $CLIENT_ARGS --w started
+          smr node restart --image "${REPOSITORY}" --tag "${TAG}" --name "${NODE}" $CLIENT_ARGS --w running
         else
-          smr node upgrade --name "${NODE}" $CLIENT_ARGS --w started
+          smr node upgrade --image "${REPOSITORY}" --tag "${TAG}" -name "${NODE}" $CLIENT_ARGS --w running
         fi
 
         while :
@@ -128,7 +128,7 @@ Manager(){
           fi
         done
 
-        #sudo nohup smr node cluster restore </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+        sudo nohup smr node cluster join --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
     fi
   else
     if [[ ${NODE} != "" ]]; then
