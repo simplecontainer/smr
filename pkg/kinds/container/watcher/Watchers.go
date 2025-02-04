@@ -1,11 +1,7 @@
 package watcher
 
 func (ContainerWatcher *Containers) AddOrUpdate(groupidentifier string, container *Container) {
-	if ContainerWatcher.Watchers[groupidentifier] == nil {
-		ContainerWatcher.Watchers[groupidentifier] = container
-	} else {
-		ContainerWatcher.Watchers[groupidentifier] = container
-	}
+	ContainerWatcher.Watchers[groupidentifier] = container
 }
 
 func (ContainerWatcher *Containers) Remove(groupidentifier string) {
