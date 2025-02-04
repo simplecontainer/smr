@@ -1,6 +1,7 @@
 package distributed
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -14,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
+	"strings"
 )
 
 func New(client *client.Client, user *authentication.User, nodeName string) *Replication {
@@ -156,17 +158,20 @@ func (replication *Replication) HandleDns(format contracts.Format, data KV.KV) {
 func (replication *Replication) HandleOutside(data KV.KV) {
 	obj := objects.New(replication.Client, replication.User)
 
-	replication.Replicated.Map.Store(data.Key, 1)
+	format := f.NewUnformated(strings.TrimPrefix(data.Key, "/"))
+	key := fmt.Sprintf("/%s", format.ToString())
+
+	replication.Replicated.Map.Store(key, 1)
 
 	if !data.IsLocal() {
 		if data.Val == nil {
-			_, err := obj.RemoveLocalKey(data.Key)
+			_, err := obj.RemoveLocalKey(key)
 
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}
 		} else {
-			err := obj.AddLocalKey(data.Key, data.Val)
+			err := obj.AddLocalKey(key, data.Val)
 
 			if err != nil {
 				logger.Log.Error(err.Error())

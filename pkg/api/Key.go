@@ -46,7 +46,7 @@ func (api *Api) ProposeKey(c *gin.Context) {
 // @Failure		400	{object}	  contracts.Response
 // @Failure		404	{object}	  contracts.Response
 // @Failure		500	{object}	  contracts.Response
-// @Router		/key/{key} [post]
+// @Router		/key/set/{key} [post]
 func (api *Api) SetKey(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
@@ -76,8 +76,8 @@ func (api *Api) SetKey(c *gin.Context) {
 // @Failure		400	{object}	  contracts.Response
 // @Failure		404	{object}	  contracts.Response
 // @Failure		500	{object}	  contracts.Response
-// @Router		/key/{key} [delete]
-func (api *Api) DeleteKey(c *gin.Context) {
+// @Router		/key/remove/{key} [delete]
+func (api *Api) RemoveKey(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
 	_, err := api.Etcd.Delete(context.Background(), key)

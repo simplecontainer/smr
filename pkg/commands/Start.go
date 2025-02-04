@@ -178,8 +178,9 @@ func Start() {
 
 					key := v1.Group("key")
 					{
-						key.POST("/*key", api.SetKey)
-						key.DELETE("/*key", api.DeleteKey)
+						key.POST("/propose/*key", api.ProposeKey)
+						key.POST("/set/*key", api.SetKey)
+						key.DELETE("/remove/*key", api.RemoveKey)
 					}
 
 					cluster := v1.Group("cluster")

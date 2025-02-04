@@ -115,8 +115,10 @@ func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
 }
 
 func (obj *Object) AddLocalKey(key string, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/key/%s", obj.client.API, key)
+	URL := fmt.Sprintf("https://%s/api/v1/key/set/%s", obj.client.API, key)
 	response := network.Send(obj.client.Http, URL, "POST", data)
+
+	fmt.Println(URL)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
 
@@ -128,7 +130,7 @@ func (obj *Object) AddLocalKey(key string, data []byte) error {
 }
 
 func (obj *Object) RemoveLocalKey(key string) (bool, error) {
-	URL := fmt.Sprintf("https://%s/api/v1/key/%s", obj.client.API, key)
+	URL := fmt.Sprintf("https://%s/api/v1/key/remove/%s", obj.client.API, key)
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
