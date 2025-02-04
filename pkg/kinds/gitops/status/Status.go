@@ -88,11 +88,13 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				status.Logger.Info("gitops transitioned state",
-					zap.String("old-state", status.State.State),
-					zap.String("new-state", destination),
-					zap.String("gitops", gitops),
-				)
+				if status.Logger != nil {
+					status.Logger.Info("gitops transitioned state",
+						zap.String("old-state", status.State.State),
+						zap.String("new-state", destination),
+						zap.String("gitops", gitops),
+					)
+				}
 
 				status.PreviousState = status.State
 				status.State = edge.Destination().Label()
@@ -104,11 +106,13 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 		}
 
 		if status.State.State != destination {
-			status.Logger.Info("gitops failed to transition state",
-				zap.String("old-state", status.State.State),
-				zap.String("new-state", destination),
-				zap.String("gitops", gitops),
-			)
+			if status.Logger != nil {
+				status.Logger.Info("gitops failed to transition state",
+					zap.String("old-state", status.State.State),
+					zap.String("new-state", destination),
+					zap.String("gitops", gitops),
+				)
+			}
 
 			return false
 		}
