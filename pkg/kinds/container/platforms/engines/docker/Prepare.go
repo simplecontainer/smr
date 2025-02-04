@@ -21,6 +21,8 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 	var dependencies []f.Format
 	var err error
 
+	runtime.Configuration.Map.Store("name", container.GetGeneratedName())
+
 	container.Configuration.Map.Range(func(key, value any) bool {
 		parsed, dependencies, err = template.Parse(key.(string), value.(string), client, user, nil, 0)
 
