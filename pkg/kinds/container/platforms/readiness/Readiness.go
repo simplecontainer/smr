@@ -20,7 +20,23 @@ import (
 	"time"
 )
 
-func Ready(client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
+func Ready(ctx context.Context, client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *ReadinessState, logger *zap.Logger) (bool, error) {
+	var done bool
+	var expired chan bool
+	defer func(expired chan bool) { expired <- true }(expired)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				done = true
+				return
+			case <-expired:
+				return
+			}
+		}
+	}()
+
 	for _, ready := range container.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Readiness {
 		readiness, err := NewReadinessFromDefinition(client, user, container, ready)
 
@@ -38,6 +54,10 @@ func Ready(client *client.Http, container platforms.IContainer, user *authentica
 			return err
 		}
 
+		if done {
+			return false, errors.New("context expired")
+		}
+
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), readiness.Ctx)
 
 		err = backoff.Retry(readiness.Function, backOff)
@@ -48,6 +68,10 @@ func Ready(client *client.Http, container platforms.IContainer, user *authentica
 
 			return false, err
 		}
+	}
+
+	if done {
+		return false, errors.New("context expired")
 	}
 
 	channel <- &ReadinessState{

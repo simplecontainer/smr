@@ -12,7 +12,7 @@ import (
 type Shared struct {
 	Registry *registry.Registry
 	User     *authentication.User
-	Watcher  *watcher.ContainerWatcher
+	Watchers *watcher.Containers
 	DnsCache *dns.Records
 	Manager  *manager.Manager
 	Client   *client.Http

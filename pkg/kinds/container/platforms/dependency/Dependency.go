@@ -33,7 +33,23 @@ func NewDependencyFromDefinition(depend v1.ContainerDependsOn) *Dependency {
 	}
 }
 
-func Ready(registry *registry.Registry, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
+func Ready(ctx context.Context, registry *registry.Registry, group string, name string, dependsOn []v1.ContainerDependsOn, channel chan *State) (bool, error) {
+	var done bool
+	var expired chan bool
+	defer func(expired chan bool) { expired <- true }(expired)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				done = true
+				return
+			case <-expired:
+				return
+			}
+		}
+	}()
+
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
@@ -41,6 +57,10 @@ func Ready(registry *registry.Registry, group string, name string, dependsOn []v
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), dependency.Ctx)
+
+		if done {
+			return false, errors.New("context expired")
+		}
 
 		err := backoff.Retry(dependency.Function, backOff)
 		if err != nil {
@@ -53,6 +73,10 @@ func Ready(registry *registry.Registry, group string, name string, dependsOn []v
 
 			return false, err
 		}
+	}
+
+	if done {
+		return false, errors.New("context expired")
 	}
 
 	channel <- &State{

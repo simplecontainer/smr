@@ -107,8 +107,8 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, eve
 	}
 
 	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).Container.GetStatus().TransitionState(container.GetGroup(), container.GetGeneratedName(), status.STATUS_KILL)
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).Container.GetStatus().TransitionState(container.GetGroup(), container.GetGeneratedName(), status.STATUS_KILL)
+		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 
@@ -133,7 +133,7 @@ func HandleStop(shared *shared.Shared, container platforms.IContainer, event Eve
 		!container.GetStatus().Reconciling {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
 		container.GetStatus().Recreated = false
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 
@@ -142,7 +142,7 @@ func HandleDie(shared *shared.Shared, container platforms.IContainer, event Even
 		!container.GetStatus().Reconciling {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
 		container.GetStatus().Recreated = false
-		shared.Watcher.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 

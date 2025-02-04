@@ -1,81 +1,18 @@
 package reconcile
 
 import (
-	"context"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/authentication"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/kinds/container/watcher"
-	"github.com/simplecontainer/smr/pkg/logger"
-	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.uber.org/zap"
-	"os"
-	"strings"
 	"time"
 )
-
-func NewWatcher(containerObj platforms.IContainer, mgr *manager.Manager, user *authentication.User) *watcher.Container {
-	interval := 5 * time.Second
-	ctx, fn := context.WithCancel(context.Background())
-
-	format := f.New(containerObj.GetDefinition().GetPrefix(), "kind", static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName())
-	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
-
-	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
-
-	containerObj.GetStatus().Logger = loggerObj
-
-	return &watcher.Container{
-		Container:      containerObj,
-		Syncing:        false,
-		ContainerQueue: make(chan platforms.IContainer),
-		ReadinessChan:  make(chan *readiness.ReadinessState),
-		DependencyChan: make(chan *dependency.State),
-		Ctx:            ctx,
-		Cancel:         fn,
-		Ticker:         time.NewTicker(interval),
-		Retry:          0,
-		Logger:         loggerObj,
-		User:           user,
-	}
-}
-
-func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container) {
-	for {
-		select {
-		case <-containerWatcher.Ctx.Done():
-			containerWatcher.Ticker.Stop()
-
-			close(containerWatcher.ContainerQueue)
-			close(containerWatcher.ReadinessChan)
-			close(containerWatcher.DependencyChan)
-
-			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
-			shared.Watcher.Remove(containerWatcher.Container.GetGroupIdentifier())
-
-			return
-		case <-containerWatcher.ContainerQueue:
-			containerWatcher.Ticker.Reset(5 * time.Second)
-			go Container(shared, containerWatcher)
-			break
-		case <-containerWatcher.Ticker.C:
-			if containerWatcher.Container.GetStatus().GetCategory() != status.CATEGORY_END {
-				go Container(shared, containerWatcher)
-			} else {
-				containerWatcher.Ticker.Stop()
-			}
-			break
-		}
-	}
-}
 
 func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 	containerObj := containerWatcher.Container
@@ -191,7 +128,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if err == nil {
 			go func() {
-				_, err = dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
+				_, err = dependency.Ready(containerWatcher.Ctx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
@@ -304,7 +241,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_READINESS_CHECKING)
 
 					go func() {
-						_, err = readiness.Ready(shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
+						_, err = readiness.Ready(containerWatcher.Ctx, shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 						if err != nil {
 							containerWatcher.Logger.Error(err.Error())
 						}
@@ -517,7 +454,7 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if err == nil {
 			go func() {
-				_, err = dependency.Ready(shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
+				_, err = dependency.Ready(containerWatcher.Ctx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainerDefinition).Spec.Container.Dependencies, containerWatcher.DependencyChan)
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
@@ -692,13 +629,16 @@ func Container(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		ReconcileLoop(containerWatcher)
 		break
-
 	}
 }
 
 func ReconcileLoop(containerWatcher *watcher.Container) {
-	containerWatcher.Container.GetStatus().Reconciling = false
-	containerWatcher.ContainerQueue <- containerWatcher.Container
+	if !containerWatcher.Done {
+		containerWatcher.Container.GetStatus().Reconciling = false
+		containerWatcher.ContainerQueue <- containerWatcher.Container
+	} else {
+		containerWatcher = nil
+	}
 }
 
 func GetState(containerWatcher *watcher.Container) state.State {

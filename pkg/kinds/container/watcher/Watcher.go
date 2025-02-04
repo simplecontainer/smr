@@ -1,21 +1,43 @@
 package watcher
 
-func (ContainerWatcher *ContainerWatcher) AddOrUpdate(groupidentifier string, container *Container) {
-	if ContainerWatcher.Container[groupidentifier] == nil {
-		ContainerWatcher.Container[groupidentifier] = container
-	} else {
-		ContainerWatcher.Container[groupidentifier] = container
-	}
-}
+import (
+	"context"
+	"fmt"
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/dependency"
+	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/readiness"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/static"
+	"os"
+	"strings"
+	"time"
+)
 
-func (ContainerWatcher *ContainerWatcher) Remove(groupidentifier string) {
-	delete(ContainerWatcher.Container, groupidentifier)
-}
+func New(containerObj platforms.IContainer, startState string, user *authentication.User) *Container {
+	interval := 5 * time.Second
+	ctx, fn := context.WithCancel(context.Background())
 
-func (ContainerWatcher *ContainerWatcher) Find(groupidentifier string) *Container {
-	if ContainerWatcher.Container[groupidentifier] != nil {
-		return ContainerWatcher.Container[groupidentifier]
-	} else {
-		return nil
+	format := f.New(containerObj.GetDefinition().GetPrefix(), "kind", static.KIND_CONTAINER, containerObj.GetGroup(), containerObj.GetGeneratedName())
+	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+
+	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
+
+	containerObj.GetStatus().Logger = loggerObj
+	containerObj.GetStatus().SetState(startState)
+
+	return &Container{
+		Container:      containerObj,
+		Syncing:        false,
+		ContainerQueue: make(chan platforms.IContainer),
+		ReadinessChan:  make(chan *readiness.ReadinessState),
+		DependencyChan: make(chan *dependency.State),
+		Ctx:            ctx,
+		Cancel:         fn,
+		Ticker:         time.NewTicker(interval),
+		Retry:          0,
+		Logger:         loggerObj,
+		User:           user,
 	}
 }

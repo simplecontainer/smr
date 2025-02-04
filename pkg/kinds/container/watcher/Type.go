@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-type ContainerWatcher struct {
-	Container map[string]*Container
+type Containers struct {
+	Watchers map[string]*Container
 }
 
 type Container struct {
@@ -21,6 +21,7 @@ type Container struct {
 	ReadinessChan  chan *readiness.ReadinessState `json:"-"`
 	DependencyChan chan *dependency.State         `json:"-"`
 	Ctx            context.Context                `json:"-" `
+	Done           bool                           `json:"-"`
 	Cancel         context.CancelFunc             `json:"-"`
 	Ticker         *time.Ticker                   `json:"-"`
 	Retry          int                            `json:"-"`

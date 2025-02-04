@@ -5,6 +5,7 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/container/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/container/registry"
+	"github.com/simplecontainer/smr/pkg/kinds/container/status"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
 	"slices"
@@ -26,10 +27,11 @@ func New(nodeID uint64, nodes []*node.Node) *Replicas {
 	}
 }
 
-func (replicas *Replicas) GenerateContainers(registry *registry.Registry, definition *v1.ContainerDefinition, config *configuration.Configuration) ([]platforms.IContainer, []platforms.IContainer, error) {
+func (replicas *Replicas) GenerateContainers(registry *registry.Registry, definition *v1.ContainerDefinition, config *configuration.Configuration) ([]platforms.IContainer, []platforms.IContainer, []platforms.IContainer, error) {
 	create, destroy := replicas.GetContainersIndexes(registry, definition)
 
 	createContainers := make([]platforms.IContainer, 0)
+	updateContainers := make([]platforms.IContainer, 0)
 	destroyContainers := make([]platforms.IContainer, 0)
 
 	for _, index := range create {
@@ -38,10 +40,16 @@ func (replicas *Replicas) GenerateContainers(registry *registry.Registry, defini
 		newContainer, err := platforms.New(static.PLATFORM_DOCKER, generatedName, config, definition)
 
 		if err != nil {
-			return createContainers, destroyContainers, err
+			return createContainers, updateContainers, destroyContainers, err
 		}
 
-		createContainers = append(createContainers, newContainer)
+		existing := registry.FindLocal(newContainer.GetGroup(), newContainer.GetGeneratedName())
+
+		if existing == nil || existing.GetStatus().GetCategory() == status.CATEGORY_END {
+			createContainers = append(createContainers, newContainer)
+		} else {
+			updateContainers = append(updateContainers, newContainer)
+		}
 	}
 
 	for _, index := range destroy {
@@ -53,7 +61,7 @@ func (replicas *Replicas) GenerateContainers(registry *registry.Registry, defini
 		}
 	}
 
-	return createContainers, destroyContainers, nil
+	return createContainers, updateContainers, destroyContainers, nil
 }
 
 func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definition *v1.ContainerDefinition) ([]platforms.IContainer, error) {
@@ -113,7 +121,7 @@ func Uniform(replicasWanted uint64, existingIndexes []uint64, cluster []uint64, 
 
 	create = ChunkSlice(replicas, len(cluster))
 
-	if len(create[member-1]) < len(existingIndexes) {
+	if len(create[member-1]) <= len(existingIndexes) {
 		for i, existing := range existingIndexes {
 			preserve := false
 
@@ -159,7 +167,7 @@ func Specific(replicasWanted uint64, existingIndexes []uint64, nodes []uint64, m
 
 		create = ChunkSlice(replicas, len(nodes))
 
-		if len(create[normalizedMember]) < len(existingIndexes) {
+		if len(create[normalizedMember]) <= len(existingIndexes) {
 			for i, existing := range existingIndexes {
 				preserve := false
 
