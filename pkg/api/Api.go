@@ -41,7 +41,6 @@ func NewApi(config *configuration.Configuration) *Api {
 
 	api.Kinds.Register("network", []string{""})
 	api.Kinds.Register("containers", []string{"network", "resource", "configuration", "certkey"})
-	api.Kinds.Register("container", []string{})
 	api.Kinds.Register("gitops", []string{"certkey", "httpauth"})
 	api.Kinds.Register("configuration", []string{"secret"})
 	api.Kinds.Register("resource", []string{"configuration"})

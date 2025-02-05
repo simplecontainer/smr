@@ -11,8 +11,7 @@ type Object struct {
 	Byte     []byte
 	Category string
 
-	Changelog diff.Changelog
-	Raw       bool
+	Changelog *diff.Changelog
 	client    *client.Client
 
 	changed bool

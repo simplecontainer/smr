@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
-	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -38,8 +38,8 @@ func (api *Api) Debug(c *gin.Context) {
 	header.Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if kind == static.KIND_CONTAINER {
-		container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
+	if kind == static.KIND_CONTAINERS {
+		container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 
 		if container == nil {
 			network.StreamByte([]byte("container is not found"), w)

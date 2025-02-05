@@ -14,7 +14,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"go.uber.org/zap"
+
 	"net/http"
+
 	"sync"
 	"time"
 )
@@ -25,7 +27,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
-		Changelog: diff.Changelog{},
+		Changelog: &diff.Changelog{},
 		client:    client,
 		Byte:      make([]byte, 0),
 		exists:    false,
@@ -196,9 +198,16 @@ func (obj *Object) FindMany(format contracts.Format) ([]contracts.ObjectInterfac
 }
 
 func (obj *Object) Diff(definition []byte) bool {
-	obj.Changelog, _ = diff.Diff(obj.Byte, definition)
+	changelog, _ := diff.Diff(string(obj.GetDefinitionByte()), string(definition))
 
-	if len(obj.Changelog) > 0 {
+	obj.Changelog = &changelog
+
+	fmt.Println(string(obj.GetDefinitionByte()))
+	fmt.Println(string(definition))
+	fmt.Println(changelog)
+	fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+
+	if len(*obj.Changelog) > 0 {
 		obj.changed = true
 	} else {
 		obj.changed = false
@@ -207,7 +216,7 @@ func (obj *Object) Diff(definition []byte) bool {
 	return obj.changed
 }
 
-func (obj *Object) GetDiff() []diff.Change {
+func (obj *Object) GetDiff() *diff.Changelog {
 	return obj.Changelog
 }
 

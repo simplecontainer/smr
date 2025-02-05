@@ -21,8 +21,6 @@ func NewImplementation(kind string) contracts.IDefinition {
 	switch kind {
 	case static.KIND_GITOPS:
 		def = &v1.GitopsDefinition{}
-	case static.KIND_CONTAINER:
-		def = &v1.ContainerDefinition{}
 	case static.KIND_CONTAINERS:
 		def = &v1.ContainersDefinition{}
 	case static.KIND_CONFIGURATION:

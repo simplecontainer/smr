@@ -7,9 +7,12 @@ import (
 
 func New(mgr *manager.Manager) *Containers {
 	return &Containers{
+		Started: false,
 		Shared: &shared.Shared{
-			Manager: mgr,
-			Client:  mgr.Http,
+			Manager:  mgr,
+			Client:   mgr.Http,
+			DnsCache: mgr.DnsCache,
+			User:     mgr.User,
 		},
 	}
 }

@@ -1,8 +1,6 @@
 package contracts
 
-import (
-	"github.com/r3labs/diff/v3"
-)
+import "github.com/r3labs/diff/v3"
 
 type ObjectInterface interface {
 	GetDefinition() map[string]any
@@ -16,7 +14,7 @@ type ObjectInterface interface {
 	Find(format Format) error
 	FindMany(format Format) ([]ObjectInterface, error)
 	Diff(definition []byte) bool
-	GetDiff() []diff.Change
+	GetDiff() *diff.Changelog
 	Exists() bool
 	ChangeDetected() bool
 }

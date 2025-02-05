@@ -3,8 +3,8 @@ package platform
 import (
 	DTTypes "github.com/docker/docker/api/types"
 	DTEvents "github.com/docker/docker/api/types/events"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/engines/docker"
-	"github.com/simplecontainer/smr/pkg/kinds/container/platforms/types"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 )
 
 func DockerNew(event DTEvents.Message) Event {

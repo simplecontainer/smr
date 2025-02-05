@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/container/shared"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/stream"
