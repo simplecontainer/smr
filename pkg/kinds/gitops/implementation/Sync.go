@@ -18,7 +18,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
 
-		err = request.AttemptApply(client.Clients[user.Username].Http, client.Clients[user.Username].API)
+		err = request.ProposeApply(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 
 		if err != nil {
 			return nil, err

@@ -1,6 +1,8 @@
 package contracts
 
 import (
+	"github.com/simplecontainer/smr/pkg/authentication"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 )
 
@@ -20,9 +22,11 @@ type IDefinition interface {
 }
 
 type TDefinition interface {
-	Apply(Format, ObjectInterface, string) (ObjectInterface, error)
-	Delete(Format, ObjectInterface, string) (IDefinition, error)
-	Changed(Format, ObjectInterface) (bool, error)
+	Apply(client *client.Http, user *authentication.User) (ObjectInterface, error)
+	Delete(client *client.Http, user *authentication.User) (IDefinition, error)
+	Changed(client *client.Http, user *authentication.User) (bool, error)
+	ProposeApply(client *client.Http, user *authentication.User) (bool, error)
+	ProposeRemove(client *client.Http, user *authentication.User) (bool, error)
 	FromJson([]byte) error
 	SetRuntime(*commonv1.Runtime)
 	GetRuntime() *commonv1.Runtime

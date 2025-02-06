@@ -89,11 +89,19 @@ func (request *Request) Action(action string, client *client.Http, user *authent
 }
 
 func (request *Request) AttemptApply(client *http.Client, API string) error {
-	return request.Send("apply", http.MethodPost, client, API)
+	return request.Send("attempt/apply", http.MethodPost, client, API)
 }
 
 func (request *Request) AttemptRemove(client *http.Client, API string) error {
-	return request.Send("remove", http.MethodDelete, client, API)
+	return request.Send("attempt/remove", http.MethodDelete, client, API)
+}
+
+func (request *Request) ProposeApply(client *http.Client, API string) error {
+	return request.Send("propose/apply", http.MethodPost, client, API)
+}
+
+func (request *Request) ProposeRemove(client *http.Client, API string) error {
+	return request.Send("propose/remove", http.MethodDelete, client, API)
 }
 
 func (request *Request) Send(action string, method string, client *http.Client, API string) error {
@@ -103,7 +111,7 @@ func (request *Request) Send(action string, method string, client *http.Client, 
 		return err
 	}
 
-	response := network.Send(client, fmt.Sprintf("https://%s/api/v1/attempt/%s", API, action), method, bytes)
+	response := network.Send(client, fmt.Sprintf("https://%s/api/v1/%s", API, action), method, bytes)
 
 	if !response.Success {
 		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {

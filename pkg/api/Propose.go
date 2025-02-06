@@ -41,7 +41,8 @@ func (api *Api) Propose(c *gin.Context) {
 						return
 					}
 
-					valid, err := request.Definition.Validate()
+					var valid bool
+					valid, err = request.Definition.Validate()
 
 					if !valid {
 						c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "invalid definition sent", err, nil))
@@ -57,6 +58,12 @@ func (api *Api) Propose(c *gin.Context) {
 					} else {
 						request.Definition.Definition.GetRuntime().SetNode(api.Cluster.Node.NodeID)
 						request.Definition.Definition.GetRuntime().SetNodeName(api.Cluster.Node.NodeName)
+					}
+
+					switch c.Request.Method {
+					case http.MethodDelete:
+						request.Definition.GetState().AddOpt("action", static.REMOVE_KIND)
+						break
 					}
 
 					var bytes []byte
