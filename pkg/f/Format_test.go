@@ -189,11 +189,11 @@ func TestToString(t *testing.T) {
 			},
 		},
 		{
-			"Invalid format",
+			"Format with empty spaces",
 			func() {
 			},
 			Wanted{
-				string: "",
+				string: "secret/test",
 			},
 			Parameters{
 				format: New("", "secret", "", "test"),
@@ -238,11 +238,11 @@ func TestToBytes(t *testing.T) {
 			},
 		},
 		{
-			"Invalid format",
+			"Format with spaces",
 			func() {
 			},
 			Wanted{
-				bytes: []byte(""),
+				bytes: []byte("secret/test"),
 			},
 			Parameters{
 				format: New("", "secret", "", "test"),
@@ -254,8 +254,8 @@ func TestToBytes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			formatToString := tc.parameters.format.ToBytes()
-			assert.Equal(t, tc.wanted.bytes, formatToString)
+			formatToBytes := tc.parameters.format.ToBytes()
+			assert.Equal(t, tc.wanted.bytes, formatToBytes)
 		})
 	}
 }

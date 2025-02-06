@@ -23,7 +23,7 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - name: Test code
-        run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go test ./...
+        run: CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go test ./...
 
   build:
     runs-on: ubuntu-latest
