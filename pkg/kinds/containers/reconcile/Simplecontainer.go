@@ -116,7 +116,6 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 				case dependency.SUCCESS:
 					containerWatcher.Logger.Info("dependency check success")
 					return status.STATUS_DEPENDS_SOLVED, true
-					break
 				case dependency.FAILED:
 					containerWatcher.Logger.Info("dependency check failed")
 					return status.STATUS_DEPENDS_FAILED, true
@@ -175,7 +174,6 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 						} else {
 							return status.STATUS_READY, true
 						}
-						break
 					case dependency.FAILED:
 						containerWatcher.Logger.Info("readiness check failed")
 						break
