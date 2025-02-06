@@ -72,7 +72,13 @@ func (request *Request) Action(action string, client *client.Http, user *authent
 		_, err = request.Definition.Apply(format, obj)
 		break
 	case "compare":
-		_, err = request.Definition.Changed(format, obj)
+		var changed bool
+		changed, err = request.Definition.Changed(format, obj)
+
+		if changed {
+			err = errors.New("object changed")
+		}
+
 		break
 	case "remove":
 		_, err = request.Definition.Delete(format, obj)

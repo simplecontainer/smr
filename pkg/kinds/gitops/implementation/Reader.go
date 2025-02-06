@@ -1,64 +1,59 @@
 package implementation
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/definitions"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/packer"
 	"github.com/simplecontainer/smr/pkg/relations"
 	"os"
 	"path/filepath"
 )
 
-func (gitops *Gitops) ReadDefinitions(relations *relations.RelationRegistry) ([]FileKind, error) {
+func (gitops *Gitops) ReadDefinitions(relations *relations.RelationRegistry) ([]*common.Request, error) {
 	entries, err := os.ReadDir(filepath.Clean(fmt.Sprintf("%s/%s", gitops.Path, gitops.DirectoryPath)))
 
 	if err != nil {
 		return nil, err
 	}
 
-	orderedByDependencies := make([]FileKind, 0)
+	var requests []*common.Request
+	orderedByDependencies := make([]*common.Request, 0)
 
 	for _, e := range entries {
 		if filepath.Ext(e.Name()) == ".yaml" {
 			var definition []byte
-			definition, err = definitions.ReadFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, e.Name()))
+			definition, err = packer.ReadYAMLFile(fmt.Sprintf("%s/%s/%s", gitops.Path, gitops.DirectoryPath, e.Name()))
 
 			if err != nil {
 				return nil, err
 			}
 
-			data := make(map[string]interface{})
-
-			err = json.Unmarshal([]byte(definition), &data)
+			requests, err = packer.Parse(definition)
 
 			if err != nil {
 				return nil, err
 			}
 
-			position := -1
+			for _, request := range requests {
+				position := -1
 
-			for index, orderedEntry := range orderedByDependencies {
-				deps := relations.GetDependencies(orderedEntry.Kind)
+				for index, orderedEntry := range orderedByDependencies {
+					deps := relations.GetDependencies(orderedEntry.Kind)
 
-				for _, dp := range deps {
-					if data["kind"].(string) == dp {
-						position = index
+					for _, dp := range deps {
+						if request.Definition.GetKind() == dp {
+							position = index
+						}
 					}
 				}
-			}
 
-			if data["kind"] != nil {
-				if position != -1 {
-					orderedByDependencies = append(orderedByDependencies[:position+1], orderedByDependencies[position:]...)
-					orderedByDependencies[position] = FileKind{
-						File: e.Name(),
-						Kind: data["kind"].(string),
+				if request.Definition.GetKind() != "" {
+					if position != -1 {
+						orderedByDependencies = append(orderedByDependencies[:position+1], orderedByDependencies[position:]...)
+						orderedByDependencies[position] = request
+					} else {
+						orderedByDependencies = append(orderedByDependencies, request)
 					}
-				} else {
-					orderedByDependencies = append(orderedByDependencies, FileKind{
-						File: e.Name(),
-						Kind: data["kind"].(string),
-					})
 				}
 			}
 		}
