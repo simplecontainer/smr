@@ -1,6 +1,8 @@
 package contracts
 
-import "github.com/r3labs/diff/v3"
+import (
+	"github.com/wI2L/jsondiff"
+)
 
 type ObjectInterface interface {
 	GetDefinition() map[string]any
@@ -14,7 +16,7 @@ type ObjectInterface interface {
 	Find(format Format) error
 	FindMany(format Format) ([]ObjectInterface, error)
 	Diff(definition []byte) bool
-	GetDiff() *diff.Changelog
+	GetDiff() jsondiff.Patch
 	Exists() bool
 	ChangeDetected() bool
 }

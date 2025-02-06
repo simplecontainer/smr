@@ -22,8 +22,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-#      - name: Test code
-#        run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go test ./...
+      - name: Test code
+        run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go test ./...
 
   build:
     runs-on: ubuntu-latest

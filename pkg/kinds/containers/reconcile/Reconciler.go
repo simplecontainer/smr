@@ -24,37 +24,33 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 	state := GetState(containerWatcher)
 
-	if containerObj.GetStatus().State.State == status.STATUS_DAEMON_FAILURE {
-		shared.Registry.Sync(containerObj)
+	existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
+	newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
 
-		containerWatcher.Logger.Info("reconciler is going to sleep - runtime daemon error")
-		containerWatcher.Ticker.Stop()
-	} else {
-		existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
-		newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
+	containerObj.GetStatus().Reconciling = false
 
-		containerObj.GetStatus().Reconciling = false
+	if containerObj.GetStatus().State.State != newState {
+		transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
 
-		if containerObj.GetStatus().State.State != newState {
-			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
-
-			if !transitioned {
-				containerWatcher.Logger.Error("failed to transition state",
-					zap.String("old", containerObj.GetStatus().State.State),
-					zap.String("new", newState))
-			}
-		}
-
-		shared.Registry.Sync(containerObj)
-
-		if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
-			containerWatcher.Ticker.Stop()
-		}
-
-		if reconcile {
-			Containers(shared, containerWatcher)
+		if !transitioned {
+			containerWatcher.Logger.Error("failed to transition state",
+				zap.String("old", containerObj.GetStatus().State.State),
+				zap.String("new", newState))
 		}
 	}
+
+	state = GetState(containerWatcher)
+
+	shared.Registry.Sync(containerObj)
+
+	if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
+		containerWatcher.Ticker.Stop()
+	}
+
+	if reconcile {
+		Containers(shared, containerWatcher)
+	}
+
 }
 
 func GetState(containerWatcher *watcher.Container) state.State {

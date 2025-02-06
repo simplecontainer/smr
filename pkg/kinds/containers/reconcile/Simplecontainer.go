@@ -233,7 +233,6 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		}
 
 	case status.STATUS_PENDING_DELETE:
-		fmt.Println(engine)
 		if engine != "" {
 			return status.STATUS_CLEAN, true
 		} else {

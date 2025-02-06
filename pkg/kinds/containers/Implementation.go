@@ -3,7 +3,6 @@ package containers
 import (
 	"errors"
 	"fmt"
-	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -20,6 +19,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/wI2L/jsondiff"
 	"net/http"
 	"os"
 )
@@ -94,6 +94,12 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 	}
 
 	if len(update) > 0 {
+		if len(obj.GetDiff()) == 1 {
+			if obj.GetDiff()[0].Path == "/spec/replicas" {
+				update = nil
+			}
+		}
+
 		for _, containerObj := range update {
 			if obj.Exists() {
 				existingWatcher := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
@@ -258,7 +264,7 @@ func (containers *Containers) Event(event contracts.Event) error {
 	return nil
 }
 
-func GenerateContainers(shared *shared.Shared, definition *v1.ContainersDefinition, changelog *diff.Changelog) ([]platforms.IContainer, []platforms.IContainer, []platforms.IContainer, error) {
+func GenerateContainers(shared *shared.Shared, definition *v1.ContainersDefinition, changelog jsondiff.Patch) ([]platforms.IContainer, []platforms.IContainer, []platforms.IContainer, error) {
 	r := replicas.New(shared.Manager.Cluster.Node.NodeID, shared.Manager.Cluster.Cluster.Nodes)
 	return r.GenerateContainers(shared.Registry, definition, shared.Manager.Config)
 }

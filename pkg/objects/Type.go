@@ -1,9 +1,9 @@
 package objects
 
 import (
-	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/wI2L/jsondiff"
 	"time"
 )
 
@@ -11,7 +11,7 @@ type Object struct {
 	Byte     []byte
 	Category string
 
-	Changelog *diff.Changelog
+	Changelog jsondiff.Patch
 	client    *client.Client
 
 	changed bool
