@@ -10,11 +10,77 @@ import (
 )
 
 type ContainersDefinition struct {
-	Kind   string                         `json:"kind" validate:"required"`
-	Prefix string                         `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta                  `json:"meta"  validate:"required"`
-	Spec   map[string]ContainerDefinition `json:"spec"  validate:"required"`
-	State  *commonv1.State                `json:"state"`
+	Kind   string             `json:"kind" validate:"required"`
+	Prefix string             `json:"prefix" validate:"required"`
+	Meta   commonv1.Meta      `json:"meta"  validate:"required"`
+	Spec   ContainersInternal `json:"spec"  validate:"required"`
+	State  *commonv1.State    `json:"state"`
+}
+
+type ContainersInternal struct {
+	Image         string                `validate:"required" json:"image"`
+	Tag           string                `validate:"required" json:"tag"`
+	Envs          []string              `json:"envs,omitempty"`
+	Entrypoint    []string              `json:"entrypoint,omitempty"`
+	Args          []string              `json:"args,omitempty"`
+	Dependencies  []ContainersDependsOn `json:"dependencies,omitempty"`
+	Readiness     []ContainersReadiness `json:"readiness,omitempty"`
+	Networks      []ContainersNetwork   `json:"networks,omitempty"`
+	Ports         []ContainersPort      `json:"ports,omitempty"`
+	Volumes       []ContainersVolume    `json:"volumes,omitempty"`
+	Configuration map[string]string     `json:"configuration,omitempty"`
+	Resources     []ContainersResource  `json:"resources,omitempty"`
+	Replicas      uint64                `validate:"required" json:"replicas"`
+	Capabilities  []string              `json:"capabilities,omitempty"`
+	Privileged    bool                  `json:"privileged,omitempty"`
+	NetworkMode   string                `json:"network_mode,omitempty"`
+	Spread        ContainersSpread      `json:"spread,omitempty"`
+	Nodes         []string              `json:"nodes,omitempty"`
+	Dns           []string              `json:"dns,omitempty"`
+}
+
+type ContainersDependsOn struct {
+	Prefix  string `json:"prefix" default:"simplecontainers.io/v1"`
+	Name    string `validate:"required" json:"name"`
+	Group   string `validate:"required" json:"group"`
+	Timeout string `validate:"required" json:"timeout"`
+}
+
+type ContainersReadiness struct {
+	Name    string   `validate:"required" json:"name"`
+	Type    string   `json:"type"`
+	URL     string   `json:"url"`
+	Command []string `json:"command"`
+	Timeout string   `validate:"required" json:"timeout"`
+}
+
+type ContainersSpread struct {
+	Spread string   `json:"spread"`
+	Agents []uint64 `json:"agents,omitempty"`
+}
+
+type ContainersNetwork struct {
+	Group string `json:"group"`
+	Name  string `json:"name"`
+}
+
+type ContainersPort struct {
+	Container string `json:"container"`
+	Host      string `json:"host"`
+}
+
+type ContainersVolume struct {
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	HostPath   string `json:"hostPath"`
+	MountPoint string `json:"mountPoint"`
+}
+
+type ContainersResource struct {
+	Name       string
+	Group      string
+	Key        string
+	MountPoint string
 }
 
 func (containers *ContainersDefinition) GetPrefix() string {

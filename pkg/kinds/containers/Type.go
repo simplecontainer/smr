@@ -1,15 +1,13 @@
 package containers
 
 import (
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
 type Containers struct {
-	Started    bool
-	Shared     *shared.Shared
-	Definition v1.ContainersDefinition
+	Started bool
+	Shared  *shared.Shared
 }
 
 const KIND string = static.KIND_CONTAINERS

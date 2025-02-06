@@ -162,6 +162,7 @@ func Start() {
 					definition := v1.Group("/attempt")
 					{
 						definition.POST("/:action", api.Kind)
+						definition.DELETE("/:action", api.Kind)
 					}
 
 					kind := v1.Group("kind")

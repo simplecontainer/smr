@@ -34,7 +34,7 @@ func (resource *Resource) Apply(user *authentication.User, definition []byte, ag
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, static.KIND_CONTAINER, request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
+		event := events.New(events.EVENT_CHANGE, static.KIND_CONTAINERS, request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
 
 		if resource.Shared.Manager.Cluster.Node.NodeID == request.Definition.GetRuntime().GetNode() {
 			err = event.Propose(resource.Shared.Manager.Cluster.KVStore, request.Definition.GetRuntime().GetNode())

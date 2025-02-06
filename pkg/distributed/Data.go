@@ -88,9 +88,6 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 			if data.Node != replication.Node {
 				logger.Log.Info("locally scoped object only", zap.Uint64("node", data.Node))
 				return
-			} else {
-				fmt.Println(data.Node)
-				fmt.Println(string(data.Val))
 			}
 		}
 	}

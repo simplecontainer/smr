@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/r3labs/diff/v3"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -13,8 +12,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/wI2L/jsondiff"
 	"go.uber.org/zap"
+
 	"net/http"
+
 	"sync"
 	"time"
 )
@@ -25,7 +27,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
 	return &Object{
-		Changelog: diff.Changelog{},
+		Changelog: jsondiff.Patch{},
 		client:    client,
 		Byte:      make([]byte, 0),
 		exists:    false,
@@ -196,7 +198,13 @@ func (obj *Object) FindMany(format contracts.Format) ([]contracts.ObjectInterfac
 }
 
 func (obj *Object) Diff(definition []byte) bool {
-	obj.Changelog, _ = diff.Diff(obj.Byte, definition)
+	objByte := obj.GetDefinitionByte()
+
+	if len(objByte) == 0 {
+		objByte = []byte(`{}`)
+	}
+
+	obj.Changelog, _ = jsondiff.CompareJSON(objByte, definition)
 
 	if len(obj.Changelog) > 0 {
 		obj.changed = true
@@ -207,7 +215,7 @@ func (obj *Object) Diff(definition []byte) bool {
 	return obj.changed
 }
 
-func (obj *Object) GetDiff() []diff.Change {
+func (obj *Object) GetDiff() jsondiff.Patch {
 	return obj.Changelog
 }
 

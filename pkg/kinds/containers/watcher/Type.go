@@ -3,23 +3,34 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"go.uber.org/zap"
 	"time"
 )
 
-type ContainersWatcher struct {
-	Containers map[string]*Containers
+type Containers struct {
+	Watchers map[string]*Container
 }
 
-type Containers struct {
-	Definition      v1.ContainersDefinition
-	Syncing         bool
-	Tracking        bool
-	ContainersQueue chan string          `json:"-"`
-	User            *authentication.User `json:"-"`
-	Ctx             context.Context      `json:"-"`
-	Cancel          context.CancelFunc   `json:"-"`
-	Ticker          *time.Ticker         `json:"-"`
-	Logger          *zap.Logger
+type Container struct {
+	Container      platforms.IContainer
+	Reconciler     Reconciler
+	Syncing        bool
+	ContainerQueue chan platforms.IContainer      `json:"-"`
+	ReadinessChan  chan *readiness.ReadinessState `json:"-"`
+	DependencyChan chan *dependency.State         `json:"-"`
+	Ctx            context.Context                `json:"-" `
+	Done           bool                           `json:"-"`
+	Cancel         context.CancelFunc             `json:"-"`
+	Ticker         *time.Ticker                   `json:"-"`
+	Retry          int                            `json:"-"`
+	Logger         *zap.Logger
+	User           *authentication.User `json:"-"`
+}
+
+type Reconciler struct {
+	From  string
+	Count uint64
 }
