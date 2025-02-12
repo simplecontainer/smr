@@ -64,6 +64,10 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 	obj, err := request.Apply(containers.Shared.Client, user)
 
+	if !obj.ChangeDetected() {
+		return common.Response(http.StatusOK, static.STATUS_RESPONSE_APPLIED, nil, nil), nil
+	}
+
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}

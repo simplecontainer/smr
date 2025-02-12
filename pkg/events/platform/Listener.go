@@ -55,7 +55,12 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 		break
 	}
 
-	containerObj := shared.Registry.FindLocal(event.Group, event.Name)
+	var containerObj platforms.IContainer
+
+	if event.Group != "" && event.Name != "" {
+		containerObj = shared.Registry.FindLocal(event.Group, event.Name)
+	}
+
 	if containerObj == nil {
 		return
 	}

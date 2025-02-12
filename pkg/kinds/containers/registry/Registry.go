@@ -26,27 +26,6 @@ func (registry *Registry) AddOrUpdate(group string, name string, containerAddr p
 	registry.ContainersLock.Unlock()
 }
 
-func (registry *Registry) Sync(group string, name string) error {
-	registry.ContainersLock.RLock()
-	container, ok := registry.Containers[GroupIdentifier(group, name)]
-	registry.ContainersLock.RUnlock()
-
-	if ok {
-		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
-		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
-
-		bytes, err := container.ToJson()
-
-		if err != nil {
-			return err
-		}
-
-		return obj.Wait(format, bytes)
-	} else {
-		return errors.New("container not found on this node")
-	}
-}
-
 func (registry *Registry) Remove(prefix string, group string, name string) error {
 	registry.ContainersLock.Lock()
 	defer registry.ContainersLock.Unlock()
@@ -131,6 +110,27 @@ func (registry *Registry) FindGroup(prefix string, group string) []platforms.ICo
 	}
 
 	return result
+}
+
+func (registry *Registry) Sync(group string, name string) error {
+	registry.ContainersLock.RLock()
+	container, ok := registry.Containers[GroupIdentifier(group, name)]
+	registry.ContainersLock.RUnlock()
+
+	if ok {
+		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
+		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
+		bytes, err := container.ToJson()
+
+		if err != nil {
+			return err
+		}
+
+		return obj.Wait(format, bytes)
+	} else {
+		return errors.New("container not found on this node")
+	}
 }
 
 func (registry *Registry) BackOff(group string, name string) error {

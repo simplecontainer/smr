@@ -49,7 +49,6 @@ func (http *Http) FindValidFor(DomainOrIp string) *Client {
 		}
 	}
 
-	fmt.Println("found 0 results")
 	return nil
 }
 

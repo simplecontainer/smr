@@ -4,7 +4,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
 	"slices"
@@ -44,7 +43,7 @@ func (replicas *Replicas) GenerateContainers(registry platforms.Registry, defini
 
 		existing := registry.FindLocal(newContainer.GetGroup(), newContainer.GetGeneratedName())
 
-		if existing == nil || existing.GetStatus().GetCategory() == status.CATEGORY_END {
+		if existing == nil {
 			createContainers = append(createContainers, newContainer)
 		} else {
 			updateContainers = append(updateContainers, newContainer)

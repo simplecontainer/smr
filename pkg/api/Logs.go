@@ -36,7 +36,7 @@ func (api *Api) Logs(c *gin.Context) {
 	header.Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	container := api.KindsRegistry[static.KIND_CONTAINER].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
+	container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 
 	if container == nil {
 		stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", static.KIND_CONTAINER)))
