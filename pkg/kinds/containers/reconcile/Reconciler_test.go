@@ -8,7 +8,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	mock_platforms "github.com/simplecontainer/smr/pkg/kinds/containers/mock"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile/mock"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
@@ -115,14 +114,15 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					select {
 					case containerObj := <-w.ContainerQueue:
 						if containerObj.GetStatus().State.State == status.STATUS_READINESS_CHECKING {
-							engineState.State = "running"
 
 							go func() {
-								w.ReadinessChan <- &readiness.ReadinessState{State: readiness.SUCCESS}
+								w.ContainerQueue <- containerObj
 							}()
-						}
 
-						w.ContainerQueue <- containerObj
+							engineState.State = "running"
+						} else {
+							w.ContainerQueue <- containerObj
+						}
 						break
 					case containerObj := <-w.PauseC:
 						w.PauseC <- containerObj

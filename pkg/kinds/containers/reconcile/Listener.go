@@ -19,6 +19,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 
 			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
 			shared.Watchers.Remove(containerWatcher.Container.GetGroupIdentifier())
+			containerWatcher = nil
 
 			return
 		case <-containerWatcher.ContainerQueue:

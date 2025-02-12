@@ -1,7 +1,6 @@
 package reconcile
 
 import (
-	"fmt"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
@@ -154,7 +153,6 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		for {
 			select {
 			case readinessResult := <-containerWatcher.ReadinessChan:
-				fmt.Println("BLOCKING")
 				state := GetState(containerWatcher)
 
 				if state.State == "running" {

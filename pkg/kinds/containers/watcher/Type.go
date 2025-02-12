@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Containers struct {
 type Container struct {
 	Container      platforms.IContainer
 	Syncing        bool
+	Lock           *sync.RWMutex
 	ContainerQueue chan platforms.IContainer      `json:"-"`
 	ReadinessChan  chan *readiness.ReadinessState `json:"-"`
 	DependencyChan chan *dependency.State         `json:"-"`
