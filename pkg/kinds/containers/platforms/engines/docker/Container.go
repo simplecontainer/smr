@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
 	TDContainer "github.com/docker/docker/api/types/container"
-	dockerNetwork "github.com/docker/docker/api/types/network"
 	IDClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	jsoniter "github.com/json-iterator/go"
@@ -19,11 +17,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/smaps"
-	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -61,7 +57,7 @@ func New(name string, definition contracts.IDefinition) (*Docker, error) {
 	container := &Docker{
 		Name:          definition.(*v1.ContainersDefinition).Meta.Name,
 		GeneratedName: name,
-		Labels:        smaps.NewFromMap(definition.(*v1.ContainersDefinition).Meta.Labels),
+		Labels:        internal.NewLabels(definition.(*v1.ContainersDefinition).Meta.Labels),
 		Group:         definition.(*v1.ContainersDefinition).Meta.Group,
 		Image:         definition.(*v1.ContainersDefinition).Spec.Image,
 		Tag:           definition.(*v1.ContainersDefinition).Spec.Tag,
@@ -102,6 +98,171 @@ func IsDaemonRunning() error {
 	_, err = cli.ContainerList(ctx, TDContainer.ListOptions{})
 
 	return err
+}
+
+func (container *Docker) Run() error {
+	c, _ := container.Get()
+
+	if c == nil || c.State == "exited" {
+		ctx := context.Background()
+		cli := &IDClient.Client{}
+
+		var err error
+
+		cli, err = IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+		if err != nil {
+			return err
+		}
+
+		defer func(cli *IDClient.Client) {
+			err = cli.Close()
+			if err != nil {
+				return
+			}
+		}(cli)
+
+		err = container.PullImage(ctx, cli)
+
+		if err != nil {
+			return err
+		}
+
+		container.Labels.Add("group", container.Group)
+		container.Labels.Add("name", container.GeneratedName)
+		container.Labels.Add("created", strconv.FormatInt(time.Now().Unix(), 10))
+
+		resp := TDContainer.CreateResponse{}
+
+		resp, err = cli.ContainerCreate(ctx, &TDContainer.Config{
+			Hostname:     container.GeneratedName,
+			Labels:       container.Labels.ToMap(),
+			Image:        container.Image + ":" + container.Tag,
+			Env:          container.Env,
+			Entrypoint:   container.Entrypoint,
+			Cmd:          container.Args,
+			Tty:          false,
+			ExposedPorts: container.Ports.ToPortExposed(),
+		}, &TDContainer.HostConfig{
+			DNS:          container.Docker.DNS,
+			Mounts:       container.Volumes.ToMounts(),
+			PortBindings: container.Ports.ToPortMap(),
+			NetworkMode:  TDContainer.NetworkMode(container.NetworkMode),
+			Privileged:   container.Privileged,
+			CapAdd:       container.Capabilities,
+		}, container.BuildNetwork(), nil, container.GeneratedName)
+
+		if err != nil {
+			return err
+		}
+
+		container.DockerID = resp.ID
+
+		if err = cli.ContainerStart(ctx, resp.ID, TDContainer.StartOptions{}); err != nil {
+			return err
+		}
+
+		err = container.SyncNetwork()
+
+		if err != nil {
+			return err
+		}
+
+		_, err = container.Get()
+
+		return nil
+	} else {
+		return errors.New("container is already running")
+	}
+}
+
+func (container *Docker) PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+	var DNS []string
+
+	if config.Environment.NodeIP != "" {
+		DNS = []string{config.Environment.NodeIP, "127.0.0.1"}
+	} else {
+		DNS = []string{"127.0.0.1"}
+	}
+
+	if len(container.Definition.Spec.Dns) != 0 {
+		DNS = append(DNS, container.Definition.Spec.Dns...)
+	}
+
+	container.Docker.DNS = DNS
+
+	runtime.ObjectDependencies = make([]f.Format, 0)
+
+	err := container.PrepareConfiguration(client, user, runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareResources(client, user, runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareLabels(runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareEnvs(runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareReadiness(runtime)
+
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+func (container *Docker) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
+	if container.NetworkMode != "host" {
+		return container.UpdateDns(dnsCache)
+	}
+
+	return nil
+}
+
+func (container *Docker) UpdateDns(dnsCache *dns.Records) error {
+	if dnsCache != nil {
+		for _, network := range container.Networks.Networks {
+			err := dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.AddRecord)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	} else {
+		return errors.New("dns cache is nil")
+	}
+}
+func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) error {
+	if dnsCache != nil {
+		for _, network := range container.Networks.Networks {
+			if network.Docker.NetworkId == networkId {
+				err := dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.RemoveRecord)
+
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	} else {
+		return errors.New("dns cache is nil")
+	}
 }
 
 func (container *Docker) Start() error {
@@ -317,7 +478,6 @@ func (container *Docker) Exec(command []string) (types.ExecResult, error) {
 		return types.ExecResult{}, errors.New("container is not running")
 	}
 }
-
 func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -341,313 +501,6 @@ func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 	} else {
 		return nil, errors.New("container is not running")
 	}
-}
-
-func (container *Docker) GetContainerState() (state.State, error) {
-	dockerContainer, err := DockerGet(container.GeneratedName)
-
-	if err != nil {
-		return state.State{}, err
-	}
-
-	container.DockerID = dockerContainer.ID
-	container.DockerState = dockerContainer.State
-
-	var inspected TDTypes.ContainerJSON
-	inspected, err = DockerInspect(container.DockerID)
-
-	if err != nil {
-		return state.State{}, err
-	}
-
-	return state.State{
-		State: dockerContainer.State,
-		Error: inspected.State.Error,
-	}, nil
-}
-
-func (container *Docker) Get() (*TDTypes.Container, error) {
-	dockerContainer, err := DockerGet(container.GeneratedName)
-
-	if err != nil {
-		return nil, err
-	}
-
-	container.DockerID = dockerContainer.ID
-	container.DockerState = dockerContainer.State
-
-	if dockerContainer.State == "running" {
-		err = container.SyncNetworkInformation()
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &dockerContainer, nil
-}
-func (container *Docker) Run() (*TDTypes.Container, error) {
-	c, _ := container.Get()
-
-	if c == nil || c.State == "exited" {
-		ctx := context.Background()
-		cli := &IDClient.Client{}
-
-		var err error
-
-		cli, err = IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
-		if err != nil {
-			return nil, err
-		}
-
-		defer func(cli *IDClient.Client) {
-			err = cli.Close()
-			if err != nil {
-				return
-			}
-		}(cli)
-
-		err = container.PullImage(ctx, cli)
-
-		if err != nil {
-			return nil, err
-		}
-
-		resp := TDContainer.CreateResponse{}
-
-		resp, err = cli.ContainerCreate(ctx, &TDContainer.Config{
-			Hostname:     container.GeneratedName,
-			Labels:       container.GenerateLabels(),
-			Image:        container.Image + ":" + container.Tag,
-			Env:          container.Env,
-			Entrypoint:   container.Entrypoint,
-			Cmd:          container.Args,
-			Tty:          false,
-			ExposedPorts: container.Ports.ToPortExposed(),
-		}, &TDContainer.HostConfig{
-			DNS:          container.Docker.DNS,
-			Mounts:       container.Volumes.ToMounts(),
-			PortBindings: container.Ports.ToPortMap(),
-			NetworkMode:  TDContainer.NetworkMode(container.NetworkMode),
-			Privileged:   container.Privileged,
-			CapAdd:       container.Capabilities,
-		}, container.BuildNetwork(), nil, container.GeneratedName)
-
-		if err != nil {
-			return nil, err
-		}
-
-		container.DockerID = resp.ID
-
-		if err = cli.ContainerStart(ctx, resp.ID, TDContainer.StartOptions{}); err != nil {
-			return nil, err
-		}
-
-		err = container.SyncNetworkInformation()
-
-		if err != nil {
-			return nil, err
-		}
-
-		return container.Get()
-	}
-
-	return c, nil
-}
-
-func (container *Docker) Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
-	var DNS []string
-
-	if config.Environment.NodeIP != "" {
-		DNS = []string{config.Environment.NodeIP, "127.0.0.1"}
-	} else {
-		DNS = []string{"127.0.0.1"}
-	}
-
-	if len(container.Definition.Spec.Dns) != 0 {
-		DNS = append(DNS, container.Definition.Spec.Dns...)
-	}
-
-	container.Docker.DNS = DNS
-
-	runtime.ObjectDependencies = make([]f.Format, 0)
-
-	err := container.PrepareConfiguration(client, user, runtime)
-
-	if err != nil {
-		return err
-	}
-
-	err = container.PrepareResources(client, user, runtime)
-
-	if err != nil {
-		return err
-	}
-
-	err = container.PrepareLabels(runtime)
-
-	if err != nil {
-		return err
-	}
-
-	err = container.PrepareEnvs(runtime)
-
-	if err != nil {
-		return err
-	}
-
-	err = container.PrepareReadiness(runtime)
-
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-func (container *Docker) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
-	if container.NetworkMode != "host" {
-		err := container.AttachToNetworks(config.NodeName)
-
-		if err != nil {
-			return err
-		}
-
-		return container.UpdateDns(dnsCache)
-	}
-
-	return nil
-}
-
-func (container *Docker) AttachToNetworks(agentContainerName string) error {
-	if agentContainerName == "" {
-		return errors.New("node controller container name is empty")
-	}
-
-	var dockerContainer *TDTypes.Container
-	var err error
-
-	dockerContainer, err = container.Get()
-
-	if err != nil {
-		return err
-	}
-
-	ctx := context.Background()
-	cli := &IDClient.Client{}
-
-	cli, err = IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
-
-	if err != nil {
-		return err
-	}
-
-	var agent TDTypes.Container
-	agent, err = DockerGet(agentContainerName)
-
-	if err != nil {
-		return errors.New("failed to find node container")
-	}
-
-	networks := container.GetNetworkInfoTS()
-
-	for _, network := range agent.NetworkSettings.Networks {
-		EndpointSettings := &dockerNetwork.EndpointSettings{
-			NetworkID: network.NetworkID,
-		}
-
-		if networks.Find(network.NetworkID) != nil {
-			continue
-		}
-
-		err = cli.NetworkConnect(ctx, network.NetworkID, dockerContainer.ID, EndpointSettings)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	networks = container.GetNetworkInfoTS()
-
-	for _, network := range networks.Networks {
-		err = network.FindNetworkAlias(static.SMR_ENDPOINT_NAME)
-
-		if err == nil {
-			err = network.FindNetworkAlias(container.GeneratedName)
-
-			if err == nil {
-				err = network.Connect(agent.ID)
-
-				if err != nil && err.Error() != fmt.Sprintf("Error response from daemon: endpoint with name %s already exists in network %s", static.SMR_ENDPOINT_NAME, network.Reference.Name) {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-func (container *Docker) UpdateDns(dnsCache *dns.Records) error {
-	networks := container.GetNetworkInfoTS()
-
-	if dnsCache != nil {
-		for _, network := range networks.Networks {
-			err := dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.AddRecord)
-
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	} else {
-		return errors.New("dns cache is nil")
-	}
-}
-
-func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) error {
-	networks := container.GetNetworkInfoTS()
-
-	if dnsCache != nil {
-		for _, network := range networks.Networks {
-			if network.Docker.NetworkId == networkId {
-				err := dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.RemoveRecord)
-
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		return nil
-	} else {
-		return errors.New("dns cache is nil")
-	}
-}
-
-func (container *Docker) GenerateLabels() map[string]string {
-	now := time.Now()
-
-	if container.Labels.Members > 0 {
-		container.Labels.Add("managed", "smr")
-		container.Labels.Add("group", container.Group)
-		container.Labels.Add("name", container.GeneratedName)
-	} else {
-		container.Labels = smaps.NewFromMap(map[string]string{
-			"managed":     "smr",
-			"group":       container.Group,
-			"name":        container.GeneratedName,
-			"last-update": strconv.FormatInt(now.Unix(), 10),
-		})
-	}
-
-	labels := make(map[string]string)
-
-	container.Labels.Map.Range(func(key, value any) bool {
-		labels[key.(string)] = value.(string)
-		return true
-	})
-
-	return labels
 }
 
 func (container *Docker) ToJson() ([]byte, error) {

@@ -1,14 +1,15 @@
-package docker
+package internal
 
 import (
 	"context"
 	"errors"
 	"github.com/docker/docker/api/types"
 	TDContainer "github.com/docker/docker/api/types/container"
+	TDNetwork "github.com/docker/docker/api/types/network"
 	IDClient "github.com/docker/docker/client"
 )
 
-func DockerInspect(DockerID string) (types.ContainerJSON, error) {
+func Inspect(DockerID string) (types.ContainerJSON, error) {
 	ctx := context.Background()
 	cli := &IDClient.Client{}
 
@@ -35,7 +36,22 @@ func DockerInspect(DockerID string) (types.ContainerJSON, error) {
 	return data, nil
 }
 
-func DockerGet(containerName string) (types.Container, error) {
+func InspectNetwork(NetworkID string) (TDNetwork.Inspect, error) {
+	ctx := context.Background()
+
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return TDNetwork.Inspect{}, err
+	}
+
+	return cli.NetworkInspect(ctx, NetworkID, types.NetworkInspectOptions{
+		Scope:   "",
+		Verbose: false,
+	})
+}
+
+func Get(name string) (types.Container, error) {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -57,12 +73,11 @@ func DockerGet(containerName string) (types.Container, error) {
 	}
 
 	for i, container := range containers {
-		// Check if name or id of docker container passed and act accordingly
-		if container.ID == containerName {
+		if container.ID == name {
 			return containers[i], nil
 		} else {
-			for _, name := range container.Names {
-				if name == "/"+containerName {
+			for _, n := range container.Names {
+				if n == "/"+name {
 					return containers[i], nil
 				}
 			}
@@ -70,4 +85,29 @@ func DockerGet(containerName string) (types.Container, error) {
 	}
 
 	return types.Container{}, errors.New("container not found")
+}
+
+func GetNetwork(name string) (TDNetwork.Summary, error) {
+	ctx := context.Background()
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer cli.Close()
+
+	var networks []TDNetwork.Summary
+	networks, err = cli.NetworkList(ctx, types.NetworkListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, c := range networks {
+		if c.Name == name {
+			return c, nil
+		}
+	}
+
+	return TDNetwork.Summary{}, errors.New("network not found")
 }

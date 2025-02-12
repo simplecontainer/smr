@@ -14,7 +14,7 @@ type Docker struct {
 	DockerState   string
 	Name          string
 	GeneratedName string
-	Labels        *smaps.Smap
+	Labels        *internal.Labels
 	Group         string
 	Image         string
 	Tag           string

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/registry"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"time"
 )
 
@@ -33,7 +33,7 @@ func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
 	}
 }
 
-func Ready(ctx context.Context, registry *registry.Registry, group string, name string, dependsOn []v1.ContainersDependsOn, channel chan *State) (bool, error) {
+func Ready(ctx context.Context, registry platforms.Registry, group string, name string, dependsOn []v1.ContainersDependsOn, channel chan *State) (bool, error) {
 	var done bool
 	var expired chan bool
 	defer func(expired chan bool) { expired <- true }(expired)
@@ -87,7 +87,7 @@ func Ready(ctx context.Context, registry *registry.Registry, group string, name 
 	return true, nil
 }
 
-func SolveDepends(registry *registry.Registry, myPrefix string, myGroup string, myName string, depend *Dependency, channel chan *State) error {
+func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, myName string, depend *Dependency, channel chan *State) error {
 	myContainer := registry.Find(myPrefix, myGroup, myName)
 
 	if myContainer == nil {

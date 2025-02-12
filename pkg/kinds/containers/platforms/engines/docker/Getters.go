@@ -2,9 +2,56 @@ package docker
 
 import (
 	"fmt"
+	TDTypes "github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/static"
 )
+
+func (container *Docker) GetState() (state.State, error) {
+	dockerContainer, err := internal.Get(container.GeneratedName)
+
+	if err != nil {
+		return state.State{}, err
+	}
+
+	container.DockerID = dockerContainer.ID
+	container.DockerState = dockerContainer.State
+
+	var inspected TDTypes.ContainerJSON
+	inspected, err = internal.Inspect(container.DockerID)
+
+	if err != nil {
+		return state.State{}, err
+	}
+
+	return state.State{
+		State: dockerContainer.State,
+		Error: inspected.State.Error,
+	}, nil
+}
+
+func (container *Docker) Get() (*TDTypes.Container, error) {
+	dockerContainer, err := internal.Get(container.GeneratedName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	container.DockerID = dockerContainer.ID
+	container.DockerState = dockerContainer.State
+
+	if dockerContainer.State == "running" {
+		err = container.SyncNetwork()
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &dockerContainer, nil
+}
 
 func (container *Docker) GetId() string {
 	return container.DockerID

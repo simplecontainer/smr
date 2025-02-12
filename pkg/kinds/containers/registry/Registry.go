@@ -2,43 +2,49 @@ package registry
 
 import (
 	"errors"
-	"fmt"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
-	"strconv"
-	"strings"
 )
+
+func New(client *client.Http, user *authentication.User) platforms.Registry {
+	return &Registry{
+		Containers:     make(map[string]platforms.IContainer),
+		BackOffTracker: make(map[string]map[string]uint64),
+		Client:         client,
+		User:           user,
+	}
+}
 
 func (registry *Registry) AddOrUpdate(group string, name string, containerAddr platforms.IContainer) {
 	registry.ContainersLock.Lock()
-
-	if registry.Containers[group] == nil {
-		tmp := make(map[string]platforms.IContainer)
-		tmp[name] = containerAddr
-
-		registry.Containers[group] = tmp
-	} else {
-		registry.Containers[group][name] = containerAddr
-	}
-
+	registry.Containers[GroupIdentifier(group, name)] = containerAddr
 	registry.ContainersLock.Unlock()
 }
 
-func (registry *Registry) Sync(container platforms.IContainer) error {
-	format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
-	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+func (registry *Registry) Sync(group string, name string) error {
+	registry.ContainersLock.RLock()
+	container, ok := registry.Containers[GroupIdentifier(group, name)]
+	registry.ContainersLock.RUnlock()
 
-	bytes, err := container.ToJson()
+	if ok {
+		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
+		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-	if err != nil {
-		return err
+		bytes, err := container.ToJson()
+
+		if err != nil {
+			return err
+		}
+
+		return obj.Wait(format, bytes)
+	} else {
+		return errors.New("container not found on this node")
 	}
-
-	return obj.Wait(format, bytes)
 }
 
 func (registry *Registry) Remove(prefix string, group string, name string) error {
@@ -48,11 +54,7 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 	if registry.Containers[group] == nil {
 		return errors.New("container not found")
 	} else {
-		delete(registry.Containers[group], name)
-
-		if len(registry.Containers[group]) == 0 {
-			delete(registry.Containers, group)
-		}
+		delete(registry.Containers, GroupIdentifier(group, name))
 
 		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
@@ -71,12 +73,10 @@ func (registry *Registry) FindLocal(group string, name string) platforms.IContai
 	registry.ContainersLock.RLock()
 	defer registry.ContainersLock.RUnlock()
 
-	if registry.Containers[group] != nil {
-		if registry.Containers[group][name] != nil {
-			return registry.Containers[group][name]
-		} else {
-			return nil
-		}
+	value, ok := registry.Containers[GroupIdentifier(group, name)]
+
+	if ok {
+		return value
 	} else {
 		return nil
 	}
@@ -87,13 +87,12 @@ func (registry *Registry) Find(prefix string, group string, name string) platfor
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.ContainersLock.RLock()
+	value, ok := registry.Containers[GroupIdentifier(group, name)]
+	registry.ContainersLock.RUnlock()
 
-	if registry.Containers[group] != nil && registry.Containers[group][name] != nil {
-		registry.ContainersLock.RUnlock()
-		return registry.Containers[group][name]
+	if ok {
+		return value
 	} else {
-		registry.ContainersLock.RUnlock()
-
 		obj.Find(format)
 
 		if obj.Exists() {
@@ -105,9 +104,9 @@ func (registry *Registry) Find(prefix string, group string, name string) platfor
 			}
 
 			return instance
+		} else {
+			return nil
 		}
-
-		return nil
 	}
 }
 
@@ -134,22 +133,7 @@ func (registry *Registry) FindGroup(prefix string, group string) []platforms.ICo
 	return result
 }
 
-func (registry *Registry) Name(client *client.Http, group string, name string) (string, []uint64) {
-	indexes := registry.GetIndexes(group, name)
-	index := uint64(1)
-
-	if len(indexes) > 0 {
-		index = indexes[len(indexes)-1] + 1
-	}
-
-	return fmt.Sprintf("%s-%s-%d", group, name, index), indexes
-}
-
-func (registry *Registry) NameReplica(group string, name string, index uint64) string {
-	return fmt.Sprintf("%s-%s-%d", group, name, index)
-}
-
-func (registry *Registry) BackOffTracking(group string, name string) {
+func (registry *Registry) BackOff(group string, name string) error {
 	registry.ContainersLock.Lock()
 	if registry.BackOffTracker[group] == nil {
 		tmp := make(map[string]uint64)
@@ -159,7 +143,14 @@ func (registry *Registry) BackOffTracking(group string, name string) {
 	}
 
 	registry.BackOffTracker[group][name] += 1
-	registry.ContainersLock.Unlock()
+
+	defer registry.ContainersLock.Unlock()
+
+	if registry.BackOffTracker[group][name] > 5 {
+		return errors.New("container is in backoff reset loop")
+	}
+
+	return nil
 }
 
 func (registry *Registry) BackOffReset(group string, name string) {
@@ -173,29 +164,4 @@ func (registry *Registry) BackOffReset(group string, name string) {
 
 	registry.BackOffTracker[group][name] = 0
 	registry.ContainersLock.Unlock()
-}
-
-func (registry *Registry) GetIndexes(group string, name string) []uint64 {
-	registry.ContainersLock.RLock()
-	containers := registry.Containers[group]
-	registry.ContainersLock.RUnlock()
-
-	var indexes = make([]uint64, 0)
-
-	if len(containers) > 0 {
-		for _, containerObj := range containers {
-			if containerObj.GetName() == name {
-				split := strings.Split(containerObj.GetGeneratedName(), "-")
-				index, err := strconv.ParseUint(split[len(split)-1], 10, 64)
-
-				if err != nil {
-					logger.Log.Fatal("Failed to convert string to uint64 for index calculation")
-				}
-
-				indexes = append(indexes, index)
-			}
-		}
-	}
-
-	return indexes
 }

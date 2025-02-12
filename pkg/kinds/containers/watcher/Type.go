@@ -16,11 +16,11 @@ type Containers struct {
 
 type Container struct {
 	Container      platforms.IContainer
-	Reconciler     Reconciler
 	Syncing        bool
 	ContainerQueue chan platforms.IContainer      `json:"-"`
 	ReadinessChan  chan *readiness.ReadinessState `json:"-"`
 	DependencyChan chan *dependency.State         `json:"-"`
+	PauseC         chan platforms.IContainer      `json:"-"`
 	Ctx            context.Context                `json:"-" `
 	Done           bool                           `json:"-"`
 	Cancel         context.CancelFunc             `json:"-"`
@@ -28,9 +28,4 @@ type Container struct {
 	Retry          int                            `json:"-"`
 	Logger         *zap.Logger
 	User           *authentication.User `json:"-"`
-}
-
-type Reconciler struct {
-	From  string
-	Count uint64
 }

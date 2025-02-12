@@ -1,12 +1,12 @@
 package reconcile
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
-	"time"
 )
 
-func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container) {
+func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container, pauseHandler func(*watcher.Container) error) {
 	for {
 		select {
 		case <-containerWatcher.Ctx.Done():
@@ -22,11 +22,17 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 
 			return
 		case <-containerWatcher.ContainerQueue:
-			containerWatcher.Ticker.Reset(5 * time.Second)
+			fmt.Println("listener got container - firing reconcile")
 			go Containers(shared, containerWatcher)
 			break
 		case <-containerWatcher.Ticker.C:
+			fmt.Println("ticker firing reconcile")
 			go Containers(shared, containerWatcher)
+			break
+		case <-containerWatcher.PauseC:
+			if pauseHandler(containerWatcher) != nil {
+				containerWatcher.Cancel()
+			}
 			break
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/registry"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -27,7 +26,7 @@ func New(nodeID uint64, nodes []*node.Node) *Replicas {
 	}
 }
 
-func (replicas *Replicas) GenerateContainers(registry *registry.Registry, definition *v1.ContainersDefinition, config *configuration.Configuration) ([]platforms.IContainer, []platforms.IContainer, []platforms.IContainer, error) {
+func (replicas *Replicas) GenerateContainers(registry platforms.Registry, definition *v1.ContainersDefinition, config *configuration.Configuration) ([]platforms.IContainer, []platforms.IContainer, []platforms.IContainer, error) {
 	create, destroy := replicas.GetContainersIndexes(registry, definition)
 
 	createContainers := make([]platforms.IContainer, 0)
@@ -64,7 +63,7 @@ func (replicas *Replicas) GenerateContainers(registry *registry.Registry, defini
 	return createContainers, updateContainers, destroyContainers, nil
 }
 
-func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definition *v1.ContainersDefinition) ([]platforms.IContainer, error) {
+func (replicas *Replicas) RemoveContainers(registry platforms.Registry, definition *v1.ContainersDefinition) ([]platforms.IContainer, error) {
 	destroy, _ := replicas.GetContainersIndexes(registry, definition)
 
 	destroyContainers := make([]platforms.IContainer, 0)
@@ -81,7 +80,7 @@ func (replicas *Replicas) RemoveContainers(registry *registry.Registry, definiti
 	return destroyContainers, nil
 }
 
-func (replicas *Replicas) GetContainersIndexes(registry *registry.Registry, definition *v1.ContainersDefinition) ([]uint64, []uint64) {
+func (replicas *Replicas) GetContainersIndexes(registry platforms.Registry, definition *v1.ContainersDefinition) ([]uint64, []uint64) {
 	if definition.Spec.Spread.Spread == "" {
 		// No spread so create only for node who sourced the object
 		replicas.Recalculate(v1.ContainersSpread{

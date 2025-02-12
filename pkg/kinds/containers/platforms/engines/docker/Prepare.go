@@ -119,14 +119,14 @@ func (container *Docker) PrepareLabels(runtime *types.Runtime) error {
 	var parsed string
 	var err error
 
-	container.Labels.Map.Range(func(key, value any) bool {
+	container.Labels.Labels.Map.Range(func(key, value any) bool {
 		parsed, _, err = template.Parse(key.(string), value.(string), nil, nil, runtime.Configuration, 0)
 
 		if err != nil {
 			return false
 		}
 
-		container.Labels.Map.Store(key.(string), parsed)
+		container.Labels.Labels.Map.Store(key.(string), parsed)
 		return true
 	})
 

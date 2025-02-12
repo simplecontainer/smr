@@ -3,16 +3,13 @@ package internal
 import (
 	"context"
 	"errors"
-	"github.com/docker/docker/api/types"
 	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"sync"
 )
 
 type Networks struct {
 	Networks []*Network
-	Lock     sync.RWMutex
 }
 
 type Network struct {
@@ -56,13 +53,19 @@ func NewNetworks(networks []v1.ContainersNetwork) *Networks {
 }
 
 func NewNetwork(network v1.ContainersNetwork) *Network {
+	nw, err := GetNetwork(network.Name)
+
+	if err != nil {
+		return nil
+	}
+
 	return &Network{
 		Reference: NetworkReference{
 			Group: network.Group,
 			Name:  network.Name,
 		},
 		Docker: NetworkDocker{
-			NetworkId: GetNetworkId(network.Name),
+			NetworkId: nw.ID,
 			IP:        "",
 		},
 	}
@@ -97,29 +100,6 @@ func (networks *Networks) Find(networkId string) *Network {
 	}
 
 	return nil
-}
-
-func GetNetworkId(name string) string {
-	ctx := context.Background()
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-	defer cli.Close()
-
-	var networks []types.NetworkResource
-	networks, err = cli.NetworkList(ctx, types.NetworkListOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	for _, c := range networks {
-		if c.Name == name {
-			return c.ID
-		}
-	}
-
-	return ""
 }
 
 func (network *Network) Connect(containerId string) error {
@@ -174,32 +154,18 @@ func (network *Network) Disconnect(containerId string) error {
 	return nil
 }
 
-func (network *Network) FindNetworkAlias(endpointName string) error {
-	ctx := context.Background()
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+func (network *Network) EndpointExists(endpointName string) bool {
+	inspected, err := InspectNetwork(network.Docker.NetworkId)
 
 	if err != nil {
-		return err
+		return false
 	}
 
-	defer func(cli *dockerClient.Client) {
-		err = cli.Close()
-		if err != nil {
-			return
-		}
-	}(cli)
-
-	networks, err := cli.NetworkInspect(ctx, network.Docker.NetworkId, types.NetworkInspectOptions{})
-
-	if err != nil {
-		return err
-	}
-
-	for _, c := range networks.Containers {
+	for _, c := range inspected.Containers {
 		if c.Name == endpointName {
-			return errors.New("endpoint already exists")
+			return true
 		}
 	}
 
-	return nil
+	return false
 }

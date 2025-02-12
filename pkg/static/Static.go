@@ -21,6 +21,7 @@ const SMR_NODE_DOMAIN = "node.private"
 const SMR_LOCAL_DOMAIN string = "private"
 
 const PLATFORM_DOCKER = "docker"
+const PLATFORM_MOCKER = "mocker"
 
 const CATEGORY_KIND = "kind"
 const CATEGORY_STATE = "state"

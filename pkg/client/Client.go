@@ -3,6 +3,7 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -73,21 +74,27 @@ func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Clus
 	}
 
 	// Configure node users
-	if cluster != nil {
+	if cluster != nil && cluster.Cluster != nil {
 		for _, c := range cluster.Cluster.Nodes {
-			httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[cluster.Node.NodeName])
+			_, ok := keys.Clients[cluster.Node.NodeName]
 
-			if err != nil {
-				return nil, err
+			if ok {
+				httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[cluster.Node.NodeName])
+
+				if err != nil {
+					return nil, err
+				}
+
+				hc.Append(c.NodeName, &Client{
+					Http:     httpClient,
+					Username: c.NodeName,
+					API:      c.API,
+					Domains:  keys.Clients[cluster.Node.NodeName].Certificate.DNSNames,
+					IPs:      keys.Clients[cluster.Node.NodeName].Certificate.IPAddresses,
+				})
+			} else {
+				return nil, errors.New("certificates for the node missing")
 			}
-
-			hc.Append(c.NodeName, &Client{
-				Http:     httpClient,
-				Username: c.NodeName,
-				API:      c.API,
-				Domains:  keys.Clients[cluster.Node.NodeName].Certificate.DNSNames,
-				IPs:      keys.Clients[cluster.Node.NodeName].Certificate.IPAddresses,
-			})
 		}
 	}
 

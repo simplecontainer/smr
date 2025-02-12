@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, err string) (string, bool) {
+func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
 	containerObj := containerWatcher.Container
 
 	switch containerObj.GetStatus().State.State {
@@ -53,7 +53,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 	case status.STATUS_TRANSFERING:
 		if existing != nil && existing.IsGhost() {
 			containerWatcher.Logger.Info("container is not dead on another node - wait")
-			return containerObj.GetStatus().State.State, false
+			return status.STATUS_TRANSFERING, false
 		} else {
 			containerWatcher.Logger.Info("container transefered on this node")
 			return status.STATUS_CREATED, true
@@ -65,13 +65,14 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			return status.STATUS_PREPARE, true
 		}
 	case status.STATUS_PREPARE:
-		err := containerObj.Prepare(shared.Manager.Config, shared.Client, containerWatcher.User)
+		err := containerObj.PreRun(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err != nil {
 			return status.STATUS_PENDING, true
 		} else {
 			go func() {
 				_, err = dependency.Ready(containerWatcher.Ctx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
+
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
@@ -81,7 +82,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			return status.STATUS_DEPENDS_CHECKING, true
 		}
 	case status.STATUS_PENDING:
-		err := containerObj.Prepare(shared.Manager.Config, shared.Client, containerWatcher.User)
+		err := containerObj.PreRun(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err != nil {
 			return status.STATUS_PENDING, false
@@ -132,7 +133,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		return status.STATUS_PREPARE, true
 	case status.STATUS_START:
 		containerWatcher.Logger.Info("container attempt to start")
-		_, err := containerObj.Run()
+		err := containerObj.Run()
 
 		if err != nil {
 			return status.STATUS_DAEMON_FAILURE, true
@@ -153,6 +154,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		for {
 			select {
 			case readinessResult := <-containerWatcher.ReadinessChan:
+				fmt.Println("BLOCKING")
 				state := GetState(containerWatcher)
 
 				if state.State == "running" {
@@ -210,15 +212,8 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 
 		return status.STATUS_DEAD, false
 	case status.STATUS_DEAD:
-		shared.Registry.BackOffTracking(containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-		if shared.Registry.BackOffTracker[containerObj.GetGroup()][containerObj.GetGeneratedName()] > 5 {
-			containerWatcher.Logger.Error(fmt.Sprintf("%s container is backoff restarting", containerObj.GetGeneratedName()))
-
-			shared.Registry.BackOffReset(containerObj.GetGroup(), containerObj.GetGeneratedName())
-
+		if err := shared.Registry.BackOff(containerObj.GetGroup(), containerObj.GetGeneratedName()); err != nil {
 			return status.STATUS_BACKOFF, true
-
 		} else {
 			containerWatcher.Logger.Info("deleting dead container")
 
@@ -240,7 +235,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 
 	case status.STATUS_DAEMON_FAILURE:
 		containerWatcher.Logger.Info("container daemon engine failed - reconciler going to sleep")
-		containerWatcher.Logger.Info(err)
+		containerWatcher.Logger.Info(engineError)
 		return status.STATUS_DAEMON_FAILURE, false
 
 	case status.STATUS_BACKOFF:

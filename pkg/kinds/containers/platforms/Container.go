@@ -3,7 +3,6 @@ package platforms
 import (
 	"encoding/json"
 	"errors"
-	TDTypes "github.com/docker/docker/api/types"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -82,55 +81,24 @@ func NewGhost(state map[string]interface{}) (IContainer, error) {
 	return nil, errors.New("type is not defined")
 }
 
-func (c *Container) Start() error {
-	return c.Platform.Start()
-}
-func (c *Container) Stop(signal string) error {
-	return c.Platform.Stop(signal)
-}
-func (c *Container) Kill(signal string) error {
-	return c.Platform.Kill(signal)
-}
-func (c *Container) Restart() error {
-	return c.Platform.Restart()
-}
-func (c *Container) Delete() error {
-	return c.Platform.Delete()
-}
-func (c *Container) Rename(newName string) error {
-	return c.Platform.Rename(newName)
-}
-func (c *Container) Exec(command []string) (types.ExecResult, error) {
-	return c.Platform.Exec(command)
-}
-func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
-	return c.Platform.Logs(follow)
-}
-
-func (c *Container) GetContainerState() (state.State, error) {
-	return c.Platform.GetContainerState()
-}
-func (c *Container) Run() (*TDTypes.Container, error) {
+func (c *Container) Run() error {
 	return c.Platform.Run()
 }
-func (c *Container) Prepare(config *configuration.Configuration, client *client.Http, user *authentication.User) error {
-	return c.Platform.Prepare(config, client, user, c.General.Runtime)
+func (c *Container) PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+	return c.Platform.PreRun(config, client, user, c.General.Runtime)
 }
 func (c *Container) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
 	return c.Platform.PostRun(config, dnsCache)
 }
 
-func (c *Container) AttachToNetworks(agentContainerName string) error {
-	return c.Platform.AttachToNetworks(agentContainerName)
-}
 func (c *Container) UpdateDns(cache *dns.Records) error {
 	return c.Platform.UpdateDns(cache)
 }
 func (c *Container) RemoveDns(cache *dns.Records, networkId string) error {
 	return c.Platform.RemoveDns(cache, networkId)
 }
-func (c *Container) SyncNetworkInformation() error {
-	return c.Platform.SyncNetworkInformation()
+func (c *Container) SyncNetwork() error {
+	return c.Platform.SyncNetwork()
 }
 
 func (c *Container) HasDependencyOn(kind string, group string, name string) bool {
@@ -147,6 +115,9 @@ func (c *Container) HasOwner() bool {
 	return c.GetDefinition().GetRuntime().GetOwner().IsEmpty()
 }
 
+func (c *Container) GetState() (state.State, error) {
+	return c.Platform.GetState()
+}
 func (c *Container) GetId() string {
 	return c.GetId()
 }
@@ -196,6 +167,31 @@ func (c *Container) SetGhost(ghost bool) {
 }
 func (c *Container) IsGhost() bool {
 	return c.ghost
+}
+
+func (c *Container) Start() error {
+	return c.Platform.Start()
+}
+func (c *Container) Stop(signal string) error {
+	return c.Platform.Stop(signal)
+}
+func (c *Container) Kill(signal string) error {
+	return c.Platform.Kill(signal)
+}
+func (c *Container) Restart() error {
+	return c.Platform.Restart()
+}
+func (c *Container) Delete() error {
+	return c.Platform.Delete()
+}
+func (c *Container) Rename(newName string) error {
+	return c.Platform.Rename(newName)
+}
+func (c *Container) Exec(command []string) (types.ExecResult, error) {
+	return c.Platform.Exec(command)
+}
+func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
+	return c.Platform.Logs(follow)
 }
 
 func (c *Container) ToJson() ([]byte, error) {

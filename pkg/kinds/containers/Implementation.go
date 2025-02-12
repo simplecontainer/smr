@@ -30,13 +30,7 @@ func (containers *Containers) Start() error {
 	containers.Shared.Watchers = &watcher.Containers{}
 	containers.Shared.Watchers.Watchers = make(map[string]*watcher.Container)
 
-	containers.Shared.Registry = &registry.Registry{
-		Containers:     make(map[string]map[string]platforms.IContainer),
-		Indexes:        make(map[string][]uint64),
-		BackOffTracker: make(map[string]map[string]uint64),
-		Client:         containers.Shared.Client,
-		User:           containers.Shared.User,
-	}
+	containers.Shared.Registry = registry.New(containers.Shared.Client, containers.Shared.User)
 
 	logger.Log.Info(fmt.Sprintf("platform for running containers is %s", containers.Shared.Manager.Config.Platform))
 
@@ -144,23 +138,28 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 					existingContainer := containers.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 
 					if existingContainer != nil && existingContainer.IsGhost() {
-						watcher := watcher.New(containerObj, status.STATUS_TRANSFERING, user)
-						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), watcher)
+						w := watcher.New(containerObj, status.STATUS_TRANSFERING, user)
+						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
-						watcher.Logger.Info("container object created")
+						w.Logger.Info("container object created")
 
-						go reconcile.HandleTickerAndEvents(containers.Shared, watcher)
-						go reconcile.Containers(containers.Shared, watcher)
+						go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
+							return nil
+						})
+
+						go reconcile.Containers(containers.Shared, w)
 					} else {
-						watcher := watcher.New(containerObj, status.STATUS_CREATED, user)
-						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), watcher)
+						w := watcher.New(containerObj, status.STATUS_CREATED, user)
+						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
-						watcher.Logger.Info("container object created")
+						w.Logger.Info("container object created")
 
-						go reconcile.HandleTickerAndEvents(containers.Shared, watcher)
-						go reconcile.Containers(containers.Shared, watcher)
+						go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
+							return nil
+						})
+						go reconcile.Containers(containers.Shared, w)
 					}
 				}
 			} else {
@@ -170,14 +169,17 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 				// - assing container to the wathcer
 				// - roll the reconciler
 
-				watcher := watcher.New(containerObj, status.STATUS_CREATED, user)
-				containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), watcher)
+				w := watcher.New(containerObj, status.STATUS_CREATED, user)
+				containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 				containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
-				watcher.Logger.Info("container object created")
+				w.Logger.Info("container object created")
 
-				go reconcile.HandleTickerAndEvents(containers.Shared, watcher)
-				go reconcile.Containers(containers.Shared, watcher)
+				go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
+					return nil
+				})
+
+				go reconcile.Containers(containers.Shared, w)
 			}
 		}
 	}

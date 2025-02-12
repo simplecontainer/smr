@@ -34,6 +34,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.16
 	go.etcd.io/etcd/raft/v3 v3.5.16
 	go.etcd.io/etcd/server/v3 v3.5.16
+	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/yaml.v3 v3.0.1
 )

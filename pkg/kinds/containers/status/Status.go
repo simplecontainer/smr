@@ -37,7 +37,7 @@ func (status *Status) CreateGraph() {
 	readinessChecking := gograph.NewVertex(&StatusState{STATUS_READINESS_CHECKING, STATUS_INITIAL, CATEGORY_WHILERUN})
 	change := gograph.NewVertex(&StatusState{STATUS_CHANGE, STATUS_INITIAL, CATEGORY_WHILERUN})
 	readinessReady := gograph.NewVertex(&StatusState{STATUS_READY, STATUS_INITIAL, CATEGORY_WHILERUN})
-	running := gograph.NewVertex(&StatusState{STATUS_RUNNING, STATUS_INITIAL, CATEGORY_WHILERUN})
+	running := gograph.NewVertex(&StatusState{STATUS_RUNNING, STATUS_INITIAL, CATEGORY_END})
 
 	dead := gograph.NewVertex(&StatusState{STATUS_DEAD, STATUS_INITIAL, CATEGORY_POSTRUN})
 

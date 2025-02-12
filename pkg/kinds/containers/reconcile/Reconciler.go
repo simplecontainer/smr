@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"go.uber.org/zap"
+	"time"
 )
 
 func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
@@ -29,36 +30,40 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 	containerObj.GetStatus().Reconciling = false
 
-	if containerObj.GetStatus().State.State != newState {
-		transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
+	// Do not touch container on this node since it is active on another node
+	if containerObj.GetStatus().State.State != status.STATUS_TRANSFERING {
+		if containerObj.GetStatus().State.State != newState {
+			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
 
-		if !transitioned {
-			containerWatcher.Logger.Error("failed to transition state",
-				zap.String("old", containerObj.GetStatus().State.State),
-				zap.String("new", newState))
+			if !transitioned {
+				containerWatcher.Logger.Error("failed to transition state",
+					zap.String("old", containerObj.GetStatus().State.State),
+					zap.String("new", newState))
+			}
+		}
+
+		state = GetState(containerWatcher)
+
+		shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
+
+		if reconcile {
+			containerWatcher.ContainerQueue <- containerObj
+		} else {
+			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
+				containerWatcher.PauseC <- containerObj
+			} else {
+				containerWatcher.Ticker.Reset(5 * time.Second)
+			}
 		}
 	}
-
-	state = GetState(containerWatcher)
-
-	shared.Registry.Sync(containerObj)
-
-	if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
-		containerWatcher.Ticker.Stop()
-	}
-
-	if reconcile {
-		Containers(shared, containerWatcher)
-	}
-
 }
 
 func GetState(containerWatcher *watcher.Container) state.State {
-	containerStateEngine, err := containerWatcher.Container.GetContainerState()
+	engine, err := containerWatcher.Container.GetState()
 
 	if err != nil {
 		return state.State{}
 	}
 
-	return containerStateEngine
+	return engine
 }

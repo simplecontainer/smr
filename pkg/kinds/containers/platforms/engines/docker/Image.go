@@ -3,11 +3,14 @@ package docker
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -92,4 +95,31 @@ func splitReposSearchTerm(reposName string) (string, string) {
 		remoteName = nameParts[1]
 	}
 	return indexName, remoteName
+}
+
+func GetAuth(image string, environment *configuration.Environment) string {
+	dockerConfig := fmt.Sprintf("%s/%s", environment.Home, ".docker/config.json")
+	if _, err := os.Stat(dockerConfig); err == nil {
+		body, err := os.ReadFile(dockerConfig)
+		if err != nil {
+			panic("Unable to read docker auth file")
+		}
+
+		config := map[string]map[string]map[string]string{}
+		err = json.Unmarshal(body, &config)
+
+		if err != nil {
+			panic(err)
+		}
+
+		for registry, auth := range config["auths"] {
+			if strings.Contains(image, registry) {
+				return auth["auth"]
+			}
+		}
+
+		return ""
+	} else {
+		return ""
+	}
 }

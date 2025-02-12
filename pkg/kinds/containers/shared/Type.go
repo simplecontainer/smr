@@ -4,13 +4,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/dns"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/registry"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/manager"
 )
 
 type Shared struct {
-	Registry *registry.Registry
+	Registry platforms.Registry
 	User     *authentication.User
 	Watchers *watcher.Containers
 	DnsCache *dns.Records
