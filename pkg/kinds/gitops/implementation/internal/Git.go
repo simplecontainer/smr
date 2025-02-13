@@ -156,8 +156,3 @@ func (g *Git) LogOpen() (*os.File, error) {
 func (g *Git) LogClose(file *os.File) error {
 	return file.Close()
 }
-
-func (g *Git) PathExists() bool {
-	_, err := os.Stat(fmt.Sprintf("%s/%s", g.Directory))
-	return os.IsExist(err)
-}
