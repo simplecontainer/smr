@@ -3,7 +3,6 @@ package status
 import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/hmdsefi/gograph"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -17,12 +16,11 @@ type Status struct {
 	InSync                 bool
 	LastSyncedCommit       plumbing.Hash
 	LastUpdate             time.Time
-	Logger                 *zap.Logger `json:"-"`
 }
 
 type StatusState struct {
 	State    string `json:"state"`
-	category int8   `json:"category"`
+	category int8
 }
 
 const CATEGORY_PRERUN = 0

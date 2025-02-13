@@ -178,7 +178,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC)
 
 	go api.ListenNode()
-	go api.Replication.ListenOutside(api.Config.NodeName)
 	go api.Replication.ListenData(api.Config.NodeName)
 
 	err = networking.Flannel(request["overlay"], request["backend"])

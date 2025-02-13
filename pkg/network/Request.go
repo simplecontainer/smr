@@ -43,6 +43,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 			Data:             nil,
 		}
 	}
+
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)

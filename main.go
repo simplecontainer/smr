@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/simplecontainer/smr/docs"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/commands"
 	_ "github.com/simplecontainer/smr/pkg/commands"
@@ -16,7 +15,6 @@ import (
 )
 
 func main() {
-
 	startup.SetFlags()
 
 	logLevel := os.Getenv("LOG_LEVEL")

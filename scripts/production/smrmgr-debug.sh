@@ -113,9 +113,9 @@ Manager(){
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
         if [[ $RESTART == "true" ]]; then
-          smr node restart --name "${NODE}" $CLIENT_ARGS --w started
+          smr node restart --name "${NODE}" $CLIENT_ARGS --w running
         else
-          smr node upgrade --name "${NODE}" $CLIENT_ARGS --w started
+          smr node upgrade --name "${NODE}" $CLIENT_ARGS --w running
         fi
 
         while :
@@ -143,7 +143,7 @@ Manager(){
         smr node rename "${NODE}-create-${ID}" --name "${NODE}"
 
         sleep 5
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --entrypoint="/dlv" --args="--listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /opt/smr/smr -- start" $CLIENT_ARGS --name "${NODE}" -w started
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --entrypoint="/dlv" --args="--listen=:2345 --headless=true --log=true --log-output=debugger,debuglineerr,gdbwire,lldbout,rpc --accept-multiclient --api-version=2 exec /opt/smr/smr -- start" $CLIENT_ARGS --name "${NODE}" -w running
 
         if [[ $NODE_DOMAIN == "localhost" ]]; then
           NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${NODE_PORT}"
@@ -173,7 +173,7 @@ Manager(){
 
         echo "The simplecontainer is started in cluster mode."
       else
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --domain ${DOMAIN} --ip ${IP}" --name "${NODE}" --wait
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --domain ${DOMAIN} --ip ${IP}" --name "${NODE}" --wait exited
         smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --name "${NODE}"
 
         sudo nohup smr node cluster join --name "${NODE}" --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &

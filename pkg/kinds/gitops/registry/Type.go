@@ -8,7 +8,7 @@ import (
 )
 
 type Registry struct {
-	Gitopses   map[string]map[string]*implementation.Gitops
+	Gitops     map[string]*implementation.Gitops
 	GitopsLock sync.RWMutex
 	Client     *client.Http
 	User       *authentication.User

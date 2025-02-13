@@ -67,6 +67,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		err := containerObj.PreRun(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err != nil {
+			containerWatcher.Logger.Error(err.Error())
 			return status.STATUS_PENDING, true
 		} else {
 			go func() {
@@ -84,6 +85,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		err := containerObj.PreRun(shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err != nil {
+			containerWatcher.Logger.Error(err.Error())
 			return status.STATUS_PENDING, false
 		} else {
 			go func() {

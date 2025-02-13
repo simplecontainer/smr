@@ -45,21 +45,7 @@ func (config *Config) Apply(user *authentication.User, definition []byte, agent 
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
-func (config *Config) Compare(user *authentication.User, definition []byte) (contracts.Response, error) {
-	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
 
-	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	_, err = request.Apply(config.Shared.Client, user)
-
-	if err != nil {
-		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
-	} else {
-		return common.Response(http.StatusOK, "object in sync", nil, nil), nil
-	}
-}
 func (config *Config) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
 

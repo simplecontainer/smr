@@ -44,7 +44,3 @@ func (registry *Registry) GetIndexes(group string, name string) []uint64 {
 
 	return indexes
 }
-
-func GroupIdentifier(group string, name string) string {
-	return fmt.Sprintf("%s-%s", group, name)
-}

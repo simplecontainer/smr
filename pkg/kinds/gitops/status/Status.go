@@ -3,14 +3,17 @@ package status
 import (
 	"errors"
 	"github.com/hmdsefi/gograph"
-	"go.uber.org/zap"
 	"time"
 )
 
-func NewStatus() *Status {
-	return &Status{
-		Logger: nil,
+func New() *Status {
+	s := &Status{
+		State:      &StatusState{},
+		LastUpdate: time.Now(),
 	}
+
+	s.CreateGraph()
+	return s
 }
 
 func (status *Status) CreateGraph() {
@@ -39,10 +42,11 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(cloned, syncing)
 	status.StateMachine.AddEdge(cloned, inspecting)
 
-	status.StateMachine.AddEdge(inspecting, invalidgit)
+	status.StateMachine.AddEdge(inspecting, cloning)
 	status.StateMachine.AddEdge(inspecting, drifted)
 	status.StateMachine.AddEdge(inspecting, insync)
-	status.StateMachine.AddEdge(inspecting, cloning)
+	status.StateMachine.AddEdge(inspecting, invaliddefinitions)
+	status.StateMachine.AddEdge(inspecting, invalidgit)
 
 	status.StateMachine.AddEdge(syncing, insync)
 	status.StateMachine.AddEdge(syncing, backoff)
@@ -80,7 +84,7 @@ func (status *Status) SetState(state string) error {
 	return errors.New("failed to set state")
 }
 
-func (status *Status) TransitionState(gitops string, destination string) bool {
+func (status *Status) TransitionState(group string, name string, destination string) bool {
 	currentVertex := status.StateMachine.GetAllVerticesByID(status.State)
 
 	if len(currentVertex) > 0 {
@@ -88,14 +92,6 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				if status.Logger != nil {
-					status.Logger.Info("gitops transitioned state",
-						zap.String("old-state", status.State.State),
-						zap.String("new-state", destination),
-						zap.String("gitops", gitops),
-					)
-				}
-
 				status.PreviousState = status.State
 				status.State = edge.Destination().Label()
 				status.Reconciling = false
@@ -106,14 +102,6 @@ func (status *Status) TransitionState(gitops string, destination string) bool {
 		}
 
 		if status.State.State != destination {
-			if status.Logger != nil {
-				status.Logger.Info("gitops failed to transition state",
-					zap.String("old-state", status.State.State),
-					zap.String("new-state", destination),
-					zap.String("gitops", gitops),
-				)
-			}
-
 			return false
 		}
 

@@ -44,9 +44,6 @@ func (replication *Replication) ListenData(agent string) {
 						case static.CATEGORY_PLAIN:
 							replication.HandlePlain(format, data)
 							break
-						case static.CATEGORY_SECRET:
-							replication.HandleSecret(format, data)
-							break
 						case static.CATEGORY_STATE:
 							replication.HandlePlain(format, data)
 							break
@@ -103,26 +100,6 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 }
 
 func (replication *Replication) HandlePlain(format contracts.Format, data KV.KV) {
-	acks.ACKS.Ack(format.GetUUID())
-
-	obj := objects.New(replication.Client, replication.User)
-
-	if data.Val == nil {
-		_, err := obj.RemoveLocal(format)
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	} else {
-		err := obj.AddLocal(format, data.Val)
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	}
-}
-
-func (replication *Replication) HandleSecret(format contracts.Format, data KV.KV) {
 	acks.ACKS.Ack(format.GetUUID())
 
 	obj := objects.New(replication.Client, replication.User)

@@ -25,6 +25,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			go Containers(shared, containerWatcher)
 			break
 		case <-containerWatcher.Ticker.C:
+			containerWatcher.Ticker.Stop()
 			go Containers(shared, containerWatcher)
 			break
 		case <-containerWatcher.PauseC:

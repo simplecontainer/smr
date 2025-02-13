@@ -322,13 +322,13 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 		Raft:        rc,
 		ServerStats: stats.NewServerStats("", ""),
 		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
-		ErrorC:      make(chan error),
+		ErrorC:      make(chan error, 1),
 		TLSInfo: transport.TLSInfo{
 			ClientCertAuth: true,
 			TrustedCAFile:  keys.CA.CertificatePath,
 			HandshakeFailure: func(conn *tls.Conn, err error) {
 				fmt.Println(err.Error())
-				fmt.Println(conn)
+				conn.Close()
 			},
 		},
 	}

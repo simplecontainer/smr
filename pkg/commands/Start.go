@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
@@ -17,11 +16,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 func Start() {
@@ -206,19 +204,17 @@ func Start() {
 					}
 				}
 
-				debug := router.Group("/debug", func(c *gin.Context) {
-					c.Next()
-				})
-				pprof.RouteRegister(debug, "pprof")
-
-				router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
 				router.GET("/connect", api.Health)
 				router.GET("/fetch/certs", api.ExportClients)
 
 				router.GET("/metrics", api.MetricsHandle())
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+
+				//debug := routerHttp.Group("/debug", func(c *gin.Context) {
+				//	c.Next()
+				//})
+				//pprof.RouteRegister(debug, "pprof")
 
 				routerHttp.GET("/metrics", api.MetricsHandle())
 				routerHttp.GET("/healthz", api.Health)
@@ -237,9 +233,11 @@ func Start() {
 				api.SetupEtcd()
 
 				server := http.Server{
-					Addr:      fmt.Sprintf("%s:%s", api.Config.HostPort.Host, api.Config.HostPort.Port),
-					Handler:   router,
-					TLSConfig: tlsConfig,
+					Addr:         fmt.Sprintf("%s:%s", api.Config.HostPort.Host, api.Config.HostPort.Port),
+					Handler:      router,
+					TLSConfig:    tlsConfig,
+					ReadTimeout:  10 * time.Second,
+					WriteTimeout: 10 * time.Second,
 				}
 
 				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()

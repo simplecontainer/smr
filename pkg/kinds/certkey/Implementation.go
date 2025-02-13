@@ -32,22 +32,6 @@ func (certkey *Certkey) Apply(user *authentication.User, definition []byte, agen
 	}
 }
 
-func (certkey *Certkey) Compare(user *authentication.User, definition []byte) (contracts.Response, error) {
-	request, err := common.NewRequestFromJson(static.KIND_CERTKEY, definition)
-
-	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	_, err = request.Apply(certkey.Shared.Client, user)
-
-	if err != nil {
-		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
-	} else {
-		return common.Response(http.StatusOK, "object in sync", nil, nil), nil
-	}
-}
-
 func (certkey *Certkey) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CERTKEY, definition)
 

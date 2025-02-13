@@ -85,22 +85,6 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (network *Network) Compare(user *authentication.User, definition []byte) (contracts.Response, error) {
-	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
-
-	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-	}
-
-	_, err = request.Apply(network.Shared.Client, user)
-
-	if err != nil {
-		return common.Response(http.StatusTeapot, "object drifted", nil, nil), nil
-	} else {
-		return common.Response(http.StatusOK, "object in sync", nil, nil), nil
-	}
-}
-
 func (network *Network) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 

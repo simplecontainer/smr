@@ -15,6 +15,7 @@
 package raft
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -46,15 +47,27 @@ func (ln stoppableListener) Accept() (c net.Conn, err error) {
 	connc := make(chan *net.TCPConn, 1)
 	errc := make(chan error, 1)
 
-	go func() {
-		var tc *net.TCPConn
-		tc, err = ln.AcceptTCP()
-		if err != nil {
-			errc <- err
-			return
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				var tc *net.TCPConn
+				tc, err = ln.AcceptTCP()
+
+				if err != nil {
+					errc <- err
+					return
+				}
+
+				connc <- tc
+			}
 		}
-		connc <- tc
-	}()
+	}(ctx)
 
 	select {
 	case <-ln.stopc:

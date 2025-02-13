@@ -3,6 +3,7 @@ package registry
 import (
 	"errors"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -10,44 +11,18 @@ import (
 
 func (registry *Registry) AddOrUpdate(group string, name string, gitops *implementation.Gitops) {
 	registry.GitopsLock.Lock()
-
-	if registry.Gitopses[group] == nil {
-		tmp := make(map[string]*implementation.Gitops)
-		tmp[name] = gitops
-
-		registry.Gitopses[group] = tmp
-	} else {
-		registry.Gitopses[group][name] = gitops
-	}
-
+	registry.Gitops[common.GroupIdentifier(group, name)] = gitops
 	registry.GitopsLock.Unlock()
-}
-
-func (registry *Registry) Sync(gitops *implementation.Gitops) error {
-	format := f.New(gitops.Definition.GetPrefix(), static.CATEGORY_STATE, static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
-	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
-
-	bytes, err := gitops.ToJson()
-
-	if err != nil {
-		return err
-	}
-
-	return obj.Wait(format, bytes)
 }
 
 func (registry *Registry) Remove(prefix string, group string, name string) error {
 	registry.GitopsLock.Lock()
 	defer registry.GitopsLock.Unlock()
 
-	if registry.Gitopses[group] == nil {
+	if registry.Gitops[common.GroupIdentifier(group, name)] == nil {
 		return errors.New("gitops not found")
 	} else {
-		delete(registry.Gitopses[group], name)
-
-		if len(registry.Gitopses[group]) == 0 {
-			delete(registry.Gitopses, group)
-		}
+		delete(registry.Gitops, common.GroupIdentifier(group, name))
 
 		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
@@ -66,13 +41,32 @@ func (registry *Registry) FindLocal(group string, name string) *implementation.G
 	registry.GitopsLock.RLock()
 	defer registry.GitopsLock.RUnlock()
 
-	if registry.Gitopses[group] != nil {
-		if registry.Gitopses[group][name] != nil {
-			return registry.Gitopses[group][name]
-		} else {
-			return nil
-		}
+	value, ok := registry.Gitops[common.GroupIdentifier(group, name)]
+
+	if ok {
+		return value
 	} else {
 		return nil
+	}
+}
+
+func (registry *Registry) Sync(group string, name string) error {
+	registry.GitopsLock.RLock()
+	gitopsObj, ok := registry.Gitops[common.GroupIdentifier(group, name)]
+	registry.GitopsLock.RUnlock()
+
+	if ok {
+		format := f.New(gitopsObj.Definition.GetPrefix(), static.CATEGORY_STATE, static.KIND_GITOPS, gitopsObj.Definition.Meta.Group, gitopsObj.Definition.Meta.Name)
+		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
+
+		bytes, err := gitopsObj.ToJson()
+
+		if err != nil {
+			return err
+		}
+
+		return obj.Wait(format, bytes)
+	} else {
+		return errors.New("gitops not found on this node")
 	}
 }

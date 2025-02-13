@@ -68,6 +68,7 @@ func (s *KVStore) Propose(k string, v []byte, node uint64) {
 	}
 
 	s.proposeC <- buf.String()
+	buf.Reset()
 }
 
 func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {

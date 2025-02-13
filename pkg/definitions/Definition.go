@@ -133,8 +133,7 @@ func (definition *Definition) Changed(format contracts.Format, obj contracts.Obj
 		if len(bytes) == 0 {
 			return true, nil
 		} else {
-			return true, errors.New("object doesnt exist")
-
+			return true, errors.New(static.STATUS_RESPONSE_NOT_FOUND)
 		}
 	}
 }
