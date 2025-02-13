@@ -15,7 +15,6 @@
 package raft
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -47,27 +46,17 @@ func (ln stoppableListener) Accept() (c net.Conn, err error) {
 	connc := make(chan *net.TCPConn, 1)
 	errc := make(chan error, 1)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	go func() {
+		var tc *net.TCPConn
+		tc, err = ln.AcceptTCP()
 
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				var tc *net.TCPConn
-				tc, err = ln.AcceptTCP()
-
-				if err != nil {
-					errc <- err
-					return
-				}
-
-				connc <- tc
-			}
+		if err != nil {
+			errc <- err
+			return
 		}
-	}(ctx)
+
+		connc <- tc
+	}()
 
 	select {
 	case <-ln.stopc:
@@ -76,7 +65,7 @@ func (ln stoppableListener) Accept() (c net.Conn, err error) {
 		return nil, err
 	case tc := <-connc:
 		tc.SetKeepAlive(true)
-		tc.SetKeepAlivePeriod(3 * time.Minute)
+		tc.SetKeepAlivePeriod(1 * time.Minute)
 		return tc, nil
 	}
 }

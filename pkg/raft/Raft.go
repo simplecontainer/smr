@@ -11,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/node"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/raft/v3"
+	"golang.org/x/time/rate"
 	"log"
 	"net/http"
 	"net/url"
@@ -316,13 +317,15 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	}
 
 	rc.transport = &rafthttp.Transport{
-		Logger:      rc.logger,
-		ID:          types.ID(rc.id),
-		ClusterID:   0x1000,
-		Raft:        rc,
-		ServerStats: stats.NewServerStats("", ""),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
-		ErrorC:      make(chan error, 1),
+		Logger:             rc.logger,
+		ID:                 types.ID(rc.id),
+		ClusterID:          0x1000,
+		Raft:               rc,
+		DialTimeout:        5 * time.Second,
+		DialRetryFrequency: rate.Every(300 * time.Millisecond),
+		ServerStats:        stats.NewServerStats("", ""),
+		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
+		ErrorC:             make(chan error, 1),
 		TLSInfo: transport.TLSInfo{
 			ClientCertAuth: true,
 			TrustedCAFile:  keys.CA.CertificatePath,
