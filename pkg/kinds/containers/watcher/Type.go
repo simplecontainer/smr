@@ -29,5 +29,6 @@ type Container struct {
 	Ticker         *time.Ticker                   `json:"-"`
 	Retry          int                            `json:"-"`
 	Logger         *zap.Logger
+	LogPath        string
 	User           *authentication.User `json:"-"`
 }

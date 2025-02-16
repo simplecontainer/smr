@@ -65,6 +65,8 @@ func SetFlags() {
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
 
+	flag.String("image", "", "Node image name")
+	flag.String("tag", "", "Node image tag")
 	flag.String("name", "", "Node container name")
 	flag.String("cluster", "", "SMR Cluster")
 	flag.Int("node", 0, "Distributed KVStore Node ID")

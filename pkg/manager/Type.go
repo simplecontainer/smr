@@ -25,4 +25,5 @@ type Manager struct {
 	Http            *client.Http
 	DnsCache        *dns.Records
 	LogLevel        zapcore.Level
+	VersionServer   string
 }

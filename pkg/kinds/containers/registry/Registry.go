@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/containers"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -76,7 +77,7 @@ func (registry *Registry) Find(prefix string, group string, name string) platfor
 		obj.Find(format)
 
 		if obj.Exists() {
-			instance, err := platforms.NewGhost(obj.GetDefinition())
+			instance, err := containers.NewGhost(obj.GetDefinition())
 
 			if err != nil {
 				logger.Log.Error(err.Error())
@@ -99,7 +100,7 @@ func (registry *Registry) FindGroup(prefix string, group string) []platforms.ICo
 
 	if len(objs) > 0 {
 		for _, o := range objs {
-			instance, err := platforms.NewGhost(o.GetDefinition())
+			instance, err := containers.NewGhost(o.GetDefinition())
 
 			if err != nil {
 				logger.Log.Error(err.Error())

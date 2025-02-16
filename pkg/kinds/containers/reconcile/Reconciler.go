@@ -44,7 +44,11 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		state = GetState(containerWatcher)
 
-		shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
+		err := shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
+
+		if err != nil {
+			containerWatcher.Logger.Error(err.Error())
+		}
 
 		if reconcile {
 			containerWatcher.ContainerQueue <- containerObj

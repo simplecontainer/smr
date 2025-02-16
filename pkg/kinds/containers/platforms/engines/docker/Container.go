@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
 	TDContainer "github.com/docker/docker/api/types/container"
+	TDVolume "github.com/docker/docker/api/types/volume"
 	IDClient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/mholt/archives"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -44,7 +47,7 @@ func New(name string, definition contracts.IDefinition) (*Docker, error) {
 	}
 
 	var volumes *internal.Volumes
-	volumes, err = internal.NewVolumes(definition.(*v1.ContainersDefinition).Spec.Volumes)
+	volumes, err = internal.NewVolumes(name, definition.(*v1.ContainersDefinition).Spec.Volumes)
 
 	if err != nil {
 		return nil, err
@@ -55,27 +58,28 @@ func New(name string, definition contracts.IDefinition) (*Docker, error) {
 	}
 
 	container := &Docker{
-		Name:          definition.(*v1.ContainersDefinition).Meta.Name,
-		GeneratedName: name,
-		Labels:        internal.NewLabels(definition.(*v1.ContainersDefinition).Meta.Labels),
-		Group:         definition.(*v1.ContainersDefinition).Meta.Group,
-		Image:         definition.(*v1.ContainersDefinition).Spec.Image,
-		Tag:           definition.(*v1.ContainersDefinition).Spec.Tag,
-		Replicas:      definition.(*v1.ContainersDefinition).Spec.Replicas,
-		Lock:          sync.RWMutex{},
-		Env:           definition.(*v1.ContainersDefinition).Spec.Envs,
-		Entrypoint:    definition.(*v1.ContainersDefinition).Spec.Entrypoint,
-		Args:          definition.(*v1.ContainersDefinition).Spec.Args,
-		Configuration: smaps.NewFromMap(definition.(*v1.ContainersDefinition).Spec.Configuration),
-		NetworkMode:   definition.(*v1.ContainersDefinition).Spec.NetworkMode,
-		Networks:      internal.NewNetworks(definition.(*v1.ContainersDefinition).Spec.Networks),
-		Ports:         internal.NewPorts(definition.(*v1.ContainersDefinition).Spec.Ports),
-		Readiness:     internal.NewReadinesses(definition.(*v1.ContainersDefinition).Spec.Readiness),
-		Resources:     internal.NewResources(definition.(*v1.ContainersDefinition).Spec.Resources),
-		Volumes:       volumes,
-		Capabilities:  definition.(*v1.ContainersDefinition).Spec.Capabilities,
-		Privileged:    definition.(*v1.ContainersDefinition).Spec.Privileged,
-		Definition:    definitionCopy,
+		Name:           definition.(*v1.ContainersDefinition).Meta.Name,
+		GeneratedName:  name,
+		Labels:         internal.NewLabels(definition.(*v1.ContainersDefinition).Meta.Labels),
+		Group:          definition.(*v1.ContainersDefinition).Meta.Group,
+		Image:          definition.(*v1.ContainersDefinition).Spec.Image,
+		Tag:            definition.(*v1.ContainersDefinition).Spec.Tag,
+		Replicas:       definition.(*v1.ContainersDefinition).Spec.Replicas,
+		Lock:           sync.RWMutex{},
+		Env:            definition.(*v1.ContainersDefinition).Spec.Envs,
+		Entrypoint:     definition.(*v1.ContainersDefinition).Spec.Entrypoint,
+		Args:           definition.(*v1.ContainersDefinition).Spec.Args,
+		Configuration:  smaps.NewFromMap(definition.(*v1.ContainersDefinition).Spec.Configuration),
+		NetworkMode:    definition.(*v1.ContainersDefinition).Spec.NetworkMode,
+		Networks:       internal.NewNetworks(definition.(*v1.ContainersDefinition).Spec.Networks),
+		Ports:          internal.NewPorts(definition.(*v1.ContainersDefinition).Spec.Ports),
+		Readiness:      internal.NewReadinesses(definition.(*v1.ContainersDefinition).Spec.Readiness),
+		Resources:      internal.NewResources(definition.(*v1.ContainersDefinition).Spec.Resources),
+		Volumes:        volumes,
+		VolumeInternal: TDVolume.Volume{},
+		Capabilities:   definition.(*v1.ContainersDefinition).Spec.Capabilities,
+		Privileged:     definition.(*v1.ContainersDefinition).Spec.Privileged,
+		Definition:     definitionCopy,
 	}
 
 	return container, nil
@@ -156,6 +160,12 @@ func (container *Docker) Run() error {
 		}
 
 		container.DockerID = resp.ID
+		defer container.Volumes.RemoveResources()
+		err = container.MountResources()
+
+		if err != nil {
+			return err
+		}
 
 		if err = cli.ContainerStart(ctx, resp.ID, TDContainer.StartOptions{}); err != nil {
 			return err
@@ -174,7 +184,6 @@ func (container *Docker) Run() error {
 		return errors.New("container is already running")
 	}
 }
-
 func (container *Docker) PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
 	var DNS []string
 
@@ -267,10 +276,12 @@ func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) erro
 
 func (container *Docker) Start() error {
 	if c, _ := container.Get(); c != nil && c.State == "exited" {
-		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		defer func(cli *IDClient.Client) {
@@ -501,6 +512,108 @@ func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 	} else {
 		return nil, errors.New("container is not running")
 	}
+}
+
+func (container *Docker) MountResources() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return err
+	}
+
+	var files []archives.FileInfo
+
+	format := archives.CompressedArchive{
+		Compression: archives.Gz{},
+		Archival:    archives.Tar{},
+	}
+
+	for _, vol := range container.Volumes.Volumes {
+		if vol.Type == "resource" {
+			files, err = archives.FilesFromDisk(ctx, nil, map[string]string{
+				vol.HostPath: vol.MountPoint,
+			})
+
+			var buf bytes.Buffer
+			err = format.Archive(ctx, &buf, files)
+
+			if err != nil {
+				return err
+			}
+
+			err = cli.CopyToContainer(ctx, container.DockerID, "/", &buf, TDContainer.CopyToContainerOptions{})
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (container *Docker) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
+	}
+
+	container.Init, err = New(fmt.Sprintf("%s-init", container.GetGeneratedName()), &v1.ContainersDefinition{
+		Kind:   container.GetDefinition().GetKind(),
+		Prefix: container.GetDefinition().GetPrefix(),
+		Meta:   container.GetDefinition().GetMeta(),
+		Spec:   definition,
+		State:  nil,
+	})
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
+	}
+
+	container.Init.Stop("SIGTERM")
+	container.Init.Kill("SIGTERM")
+	container.Init.Delete()
+
+	err = container.Init.PreRun(config, client, user, runtime)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
+	}
+
+	err = container.Init.Run()
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
+	}
+
+	statusCh, errCh := cli.ContainerWait(context.Background(), container.Init.DockerID, TDContainer.WaitConditionNotRunning)
+
+	select {
+	case <-statusCh:
+		break
+	case err = <-errCh:
+		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
+	}
+
+	var inspect TDTypes.ContainerJSON
+	inspect, err = internal.Inspect(container.Init.DockerID)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
+	}
+
+	if inspect.State.ExitCode != 0 {
+		return errors.New("init container: init container exited with non-zero")
+	}
+
+	return nil
 }
 
 func (container *Docker) ToJson() ([]byte, error) {

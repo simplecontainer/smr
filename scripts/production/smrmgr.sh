@@ -134,7 +134,7 @@ Manager(){
     if [[ ${NODE} != "" ]]; then
       if [[ ${MODE} == "cluster" ]]; then
 
-        ID=$(smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${NODE}" $CLIENT_ARGS  --w exited)
+        ID=$(smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --image ${REPOSITORY} --tag ${TAG} --name ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${NODE}" $CLIENT_ARGS  --w exited)
 
         if [[ ${?} != 0 ]]; then
           echo "Simplecontainer returned non-zero exit code - check the logs of the node controller container"

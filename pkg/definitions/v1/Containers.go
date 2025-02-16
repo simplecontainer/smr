@@ -10,11 +10,12 @@ import (
 )
 
 type ContainersDefinition struct {
-	Kind   string             `json:"kind" validate:"required"`
-	Prefix string             `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta      `json:"meta"  validate:"required"`
-	Spec   ContainersInternal `json:"spec"  validate:"required"`
-	State  *commonv1.State    `json:"state"`
+	Kind          string             `json:"kind" validate:"required"`
+	Prefix        string             `json:"prefix" validate:"required"`
+	Meta          commonv1.Meta      `json:"meta"  validate:"required"`
+	Spec          ContainersInternal `json:"spec"  validate:"required"`
+	InitContainer ContainersInternal `json:"initContainer,omitempty" validate:"omitempty"`
+	State         *commonv1.State    `json:"state"`
 }
 
 type ContainersInternal struct {
@@ -74,6 +75,7 @@ type ContainersVolume struct {
 	Type       string `json:"type"`
 	HostPath   string `json:"hostPath"`
 	MountPoint string `json:"mountPoint"`
+	SubPath    string `json:"subPath" default:"/"`
 }
 
 type ContainersResource struct {

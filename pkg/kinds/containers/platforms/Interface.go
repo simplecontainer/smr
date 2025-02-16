@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -16,6 +17,8 @@ type IContainer interface {
 	Run() error
 	PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
+	InitContainer(definitions v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User) error
+	MountResources() error
 
 	UpdateDns(dnsCache *dns.Records) error
 	RemoveDns(dnsCache *dns.Records, networkId string) error
@@ -38,6 +41,8 @@ type IContainer interface {
 	GetGroupIdentifier() string
 	GetDomain(network string) string
 	GetHeadlessDomain(network string) string
+	GetInit() IPlatform
+	GetInitDefinition() v1.ContainersInternal
 
 	IsGhost() bool
 	SetGhost(bool)
@@ -58,6 +63,8 @@ type IPlatform interface {
 	Run() error
 	PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
+	InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error
+	MountResources() error
 
 	UpdateDns(dnsCache *dns.Records) error
 	RemoveDns(dnsCache *dns.Records, networkId string) error
@@ -72,6 +79,8 @@ type IPlatform interface {
 	GetGroupIdentifier() string
 	GetDomain(networkName string) string
 	GetHeadlessDomain(networkName string) string
+	GetInit() IPlatform
+	GetInitDefinition() v1.ContainersInternal
 
 	Start() error
 	Stop(signal string) error

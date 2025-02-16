@@ -1,4 +1,4 @@
-package platforms
+package containers
 
 import (
 	"encoding/json"
@@ -8,8 +8,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -19,7 +21,7 @@ import (
 	"io"
 )
 
-func New(platform string, name string, config *configuration.Configuration, definition contracts.IDefinition) (IContainer, error) {
+func New(platform string, name string, config *configuration.Configuration, definition contracts.IDefinition) (platforms.IContainer, error) {
 	statusObj := status.New()
 
 	switch platform {
@@ -49,7 +51,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 	}
 }
 
-func NewGhost(state map[string]interface{}) (IContainer, error) {
+func NewGhost(state map[string]interface{}) (platforms.IContainer, error) {
 	if state["Type"] != nil {
 		switch state["Type"].(string) {
 		case static.PLATFORM_DOCKER:
@@ -89,6 +91,12 @@ func (c *Container) PreRun(config *configuration.Configuration, client *client.H
 }
 func (c *Container) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
 	return c.Platform.PostRun(config, dnsCache)
+}
+func (c *Container) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+	return c.Platform.InitContainer(definition, config, client, user, c.General.Runtime)
+}
+func (c *Container) MountResources() error {
+	return c.Platform.MountResources()
 }
 
 func (c *Container) UpdateDns(cache *dns.Records) error {
@@ -162,6 +170,13 @@ func (c *Container) GetHeadlessDomain(network string) string {
 	return c.Platform.GetHeadlessDomain(network)
 }
 
+func (c *Container) GetInit() platforms.IPlatform {
+	return c.Platform.GetInit()
+}
+
+func (c *Container) GetInitDefinition() v1.ContainersInternal {
+	return c.Platform.GetInitDefinition()
+}
 func (c *Container) SetGhost(ghost bool) {
 	c.ghost = ghost
 }

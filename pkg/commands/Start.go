@@ -194,8 +194,8 @@ func Start() {
 					{
 						definitions.POST("propose/apply", api.Propose)
 						definitions.DELETE("propose/remove", api.Propose)
-						definitions.GET("debug/:prefix/:version/:category/:kind/:group/:name/:follow", api.Debug)
-						definitions.GET("logs/:prefix/:version/:category/:kind/:group/:name/:follow", api.Logs)
+						definitions.GET("debug/:prefix/:version/:category/:kind/:group/:name/:which/:follow", api.Debug)
+						definitions.GET("logs/:prefix/:version/:category/:kind/:group/:name/:which/:follow", api.Logs)
 					}
 
 					users := v1.Group("/user")

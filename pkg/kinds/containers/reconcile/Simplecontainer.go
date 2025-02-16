@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/static"
+	"reflect"
 	"time"
 )
 
@@ -128,7 +129,22 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		containerObj.GetStatus().LastDependsSolved = true
 		containerObj.GetStatus().LastDependsSolvedTimestamp = time.Now()
 
-		return status.STATUS_START, true
+		if !reflect.ValueOf(containerObj.GetInit()).IsZero() {
+			return status.STATUS_INIT, true
+		} else {
+			return status.STATUS_START, true
+		}
+	case status.STATUS_INIT:
+		err := containerObj.InitContainer(containerObj.GetInitDefinition(), shared.Manager.Config, shared.Client, containerWatcher.User)
+
+		if err != nil {
+			return status.STATUS_INIT_FAILED, true
+		} else {
+			return status.STATUS_START, true
+		}
+	case status.STATUS_INIT_FAILED:
+		containerWatcher.Logger.Info("init container exited with error - reconciler going to sleep")
+		return status.STATUS_INIT_FAILED, false
 	case status.STATUS_DEPENDS_FAILED:
 		containerWatcher.Logger.Info("container depends timeout or failed - retry again")
 		return status.STATUS_PREPARE, true
@@ -137,6 +153,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		err := containerObj.Run()
 
 		if err != nil {
+			containerWatcher.Logger.Error(err.Error())
 			return status.STATUS_DAEMON_FAILURE, true
 		} else {
 			containerWatcher.Logger.Info("container started")
@@ -235,7 +252,6 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 
 	case status.STATUS_DAEMON_FAILURE:
 		containerWatcher.Logger.Info("container daemon engine failed - reconciler going to sleep")
-		containerWatcher.Logger.Info(engineError)
 		return status.STATUS_DAEMON_FAILURE, false
 
 	case status.STATUS_BACKOFF:

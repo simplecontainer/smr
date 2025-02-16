@@ -76,9 +76,11 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 		if commit == nil {
 			// signaled to load snapshot
 			snapshot, err := s.loadSnapshot()
+
 			if err != nil {
 				log.Panic(err)
 			}
+
 			if snapshot != nil {
 				log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
 				if err = s.recoverFromSnapshot(snapshot.Data); err != nil {

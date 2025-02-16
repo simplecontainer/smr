@@ -4,6 +4,8 @@ import (
 	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
 	"github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -83,4 +85,12 @@ func (container *Docker) GetDomain(network string) string {
 
 func (container *Docker) GetHeadlessDomain(network string) string {
 	return fmt.Sprintf(".%s.%s.%s.%s", network, container.Group, container.Name, static.SMR_LOCAL_DOMAIN)
+}
+
+func (container *Docker) GetInit() platforms.IPlatform {
+	return container.Init
+}
+
+func (container *Docker) GetInitDefinition() v1.ContainersInternal {
+	return container.Definition.InitContainer
 }

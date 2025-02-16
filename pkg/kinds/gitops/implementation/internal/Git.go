@@ -20,7 +20,7 @@ type Git struct {
 	Revision   string
 	Directory  string
 	LogPath    string
-	Auth       *Auth
+	Auth       *Auth `json:"-"`
 }
 
 func NewGit(definition *v1.GitopsDefinition, logpath string) *Git {

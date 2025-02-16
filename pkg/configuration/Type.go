@@ -6,6 +6,7 @@ import (
 
 type Configuration struct {
 	Platform     string        `yaml:"platform"`
+	NodeImage    string        `yaml:"nodeImage"`
 	NodeName     string        `yaml:"nodeName"`
 	HostPort     HostPort      `yaml:"hostport"`
 	KVStore      *KVStore      `yaml:"kvstore"`

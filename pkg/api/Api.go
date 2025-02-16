@@ -31,6 +31,7 @@ func NewApi(config *configuration.Configuration) *Api {
 		Manager:       &manager.Manager{},
 	}
 
+	api.Manager.VersionServer = api.VersionServer
 	api.Manager.User = api.User
 	api.Manager.Config = api.Config
 	api.Manager.Kinds = api.Kinds

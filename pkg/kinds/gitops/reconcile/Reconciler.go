@@ -41,7 +41,11 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		}
 	}
 
-	shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
+	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
+
+	if err != nil {
+		gitopsWatcher.Logger.Error(err.Error())
+	}
 
 	if reconcile {
 		gitopsWatcher.GitopsQueue <- gitopsObj

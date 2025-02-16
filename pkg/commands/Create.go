@@ -36,6 +36,7 @@ func Create() {
 				}
 
 				api.Config.NodeName = viper.GetString("name")
+				api.Config.NodeImage = fmt.Sprintf("%s:%s", viper.GetString("image"), viper.GetString("tag"))
 				api.Config.Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
 				api.Config.Certificates.IPs = configuration.NewIPs(strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean))
 

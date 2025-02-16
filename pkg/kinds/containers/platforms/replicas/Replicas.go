@@ -4,6 +4,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/containers"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/static"
 	"slices"
@@ -35,7 +36,7 @@ func (replicas *Replicas) GenerateContainers(registry platforms.Registry, defini
 	for _, index := range create {
 		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
 
-		newContainer, err := platforms.New(static.PLATFORM_DOCKER, generatedName, config, definition)
+		newContainer, err := containers.New(static.PLATFORM_DOCKER, generatedName, config, definition)
 
 		if err != nil {
 			return createContainers, updateContainers, destroyContainers, err
@@ -99,9 +100,9 @@ func (replicas *Replicas) Recalculate(spread v1.ContainersSpread, replicasDefine
 
 func (replicas *Replicas) GetReplicaNumbers(spread v1.ContainersSpread, replicasDefined uint64, existingIndexes []uint64) ([]uint64, []uint64) {
 	switch spread.Spread {
-	case platforms.SPREAD_SPECIFIC:
+	case containers.SPREAD_SPECIFIC:
 		return Specific(replicasDefined, existingIndexes, spread.Agents, replicas.NodeID)
-	case platforms.SPREAD_UNIFORM:
+	case containers.SPREAD_UNIFORM:
 		return Uniform(replicasDefined, existingIndexes, replicas.Cluster, replicas.NodeID)
 	default:
 		return Specific(replicasDefined, existingIndexes, spread.Agents, replicas.NodeID)

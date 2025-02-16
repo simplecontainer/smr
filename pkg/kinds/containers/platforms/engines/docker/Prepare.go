@@ -88,7 +88,6 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 		if err != nil {
 			return err
 		}
-
 		val, ok := container.Resources.Resources[k].Docker.Data.Map.Load(v.Reference.Key)
 
 		if !ok {
@@ -99,7 +98,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
-		err = container.Volumes.Add(v1.ContainersVolume{
+		err = container.Volumes.Add(container.GetGeneratedName(), v1.ContainersVolume{
 			Type:       "resource",
 			HostPath:   tmpFile.Name(),
 			MountPoint: v.Reference.MountPoint,

@@ -26,6 +26,8 @@ func (status *Status) CreateGraph() {
 	transfering := gograph.NewVertex(&StatusState{STATUS_TRANSFERING, STATUS_INITIAL, CATEGORY_PRERUN})
 	created := gograph.NewVertex(&StatusState{STATUS_CREATED, STATUS_INITIAL, CATEGORY_PRERUN})
 	prepare := gograph.NewVertex(&StatusState{STATUS_PREPARE, STATUS_INITIAL, CATEGORY_PRERUN})
+	init := gograph.NewVertex(&StatusState{STATUS_INIT, STATUS_INITIAL, CATEGORY_PRERUN})
+	initFailed := gograph.NewVertex(&StatusState{STATUS_INIT_FAILED, STATUS_INITIAL, CATEGORY_END})
 	dependsChecking := gograph.NewVertex(&StatusState{STATUS_DEPENDS_CHECKING, STATUS_INITIAL, CATEGORY_PRERUN})
 	dependsSolved := gograph.NewVertex(&StatusState{STATUS_DEPENDS_SOLVED, STATUS_INITIAL, CATEGORY_PRERUN})
 	start := gograph.NewVertex(&StatusState{STATUS_START, STATUS_INITIAL, CATEGORY_PRERUN})
@@ -72,8 +74,14 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(dependsSolved, change)
 	status.StateMachine.AddEdge(dependsSolved, start)
+	status.StateMachine.AddEdge(dependsSolved, init)
 	status.StateMachine.AddEdge(dependsChecking, dependsFailed)
 	status.StateMachine.AddEdge(dependsSolved, pendingDelete)
+
+	status.StateMachine.AddEdge(init, init)
+	status.StateMachine.AddEdge(init, initFailed)
+	status.StateMachine.AddEdge(init, start)
+	status.StateMachine.AddEdge(init, pendingDelete)
 
 	status.StateMachine.AddEdge(start, change)
 	status.StateMachine.AddEdge(start, readinessChecking)

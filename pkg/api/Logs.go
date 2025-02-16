@@ -21,6 +21,7 @@ func (api *Api) Logs(c *gin.Context) {
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
+	which := c.Param("which")
 
 	follow, err := strconv.ParseBool(c.Param("follow"))
 
@@ -52,17 +53,37 @@ func (api *Api) Logs(c *gin.Context) {
 				stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/logs/%s/%s", client.API, format.ToString(), c.Param("follow")), client)
 			}
 		} else {
-			var reader io.ReadCloser
-			reader, err = container.Logs(follow)
+			switch which {
+			case "main":
+				var reader io.ReadCloser
+				reader, err = container.Logs(follow)
 
-			if err != nil {
-				network.StreamByte([]byte(err.Error()), w)
-			}
+				if err != nil {
+					network.StreamByte([]byte(err.Error()), w)
+				}
 
-			err = stream.Stream(w, reader)
+				err = stream.Stream(w, reader)
 
-			if err != nil {
-				stream.Bye(w, err)
+				if err != nil {
+					stream.Bye(w, err)
+				}
+				break
+			case "init":
+				var reader io.ReadCloser
+				reader, err = container.GetInit().Logs(follow)
+
+				if err != nil {
+					network.StreamByte([]byte(err.Error()), w)
+				}
+
+				err = stream.Stream(w, reader)
+
+				if err != nil {
+					stream.Bye(w, err)
+				}
+				break
+			default:
+				stream.Bye(w, errors.New("container can be only main or init"))
 			}
 		}
 	}

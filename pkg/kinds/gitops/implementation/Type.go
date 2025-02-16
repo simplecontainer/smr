@@ -2,7 +2,6 @@ package implementation
 
 import (
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation/internal"
@@ -22,7 +21,6 @@ type Gitops struct {
 	Commit          *object.Commit
 	Status          *status.Status
 	Auth            *Auth
-	AuthResolved    transport.AuthMethod `json:"-"`
 	Context         string
 	Definition      *v1.GitopsDefinition
 	Definitions     []common.Request

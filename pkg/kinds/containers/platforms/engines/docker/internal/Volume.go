@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"github.com/docker/docker/api/types/mount"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"os"
@@ -14,19 +15,23 @@ type Volumes struct {
 }
 
 type Volume struct {
-	Type       mount.Type
-	Name       string
-	HostPath   string
-	MountPoint string
+	Type          mount.Type
+	ContainerName string
+	Name          string
+	HostPath      string
+	MountPoint    string
+	ReadOnly      bool
+	SubPath       string
+	Prepared      bool
 }
 
-func NewVolumes(volumes []v1.ContainersVolume) (*Volumes, error) {
+func NewVolumes(name string, volumes []v1.ContainersVolume) (*Volumes, error) {
 	volumesObj := &Volumes{
 		Volumes: make([]*Volume, 0),
 	}
 
 	for _, v := range volumes {
-		err := volumesObj.Add(v)
+		err := volumesObj.Add(name, v)
 
 		if err != nil {
 			return volumesObj, err
@@ -38,23 +43,25 @@ func NewVolumes(volumes []v1.ContainersVolume) (*Volumes, error) {
 	return volumesObj, nil
 }
 
-func NewVolume(volume v1.ContainersVolume) *Volume {
+func NewVolume(name string, volume v1.ContainersVolume) *Volume {
 	return &Volume{
-		Type:       mount.Type(volume.Type),
-		Name:       volume.Name,
-		HostPath:   volume.HostPath,
-		MountPoint: volume.MountPoint,
+		ContainerName: name,
+		Type:          mount.Type(volume.Type),
+		Name:          volume.Name,
+		HostPath:      volume.HostPath,
+		MountPoint:    volume.MountPoint,
 	}
 }
 
-func (volumes *Volumes) Add(volume v1.ContainersVolume) error {
+func (volumes *Volumes) Add(name string, volume v1.ContainersVolume) error {
 	for _, v := range volumes.Volumes {
 		if v.MountPoint == volume.MountPoint {
-			return errors.New("mountpoints need to be unique")
+			fmt.Println(volumes.Volumes)
+			return errors.New(fmt.Sprintf("mountpoints need to be unique: %s", volume.MountPoint))
 		}
 	}
 
-	volumes.Volumes = append(volumes.Volumes, NewVolume(volume))
+	volumes.Volumes = append(volumes.Volumes, NewVolume(name, volume))
 	return nil
 }
 
@@ -81,30 +88,38 @@ func (volumes *Volumes) ToMounts() []mount.Mount {
 	mounts := make([]mount.Mount, 0)
 
 	for _, v := range volumes.Volumes {
-		switch v.Type {
-		case mount.TypeBind:
-			mounts = append(mounts, mount.Mount{
-				Type:   v.Type,
-				Source: v.HostPath,
-				Target: v.MountPoint,
-			})
-			break
-		case mount.TypeVolume:
-			mounts = append(mounts, mount.Mount{
-				Type:   v.Type,
-				Source: v.Name,
-				Target: v.MountPoint,
-			})
-			break
-		case "resource":
-			mounts = append(mounts, mount.Mount{
-				Type:   mount.TypeBind,
-				Source: v.HostPath,
-				Target: v.MountPoint,
-			})
-			break
+		m := v.ToMount()
+
+		if m != nil {
+			mounts = append(mounts, *m)
 		}
+
+		m = nil
 	}
 
 	return mounts
+}
+
+func (vol *Volume) ToMount() *mount.Mount {
+	switch vol.Type {
+	case mount.TypeBind:
+		return &mount.Mount{
+			Type:     vol.Type,
+			Source:   vol.HostPath,
+			Target:   vol.MountPoint,
+			ReadOnly: vol.ReadOnly,
+		}
+	case mount.TypeVolume:
+		return &mount.Mount{
+			Type:     vol.Type,
+			Source:   vol.Name,
+			Target:   vol.MountPoint,
+			ReadOnly: vol.ReadOnly,
+			VolumeOptions: &mount.VolumeOptions{
+				Subpath: vol.SubPath,
+			},
+		}
+	default:
+		return nil
+	}
 }

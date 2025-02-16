@@ -2,6 +2,7 @@ package docker
 
 import (
 	"github.com/docker/docker/api/types/mount"
+	TDVolume "github.com/docker/docker/api/types/volume"
 	"github.com/docker/go-connections/nat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
@@ -10,31 +11,33 @@ import (
 )
 
 type Docker struct {
-	DockerID      string
-	DockerState   string
-	Name          string
-	GeneratedName string
-	Labels        *internal.Labels
-	Group         string
-	Image         string
-	Tag           string
-	Replicas      uint64
-	Configuration *smaps.Smap
-	Lock          sync.RWMutex `json:"-"`
-	Env           []string
-	Entrypoint    []string
-	Args          []string
-	Privileged    bool
-	NetworkMode   string
-	Networks      *internal.Networks
-	Ports         *internal.Ports
-	Volumes       *internal.Volumes
-	Readiness     *internal.Readinesses
-	Resources     *internal.Resources
-	Capabilities  []string
-	Definition    v1.ContainersDefinition
-	Auth          string
-	Docker        DockerInternal
+	Init           *Docker
+	DockerID       string
+	DockerState    string
+	Name           string
+	GeneratedName  string
+	Labels         *internal.Labels
+	Group          string
+	Image          string
+	Tag            string
+	Replicas       uint64
+	Configuration  *smaps.Smap
+	Lock           sync.RWMutex `json:"-"`
+	Env            []string
+	Entrypoint     []string
+	Args           []string
+	Privileged     bool
+	NetworkMode    string
+	Networks       *internal.Networks
+	Ports          *internal.Ports
+	Volumes        *internal.Volumes
+	VolumeInternal TDVolume.Volume `json:"-"`
+	Readiness      *internal.Readinesses
+	Resources      *internal.Resources
+	Capabilities   []string
+	Definition     v1.ContainersDefinition
+	Auth           string
+	Docker         DockerInternal
 }
 
 type DockerInternal struct {

@@ -83,15 +83,16 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 		gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition))
 
 		w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
-		go reconcile.HandleTickerAndEvents(gitops.Shared, w, func(w *watcher.Gitops) error {
-			return nil
-		})
 
 		w.Logger.Info("new gitops object created")
 		w.Gitops.Status.SetState(status.STATUS_CREATED)
 
 		gitops.Shared.Registry.AddOrUpdate(w.Gitops.GetGroup(), w.Gitops.GetName(), w.Gitops)
 		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
+
+		go reconcile.HandleTickerAndEvents(gitops.Shared, w, func(w *watcher.Gitops) error {
+			return nil
+		})
 
 		w.GitopsQueue <- gitopsObj
 	}
