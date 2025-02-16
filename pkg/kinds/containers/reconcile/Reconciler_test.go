@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	mock_platforms "github.com/simplecontainer/smr/pkg/kinds/containers/mock"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
@@ -70,6 +71,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 				containerMock.EXPECT().GetGeneratedName().Return("internal-testing-1").AnyTimes()
 				containerMock.EXPECT().GetDefinition().Return(mock.DefinitionTestInitial("internal-testing-1", "docker")).AnyTimes()
 
+				containerMock.EXPECT().GetInitDefinition().Return(v1.ContainersInternal{}).AnyTimes()
 				containerMock.EXPECT().GetStatus().DoAndReturn(func() *status.Status {
 					return statusT
 				}).AnyTimes()

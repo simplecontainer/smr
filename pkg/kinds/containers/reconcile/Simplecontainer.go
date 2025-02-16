@@ -129,7 +129,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		containerObj.GetStatus().LastDependsSolved = true
 		containerObj.GetStatus().LastDependsSolvedTimestamp = time.Now()
 
-		if !reflect.ValueOf(containerObj.GetInit()).IsZero() {
+		if !reflect.ValueOf(containerObj.GetInitDefinition()).IsZero() {
 			return status.STATUS_INIT, true
 		} else {
 			return status.STATUS_START, true

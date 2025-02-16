@@ -17,6 +17,7 @@ import (
 	client "github.com/simplecontainer/smr/pkg/client"
 	configuration "github.com/simplecontainer/smr/pkg/configuration"
 	contracts "github.com/simplecontainer/smr/pkg/contracts"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	dns "github.com/simplecontainer/smr/pkg/dns"
 	platforms "github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	state "github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
@@ -176,6 +177,34 @@ func (mr *MockIContainerMockRecorder) GetId() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetId", reflect.TypeOf((*MockIContainer)(nil).GetId))
 }
 
+// GetInit mocks base method.
+func (m *MockIContainer) GetInit() platforms.IPlatform {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInit")
+	ret0, _ := ret[0].(platforms.IPlatform)
+	return ret0
+}
+
+// GetInit indicates an expected call of GetInit.
+func (mr *MockIContainerMockRecorder) GetInit() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInit", reflect.TypeOf((*MockIContainer)(nil).GetInit))
+}
+
+// GetInitDefinition mocks base method.
+func (m *MockIContainer) GetInitDefinition() v1.ContainersInternal {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInitDefinition")
+	ret0, _ := ret[0].(v1.ContainersInternal)
+	return ret0
+}
+
+// GetInitDefinition indicates an expected call of GetInitDefinition.
+func (mr *MockIContainerMockRecorder) GetInitDefinition() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInitDefinition", reflect.TypeOf((*MockIContainer)(nil).GetInitDefinition))
+}
+
 // GetLabels mocks base method.
 func (m *MockIContainer) GetLabels() map[string]string {
 	m.ctrl.T.Helper()
@@ -303,6 +332,20 @@ func (mr *MockIContainerMockRecorder) HasOwner() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasOwner", reflect.TypeOf((*MockIContainer)(nil).HasOwner))
 }
 
+// InitContainer mocks base method.
+func (m *MockIContainer) InitContainer(definitions v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitContainer", definitions, config, client, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InitContainer indicates an expected call of InitContainer.
+func (mr *MockIContainerMockRecorder) InitContainer(definitions, config, client, user any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitContainer", reflect.TypeOf((*MockIContainer)(nil).InitContainer), definitions, config, client, user)
+}
+
 // IsGhost mocks base method.
 func (m *MockIContainer) IsGhost() bool {
 	m.ctrl.T.Helper()
@@ -344,6 +387,20 @@ func (m *MockIContainer) Logs(arg0 bool) (io.ReadCloser, error) {
 func (mr *MockIContainerMockRecorder) Logs(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockIContainer)(nil).Logs), arg0)
+}
+
+// MountResources mocks base method.
+func (m *MockIContainer) MountResources() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MountResources")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MountResources indicates an expected call of MountResources.
+func (mr *MockIContainerMockRecorder) MountResources() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountResources", reflect.TypeOf((*MockIContainer)(nil).MountResources))
 }
 
 // PostRun mocks base method.
@@ -664,6 +721,34 @@ func (mr *MockIPlatformMockRecorder) GetId() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetId", reflect.TypeOf((*MockIPlatform)(nil).GetId))
 }
 
+// GetInit mocks base method.
+func (m *MockIPlatform) GetInit() platforms.IPlatform {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInit")
+	ret0, _ := ret[0].(platforms.IPlatform)
+	return ret0
+}
+
+// GetInit indicates an expected call of GetInit.
+func (mr *MockIPlatformMockRecorder) GetInit() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInit", reflect.TypeOf((*MockIPlatform)(nil).GetInit))
+}
+
+// GetInitDefinition mocks base method.
+func (m *MockIPlatform) GetInitDefinition() v1.ContainersInternal {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInitDefinition")
+	ret0, _ := ret[0].(v1.ContainersInternal)
+	return ret0
+}
+
+// GetInitDefinition indicates an expected call of GetInitDefinition.
+func (mr *MockIPlatformMockRecorder) GetInitDefinition() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInitDefinition", reflect.TypeOf((*MockIPlatform)(nil).GetInitDefinition))
+}
+
 // GetName mocks base method.
 func (m *MockIPlatform) GetName() string {
 	m.ctrl.T.Helper()
@@ -693,6 +778,20 @@ func (mr *MockIPlatformMockRecorder) GetState() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetState", reflect.TypeOf((*MockIPlatform)(nil).GetState))
 }
 
+// InitContainer mocks base method.
+func (m *MockIPlatform) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitContainer", definition, config, client, user, runtime)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InitContainer indicates an expected call of InitContainer.
+func (mr *MockIPlatformMockRecorder) InitContainer(definition, config, client, user, runtime any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitContainer", reflect.TypeOf((*MockIPlatform)(nil).InitContainer), definition, config, client, user, runtime)
+}
+
 // Kill mocks base method.
 func (m *MockIPlatform) Kill(signal string) error {
 	m.ctrl.T.Helper()
@@ -720,6 +819,20 @@ func (m *MockIPlatform) Logs(arg0 bool) (io.ReadCloser, error) {
 func (mr *MockIPlatformMockRecorder) Logs(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockIPlatform)(nil).Logs), arg0)
+}
+
+// MountResources mocks base method.
+func (m *MockIPlatform) MountResources() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MountResources")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MountResources indicates an expected call of MountResources.
+func (mr *MockIPlatformMockRecorder) MountResources() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MountResources", reflect.TypeOf((*MockIPlatform)(nil).MountResources))
 }
 
 // PostRun mocks base method.
