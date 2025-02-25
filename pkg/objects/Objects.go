@@ -8,7 +8,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -25,7 +26,7 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func New(client *client.Client, user *authentication.User) contracts.ObjectInterface {
+func New(client *client.Client, user *authentication.User) iobjects.ObjectInterface {
 	return &Object{
 		Changelog: jsondiff.Patch{},
 		client:    client,
@@ -49,7 +50,7 @@ func (obj *Object) GetDefinitionByte() []byte {
 	return obj.Byte
 }
 
-func (obj *Object) Propose(format contracts.Format, data []byte) error {
+func (obj *Object) Propose(format iformat.Format, data []byte) error {
 	var URL string
 
 	if format.GetType() == f.TYPE_FORMATED {
@@ -69,7 +70,7 @@ func (obj *Object) Propose(format contracts.Format, data []byte) error {
 	}
 }
 
-func (obj *Object) Wait(format contracts.Format, data []byte) error {
+func (obj *Object) Wait(format iformat.Format, data []byte) error {
 	var wg sync.WaitGroup
 	var errWait error
 
@@ -90,7 +91,7 @@ func (obj *Object) Wait(format contracts.Format, data []byte) error {
 	return errWait
 }
 
-func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
+func (obj *Object) AddLocal(format iformat.Format, data []byte) error {
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
@@ -103,7 +104,7 @@ func (obj *Object) AddLocal(format contracts.Format, data []byte) error {
 	}
 }
 
-func (obj *Object) RemoveLocal(format contracts.Format) (bool, error) {
+func (obj *Object) RemoveLocal(format iformat.Format) (bool, error) {
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
@@ -142,7 +143,7 @@ func (obj *Object) RemoveLocalKey(key string) (bool, error) {
 	}
 }
 
-func (obj *Object) Find(format contracts.Format) error {
+func (obj *Object) Find(format iformat.Format) error {
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
@@ -164,8 +165,8 @@ func (obj *Object) Find(format contracts.Format) error {
 	return nil
 }
 
-func (obj *Object) FindMany(format contracts.Format) ([]contracts.ObjectInterface, error) {
-	var objects = make([]contracts.ObjectInterface, 0)
+func (obj *Object) FindMany(format iformat.Format) ([]iobjects.ObjectInterface, error) {
+	var objects = make([]iobjects.ObjectInterface, 0)
 
 	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)

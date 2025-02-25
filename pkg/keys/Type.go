@@ -3,6 +3,7 @@ package keys
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"math/big"
 )
 
 type Keys struct {
@@ -10,6 +11,7 @@ type Keys struct {
 	Server   *Server
 	Clients  map[string]*Client
 	Reloader *keypairReloader `json:"-"`
+	Sni      uint64
 }
 
 type Encrypted struct {
@@ -23,7 +25,7 @@ type CA struct {
 	CertificatePath  string            `json:"-"`
 	CertificateBytes []byte
 	PrivateKeyBytes  []byte
-	Sni              int64
+	Sni              *big.Int
 }
 
 type Server struct {
@@ -33,7 +35,7 @@ type Server struct {
 	CertificatePath  string            `json:"-"`
 	CertificateBytes []byte
 	PrivateKeyBytes  []byte
-	Sni              int64
+	Sni              *big.Int
 }
 
 type Client struct {
@@ -43,5 +45,5 @@ type Client struct {
 	CertificatePath  string            `json:"-"`
 	CertificateBytes []byte
 	PrivateKeyBytes  []byte
-	Sni              int64
+	Sni              *big.Int
 }

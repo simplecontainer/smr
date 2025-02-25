@@ -2,16 +2,56 @@ package reconcile
 
 import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness/solver"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
 	"reflect"
 	"time"
 )
+
+func DispatchEventInspect(shared *shared.Shared, containerObj platforms.IContainer) {
+	if containerObj.GetDefinition().GetRuntime().GetOwner().Kind == static.KIND_GITOPS {
+		event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.KIND_GITOPS, containerObj.GetDefinition().GetRuntime().GetOwner().Group, containerObj.GetDefinition().GetRuntime().GetOwner().Name, nil)
+
+		if shared.Manager.Cluster.Node.NodeID == containerObj.GetDefinition().GetRuntime().GetNode() {
+			err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+		}
+	}
+}
+
+func DispatchEventDelete(shared *shared.Shared, containerObj platforms.IContainer) {
+	event := events.New(events.EVENT_DELETED, static.KIND_CONTAINERS, static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+
+	if shared.Manager.Cluster.Node.NodeID == containerObj.GetDefinition().GetRuntime().GetNode() {
+		err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+	}
+}
+
+func DispatchEventChange(shared *shared.Shared, containerObj platforms.IContainer) {
+	event := events.New(events.EVENT_CHANGED, static.KIND_CONTAINERS, static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+
+	if shared.Manager.Cluster.Node.NodeID == containerObj.GetDefinition().GetRuntime().GetNode() {
+		err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+	}
+}
 
 func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
 	containerObj := containerWatcher.Container
@@ -38,17 +78,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 				}
 			}
 
-			err = containerObj.Delete()
-			if err != nil {
-				containerWatcher.Logger.Error(err.Error())
-				return status.STATUS_DAEMON_FAILURE, true
-			}
-
-			if containerObj.GetStatus().State.PreviousState != status.STATUS_CLEAN {
-				return containerObj.GetStatus().State.PreviousState, true
-			} else {
-				return status.STATUS_DAEMON_FAILURE, true
-			}
+			return "", false
 		}
 	case status.STATUS_TRANSFERING:
 		if existing != nil && existing.IsGhost() {
@@ -159,7 +189,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			containerWatcher.Logger.Info("container started")
 
 			go func() {
-				_, err = readiness.Ready(containerWatcher.Ctx, shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
+				_, err = solver.Ready(containerWatcher.Ctx, shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
@@ -243,9 +273,18 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		}
 
 	case status.STATUS_PENDING_DELETE:
-		if engine != "" {
+		containerWatcher.Container.GetStatus().PendingDelete = true
+
+		if engine != "exited" {
 			return status.STATUS_CLEAN, true
 		} else {
+			err := containerObj.Delete()
+
+			if err != nil {
+				containerWatcher.Logger.Error(err.Error())
+				return status.STATUS_DAEMON_FAILURE, true
+			}
+
 			containerWatcher.Cancel()
 			return status.STATUS_PENDING_DELETE, false
 		}

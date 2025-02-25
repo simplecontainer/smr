@@ -3,7 +3,7 @@ package f
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"strings"
 )
 
@@ -41,7 +41,7 @@ func (format Unformated) GetName() string {
 	return ""
 }
 
-func (format Unformated) Inverse() contracts.Format {
+func (format Unformated) Inverse() iformat.Format {
 	return format
 }
 

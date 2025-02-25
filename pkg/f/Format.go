@@ -8,7 +8,7 @@ package f
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"strings"
 )
 
@@ -105,7 +105,7 @@ func (format Format) GetType() string {
 	return format.Type
 }
 
-func (format Format) Inverse() contracts.Format {
+func (format Format) Inverse() iformat.Format {
 	size := len(format.Elements)
 
 	count := 0

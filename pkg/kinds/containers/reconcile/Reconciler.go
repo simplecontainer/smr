@@ -6,10 +6,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
-func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
+func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
 	if containerWatcher.Done {
 		return
 	}
@@ -29,6 +33,11 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
 
 	containerObj.GetStatus().Reconciling = false
+
+	if newState == "" {
+		// Wait till external awakes this reconciler
+		return
+	}
 
 	// Do not touch container on this node since it is active on another node
 	if containerObj.GetStatus().State.State != status.STATUS_TRANSFERING {
@@ -50,10 +59,16 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			containerWatcher.Logger.Error(err.Error())
 		}
 
+		DispatchEventChange(shared, containerWatcher.Container)
+
+		if !containerWatcher.Container.GetStatus().PendingDelete {
+			DispatchEventInspect(shared, containerWatcher.Container)
+		}
+
 		if reconcile {
 			containerWatcher.ContainerQueue <- containerObj
 		} else {
-			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
+			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.STATUS_RUNNING {
 				containerWatcher.PauseC <- containerObj
 			} else {
 				containerWatcher.Ticker.Reset(5 * time.Second)

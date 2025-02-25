@@ -1,8 +1,9 @@
-package contracts
+package idefinitions
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 )
 
@@ -15,14 +16,14 @@ type IDefinition interface {
 	GetState() *commonv1.State
 	SetState(*commonv1.State)
 	GetKind() string
-	ResolveReferences(ObjectInterface) ([]IDefinition, error)
+	ResolveReferences(iobjects.ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)
 	ToJsonString() (string, error)
 	Validate() (bool, error)
 }
 
 type TDefinition interface {
-	Apply(client *client.Http, user *authentication.User) (ObjectInterface, error)
+	Apply(client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error)
 	Delete(client *client.Http, user *authentication.User) (IDefinition, error)
 	Changed(client *client.Http, user *authentication.User) (bool, error)
 	ProposeApply(client *client.Http, user *authentication.User) (bool, error)
@@ -35,7 +36,7 @@ type TDefinition interface {
 	GetState() *commonv1.State
 	SetState(*commonv1.State)
 	GetKind() string
-	ResolveReferences(ObjectInterface) ([]IDefinition, error)
+	ResolveReferences(iobjects.ObjectInterface) ([]IDefinition, error)
 	ToJson() ([]byte, error)
 	ToJsonString() (string, error)
 	Validate() (bool, error)

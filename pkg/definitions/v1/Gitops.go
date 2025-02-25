@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -70,8 +71,8 @@ func (gitops *GitopsDefinition) GetKind() string {
 	return static.KIND_GITOPS
 }
 
-func (gitops *GitopsDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
-	references := make([]contracts.IDefinition, 0)
+func (gitops *GitopsDefinition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
+	references := make([]idefinitions.IDefinition, 0)
 
 	if gitops.Spec.HttpAuthRef.Group != "" && gitops.Spec.HttpAuthRef.Name != "" {
 		format := f.New(gitops.Spec.HttpAuthRef.Prefix, "kind", static.KIND_HTTPAUTH, gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name)

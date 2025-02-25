@@ -61,6 +61,18 @@ func (event Event) GetKey() string {
 	return format.ToString()
 }
 
+func (event Event) GetNetworkId() string {
+	return ""
+}
+
+func (event Event) GetContainerId() string {
+	return ""
+}
+
+func (event Event) IsManaged() bool {
+	return true
+}
+
 func (event Event) ToJson() ([]byte, error) {
 	return json.Marshal(event)
 }

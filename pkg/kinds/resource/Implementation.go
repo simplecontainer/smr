@@ -3,7 +3,8 @@ package resource
 import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -20,7 +21,7 @@ func (resource *Resource) GetShared() interface{} {
 	return resource.Shared
 }
 
-func (resource *Resource) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (resource *Resource) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_RESOURCE, definition)
 
 	if err != nil {
@@ -48,7 +49,7 @@ func (resource *Resource) Apply(user *authentication.User, definition []byte, ag
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (resource *Resource) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (resource *Resource) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_RESOURCE, definition)
 
 	if err != nil {
@@ -64,6 +65,6 @@ func (resource *Resource) Delete(user *authentication.User, definition []byte, a
 	}
 }
 
-func (resource *Resource) Event(event contracts.Event) error {
+func (resource *Resource) Event(event ievents.Event) error {
 	return nil
 }

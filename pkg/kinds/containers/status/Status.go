@@ -21,7 +21,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[*StatusState](gograph.Directed())
 
 	pending := gograph.NewVertex(&StatusState{STATUS_PENDING, STATUS_INITIAL, CATEGORY_PRERUN})
-	clean := gograph.NewVertex(&StatusState{STATUS_CLEAN, STATUS_INITIAL, CATEGORY_PRERUN})
+	clean := gograph.NewVertex(&StatusState{STATUS_CLEAN, STATUS_INITIAL, CATEGORY_CLEAN})
 	dependsFailed := gograph.NewVertex(&StatusState{STATUS_DEPENDS_FAILED, STATUS_INITIAL, CATEGORY_PRERUN})
 	transfering := gograph.NewVertex(&StatusState{STATUS_TRANSFERING, STATUS_INITIAL, CATEGORY_PRERUN})
 	created := gograph.NewVertex(&StatusState{STATUS_CREATED, STATUS_INITIAL, CATEGORY_PRERUN})
@@ -39,7 +39,7 @@ func (status *Status) CreateGraph() {
 	readinessChecking := gograph.NewVertex(&StatusState{STATUS_READINESS_CHECKING, STATUS_INITIAL, CATEGORY_WHILERUN})
 	change := gograph.NewVertex(&StatusState{STATUS_CHANGE, STATUS_INITIAL, CATEGORY_WHILERUN})
 	readinessReady := gograph.NewVertex(&StatusState{STATUS_READY, STATUS_INITIAL, CATEGORY_WHILERUN})
-	running := gograph.NewVertex(&StatusState{STATUS_RUNNING, STATUS_INITIAL, CATEGORY_END})
+	running := gograph.NewVertex(&StatusState{STATUS_RUNNING, STATUS_INITIAL, CATEGORY_WHILERUN})
 
 	dead := gograph.NewVertex(&StatusState{STATUS_DEAD, STATUS_INITIAL, CATEGORY_POSTRUN})
 
@@ -61,6 +61,7 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(clean, created)
 	status.StateMachine.AddEdge(clean, pendingDelete)
+	status.StateMachine.AddEdge(clean, daemonFailure)
 
 	status.StateMachine.AddEdge(prepare, change)
 	status.StateMachine.AddEdge(prepare, dependsChecking)

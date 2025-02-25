@@ -31,14 +31,12 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	gitopsObj.GetStatus().Reconciling = false
 
-	if gitopsObj.GetStatus().State.State != newState {
-		transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
+	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
 
-		if !transitioned {
-			gitopsWatcher.Logger.Error("failed to transition state",
-				zap.String("old", gitopsObj.GetStatus().State.State),
-				zap.String("new", newState))
-		}
+	if !transitioned {
+		gitopsWatcher.Logger.Error("failed to transition state",
+			zap.String("old", gitopsObj.GetStatus().State.State),
+			zap.String("new", newState))
 	}
 
 	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
@@ -50,14 +48,15 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	if reconcile {
 		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
+		DispatchEventChange(shared, gitopsWatcher.Gitops)
+
 		switch gitopsObj.GetStatus().GetState() {
-		case status.STATUS_INVALID_GIT:
-		case status.STATUS_INVALID_DEFINITIONS:
-			gitopsWatcher.Ticker.Stop()
-			break
-		case status.STATUS_INSYNC:
+		case status.STATUS_DRIFTED:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
-			break
+			return
+		case status.STATUS_INSPECTING:
+			gitopsWatcher.Ticker.Reset(5 * time.Second)
+			return
 		default:
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
 				gitopsWatcher.Ticker.Stop()

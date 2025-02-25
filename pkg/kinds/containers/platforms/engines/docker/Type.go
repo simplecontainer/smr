@@ -1,9 +1,7 @@
 package docker
 
 import (
-	"github.com/docker/docker/api/types/mount"
 	TDVolume "github.com/docker/docker/api/types/volume"
-	"github.com/docker/go-connections/nat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/smaps"
@@ -34,6 +32,7 @@ type Docker struct {
 	VolumeInternal TDVolume.Volume `json:"-"`
 	Readiness      *internal.Readinesses
 	Resources      *internal.Resources
+	Configurations *internal.Configurations
 	Capabilities   []string
 	Definition     v1.ContainersDefinition
 	Auth           string
@@ -41,8 +40,5 @@ type Docker struct {
 }
 
 type DockerInternal struct {
-	DNS          []string
-	PortsExposed nat.PortSet
-	PortsMapped  nat.PortMap
-	Mounts       []mount.Mount
+	DNS []string
 }

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/static"
-	"math/big"
 	"net"
 	"os"
 	"time"
@@ -18,14 +17,14 @@ import (
 
 func NewServer() *Server {
 	return &Server{
-		Sni: 0,
+		Sni: nil,
 	}
 }
 
 func (server *Server) Generate(ca *CA, domains *configuration.Domains, ips *configuration.IPs, CN string) error {
 	var err error
 
-	server.Sni = server.Sni + 1
+	server.Sni = generateSerialNumber()
 
 	server.PrivateKey, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -48,7 +47,7 @@ func (server *Server) Generate(ca *CA, domains *configuration.Domains, ips *conf
 	SubjectKeyIdentifier := sha1.Sum(PublicKey)
 
 	server.Certificate = &x509.Certificate{
-		SerialNumber: big.NewInt(server.Sni),
+		SerialNumber: server.Sni,
 		Subject: pkix.Name{
 			Organization: []string{"simplecontainer"},
 			CommonName:   CN,

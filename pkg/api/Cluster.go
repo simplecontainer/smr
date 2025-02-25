@@ -175,7 +175,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.SaveClusterConfiguration()
 
-	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC)
+	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC, api.Wss)
 
 	go api.ListenNode()
 	go api.Replication.ListenData(api.Config.NodeName)

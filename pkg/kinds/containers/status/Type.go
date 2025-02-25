@@ -6,16 +6,17 @@ import (
 )
 
 type Status struct {
-	State                      *StatusState `json:"state"`
-	Recreated                  bool         `json:"recreated"`
-	LastReadiness              bool
-	LastReadinessTimestamp     time.Time
-	LastDependsSolved          bool
-	LastDependsSolvedTimestamp time.Time
-	StateMachine               gograph.Graph[*StatusState] `json:"-"`
-	Reconciling                bool
-	PulledImage                bool
-	LastUpdate                 time.Time
+	State                       *StatusState `json:"state"`
+	PendingDelete               bool
+	LastReadiness               bool
+	LastReadinessTimestamp      time.Time
+	LastReadinessStarted        time.Time
+	LastDependsSolved           bool
+	LastDependsSolvedTimestamp  time.Time
+	LastDependsStartedTimestamp time.Time
+	StateMachine                gograph.Graph[*StatusState] `json:"-"`
+	Reconciling                 bool
+	LastUpdate                  time.Time
 }
 
 type StatusState struct {
@@ -25,6 +26,7 @@ type StatusState struct {
 }
 
 const CATEGORY_PRERUN = 0
+const CATEGORY_CLEAN = 0
 const CATEGORY_WHILERUN = 1
 const CATEGORY_POSTRUN = 2
 const CATEGORY_END = 3

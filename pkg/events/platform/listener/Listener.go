@@ -1,4 +1,4 @@
-package platform
+package listener
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	DTTypes "github.com/docker/docker/api/types"
 	DTEvents "github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -41,14 +41,14 @@ func Listen(shared *shared.Shared, platform string) {
 				logger.Log.Error(err.Error())
 			case msg := <-cEvents:
 				// TODO: Do I want to do blocking here? Or go with gouroutine?
-				Handle(platform, shared, msg)
+				go Handle(platform, shared, msg)
 			}
 		}
 	}
 }
 
 func Handle(platform string, shared *shared.Shared, msg interface{}) {
-	var event contracts.PlatformEvent
+	var event ievents.Event
 	switch platform {
 	case static.PLATFORM_DOCKER:
 		event = docker.NewEvent(msg.(DTEvents.Message))
@@ -57,37 +57,42 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 
 	var containerObj platforms.IContainer
 
-	if event.Group != "" && event.Name != "" {
-		containerObj = shared.Registry.FindLocal(event.Group, event.Name)
+	if event.GetGroup() != "" && event.GetName() != "" {
+		containerObj = shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 	}
 
 	if containerObj == nil {
 		return
 	}
 
-	if event.Managed {
-		switch event.Type {
+	if event.IsManaged() {
+		switch event.GetType() {
 		case types.EVENT_NETWORK_CONNECT:
 			HandleConnect(shared, containerObj, event)
+			return
 		case types.EVENT_NETWORK_DISCONNECT:
 			HandleDisconnect(shared, containerObj, event)
-			break
+			return
 		case types.EVENT_START:
 			HandleStart(shared, containerObj, event)
+			return
 		case types.EVENT_KILL:
 			HandleKill(shared, containerObj, event)
+			return
 		case types.EVENT_STOP:
 			HandleStop(shared, containerObj, event)
+			return
 		case types.EVENT_DIE:
 			HandleDie(shared, containerObj, event)
+			return
 		default:
-
+			return
 		}
 	}
 }
 
-func HandleConnect(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	logger.Log.Info(fmt.Sprintf("container %s is connected to the network: %s", container.GetGeneratedName(), event.NetworkID))
+func HandleConnect(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+	logger.Log.Info(fmt.Sprintf("container %s is connected to the network: %s", container.GetGeneratedName(), event.GetNetworkId()))
 	err := container.SyncNetwork()
 
 	if err != nil {
@@ -101,15 +106,15 @@ func HandleConnect(shared *shared.Shared, container platforms.IContainer, event 
 	}
 }
 
-func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	logger.Log.Info(fmt.Sprintf("container %s is disconnected from the network: %s", container.GetGeneratedName(), event.NetworkID))
-	err := container.SyncNetwork()
+func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+	logger.Log.Info(fmt.Sprintf("container %s is disconnected from the network: %s", container.GetGeneratedName(), event.GetNetworkId()))
+	err := container.RemoveDns(shared.DnsCache, event.GetNetworkId())
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}
 
-	err = container.RemoveDns(shared.DnsCache, event.NetworkID)
+	err = container.SyncNetwork()
 
 	if err != nil {
 		logger.Log.Error(err.Error())
@@ -121,38 +126,52 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, eve
 	}
 }
 
-func HandleStart(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
-		!container.GetStatus().Reconciling {
-		container.GetStatus().Recreated = false
+func HandleStart(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+	if !reconcileIgnore(container.GetLabels()) {
+		// NO OP YET
 	}
 }
 
-func HandleKill(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
-		!container.GetStatus().Reconciling {
-		logger.Log.Info(fmt.Sprintf("container is killed - reconcile %s", container.GetGeneratedName()))
-		container.GetStatus().Recreated = false
-		//container.GetStatus().TransitionState(container.GetGeneratedName(), status.STATUS_KILL)
+func HandleKill(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+	if !reconcileIgnore(container.GetLabels()) {
+		logger.Log.Info(fmt.Sprintf("container is killed - event ignored till container is exited %s", container.GetGeneratedName()))
 	}
 }
 
-func HandleStop(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
-		!container.GetStatus().Reconciling {
-		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
-		container.GetStatus().Recreated = false
+func HandleStop(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile will now trigger %s", container.GetGeneratedName()))
+
+		if container.GetStatus().GetCategory() != status.CATEGORY_CLEAN {
+			container.GetStatus().SetState(status.STATUS_DEAD)
+		} else {
+			err := container.Wait()
+
+			if err != nil {
+				container.GetStatus().SetState(status.STATUS_DAEMON_FAILURE)
+			} else {
+				container.GetStatus().SetState(container.GetStatus().State.PreviousState)
+			}
+		}
+
 		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
 	}
 }
 
-func HandleDie(shared *shared.Shared, container platforms.IContainer, event contracts.PlatformEvent) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END &&
-		!container.GetStatus().Reconciling {
-		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
-		container.GetStatus().Recreated = false
-		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
-	}
+func HandleDie(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+	//if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+	//	logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
+	//
+	//	if container.GetStatus().GetCategory() != status.CATEGORY_CLEAN {
+	//		fmt.Println(container.GetStatus().GetState(), container.GetStatus().State.PreviousState)
+	//		container.GetStatus().SetState(status.STATUS_DEAD)
+	//	} else {
+	//		fmt.Println(container.GetStatus().GetState(), container.GetStatus().State.PreviousState)
+	//		container.GetStatus().SetState(container.GetStatus().State.PreviousState)
+	//	}
+	//
+	//	shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+	//}
 }
 
 func reconcileIgnore(labels map[string]string) bool {

@@ -2,7 +2,8 @@ package certkey
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
@@ -16,7 +17,7 @@ func (certkey *Certkey) GetShared() interface{} {
 	return certkey.Shared
 }
 
-func (certkey *Certkey) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (certkey *Certkey) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CERTKEY, definition)
 
 	if err != nil {
@@ -32,7 +33,7 @@ func (certkey *Certkey) Apply(user *authentication.User, definition []byte, agen
 	}
 }
 
-func (certkey *Certkey) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (certkey *Certkey) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CERTKEY, definition)
 
 	if err != nil {
@@ -48,6 +49,6 @@ func (certkey *Certkey) Delete(user *authentication.User, definition []byte, age
 	}
 }
 
-func (certkey *Certkey) Event(event contracts.Event) error {
+func (certkey *Certkey) Event(event ievents.Event) error {
 	return nil
 }

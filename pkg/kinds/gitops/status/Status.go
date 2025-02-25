@@ -55,11 +55,14 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(invalidgit, created)
 
 	status.StateMachine.AddEdge(drifted, syncing)
+	status.StateMachine.AddEdge(drifted, inspecting)
 
 	status.StateMachine.AddEdge(invaliddefinitions, cloning)
 	status.StateMachine.AddEdge(invalidgit, cloning)
 	status.StateMachine.AddEdge(insync, cloning)
 	status.StateMachine.AddEdge(created, cloning)
+
+	status.StateMachine.AddEdge(insync, inspecting)
 
 	status.StateMachine.AddEdge(drifted, pendingDelete)
 	status.StateMachine.AddEdge(insync, pendingDelete)

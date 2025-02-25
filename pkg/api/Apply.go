@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"io"
@@ -28,7 +28,7 @@ func (api *Api) Kind(c *gin.Context) {
 			if !ok {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
 			} else {
-				var response contracts.Response
+				var response iresponse.Response
 
 				switch c.Param("action") {
 				case "apply":

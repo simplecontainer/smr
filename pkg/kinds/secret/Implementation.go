@@ -2,7 +2,8 @@ package secret
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
@@ -17,7 +18,7 @@ func (secret *Secret) GetShared() interface{} {
 	return secret.Shared
 }
 
-func (secret *Secret) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (secret *Secret) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_SECRET, definition)
 
 	if err != nil {
@@ -33,7 +34,7 @@ func (secret *Secret) Apply(user *authentication.User, definition []byte, agent 
 	}
 }
 
-func (secret *Secret) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (secret *Secret) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_SECRET, definition)
 
 	if err != nil {
@@ -49,6 +50,6 @@ func (secret *Secret) Delete(user *authentication.User, definition []byte, agent
 	}
 }
 
-func (secret *Secret) Event(event contracts.Event) error {
+func (secret *Secret) Event(event ievents.Event) error {
 	return nil
 }

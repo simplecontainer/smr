@@ -39,6 +39,47 @@ func (container *Docker) PrepareConfiguration(client *client.Http, user *authent
 	return err
 }
 
+func (container *Docker) PrepareConfigurations(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+	err := container.Volumes.RemoveResources()
+	if err != nil {
+		return err
+	}
+
+	for k, v := range container.Configurations.Configurations {
+		format := f.New(static.SMR_PREFIX, "kind", static.KIND_CONFIGURATION, v.Reference.Group, v.Reference.Name)
+
+		obj := objects.New(client.Get(user.Username), user)
+		err = obj.Find(format)
+
+		if !obj.Exists() {
+			return errors.New(fmt.Sprintf("failed to fetch resource from the kv store %s", format.ToString()))
+		}
+
+		configurationObj := v1.ConfigurationDefinition{}
+
+		err = json.Unmarshal(obj.GetDefinitionByte(), &configurationObj)
+
+		if err != nil {
+			return err
+		}
+
+		for key, value := range configurationObj.Spec.Data {
+			var parsed string
+			parsed, _, err = template.Parse(key, value, client, user, runtime.Configuration, 0)
+
+			if err != nil {
+				return err
+			}
+
+			runtime.Configuration.Add(key, parsed)
+		}
+
+		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONFIGURATION, container.Resources.Resources[k].Reference.Group, container.Resources.Resources[k].Reference.Name))
+	}
+
+	return nil
+}
+
 func (container *Docker) PrepareResources(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
 	err := container.Volumes.RemoveResources()
 	if err != nil {
@@ -108,7 +149,7 @@ func (container *Docker) PrepareResources(client *client.Http, user *authenticat
 			return err
 		}
 
-		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, "resource", container.Resources.Resources[k].Reference.Group, container.Resources.Resources[k].Reference.Name))
+		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_RESOURCE, container.Resources.Resources[k].Reference.Group, container.Resources.Resources[k].Reference.Name))
 	}
 
 	return nil
@@ -150,9 +191,27 @@ func (container *Docker) PrepareReadiness(runtime *types.Runtime) error {
 	var err error
 
 	for indexReadiness, _ := range container.Readiness.Readinesses {
-		for index, _ := range container.Readiness.Readinesses[indexReadiness].Reference.Data {
+		for index, val := range container.Readiness.Readinesses[indexReadiness].Body {
 			container.Lock.Lock()
-			container.Readiness.Readinesses[indexReadiness].Docker.Body[index], _, err = template.Parse(index, container.Readiness.Readinesses[indexReadiness].Docker.Body[index], nil, nil, runtime.Configuration, 0)
+			container.Readiness.Readinesses[indexReadiness].BodyUnpack[index], _, err = template.Parse(index, val, nil, nil, runtime.Configuration, 0)
+			container.Lock.Unlock()
+
+			if err != nil {
+				return err
+			}
+		}
+
+		container.Readiness.Readinesses[indexReadiness].CommandUnpacked = make([]string, len(container.Readiness.Readinesses[indexReadiness].Command))
+
+		container.Readiness.Readinesses[indexReadiness].URL, _, err = template.Parse("readiness-url", container.Readiness.Readinesses[indexReadiness].URL, nil, nil, runtime.Configuration, 0)
+
+		if err != nil {
+			return err
+		}
+
+		for index, val := range container.Readiness.Readinesses[indexReadiness].Command {
+			container.Lock.Lock()
+			container.Readiness.Readinesses[indexReadiness].CommandUnpacked[index], _, err = template.Parse("readiness-command", val, nil, nil, runtime.Configuration, 0)
 			container.Lock.Unlock()
 
 			if err != nil {

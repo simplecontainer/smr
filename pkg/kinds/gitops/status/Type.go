@@ -7,15 +7,13 @@ import (
 )
 
 type Status struct {
-	State                  *StatusState `json:"state"`
-	PreviousState          *StatusState `json:"previousState"`
-	LastReadiness          bool
-	LastReadinessTimestamp time.Time
-	StateMachine           gograph.Graph[*StatusState] `json:"-"`
-	Reconciling            bool
-	InSync                 bool
-	LastSyncedCommit       plumbing.Hash
-	LastUpdate             time.Time
+	State            *StatusState                `json:"state"`
+	PreviousState    *StatusState                `json:"previousState"`
+	StateMachine     gograph.Graph[*StatusState] `json:"-"`
+	Reconciling      bool
+	InSync           bool
+	LastSyncedCommit plumbing.Hash
+	LastUpdate       time.Time
 }
 
 type StatusState struct {
@@ -39,3 +37,4 @@ const STATUS_INSYNC string = "insync"
 const STATUS_DRIFTED string = "drifted"
 const STATUS_INSPECTING string = "inspecting"
 const STATUS_PENDING_DELETE string = "pending_delete"
+const STATUS_ANOTHER_OWNER string = "not_owner"

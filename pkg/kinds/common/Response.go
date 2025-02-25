@@ -1,17 +1,17 @@
 package common
 
 import (
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"net/http"
 )
 
-func Response(status int, explanation string, err error, data []byte) contracts.Response {
+func Response(status int, explanation string, err error, data []byte) iresponse.Response {
 	errString := ""
 	if err != nil {
 		errString = err.Error()
 	}
 
-	return contracts.Response{
+	return iresponse.Response{
 		HttpStatus:       status,
 		Explanation:      explanation,
 		ErrorExplanation: errString,

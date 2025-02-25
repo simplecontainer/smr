@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
 )
@@ -50,7 +51,7 @@ func (httpauth *HttpAuthDefinition) GetKind() string {
 	return static.KIND_HTTPAUTH
 }
 
-func (httpauth *HttpAuthDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+func (httpauth *HttpAuthDefinition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
 	return nil, nil
 }
 

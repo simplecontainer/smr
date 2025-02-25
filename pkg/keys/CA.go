@@ -7,22 +7,21 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"math/big"
 	"os"
 	"time"
 )
 
 func NewCA() *CA {
 	return &CA{
-		Sni: 0,
+		Sni: nil,
 	}
 }
 
 func (ca *CA) Generate() error {
-	ca.Sni = ca.Sni + 1
+	ca.Sni = generateSerialNumber()
 
 	ca.Certificate = &x509.Certificate{
-		SerialNumber: big.NewInt(ca.Sni),
+		SerialNumber: ca.Sni,
 		Subject: pkix.Name{
 			Organization:  []string{"simplecontainer"},
 			Country:       []string{"BA"},

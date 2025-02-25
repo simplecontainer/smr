@@ -3,9 +3,12 @@ package reconcile
 import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
+	"sync"
 )
 
 func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container, pauseHandler func(*watcher.Container) error) {
+	wg := &sync.WaitGroup{}
+
 	for {
 		select {
 		case <-containerWatcher.Ctx.Done():
@@ -18,15 +21,20 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 
 			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
 			shared.Watchers.Remove(containerWatcher.Container.GetGroupIdentifier())
-			containerWatcher = nil
 
+			DispatchEventDelete(shared, containerWatcher.Container)
+			DispatchEventInspect(shared, containerWatcher.Container)
+
+			containerWatcher = nil
 			return
 		case <-containerWatcher.ContainerQueue:
-			go Containers(shared, containerWatcher)
+			wg.Wait()
+			go Containers(shared, containerWatcher, wg)
 			break
 		case <-containerWatcher.Ticker.C:
 			containerWatcher.Ticker.Stop()
-			go Containers(shared, containerWatcher)
+			wg.Wait()
+			go Containers(shared, containerWatcher, wg)
 			break
 		case <-containerWatcher.PauseC:
 			if pauseHandler(containerWatcher) != nil {

@@ -3,12 +3,12 @@ package network
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"io"
 	"net/http"
 )
 
-func Send(client *http.Client, URL string, method string, data []byte) *contracts.Response {
+func Send(client *http.Client, URL string, method string, data []byte) *iresponse.Response {
 	var req *http.Request
 	var err error
 
@@ -20,8 +20,10 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	req.Header.Set("User-Agent", "smr")
+
 	if err != nil {
-		return &contracts.Response{
+		return &iresponse.Response{
 			HttpStatus:       0,
 			Explanation:      "failed to craft request",
 			ErrorExplanation: err.Error(),
@@ -34,7 +36,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return &contracts.Response{
+		return &iresponse.Response{
 			HttpStatus:       0,
 			Explanation:      "failed to connect to the node",
 			ErrorExplanation: err.Error(),
@@ -48,7 +50,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &contracts.Response{
+		return &iresponse.Response{
 			HttpStatus:       0,
 			Explanation:      "invalid response from the node",
 			ErrorExplanation: err.Error(),
@@ -58,11 +60,11 @@ func Send(client *http.Client, URL string, method string, data []byte) *contract
 		}
 	}
 
-	var response contracts.Response
+	var response iresponse.Response
 	err = json.Unmarshal(body, &response)
 
 	if err != nil {
-		return &contracts.Response{
+		return &iresponse.Response{
 			HttpStatus:       resp.StatusCode,
 			Explanation:      "",
 			ErrorExplanation: err.Error(),

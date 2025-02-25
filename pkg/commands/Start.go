@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
+	"github.com/simplecontainer/smr/pkg/api/middlewares"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -155,6 +156,8 @@ func Start() {
 				router := gin.New()
 				routerHttp := gin.New()
 
+				router.Use(middlewares.CORS())
+
 				v1 := router.Group("/api/v1")
 				{
 					definition := v1.Group("/attempt")
@@ -210,6 +213,7 @@ func Start() {
 				router.GET("/metrics", api.MetricsHandle())
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+				router.GET("/events", api.Events)
 
 				//debug := routerHttp.Group("/debug", func(c *gin.Context) {
 				//	c.Next()

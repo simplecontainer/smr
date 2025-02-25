@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
+	"github.com/simplecontainer/smr/pkg/wss"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"time"
@@ -26,6 +27,7 @@ func NewApi(config *configuration.Configuration) *Api {
 		Config:        config,
 		Keys:          &keys.Keys{},
 		DnsCache:      &dns.Records{},
+		Wss:           wss.New(),
 		Kinds:         relations.NewDefinitionRelationRegistry(),
 		KindsRegistry: nil,
 		Manager:       &manager.Manager{},
@@ -39,6 +41,7 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Manager.DnsCache = api.DnsCache
 	api.Manager.PluginsRegistry = []string{}
 	api.Manager.Http = client.NewHttpClients()
+	api.Manager.Wss = api.Wss
 
 	api.Kinds.Register("network", []string{""})
 	api.Kinds.Register("containers", []string{"network", "resource", "configuration", "certkey"})

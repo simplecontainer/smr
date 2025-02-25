@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator/v10"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
 )
@@ -19,25 +20,26 @@ type ContainersDefinition struct {
 }
 
 type ContainersInternal struct {
-	Image         string                `validate:"required" json:"image"`
-	Tag           string                `validate:"required" json:"tag"`
-	Envs          []string              `json:"envs,omitempty"`
-	Entrypoint    []string              `json:"entrypoint,omitempty"`
-	Args          []string              `json:"args,omitempty"`
-	Dependencies  []ContainersDependsOn `json:"dependencies,omitempty"`
-	Readiness     []ContainersReadiness `json:"readiness,omitempty"`
-	Networks      []ContainersNetwork   `json:"networks,omitempty"`
-	Ports         []ContainersPort      `json:"ports,omitempty"`
-	Volumes       []ContainersVolume    `json:"volumes,omitempty"`
-	Configuration map[string]string     `json:"configuration,omitempty"`
-	Resources     []ContainersResource  `json:"resources,omitempty"`
-	Replicas      uint64                `validate:"required" json:"replicas"`
-	Capabilities  []string              `json:"capabilities,omitempty"`
-	Privileged    bool                  `json:"privileged,omitempty"`
-	NetworkMode   string                `json:"network_mode,omitempty"`
-	Spread        ContainersSpread      `json:"spread,omitempty"`
-	Nodes         []string              `json:"nodes,omitempty"`
-	Dns           []string              `json:"dns,omitempty"`
+	Image          string                     `validate:"required" json:"image"`
+	Tag            string                     `validate:"required" json:"tag"`
+	Envs           []string                   `json:"envs,omitempty"`
+	Entrypoint     []string                   `json:"entrypoint,omitempty"`
+	Args           []string                   `json:"args,omitempty"`
+	Dependencies   []ContainersDependsOn      `json:"dependencies,omitempty"`
+	Readiness      []ContainersReadiness      `json:"readiness,omitempty"`
+	Networks       []ContainersNetwork        `json:"networks,omitempty"`
+	Ports          []ContainersPort           `json:"ports,omitempty"`
+	Volumes        []ContainersVolume         `json:"volumes,omitempty"`
+	Configuration  map[string]string          `json:"configuration,omitempty"`
+	Resources      []ContainersResource       `json:"resources,omitempty"`
+	Configurations []ContainersConfigurations `json:"configurations,omitempty"`
+	Replicas       uint64                     `validate:"required" json:"replicas"`
+	Capabilities   []string                   `json:"capabilities,omitempty"`
+	Privileged     bool                       `json:"privileged,omitempty"`
+	NetworkMode    string                     `json:"network_mode,omitempty"`
+	Spread         ContainersSpread           `json:"spread,omitempty"`
+	Nodes          []string                   `json:"nodes,omitempty"`
+	Dns            []string                   `json:"dns,omitempty"`
 }
 
 type ContainersDependsOn struct {
@@ -48,11 +50,13 @@ type ContainersDependsOn struct {
 }
 
 type ContainersReadiness struct {
-	Name    string   `validate:"required" json:"name"`
-	Type    string   `json:"type"`
-	URL     string   `json:"url"`
-	Command []string `json:"command"`
-	Timeout string   `validate:"required" json:"timeout"`
+	Name    string            `validate:"required" json:"name"`
+	Type    string            `json:"type"`
+	URL     string            `json:"url"`
+	Body    map[string]string `json:"body"`
+	Method  string            `json:"method"`
+	Command []string          `json:"command"`
+	Timeout string            `validate:"required" json:"timeout"`
 }
 
 type ContainersSpread struct {
@@ -85,6 +89,11 @@ type ContainersResource struct {
 	MountPoint string
 }
 
+type ContainersConfigurations struct {
+	Name  string
+	Group string
+}
+
 func (containers *ContainersDefinition) GetPrefix() string {
 	return containers.Prefix
 }
@@ -113,7 +122,7 @@ func (containers *ContainersDefinition) GetKind() string {
 	return static.KIND_CONTAINERS
 }
 
-func (containers *ContainersDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+func (containers *ContainersDefinition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
 	return nil, nil
 }
 

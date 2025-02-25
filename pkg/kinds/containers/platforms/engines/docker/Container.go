@@ -15,7 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -30,7 +30,7 @@ import (
 	"time"
 )
 
-func New(name string, definition contracts.IDefinition) (*Docker, error) {
+func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	definitionEncoded, err := json.Marshal(definition)
 
@@ -57,6 +57,13 @@ func New(name string, definition contracts.IDefinition) (*Docker, error) {
 		definition.(*v1.ContainersDefinition).Spec.Tag = "latest"
 	}
 
+	var readinesses *internal.Readinesses
+	readinesses, err = internal.NewReadinesses(definition.(*v1.ContainersDefinition).Spec.Readiness)
+
+	if err != nil {
+		return nil, err
+	}
+
 	container := &Docker{
 		Name:           definition.(*v1.ContainersDefinition).Meta.Name,
 		GeneratedName:  name,
@@ -73,8 +80,9 @@ func New(name string, definition contracts.IDefinition) (*Docker, error) {
 		NetworkMode:    definition.(*v1.ContainersDefinition).Spec.NetworkMode,
 		Networks:       internal.NewNetworks(definition.(*v1.ContainersDefinition).Spec.Networks),
 		Ports:          internal.NewPorts(definition.(*v1.ContainersDefinition).Spec.Ports),
-		Readiness:      internal.NewReadinesses(definition.(*v1.ContainersDefinition).Spec.Readiness),
+		Readiness:      readinesses,
 		Resources:      internal.NewResources(definition.(*v1.ContainersDefinition).Spec.Resources),
+		Configurations: internal.NewConfigurations(definition.(*v1.ContainersDefinition).Spec.Configurations),
 		Volumes:        volumes,
 		VolumeInternal: TDVolume.Volume{},
 		Capabilities:   definition.(*v1.ContainersDefinition).Spec.Capabilities,
@@ -131,6 +139,7 @@ func (container *Docker) Run() error {
 			return err
 		}
 
+		container.Labels.Add("managed", "smr")
 		container.Labels.Add("group", container.Group)
 		container.Labels.Add("name", container.GeneratedName)
 		container.Labels.Add("created", strconv.FormatInt(time.Now().Unix(), 10))
@@ -202,6 +211,12 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 	runtime.ObjectDependencies = make([]f.Format, 0)
 
 	err := container.PrepareConfiguration(client, user, runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareConfigurations(client, user, runtime)
 
 	if err != nil {
 		return err
@@ -365,33 +380,57 @@ func (container *Docker) Restart() error {
 	}
 }
 func (container *Docker) Delete() error {
-	if c, _ := container.Get(); c != nil && c.State != "running" {
-		ctx := context.Background()
-		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+	ctx := context.Background()
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	defer func(cli *IDClient.Client) {
+		err = cli.Close()
 		if err != nil {
-			panic(err)
+			return
 		}
+	}(cli)
 
-		defer func(cli *IDClient.Client) {
-			err = cli.Close()
-			if err != nil {
-				return
-			}
-		}(cli)
+	err = cli.ContainerRemove(ctx, container.DockerID, TDContainer.RemoveOptions{
+		Force: true,
+	})
 
-		err = cli.ContainerRemove(ctx, container.DockerID, TDContainer.RemoveOptions{
-			Force: true,
-		})
+	if err != nil {
+		return err
+	}
 
+	return nil
+}
+func (container *Docker) Wait() error {
+	ctx := context.Background()
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	defer func(cli *IDClient.Client) {
+		err = cli.Close()
 		if err != nil {
-			return err
+			return
 		}
+	}(cli)
 
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+
+	statusCh, errCh := cli.ContainerWait(ctx, container.DockerID, TDContainer.WaitConditionNotRunning)
+	select {
+	case <-ctxTimeout.Done():
+		return errors.New("timeout waiting for the condition")
+	case err = <-errCh:
+		return err
+	case <-statusCh:
 		return nil
-	} else {
-		return errors.New("cannot delete container that is running")
 	}
 }
+
 func (container *Docker) Rename(newName string) error {
 	if c, _ := container.Get(); c != nil {
 		ctx := context.Background()
