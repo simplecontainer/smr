@@ -166,19 +166,7 @@ func HandleStop(shared *shared.Shared, container platforms.IContainer, event iev
 }
 
 func HandleDie(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	//if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
-	//	logger.Log.Info(fmt.Sprintf("container is stopped - reconcile %s", container.GetGeneratedName()))
-	//
-	//	if container.GetStatus().GetCategory() != status.CATEGORY_CLEAN {
-	//		fmt.Println(container.GetStatus().GetState(), container.GetStatus().State.PreviousState)
-	//		container.GetStatus().SetState(status.STATUS_DEAD)
-	//	} else {
-	//		fmt.Println(container.GetStatus().GetState(), container.GetStatus().State.PreviousState)
-	//		container.GetStatus().SetState(container.GetStatus().State.PreviousState)
-	//	}
-	//
-	//	shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
-	//}
+	// NO OP
 }
 
 func reconcileIgnore(labels map[string]string) bool {

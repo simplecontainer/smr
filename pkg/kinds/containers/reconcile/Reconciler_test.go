@@ -2,7 +2,6 @@ package reconcile
 
 import (
 	"errors"
-	"fmt"
 	"github.com/go-playground/assert/v2"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -136,7 +135,6 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					select {
 					case containerObj := <-w.ContainerQueue:
 						if containerObj == nil {
-							fmt.Println("containerObj is gone")
 							return
 						}
 
