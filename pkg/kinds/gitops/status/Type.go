@@ -11,6 +11,7 @@ type Status struct {
 	PreviousState    *StatusState                `json:"previousState"`
 	StateMachine     gograph.Graph[*StatusState] `json:"-"`
 	Reconciling      bool
+	PendingDelete    bool
 	InSync           bool
 	LastSyncedCommit plumbing.Hash
 	LastUpdate       time.Time

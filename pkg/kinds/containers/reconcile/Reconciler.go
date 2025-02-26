@@ -1,7 +1,6 @@
 package reconcile
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
@@ -31,8 +30,6 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 	newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
 
 	containerObj.GetStatus().Reconciling = false
-
-	fmt.Println(containerObj.GetGeneratedName(), containerObj.GetStatus().State.PreviousState, containerObj.GetStatus().GetState(), newState)
 
 	if newState == "" {
 		// Wait till external awakes this reconciler

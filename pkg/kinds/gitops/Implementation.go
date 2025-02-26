@@ -121,7 +121,7 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			gitopsObj.GetStatus().SetState(status.STATUS_PENDING_DELETE)
+			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.STATUS_PENDING_DELETE)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 
 			return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil), nil
@@ -141,7 +141,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil && !gitopsWatcher.Done {
+		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.ForcePoll = true
 			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
@@ -156,7 +156,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil && !gitopsWatcher.Done {
+		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.DoSync = true
 			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
@@ -171,7 +171,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil && !gitopsWatcher.Done {
+		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.GetStatus().SetState(status.STATUS_INSPECTING)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}

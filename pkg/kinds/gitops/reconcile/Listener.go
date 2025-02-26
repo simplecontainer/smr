@@ -12,6 +12,8 @@ import (
 )
 
 func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops, pauseHandler func(gitops *watcher.Gitops) error) {
+	wg := &sync.WaitGroup{}
+
 	for {
 		select {
 		case <-gitopsWatcher.Ctx.Done():
@@ -19,10 +21,11 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			gitopsWatcher.Done = true
 			close(gitopsWatcher.GitopsQueue)
 
-			var wg sync.WaitGroup
+			var wgChild sync.WaitGroup
 			for _, request := range gitopsWatcher.Gitops.Definitions {
 				if !request.Definition.GetState().Gitops.LastSync.IsZero() {
-					wg.Add(1)
+					wgChild.Add(1)
+
 					go func() {
 						format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 						shared.Manager.Replication.NewDeleteC(format)
@@ -40,14 +43,14 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 								close(shared.Manager.Replication.DeleteC[format.ToString()])
 								delete(shared.Manager.Replication.DeleteC, format.ToString())
 
-								wg.Done()
+								wgChild.Done()
 								break
 							}
 						}
 					}()
 				}
 			}
-			wg.Wait()
+			wgChild.Wait()
 
 			err := shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)
 			if err != nil {
@@ -64,11 +67,17 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			gitopsWatcher = nil
 			return
 		case <-gitopsWatcher.GitopsQueue:
-			go Gitops(shared, gitopsWatcher)
+			wg.Wait()
+			if !gitopsWatcher.Done {
+				go Gitops(shared, gitopsWatcher, wg)
+			}
 			break
 		case <-gitopsWatcher.Ticker.C:
 			gitopsWatcher.Ticker.Stop()
-			go Gitops(shared, gitopsWatcher)
+			wg.Wait()
+			if !gitopsWatcher.Done {
+				go Gitops(shared, gitopsWatcher, wg)
+			}
 			break
 		case <-gitopsWatcher.Poller.C:
 			gitopsWatcher.Gitops.ForcePoll = true

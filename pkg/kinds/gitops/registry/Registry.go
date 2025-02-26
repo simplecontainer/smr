@@ -2,11 +2,13 @@ package registry
 
 import (
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
+	"time"
 )
 
 func (registry *Registry) AddOrUpdate(group string, name string, gitops *implementation.Gitops) {
@@ -54,6 +56,8 @@ func (registry *Registry) Sync(group string, name string) error {
 	registry.GitopsLock.RLock()
 	gitopsObj, ok := registry.Gitops[common.GroupIdentifier(group, name)]
 	registry.GitopsLock.RUnlock()
+
+	fmt.Println("syncing registry", group, name, time.Now())
 
 	if ok {
 		format := f.New(gitopsObj.Definition.GetPrefix(), static.CATEGORY_STATE, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName())

@@ -147,11 +147,9 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		}
 	case status.STATUS_PENDING_DELETE:
 		gitopsWatcher.Logger.Info("triggering context cancel")
+		gitopsWatcher.Gitops.Status.PendingDelete = true
 
-		// disable auto sync because child deletion
-		gitopsWatcher.Gitops.AutomaticSync = false
-		gitopsWatcher.Cancel()
-		return status.STATUS_PENDING_DELETE, false
+		return "", false
 	default:
 		return status.STATUS_CREATED, true
 	}

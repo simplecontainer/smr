@@ -45,18 +45,12 @@ func Handle(kindRegistry map[string]ikinds.Kind, deleteC map[string]chan ievents
 
 		if ok {
 			if event.GetType() == EVENT_DELETED {
-				fmt.Println("DELETED")
-
 				format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
-
-				fmt.Println(format.ToString())
 
 				ch, ok := deleteC[format.ToString()]
 
 				if ok {
 					ch <- event
-				} else {
-					fmt.Println("missing channel")
 				}
 			}
 

@@ -6,11 +6,15 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
-func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
-	if gitopsWatcher.Done {
+func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
+	if gitopsWatcher.Done || gitopsWatcher.Gitops.Status.PendingDelete {
 		return
 	}
 
@@ -27,6 +31,8 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		gitopsObj.ForcePoll = false
 		gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
 	}
+
+	gitopsWatcher.Logger.Info("reconcile")
 
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
 
@@ -52,7 +58,11 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	)
 
 	if reconcile {
-		gitopsWatcher.GitopsQueue <- gitopsObj
+		go func() {
+			if !gitopsWatcher.Done {
+				gitopsWatcher.GitopsQueue <- gitopsObj
+			}
+		}()
 	} else {
 		switch gitopsObj.GetStatus().GetState() {
 		case status.STATUS_DRIFTED:
@@ -61,6 +71,10 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		case status.STATUS_INSPECTING:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
 			return
+		case status.STATUS_PENDING_DELETE:
+			gitopsWatcher.Ticker.Stop()
+			gitopsWatcher.Cancel()
+			break
 		default:
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
 				gitopsWatcher.Ticker.Stop()
