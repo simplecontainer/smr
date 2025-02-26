@@ -26,6 +26,11 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
 			shared.Watchers.Remove(containerWatcher.Container.GetGroupIdentifier())
 
+			events.Dispatch(
+				events.NewKindEvent(events.EVENT_DELETED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
+				shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+			)
+
 			replicas := make([]platforms.IContainer, 0)
 			group := shared.Registry.FindGroup(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup())
 

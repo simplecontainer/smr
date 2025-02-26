@@ -24,13 +24,13 @@ func NewKindEvent(event string, definition idefinitions.IDefinition, data []byte
 	switch event {
 	case EVENT_INSPECT:
 		return Event{
-			Type:   event,
-			Target: definition.GetKind(),
+			Type: event,
+			//Target: definition.GetRuntime().GetOwner().Kind,
 			Prefix: definition.GetPrefix(),
-			Kind:   definition.GetKind(),
-			Group:  definition.GetRuntime().GetOwner().Group,
-			Name:   definition.GetRuntime().GetOwner().Name,
-			Data:   data,
+			//Kind:   definition.GetRuntime().GetOwner().Kind,
+			Group: definition.GetRuntime().GetOwner().Group,
+			Name:  definition.GetRuntime().GetOwner().Name,
+			Data:  data,
 		}
 	default:
 		return Event{
@@ -45,8 +45,9 @@ func NewKindEvent(event string, definition idefinitions.IDefinition, data []byte
 	}
 }
 
-func (e Event) SetName(name string) {
+func (e Event) SetName(name string) Event {
 	e.Name = name
+	return e
 }
 
 func (event Event) Propose(proposeC *raft.KVStore, node uint64) error {

@@ -248,8 +248,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 				}
 			}
 
-			containerWatcher.Cancel()
-			return "", false
+			return status.STATUS_PENDING_DELETE, false
 		}
 
 		return status.STATUS_CLEAN, true

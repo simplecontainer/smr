@@ -17,6 +17,10 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 
 	containerObj := containerWatcher.Container
 
+	if containerObj.GetStatus().PendingDelete {
+		containerWatcher.Logger.Info("container is in delete process")
+	}
+
 	if containerObj.GetStatus().Reconciling {
 		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
 		return
@@ -57,7 +61,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 		}
 
 		events.Dispatch(
-			events.NewKindEvent(events.EVENT_CHANGED, containerWatcher.Container.GetDefinition(), nil),
+			events.NewKindEvent(events.EVENT_CHANGED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
 			shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
 		)
 
@@ -69,20 +73,27 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 				}
 			}()
 		} else {
-			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.STATUS_RUNNING {
-				if !containerWatcher.Done {
-					containerWatcher.PauseC <- containerObj
-				}
+			switch containerObj.GetStatus().GetState() {
+			case status.STATUS_PENDING_DELETE:
+				containerWatcher.Ticker.Stop()
+				containerWatcher.Cancel()
+				return
+			default:
+				if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.STATUS_RUNNING {
+					if !containerWatcher.Done {
+						containerWatcher.PauseC <- containerObj
+					}
 
-				// Skip reconcile chains and inform the gitops after actions are done
-				if !containerWatcher.Container.GetStatus().PendingDelete {
-					events.Dispatch(
-						events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
-						shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
-					)
+					// Skip reconcile chains and inform the gitops after actions are done
+					if !containerWatcher.Container.GetStatus().PendingDelete {
+						events.Dispatch(
+							events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+							shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+						)
+					}
+				} else {
+					containerWatcher.Ticker.Reset(5 * time.Second)
 				}
-			} else {
-				containerWatcher.Ticker.Reset(5 * time.Second)
 			}
 		}
 	}
