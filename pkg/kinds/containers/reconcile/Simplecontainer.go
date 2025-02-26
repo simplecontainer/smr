@@ -17,9 +17,37 @@ import (
 
 func DispatchEventInspect(shared *shared.Shared, containerObj platforms.IContainer) {
 	if containerObj.GetDefinition().GetRuntime().GetOwner().Kind == static.KIND_GITOPS {
-		event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.KIND_GITOPS, containerObj.GetDefinition().GetRuntime().GetOwner().Group, containerObj.GetDefinition().GetRuntime().GetOwner().Name, nil)
+		if shared.Manager.Cluster != nil {
+			event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, containerObj.GetDefinition().GetRuntime().GetOwner().Group, containerObj.GetDefinition().GetRuntime().GetOwner().Name, nil)
 
-		if shared.Manager.Cluster.Node.NodeID == containerObj.GetDefinition().GetRuntime().GetNode() {
+			if shared.Manager.Config.KVStore.Node == containerObj.GetDefinition().GetRuntime().GetNode() {
+				err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
+
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
+			}
+		}
+	}
+}
+func DispatchEventDelete(shared *shared.Shared, containerObj platforms.IContainer, name string) {
+	event := events.New(events.EVENT_DELETED, static.KIND_CONTAINERS, static.SMR_PREFIX, static.KIND_CONTAINERS, containerObj.GetGroup(), name, nil)
+
+	if shared.Manager.Config.KVStore.Node == containerObj.GetDefinition().GetRuntime().GetNode() {
+		if shared.Manager.Cluster != nil {
+			err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
+
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+		}
+	}
+}
+func DispatchEventChange(shared *shared.Shared, containerObj platforms.IContainer) {
+	event := events.New(events.EVENT_CHANGED, static.KIND_CONTAINERS, static.SMR_PREFIX, static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
+
+	if shared.Manager.Config.KVStore.Node == containerObj.GetDefinition().GetRuntime().GetNode() {
+		if shared.Manager.Cluster != nil {
 			err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
 
 			if err != nil {
@@ -29,48 +57,28 @@ func DispatchEventInspect(shared *shared.Shared, containerObj platforms.IContain
 	}
 }
 
-func DispatchEventDelete(shared *shared.Shared, containerObj platforms.IContainer) {
-	event := events.New(events.EVENT_DELETED, static.KIND_CONTAINERS, static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
-
-	if shared.Manager.Cluster.Node.NodeID == containerObj.GetDefinition().GetRuntime().GetNode() {
-		err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	}
-}
-
-func DispatchEventChange(shared *shared.Shared, containerObj platforms.IContainer) {
-	event := events.New(events.EVENT_CHANGED, static.KIND_CONTAINERS, static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
-
-	if shared.Manager.Cluster.Node.NodeID == containerObj.GetDefinition().GetRuntime().GetNode() {
-		err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	}
-}
-
 func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
 	containerObj := containerWatcher.Container
 
 	switch containerObj.GetStatus().State.State {
 	case status.STATUS_CLEAN:
-		if engine != "running" {
+		switch engine {
+		case "exited":
 			err := containerObj.Delete()
 			if err != nil {
 				containerWatcher.Logger.Error(err.Error())
 				return status.STATUS_DAEMON_FAILURE, true
 			}
 
-			return containerObj.GetStatus().State.PreviousState, true
-		} else {
+			if containerObj.GetStatus().State.PreviousState != status.STATUS_CLEAN {
+				return containerObj.GetStatus().State.PreviousState, true
+			} else {
+				return status.STATUS_DEAD, true
+			}
+		default:
 			err := containerObj.Stop(static.SIGTERM)
-
 			if err != nil {
-				err = containerObj.Stop(static.SIGKILL)
+				err = containerObj.Kill(static.SIGKILL)
 
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
@@ -275,20 +283,20 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 	case status.STATUS_PENDING_DELETE:
 		containerWatcher.Container.GetStatus().PendingDelete = true
 
-		if engine != "exited" {
-			return status.STATUS_CLEAN, true
-		} else {
-			err := containerObj.Delete()
-
-			if err != nil {
-				containerWatcher.Logger.Error(err.Error())
-				return status.STATUS_DAEMON_FAILURE, true
+		if containerObj.GetStatus().State.PreviousState == status.STATUS_CLEAN || engine == "exited" {
+			state, err := containerObj.GetState()
+			if err == nil && state.State == "exited" {
+				if err := containerObj.Delete(); err != nil {
+					containerWatcher.Logger.Error(err.Error())
+					return status.STATUS_DAEMON_FAILURE, true
+				}
 			}
 
 			containerWatcher.Cancel()
-			return status.STATUS_PENDING_DELETE, false
+			return "", false
 		}
 
+		return status.STATUS_CLEAN, true
 	case status.STATUS_DAEMON_FAILURE:
 		containerWatcher.Logger.Info("container daemon engine failed - reconciler going to sleep")
 		return status.STATUS_DAEMON_FAILURE, false

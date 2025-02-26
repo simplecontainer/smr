@@ -3,6 +3,7 @@ package definitions
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
@@ -177,7 +178,7 @@ func (definition *Definition) Apply(format iformat.Format, obj iobjects.ObjectIn
 		}
 
 		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
-			return obj, errors.New("object has owner - direct modification not allowed")
+			return obj, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%s)", definition.GetMeta()))
 		}
 	}
 
@@ -203,7 +204,7 @@ func (definition *Definition) Delete(format iformat.Format, obj iobjects.ObjectI
 		}
 
 		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
-			return existing, errors.New("object has owner - direct modification not allowed")
+			return existing, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%s)", definition.GetMeta()))
 		}
 
 		if err != nil {

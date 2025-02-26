@@ -33,7 +33,7 @@ func (config *Config) Apply(user *authentication.User, definition []byte, agent 
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, static.KIND_CONFIGURATION, request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
+		event := events.New(events.EVENT_CHANGE, static.KIND_CONFIGURATION, request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
 
 		if config.Shared.Manager.Cluster.Node.NodeID == request.Definition.GetRuntime().GetNode() {
 			err = event.Propose(config.Shared.Manager.Cluster.KVStore, request.Definition.GetRuntime().GetNode())

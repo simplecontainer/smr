@@ -142,16 +142,23 @@ func HandleStop(shared *shared.Shared, container platforms.IContainer, event iev
 	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
 		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile will now trigger %s", container.GetGeneratedName()))
 
-		if container.GetStatus().GetCategory() != status.CATEGORY_CLEAN {
-			container.GetStatus().SetState(status.STATUS_DEAD)
-		} else {
-			err := container.Wait()
+		// wait for exited
+		err := container.Wait()
 
-			if err != nil {
-				container.GetStatus().SetState(status.STATUS_DAEMON_FAILURE)
-			} else {
+		if err != nil {
+			container.GetStatus().SetState(status.STATUS_DAEMON_FAILURE)
+			return
+		}
+
+		if container.GetStatus().GetCategory() == status.CATEGORY_CLEAN {
+			switch container.GetStatus().State.PreviousState {
+			case status.STATUS_CREATED, status.STATUS_PENDING_DELETE:
 				container.GetStatus().SetState(container.GetStatus().State.PreviousState)
+			default:
+				container.GetStatus().SetState(status.STATUS_DEAD)
 			}
+		} else {
+			container.GetStatus().SetState(status.STATUS_DEAD)
 		}
 
 		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container

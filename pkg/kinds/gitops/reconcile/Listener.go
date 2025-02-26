@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -14,27 +15,44 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 		select {
 		case <-gitopsWatcher.Ctx.Done():
 			gitopsWatcher.Ticker.Stop()
+			gitopsWatcher.Done = true
 			close(gitopsWatcher.GitopsQueue)
-
-			logger.Log.Debug("gitops watcher deleted - proceed with deleting children")
 
 			var wg sync.WaitGroup
 			for _, request := range gitopsWatcher.Gitops.Definitions {
-				wg.Add(1)
-				go func() {
-					request.Definition.Definition.GetRuntime().SetOwner(gitopsWatcher.Gitops.Definition.GetKind(), gitopsWatcher.Gitops.Definition.GetMeta().Group, gitopsWatcher.Gitops.Definition.GetMeta().Name)
-					err := request.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
+				if !request.Definition.GetState().Gitops.LastSync.IsZero() {
+					wg.Add(1)
+					go func() {
+						format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+						shared.Manager.Replication.NewDeleteC(format)
 
-					if err != nil {
-						logger.Log.Error(err.Error())
-					}
+						request.Definition.Definition.GetRuntime().SetOwner(gitopsWatcher.Gitops.Definition.GetKind(), gitopsWatcher.Gitops.Definition.GetMeta().Group, gitopsWatcher.Gitops.Definition.GetMeta().Name)
+						err := request.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
 
-					wg.Done()
-				}()
+						if err != nil {
+							logger.Log.Error(err.Error())
+						}
+
+						for {
+							select {
+							case <-shared.Manager.Replication.DeleteC[format.ToString()]:
+								close(shared.Manager.Replication.DeleteC[format.ToString()])
+								delete(shared.Manager.Replication.DeleteC, format.ToString())
+
+								wg.Done()
+								break
+							}
+						}
+					}()
+				}
 			}
 			wg.Wait()
 
-			shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)
+			err := shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 
 			DispatchEventDelete(shared, gitopsWatcher.Gitops)

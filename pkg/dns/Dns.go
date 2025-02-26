@@ -64,11 +64,14 @@ func (r *Records) RemoveARecord(domain string, ip string) ([]byte, error) {
 
 	if ok {
 		record = tmp.(*ARecord)
-
 		record.Remove(ip)
 	}
 
-	return record.ToJson()
+	if len(record.Addresses) == 0 {
+		return nil, nil
+	} else {
+		return record.ToJson()
+	}
 }
 
 func (r *Records) Save(bytes []byte, domain string) error {
@@ -76,6 +79,13 @@ func (r *Records) Save(bytes []byte, domain string) error {
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
 
 	return obj.AddLocal(format, bytes)
+}
+
+func (r *Records) Remove(bytes []byte, domain string) (bool, error) {
+	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
+	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
+
+	return obj.RemoveLocal(format)
 }
 
 func (r *Records) Find(domain string) ([]string, error) {

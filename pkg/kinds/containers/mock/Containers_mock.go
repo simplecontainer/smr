@@ -586,6 +586,20 @@ func (mr *MockIContainerMockRecorder) UpdateDns(dnsCache any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDns", reflect.TypeOf((*MockIContainer)(nil).UpdateDns), dnsCache)
 }
 
+// Wait mocks base method.
+func (m *MockIContainer) Wait() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Wait")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Wait indicates an expected call of Wait.
+func (mr *MockIContainerMockRecorder) Wait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIContainer)(nil).Wait))
+}
+
 // MockIPlatform is a mock of IPlatform interface.
 type MockIPlatform struct {
 	ctrl     *gomock.Controller
@@ -1020,6 +1034,20 @@ func (mr *MockIPlatformMockRecorder) UpdateDns(dnsCache any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDns", reflect.TypeOf((*MockIPlatform)(nil).UpdateDns), dnsCache)
 }
 
+// Wait mocks base method.
+func (m *MockIPlatform) Wait() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Wait")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Wait indicates an expected call of Wait.
+func (mr *MockIPlatformMockRecorder) Wait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIPlatform)(nil).Wait))
+}
+
 // MockRegistry is a mock of Registry interface.
 type MockRegistry struct {
 	ctrl     *gomock.Controller
@@ -1122,6 +1150,20 @@ func (m *MockRegistry) FindLocal(group, name string) platforms.IContainer {
 func (mr *MockRegistryMockRecorder) FindLocal(group, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLocal", reflect.TypeOf((*MockRegistry)(nil).FindLocal), group, name)
+}
+
+// FindReplicas mocks base method.
+func (m *MockRegistry) FindReplicas(prefix, group, name string) []platforms.IContainer {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindReplicas", prefix, group, name)
+	ret0, _ := ret[0].([]platforms.IContainer)
+	return ret0
+}
+
+// FindReplicas indicates an expected call of FindReplicas.
+func (mr *MockRegistryMockRecorder) FindReplicas(prefix, group, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReplicas", reflect.TypeOf((*MockRegistry)(nil).FindReplicas), prefix, group, name)
 }
 
 // GetIndexes mocks base method.

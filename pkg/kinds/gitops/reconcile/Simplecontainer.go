@@ -15,7 +15,7 @@ import (
 
 func DispatchEventInspect(shared *shared.Shared, gitopsObj *implementation.Gitops) {
 	if gitopsObj.Definition.GetRuntime().GetOwner().Kind == static.KIND_GITOPS {
-		event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.KIND_GITOPS, gitopsObj.Definition.GetRuntime().GetOwner().Group, gitopsObj.Definition.GetRuntime().GetOwner().Name, nil)
+		event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, gitopsObj.Definition.GetRuntime().GetOwner().Group, gitopsObj.Definition.GetRuntime().GetOwner().Name, nil)
 
 		if shared.Manager.Cluster.Node.NodeID == gitopsObj.Definition.GetRuntime().GetNode() {
 			err := event.Propose(shared.Manager.Cluster.KVStore, gitopsObj.Definition.GetRuntime().GetNode())
@@ -28,7 +28,7 @@ func DispatchEventInspect(shared *shared.Shared, gitopsObj *implementation.Gitop
 }
 
 func DispatchEventDelete(shared *shared.Shared, gitopsObj *implementation.Gitops) {
-	event := events.New(events.EVENT_DELETED, static.KIND_GITOPS, static.KIND_GITOPS, gitopsObj.Definition.GetMeta().Group, gitopsObj.Definition.GetMeta().Name, nil)
+	event := events.New(events.EVENT_DELETED, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, gitopsObj.Definition.GetMeta().Group, gitopsObj.Definition.GetMeta().Name, nil)
 
 	if shared.Manager.Cluster.Node.NodeID == gitopsObj.Definition.GetRuntime().GetNode() {
 		err := event.Propose(shared.Manager.Cluster.KVStore, gitopsObj.Definition.GetRuntime().GetNode())
@@ -40,7 +40,7 @@ func DispatchEventDelete(shared *shared.Shared, gitopsObj *implementation.Gitops
 }
 
 func DispatchEventChange(shared *shared.Shared, gitopsObj *implementation.Gitops) {
-	event := events.New(events.EVENT_CHANGED, static.KIND_GITOPS, static.KIND_GITOPS, gitopsObj.Definition.GetMeta().Group, gitopsObj.Definition.GetMeta().Name, nil)
+	event := events.New(events.EVENT_CHANGED, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, gitopsObj.Definition.GetMeta().Group, gitopsObj.Definition.GetMeta().Name, nil)
 
 	if shared.Manager.Cluster.Node.NodeID == gitopsObj.Definition.GetRuntime().GetNode() {
 		err := event.Propose(shared.Manager.Cluster.KVStore, gitopsObj.Definition.GetRuntime().GetNode())

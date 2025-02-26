@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
@@ -13,10 +14,6 @@ import (
 func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
-
-	if containerWatcher.Done {
-		return
-	}
 
 	containerObj := containerWatcher.Container
 
@@ -33,6 +30,8 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 	newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
 
 	containerObj.GetStatus().Reconciling = false
+
+	fmt.Println(containerObj.GetGeneratedName(), containerObj.GetStatus().State.PreviousState, containerObj.GetStatus().GetState(), newState)
 
 	if newState == "" {
 		// Wait till external awakes this reconciler
@@ -61,15 +60,24 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 
 		DispatchEventChange(shared, containerWatcher.Container)
 
-		if !containerWatcher.Container.GetStatus().PendingDelete {
-			DispatchEventInspect(shared, containerWatcher.Container)
-		}
-
 		if reconcile {
-			containerWatcher.ContainerQueue <- containerObj
+			// This is to prevent deadlock since parent of Containers() is waiting for wg.Done()
+			go func() {
+				if !containerWatcher.Done {
+					containerWatcher.ContainerQueue <- containerObj
+				}
+			}()
 		} else {
 			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.STATUS_RUNNING {
-				containerWatcher.PauseC <- containerObj
+				if !containerWatcher.Done {
+					containerWatcher.PauseC <- containerObj
+				}
+
+				// Skip reconcile chains and inform the gitops after actions are done
+				if !containerWatcher.Container.GetStatus().PendingDelete {
+					fmt.Println("informing gitops", containerObj.GetGeneratedName(), containerObj.GetStatus().State.PreviousState, containerObj.GetStatus().GetState(), newState)
+					DispatchEventInspect(shared, containerWatcher.Container)
+				}
 			} else {
 				containerWatcher.Ticker.Reset(5 * time.Second)
 			}

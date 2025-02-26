@@ -18,13 +18,13 @@ type Containers struct {
 type Container struct {
 	Container      platforms.IContainer
 	Syncing        bool
+	Done           bool
 	Lock           *sync.RWMutex
 	ContainerQueue chan platforms.IContainer      `json:"-"`
 	ReadinessChan  chan *readiness.ReadinessState `json:"-"`
 	DependencyChan chan *dependency.State         `json:"-"`
 	PauseC         chan platforms.IContainer      `json:"-"`
 	Ctx            context.Context                `json:"-" `
-	Done           bool                           `json:"-"`
 	Cancel         context.CancelFunc             `json:"-"`
 	Ticker         *time.Ticker                   `json:"-"`
 	Retry          int                            `json:"-"`

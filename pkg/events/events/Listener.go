@@ -2,8 +2,10 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/acks"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/ikinds"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -11,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, wss *wss.WebSockets) {
+func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, deleteC map[string]chan ievents.Event, wss *wss.WebSockets) {
 	for {
 		select {
 		case data := <-e:
@@ -32,20 +34,36 @@ func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, wss *wss.WebSocke
 			}
 			wss.Lock.RUnlock()
 
-			Handle(kindRegistry, event, data.Node)
+			Handle(kindRegistry, deleteC, event, data.Node)
 		}
 	}
 }
 
-func Handle(kindRegistry map[string]ikinds.Kind, event Event, node uint64) {
+func Handle(kindRegistry map[string]ikinds.Kind, deleteC map[string]chan ievents.Event, event Event, node uint64) {
 	go func() {
 		kind, ok := kindRegistry[event.Target]
 
 		if ok {
+			if event.GetType() == EVENT_DELETED {
+				fmt.Println("DELETED")
+
+				format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
+
+				fmt.Println(format.ToString())
+
+				ch, ok := deleteC[format.ToString()]
+
+				if ok {
+					ch <- event
+				} else {
+					fmt.Println("missing channel")
+				}
+			}
+
 			err := kind.Event(event)
 
 			if err != nil {
-				logger.Log.Error(err.Error())
+				logger.Log.Error(err.Error(), zap.String("event", fmt.Sprintf("%s", event)))
 			}
 		}
 

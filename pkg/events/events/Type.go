@@ -3,6 +3,7 @@ package events
 type Event struct {
 	Type   string
 	Target string
+	Prefix string
 	Kind   string
 	Group  string
 	Name   string

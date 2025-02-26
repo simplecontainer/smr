@@ -108,7 +108,6 @@ type Registry interface {
 	Remove(prefix string, group string, name string) error
 	FindLocal(group string, name string) IContainer
 	Find(prefix string, group string, name string) IContainer
-
 	FindGroup(prefix string, group string) []IContainer
 	Name(client *client.Http, prefix string, group string, name string) (string, []uint64, error)
 	NameReplica(group string, name string, index uint64) string

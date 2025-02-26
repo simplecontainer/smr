@@ -87,7 +87,11 @@ func (r *Records) RemoveAndSave(domain string, ip string) {
 		logger.Log.Error(err.Error())
 	}
 
-	err = r.Save(addresses, domain)
+	if addresses == nil {
+		_, err = r.Remove(addresses, domain)
+	} else {
+		err = r.Save(addresses, domain)
+	}
 
 	if err != nil {
 		logger.Log.Error(err.Error())

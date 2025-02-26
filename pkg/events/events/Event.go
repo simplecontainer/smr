@@ -7,10 +7,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func New(event string, target string, kind string, group string, name string, data []byte) Event {
+func New(event string, target string, prefix string, kind string, group string, name string, data []byte) Event {
 	return Event{
 		Type:   event,
 		Target: target,
+		Prefix: prefix,
 		Kind:   kind,
 		Group:  group,
 		Name:   name,
@@ -36,6 +37,10 @@ func (event Event) GetType() string {
 func (event Event) GetTarget() string {
 	return event.Target
 
+}
+
+func (event Event) GetPrefix() string {
+	return event.Prefix
 }
 
 func (event Event) GetKind() string {

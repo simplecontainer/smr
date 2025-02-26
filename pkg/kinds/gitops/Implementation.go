@@ -141,7 +141,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil {
+		if gitopsWatcher != nil && !gitopsWatcher.Done {
 			gitopsObj.ForcePoll = true
 			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
@@ -156,7 +156,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil {
+		if gitopsWatcher != nil && !gitopsWatcher.Done {
 			gitopsObj.DoSync = true
 			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
@@ -171,7 +171,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil {
+		if gitopsWatcher != nil && !gitopsWatcher.Done {
 			gitopsObj.GetStatus().SetState(status.STATUS_INSPECTING)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}

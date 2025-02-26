@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-playground/assert/v2"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -9,13 +10,16 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	mock_platforms "github.com/simplecontainer/smr/pkg/kinds/containers/mock"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile/mock"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/mock/gomock"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestFromInitialStateToRunning(t *testing.T) {
@@ -66,14 +70,21 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
+				registryMock.EXPECT().FindReplicas("", "internal", "testing").DoAndReturn(func(prefix string, group string, name string) error {
+					return nil
+				}).AnyTimes()
+
 				containerMock.EXPECT().GetGroup().Return("internal").AnyTimes()
 				containerMock.EXPECT().GetGroupIdentifier().Return("internal.internal-testing-1").AnyTimes()
 				containerMock.EXPECT().GetGeneratedName().Return("internal-testing-1").AnyTimes()
 				containerMock.EXPECT().GetDefinition().Return(mock.DefinitionTestInitial("internal-testing-1", "docker")).AnyTimes()
-
 				containerMock.EXPECT().GetInitDefinition().Return(v1.ContainersInternal{}).AnyTimes()
 				containerMock.EXPECT().GetStatus().DoAndReturn(func() *status.Status {
 					return statusT
+				}).AnyTimes()
+
+				containerMock.EXPECT().GetReadiness().DoAndReturn(func() []*readiness.Readiness {
+					return nil
 				}).AnyTimes()
 
 				containerMock.EXPECT().GetState().DoAndReturn(func() (state.State, error) {
@@ -92,6 +103,14 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
+				containerMock.EXPECT().Stop(gomock.Any()).DoAndReturn(func(signal string) error {
+					return nil
+				}).AnyTimes()
+
+				containerMock.EXPECT().Delete().DoAndReturn(func() error {
+					return nil
+				}).AnyTimes()
+
 				containerMock.EXPECT().PostRun(gomock.Any(), gomock.Any()).DoAndReturn(func(config any, dnsCache any) error {
 					return nil
 				}).AnyTimes()
@@ -105,6 +124,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
+			wg := &sync.WaitGroup{}
 			shared.Registry.AddOrUpdate(containerMock.GetGroup(), containerMock.GetGeneratedName(), containerMock)
 
 			w := watcher.New(containerMock, status.STATUS_CREATED, shared.User)
@@ -115,13 +135,28 @@ func TestFromInitialStateToRunning(t *testing.T) {
 				for {
 					select {
 					case containerObj := <-w.ContainerQueue:
-						if containerObj.GetStatus().State.State == status.STATUS_READINESS_CHECKING {
+						if containerObj == nil {
+							fmt.Println("containerObj is gone")
+							return
+						}
 
+						if containerObj.GetStatus().State.State == status.STATUS_RUNNING {
+							containerObj.GetStatus().TransitionState("", "", status.STATUS_CREATED)
+						}
+
+						if containerObj.GetStatus().State.State == status.STATUS_CLEAN {
 							go func() {
-								w.ContainerQueue <- containerObj
+								containerObj.GetStatus().TransitionState("", "", status.STATUS_PENDING_DELETE)
 							}()
 
-							engineState.State = "running"
+							time.Sleep(1 * time.Second)
+						}
+
+						if containerObj.GetStatus().State.State == status.STATUS_READINESS_CHECKING {
+							go func() {
+								engineState.State = "running"
+								w.ContainerQueue <- containerObj
+							}()
 						} else {
 							w.ContainerQueue <- containerObj
 						}
@@ -133,12 +168,12 @@ func TestFromInitialStateToRunning(t *testing.T) {
 				}
 			}()
 
-			go Containers(shared, w)
+			go Containers(shared, w, wg)
 			HandleTickerAndEvents(shared, w, func(w *watcher.Container) error {
 				return errors.New("done")
 			})
 
-			assert.Equal(t, statusT.GetState(), status.STATUS_RUNNING)
+			assert.Equal(t, statusT.GetState(), status.STATUS_PENDING_DELETE)
 		})
 	}
 }

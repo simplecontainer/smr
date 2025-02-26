@@ -150,8 +150,6 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 				}
 			}
 
-			fmt.Println(changes)
-
 			if request.Definition.GetState().Gitops.NotOwner {
 				flagError = true
 				request.Definition.GetState().Gitops.SetError(errors.New("someone else is owner of the object"))

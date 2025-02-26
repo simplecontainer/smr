@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -18,6 +19,7 @@ import (
 func NewRequest(kind string) (*Request, error) {
 	request := &Request{
 		Definition: definitions.New(kind),
+		DeleteC:    make(chan ievents.Event),
 	}
 
 	if request.Definition.Definition == nil {
