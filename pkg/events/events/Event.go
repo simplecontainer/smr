@@ -24,13 +24,13 @@ func NewKindEvent(event string, definition idefinitions.IDefinition, data []byte
 	switch event {
 	case EVENT_INSPECT:
 		return Event{
-			Type: event,
-			//Target: definition.GetRuntime().GetOwner().Kind,
+			Type:   event,
+			Target: definition.GetRuntime().GetOwner().Kind,
 			Prefix: definition.GetPrefix(),
-			//Kind:   definition.GetRuntime().GetOwner().Kind,
-			Group: definition.GetRuntime().GetOwner().Group,
-			Name:  definition.GetRuntime().GetOwner().Name,
-			Data:  data,
+			Kind:   definition.GetRuntime().GetOwner().Kind,
+			Group:  definition.GetRuntime().GetOwner().Group,
+			Name:   definition.GetRuntime().GetOwner().Name,
+			Data:   data,
 		}
 	default:
 		return Event{
