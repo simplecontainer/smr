@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
@@ -45,11 +46,14 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		gitopsWatcher.Logger.Error(err.Error())
 	}
 
+	events.Dispatch(
+		events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
+		shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+	)
+
 	if reconcile {
 		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
-		DispatchEventChange(shared, gitopsWatcher.Gitops)
-
 		switch gitopsObj.GetStatus().GetState() {
 		case status.STATUS_DRIFTED:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)

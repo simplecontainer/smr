@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -17,6 +18,35 @@ func New(event string, target string, prefix string, kind string, group string, 
 		Name:   name,
 		Data:   data,
 	}
+}
+
+func NewKindEvent(event string, definition idefinitions.IDefinition, data []byte) Event {
+	switch event {
+	case EVENT_INSPECT:
+		return Event{
+			Type:   event,
+			Target: definition.GetKind(),
+			Prefix: definition.GetPrefix(),
+			Kind:   definition.GetKind(),
+			Group:  definition.GetRuntime().GetOwner().Group,
+			Name:   definition.GetRuntime().GetOwner().Name,
+			Data:   data,
+		}
+	default:
+		return Event{
+			Type:   event,
+			Target: definition.GetKind(),
+			Prefix: definition.GetPrefix(),
+			Kind:   definition.GetKind(),
+			Group:  definition.GetMeta().Group,
+			Name:   definition.GetMeta().Name,
+			Data:   data,
+		}
+	}
+}
+
+func (e Event) SetName(name string) {
+	e.Name = name
 }
 
 func (event Event) Propose(proposeC *raft.KVStore, node uint64) error {

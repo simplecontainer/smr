@@ -1,5 +1,9 @@
 package events
 
+type EventGroup struct {
+	Events []Event
+}
+
 type Event struct {
 	Type   string
 	Target string

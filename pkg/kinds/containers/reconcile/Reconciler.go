@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
@@ -58,7 +59,10 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 			containerWatcher.Logger.Error(err.Error())
 		}
 
-		DispatchEventChange(shared, containerWatcher.Container)
+		events.Dispatch(
+			events.NewKindEvent(events.EVENT_CHANGED, containerWatcher.Container.GetDefinition(), nil),
+			shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+		)
 
 		if reconcile {
 			// This is to prevent deadlock since parent of Containers() is waiting for wg.Done()
@@ -75,8 +79,10 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 
 				// Skip reconcile chains and inform the gitops after actions are done
 				if !containerWatcher.Container.GetStatus().PendingDelete {
-					fmt.Println("informing gitops", containerObj.GetGeneratedName(), containerObj.GetStatus().State.PreviousState, containerObj.GetStatus().GetState(), newState)
-					DispatchEventInspect(shared, containerWatcher.Container)
+					events.Dispatch(
+						events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+						shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+					)
 				}
 			} else {
 				containerWatcher.Ticker.Reset(5 * time.Second)

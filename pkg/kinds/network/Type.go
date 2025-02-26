@@ -16,4 +16,8 @@ type Shared struct {
 	Client  *client.Http
 }
 
+func (shared *Shared) GetManager() *manager.Manager {
+	return shared.Manager
+}
+
 const KIND string = static.KIND_NETWORK

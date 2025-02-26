@@ -2,60 +2,16 @@ package reconcile
 
 import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness/solver"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
 	"reflect"
 	"time"
 )
-
-func DispatchEventInspect(shared *shared.Shared, containerObj platforms.IContainer) {
-	if containerObj.GetDefinition().GetRuntime().GetOwner().Kind == static.KIND_GITOPS {
-		if shared.Manager.Cluster != nil {
-			event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, containerObj.GetDefinition().GetRuntime().GetOwner().Group, containerObj.GetDefinition().GetRuntime().GetOwner().Name, nil)
-
-			if shared.Manager.Config.KVStore.Node == containerObj.GetDefinition().GetRuntime().GetNode() {
-				err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
-
-				if err != nil {
-					logger.Log.Error(err.Error())
-				}
-			}
-		}
-	}
-}
-func DispatchEventDelete(shared *shared.Shared, containerObj platforms.IContainer, name string) {
-	event := events.New(events.EVENT_DELETED, static.KIND_CONTAINERS, static.SMR_PREFIX, static.KIND_CONTAINERS, containerObj.GetGroup(), name, nil)
-
-	if shared.Manager.Config.KVStore.Node == containerObj.GetDefinition().GetRuntime().GetNode() {
-		if shared.Manager.Cluster != nil {
-			err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-		}
-	}
-}
-func DispatchEventChange(shared *shared.Shared, containerObj platforms.IContainer) {
-	event := events.New(events.EVENT_CHANGED, static.KIND_CONTAINERS, static.SMR_PREFIX, static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName(), nil)
-
-	if shared.Manager.Config.KVStore.Node == containerObj.GetDefinition().GetRuntime().GetNode() {
-		if shared.Manager.Cluster != nil {
-			err := event.Propose(shared.Manager.Cluster.KVStore, containerObj.GetDefinition().GetRuntime().GetNode())
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-		}
-	}
-}
 
 func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
 	containerObj := containerWatcher.Container

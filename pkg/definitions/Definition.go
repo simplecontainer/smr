@@ -262,21 +262,25 @@ func (definition *Definition) GetState() *commonv1.State {
 	return definition.Definition.GetState()
 }
 
+func (definition *Definition) SetState(state *commonv1.State) {
+	definition.Definition.SetState(state)
+}
+
 func (definition *Definition) GetKind() string {
 	return definition.Definition.GetKind()
 }
 
-func (definition *Definition) IsOf(compare *Definition) bool {
-	if definition.GetKind() == compare.Definition.GetKind() &&
-		definition.GetMeta().Group == compare.Definition.GetMeta().Group &&
-		definition.GetMeta().Name == compare.Definition.GetMeta().Name {
+func (definition *Definition) IsOf(compare idefinitions.IDefinition) bool {
+	if definition.GetKind() == compare.GetKind() &&
+		definition.GetMeta().Group == compare.GetMeta().Group &&
+		definition.GetMeta().Name == compare.GetMeta().Name {
 		return true
 	} else {
 		return false
 	}
 }
 
-func (definition *Definition) Patch(compare *Definition) error {
+func (definition *Definition) Patch(compare idefinitions.IDefinition) error {
 	var b1 []byte
 	var b2 []byte
 	var patch []byte
@@ -289,7 +293,7 @@ func (definition *Definition) Patch(compare *Definition) error {
 		return err
 	}
 
-	b2, err = compare.Definition.ToJson()
+	b2, err = compare.ToJson()
 
 	if err != nil {
 		return err

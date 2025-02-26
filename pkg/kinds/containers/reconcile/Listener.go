@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
@@ -25,8 +26,6 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
 			shared.Watchers.Remove(containerWatcher.Container.GetGroupIdentifier())
 
-			DispatchEventDelete(shared, containerWatcher.Container, containerWatcher.Container.GetGeneratedName())
-
 			replicas := make([]platforms.IContainer, 0)
 			group := shared.Registry.FindGroup(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup())
 
@@ -37,8 +36,10 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			}
 
 			if len(replicas) == 0 {
-				DispatchEventDelete(shared, containerWatcher.Container, containerWatcher.Container.GetName())
-				DispatchEventInspect(shared, containerWatcher.Container)
+				events.DispatchGroup([]events.Event{
+					events.NewKindEvent(events.EVENT_DELETED, containerWatcher.Container.GetDefinition(), nil),
+					events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+				}, shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode())
 			}
 
 			containerWatcher = nil

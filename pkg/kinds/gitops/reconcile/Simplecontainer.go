@@ -2,54 +2,12 @@ package reconcile
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
-	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/packer"
-	"github.com/simplecontainer/smr/pkg/static"
 )
-
-func DispatchEventInspect(shared *shared.Shared, gitopsObj *implementation.Gitops) {
-	if gitopsObj.Definition.GetRuntime().GetOwner().Kind == static.KIND_GITOPS {
-		event := events.New(events.EVENT_INSPECT, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, gitopsObj.Definition.GetRuntime().GetOwner().Group, gitopsObj.Definition.GetRuntime().GetOwner().Name, nil)
-
-		if shared.Manager.Cluster.Node.NodeID == gitopsObj.Definition.GetRuntime().GetNode() {
-			err := event.Propose(shared.Manager.Cluster.KVStore, gitopsObj.Definition.GetRuntime().GetNode())
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-		}
-	}
-}
-
-func DispatchEventDelete(shared *shared.Shared, gitopsObj *implementation.Gitops) {
-	event := events.New(events.EVENT_DELETED, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, gitopsObj.Definition.GetMeta().Group, gitopsObj.Definition.GetMeta().Name, nil)
-
-	if shared.Manager.Cluster.Node.NodeID == gitopsObj.Definition.GetRuntime().GetNode() {
-		err := event.Propose(shared.Manager.Cluster.KVStore, gitopsObj.Definition.GetRuntime().GetNode())
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	}
-}
-
-func DispatchEventChange(shared *shared.Shared, gitopsObj *implementation.Gitops) {
-	event := events.New(events.EVENT_CHANGED, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, gitopsObj.Definition.GetMeta().Group, gitopsObj.Definition.GetMeta().Name, nil)
-
-	if shared.Manager.Cluster.Node.NodeID == gitopsObj.Definition.GetRuntime().GetNode() {
-		err := event.Propose(shared.Manager.Cluster.KVStore, gitopsObj.Definition.GetRuntime().GetNode())
-
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	}
-}
 
 func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bool) {
 	gitopsObj := gitopsWatcher.Gitops

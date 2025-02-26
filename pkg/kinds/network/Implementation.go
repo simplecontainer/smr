@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -83,6 +84,11 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
 	}
 
+	events.DispatchGroup([]events.Event{
+		events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
+		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+	}, network.Shared, request.Definition.GetRuntime().GetNode())
+
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
@@ -128,6 +134,11 @@ func (network *Network) Delete(user *authentication.User, definition []byte, age
 	if err != nil {
 		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
 	}
+
+	events.DispatchGroup([]events.Event{
+		events.NewKindEvent(events.EVENT_DELETED, request.Definition, nil),
+		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+	}, network.Shared, request.Definition.GetRuntime().GetNode())
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

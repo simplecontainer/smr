@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
@@ -55,8 +56,10 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 
 			shared.Watcher.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 
-			DispatchEventDelete(shared, gitopsWatcher.Gitops)
-			DispatchEventInspect(shared, gitopsWatcher.Gitops)
+			events.DispatchGroup([]events.Event{
+				events.NewKindEvent(events.EVENT_DELETED, gitopsWatcher.Gitops.GetDefinition(), nil),
+				events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+			}, shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode())
 
 			gitopsWatcher = nil
 			return

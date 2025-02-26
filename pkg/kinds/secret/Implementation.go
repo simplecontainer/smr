@@ -4,6 +4,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
@@ -30,6 +31,11 @@ func (secret *Secret) Apply(user *authentication.User, definition []byte, agent 
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	} else {
+		events.DispatchGroup([]events.Event{
+			events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+		}, secret.Shared, request.Definition.GetRuntime().GetNode())
+
 		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 }
@@ -46,6 +52,11 @@ func (secret *Secret) Delete(user *authentication.User, definition []byte, agent
 	if err != nil {
 		return common.Response(http.StatusInternalServerError, "", err, nil), err
 	} else {
+		events.DispatchGroup([]events.Event{
+			events.NewKindEvent(events.EVENT_DELETED, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+		}, secret.Shared, request.Definition.GetRuntime().GetNode())
+
 		return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 	}
 }

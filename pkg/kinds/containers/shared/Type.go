@@ -17,3 +17,7 @@ type Shared struct {
 	Manager  *manager.Manager
 	Client   *client.Http
 }
+
+func (shared *Shared) GetManager() *manager.Manager {
+	return shared.Manager
+}

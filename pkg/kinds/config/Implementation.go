@@ -6,7 +6,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
 )
@@ -33,15 +32,11 @@ func (config *Config) Apply(user *authentication.User, definition []byte, agent 
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, static.KIND_CONFIGURATION, request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
-
-		if config.Shared.Manager.Cluster.Node.NodeID == request.Definition.GetRuntime().GetNode() {
-			err = event.Propose(config.Shared.Manager.Cluster.KVStore, request.Definition.GetRuntime().GetNode())
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-		}
+		events.DispatchGroup([]events.Event{
+			events.NewKindEvent(events.EVENT_CHANGE, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+		}, config.Shared, request.Definition.GetRuntime().GetNode())
 	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
@@ -59,6 +54,12 @@ func (config *Config) Delete(user *authentication.User, definition []byte, agent
 	if err != nil {
 		return common.Response(http.StatusTeapot, "", err, nil), err
 	} else {
+		events.DispatchGroup([]events.Event{
+			events.NewKindEvent(events.EVENT_CHANGE, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_DELETED, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+		}, config.Shared, request.Definition.GetRuntime().GetNode())
+
 		return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 	}
 }
