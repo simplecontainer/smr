@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -11,6 +12,16 @@ import (
 	"strconv"
 	"syscall"
 )
+
+func (api *Api) Nodes(c *gin.Context) {
+	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+	} else {
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, bytes))
+	}
+}
 
 func (api *Api) AddNode(c *gin.Context) {
 	if !api.Cluster.Started {
