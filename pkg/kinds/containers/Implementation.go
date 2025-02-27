@@ -66,7 +66,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 	obj, err := request.Apply(containers.Shared.Client, user)
 
 	if !obj.ChangeDetected() {
-		return common.Response(http.StatusOK, static.STATUS_RESPONSE_APPLIED, nil, nil), nil
+		return common.Response(http.StatusOK, static.RESPONSE_APPLIED, nil, nil), nil
 	}
 
 	if err != nil {
@@ -87,7 +87,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 		for _, containerObj := range destroy {
 			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.PENDING_DELETE)
 			reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier), &sync.WaitGroup{})
 		}
 	}
@@ -110,7 +110,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 					if existingContainer != nil {
 						existingWatcher.Ticker.Stop()
 
-						containerObj.GetStatus().SetState(status.STATUS_CREATED)
+						containerObj.GetStatus().SetState(status.CREATED)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
 						existingWatcher.Container = containerObj
@@ -143,7 +143,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 					existingContainer := containers.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 
 					if existingContainer != nil && existingContainer.IsGhost() {
-						w := watcher.New(containerObj, status.STATUS_TRANSFERING, user)
+						w := watcher.New(containerObj, status.TRANSFERING, user)
 						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
@@ -155,7 +155,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 						go reconcile.Containers(containers.Shared, w, &sync.WaitGroup{})
 					} else {
-						w := watcher.New(containerObj, status.STATUS_CREATED, user)
+						w := watcher.New(containerObj, status.CREATED, user)
 						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
@@ -174,7 +174,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 				// - assing container to the wathcer
 				// - roll the reconciler
 
-				w := watcher.New(containerObj, status.STATUS_CREATED, user)
+				w := watcher.New(containerObj, status.CREATED, user)
 				containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 				containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
@@ -216,9 +216,13 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 			for _, containerObj := range destroy {
 				go func() {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.DELETE)
 
-					reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier), &sync.WaitGroup{})
+					containerW := containers.Shared.Watchers.Find(GroupIdentifier)
+
+					if containerW != nil && !containerW.Done {
+						containers.Shared.Watchers.Find(GroupIdentifier).ContainerQueue <- containerObj
+					}
 				}()
 			}
 
@@ -235,7 +239,7 @@ func (containers *Containers) Event(event ievents.Event) error {
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.STATUS_CHANGE)
+				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
 				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
 			}
 		}
@@ -248,8 +252,12 @@ func (containers *Containers) Event(event ievents.Event) error {
 			return errors.New("container not found event is ignored")
 		}
 
-		containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
-		containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
+		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
+
+		if !containerW.Done {
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.RESTART)
+			containerW.ContainerQueue <- containerObj
+		}
 
 		break
 	}

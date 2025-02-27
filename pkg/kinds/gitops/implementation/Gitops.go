@@ -106,7 +106,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 		obj, err := request.Compare(client, user)
 
 		if err != nil {
-			if err.Error() == static.STATUS_RESPONSE_NOT_FOUND {
+			if err.Error() == static.RESPONSE_NOT_FOUND {
 				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_MISSING, true)
 				flagDrift = true
 			} else {

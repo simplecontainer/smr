@@ -6,6 +6,7 @@ import (
 	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/logger"
 )
 
 type Networks struct {
@@ -81,7 +82,7 @@ func (networks *Networks) Remove(containerId string, networkId string) error {
 			err := n.Disconnect(containerId)
 
 			if err != nil {
-				return err
+				logger.Log.Error(err.Error())
 			}
 
 			networks.Networks = append(networks.Networks[:i], networks.Networks[i+1:]...)

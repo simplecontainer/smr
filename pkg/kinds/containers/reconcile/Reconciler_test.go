@@ -33,7 +33,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 	shared := mock.GetShared(registryMock)
 
 	statusT := status.New()
-	statusT.SetState(status.STATUS_CREATED)
+	statusT.SetState(status.CREATED)
 
 	engineState := state.State{
 		Error: "",
@@ -126,7 +126,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 			wg := &sync.WaitGroup{}
 			shared.Registry.AddOrUpdate(containerMock.GetGroup(), containerMock.GetGeneratedName(), containerMock)
 
-			w := watcher.New(containerMock, status.STATUS_CREATED, shared.User)
+			w := watcher.New(containerMock, status.CREATED, shared.User)
 			w.Logger = logger.NewLogger("debug", []string{"/dev/stdout"}, []string{"/dev/stdout"})
 
 			// sniffer to implement various scenarios on reconciler
@@ -138,19 +138,19 @@ func TestFromInitialStateToRunning(t *testing.T) {
 							return
 						}
 
-						if containerObj.GetStatus().State.State == status.STATUS_RUNNING {
-							containerObj.GetStatus().TransitionState("", "", status.STATUS_CREATED)
+						if containerObj.GetStatus().State.State == status.RUNNING {
+							containerObj.GetStatus().TransitionState("", "", status.CREATED)
 						}
 
-						if containerObj.GetStatus().State.State == status.STATUS_CLEAN {
+						if containerObj.GetStatus().State.State == status.CLEAN {
 							go func() {
-								containerObj.GetStatus().TransitionState("", "", status.STATUS_PENDING_DELETE)
+								containerObj.GetStatus().TransitionState("", "", status.PENDING_DELETE)
 							}()
 
 							time.Sleep(1 * time.Second)
 						}
 
-						if containerObj.GetStatus().State.State == status.STATUS_READINESS_CHECKING {
+						if containerObj.GetStatus().State.State == status.READINESS_CHECKING {
 							go func() {
 								engineState.State = "running"
 								w.ContainerQueue <- containerObj
@@ -171,7 +171,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 				return errors.New("done")
 			})
 
-			assert.Equal(t, statusT.GetState(), status.STATUS_PENDING_DELETE)
+			assert.Equal(t, statusT.GetState(), status.PENDING_DELETE)
 		})
 	}
 }

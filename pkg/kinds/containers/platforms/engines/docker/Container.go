@@ -23,6 +23,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/smaps"
+	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -113,9 +114,11 @@ func IsDaemonRunning() error {
 }
 
 func (container *Docker) Run() error {
-	c, _ := container.Get()
+	c, err := container.Get()
 
-	if c == nil || c.State == "exited" {
+	fmt.Println(err)
+
+	if c == nil {
 		ctx := context.Background()
 		cli := &IDClient.Client{}
 
@@ -327,10 +330,18 @@ func (container *Docker) Stop(signal string) error {
 		}(cli)
 
 		duration := 10
-		return cli.ContainerStop(ctx, c.ID, TDContainer.StopOptions{
+		err = cli.ContainerStop(ctx, c.ID, TDContainer.StopOptions{
 			Signal:  signal,
 			Timeout: &duration,
 		})
+
+		if err != nil {
+			if IDClient.IsErrNotFound(err) {
+				return nil
+			}
+		}
+
+		return err
 	} else {
 		return errors.New("container is nil when trying to stop it")
 	}
@@ -393,17 +404,32 @@ func (container *Docker) Delete() error {
 		}
 	}(cli)
 
+	// Resource cleanup after delete is not that fast - hence rename before delete
+	container.Rename(fmt.Sprintf("%s-delete-%s", container.GetGeneratedName(), time.Now().UnixMicro()))
+
 	err = cli.ContainerRemove(ctx, container.DockerID, TDContainer.RemoveOptions{
 		Force: true,
 	})
 
 	if err != nil {
+		if IDClient.IsErrNotFound(err) {
+			return nil
+		}
+
 		return err
 	}
 
-	return nil
+	err = container.Wait(string(TDContainer.WaitConditionRemoved))
+
+	if err != nil {
+		if IDClient.IsErrNotFound(err) {
+			return nil
+		}
+	}
+
+	return err
 }
-func (container *Docker) Wait() error {
+func (container *Docker) Wait(condition string) error {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -420,7 +446,9 @@ func (container *Docker) Wait() error {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	statusCh, errCh := cli.ContainerWait(ctx, container.DockerID, TDContainer.WaitConditionNotRunning)
+	WaitCondition := TDContainer.WaitCondition(condition)
+
+	statusCh, errCh := cli.ContainerWait(ctx, container.DockerID, WaitCondition)
 	select {
 	case <-ctxTimeout.Done():
 		return errors.New("timeout waiting for the condition")
@@ -429,6 +457,19 @@ func (container *Docker) Wait() error {
 	case <-statusCh:
 		return nil
 	}
+}
+func (container *Docker) Clean() error {
+	state, err := container.GetState()
+
+	if err != nil || state.State == "exited" {
+		return container.Delete()
+	}
+
+	if err = container.Stop(static.SIGTERM); err != nil {
+		return err
+	}
+
+	return container.Delete()
 }
 
 func (container *Docker) Rename(newName string) error {
@@ -446,7 +487,7 @@ func (container *Docker) Rename(newName string) error {
 			}
 		}(cli)
 
-		container.GeneratedName = newName
+		//container.GeneratedName = newName
 		return cli.ContainerRename(ctx, c.ID, newName)
 	} else {
 		return errors.New("container is not found")
@@ -617,7 +658,6 @@ func (container *Docker) InitContainer(definition v1.ContainersInternal, config 
 	}
 
 	container.Init.Stop("SIGTERM")
-	container.Init.Kill("SIGTERM")
 	container.Init.Delete()
 
 	err = container.Init.PreRun(config, client, user, runtime)

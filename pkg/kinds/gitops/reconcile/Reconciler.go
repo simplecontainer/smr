@@ -29,7 +29,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops, wg *sync.WaitG
 
 	if gitopsObj.ForcePoll {
 		gitopsObj.ForcePoll = false
-		gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 	}
 
 	gitopsWatcher.Logger.Info("reconcile")
@@ -65,13 +65,13 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops, wg *sync.WaitG
 		}()
 	} else {
 		switch gitopsObj.GetStatus().GetState() {
-		case status.STATUS_DRIFTED:
+		case status.DRIFTED:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
 			return
-		case status.STATUS_INSPECTING:
+		case status.INSPECTING:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
 			return
-		case status.STATUS_PENDING_DELETE:
+		case status.PENDING_DELETE:
 			gitopsWatcher.Ticker.Stop()
 			gitopsWatcher.Cancel()
 			break

@@ -119,16 +119,11 @@ func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, eve
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}
-
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
-		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).Container.GetStatus().TransitionState(container.GetGroup(), container.GetGeneratedName(), status.STATUS_KILL)
-		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
-	}
 }
 
 func HandleStart(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
 	if !reconcileIgnore(container.GetLabels()) {
-		// NO OP YET
+		// NO OP
 	}
 }
 
@@ -139,34 +134,24 @@ func HandleKill(shared *shared.Shared, container platforms.IContainer, event iev
 }
 
 func HandleStop(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
-		logger.Log.Info(fmt.Sprintf("container is stopped - reconcile will now trigger %s", container.GetGeneratedName()))
-
-		// wait for exited
-		err := container.Wait()
-
-		if err != nil {
-			container.GetStatus().SetState(status.STATUS_DAEMON_FAILURE)
-			return
-		}
-
-		if container.GetStatus().GetCategory() == status.CATEGORY_CLEAN {
-			switch container.GetStatus().State.PreviousState {
-			case status.STATUS_CREATED, status.STATUS_PENDING_DELETE:
-				container.GetStatus().SetState(container.GetStatus().State.PreviousState)
-			default:
-				container.GetStatus().SetState(status.STATUS_DEAD)
-			}
-		} else {
-			container.GetStatus().SetState(status.STATUS_DEAD)
-		}
-
-		shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
-	}
+	// NO OP
 }
 
 func HandleDie(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	// NO OP
+	if !reconcileIgnore(container.GetLabels()) && container.GetStatus().GetCategory() != status.CATEGORY_END {
+		containerW := shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName()))
+
+		if containerW.AllowPlatformEvents {
+			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", container.GetGeneratedName()))
+
+			container.GetStatus().GetPending().Clear()
+			container.GetStatus().SetState(status.DEAD)
+
+			shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+		} else {
+			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile will be ignored since it is now allowed %s", container.GetGeneratedName()))
+		}
+	}
 }
 
 func reconcileIgnore(labels map[string]string) bool {

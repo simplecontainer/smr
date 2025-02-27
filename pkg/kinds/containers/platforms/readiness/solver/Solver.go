@@ -74,7 +74,7 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 }
 
 func SolveReadiness(client *client.Http, user *authentication.User, container platforms.IContainer, logger *zap.Logger, r *readiness.Readiness, channel chan *readiness.ReadinessState) error {
-	if !container.GetStatus().IfStateIs(status.STATUS_READINESS_CHECKING) {
+	if !container.GetStatus().IfStateIs(status.READINESS_CHECKING) {
 		r.Cancel()
 	}
 

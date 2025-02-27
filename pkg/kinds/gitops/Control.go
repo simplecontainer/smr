@@ -11,13 +11,13 @@ package gitops
 //		bytes, err := event.ToJson()
 //
 //		if err != nil {
-//			return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
+//			return common.Response(http.StatusInternalServerError, static.RESPONSE_INTERNAL_ERROR, err, nil)
 //		}
 //
 //		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, gitopsObj.Definition.GetRuntime().GetNode())
-//		return common.Response(http.StatusOK, static.STATUS_RESPONSE_REFRESHED, nil, nil)
+//		return common.Response(http.StatusOK, static.RESPONSE_REFRESHED, nil, nil)
 //	} else {
-//		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil)
+//		return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil)
 //	}
 //}
 //
@@ -30,14 +30,14 @@ package gitops
 //		bytes, err := event.ToJson()
 //
 //		if err != nil {
-//			return common.Response(http.StatusInternalServerError, static.STATUS_RESPONSE_INTERNAL_ERROR, err, nil)
+//			return common.Response(http.StatusInternalServerError, static.RESPONSE_INTERNAL_ERROR, err, nil)
 //		}
 //
 //		gitops.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, gitops.Shared.Manager.Config.KVStore.Node)
 //		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, gitopsObj.Definition.GetRuntime().GetNode())
 //
-//		return common.Response(http.StatusOK, static.STATUS_RESPONSE_SYNCED, nil, nil)
+//		return common.Response(http.StatusOK, static.RESPONSE_SYNCED, nil, nil)
 //	} else {
-//		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil)
+//		return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil)
 //	}
 //}

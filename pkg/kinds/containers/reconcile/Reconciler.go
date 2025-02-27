@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
@@ -13,35 +14,24 @@ import (
 
 func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *sync.WaitGroup) {
 	wg.Add(1)
-	defer wg.Done()
+	defer func() {
+		wg.Done()
+	}()
+
+	if containerWatcher.Container.GetStatus().GetPending().Is(status.PENDING_DELETE) {
+		fmt.Println("no mas acktionas")
+		return
+	}
 
 	containerObj := containerWatcher.Container
 
-	if containerObj.GetStatus().PendingDelete {
-		containerWatcher.Logger.Info("container is in delete process")
-	}
-
-	if containerObj.GetStatus().Reconciling {
-		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
-		return
-	}
-
-	containerObj.GetStatus().Reconciling = true
-
-	state := GetState(containerWatcher)
+	cs := GetState(containerWatcher)
 
 	existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
-	newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
-
-	containerObj.GetStatus().Reconciling = false
-
-	if newState == "" {
-		// Wait till external awakes this reconciler
-		return
-	}
+	newState, reconcile := Reconcile(shared, containerWatcher, existing, cs.State, cs.Error)
 
 	// Do not touch container on this node since it is active on another node
-	if containerObj.GetStatus().State.State != status.STATUS_TRANSFERING {
+	if containerObj.GetStatus().State.State != status.TRANSFERING {
 		if containerObj.GetStatus().State.State != newState {
 			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
 
@@ -52,7 +42,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 			}
 		}
 
-		state = GetState(containerWatcher)
+		cs = GetState(containerWatcher)
 
 		err := shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
 
@@ -65,32 +55,23 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *
 			shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
 		)
 
+		if newState == "" {
+			containerWatcher.Container.GetStatus().GetPending().Set(status.PENDING_DELETE)
+			containerWatcher.Cancel()
+
+			return
+		}
+
 		if reconcile {
-			// This is to prevent deadlock since parent of Containers() is waiting for wg.Done()
-			go func() {
-				if !containerWatcher.Done {
-					containerWatcher.ContainerQueue <- containerObj
-				}
-			}()
+			containerWatcher.ContainerQueue <- containerObj
 		} else {
 			switch containerObj.GetStatus().GetState() {
-			case status.STATUS_PENDING_DELETE:
-				containerWatcher.Ticker.Stop()
-				containerWatcher.Cancel()
-				return
 			default:
-				if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.STATUS_RUNNING {
-					if !containerWatcher.Done {
-						containerWatcher.PauseC <- containerObj
-					}
-
-					// Skip reconcile chains and inform the gitops after actions are done
-					if !containerWatcher.Container.GetStatus().PendingDelete {
-						events.Dispatch(
-							events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
-							shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
-						)
-					}
+				if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.RUNNING {
+					events.Dispatch(
+						events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+						shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+					)
 				} else {
 					containerWatcher.Ticker.Reset(5 * time.Second)
 				}

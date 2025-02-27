@@ -77,7 +77,7 @@ func (api *Api) Propose(c *gin.Context) {
 					format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 					api.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, api.Manager.Config.KVStore.Node)
 
-					c.JSON(http.StatusOK, common.Response(http.StatusOK, static.STATUS_RESPONSE_SCHEDULED, nil, nil))
+					c.JSON(http.StatusOK, common.Response(http.StatusOK, static.RESPONSE_SCHEDULED, nil, nil))
 				}
 			}
 		}

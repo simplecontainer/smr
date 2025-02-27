@@ -237,7 +237,7 @@ func (definition *Definition) Changed(format iformat.Format, obj iobjects.Object
 		if len(bytes) == 0 {
 			return true, nil
 		} else {
-			return true, errors.New(static.STATUS_RESPONSE_NOT_FOUND)
+			return true, errors.New(static.RESPONSE_NOT_FOUND)
 		}
 	}
 }

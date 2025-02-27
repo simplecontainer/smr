@@ -70,13 +70,13 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 				gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				w.Gitops.Status.SetState(status.STATUS_CREATED)
+				w.Gitops.Status.SetState(status.CREATED)
 				w.GitopsQueue <- gitopsObj
 			} else {
 				existingWatcher.Gitops = gitopsObj
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				existingWatcher.Gitops.Status.SetState(status.STATUS_CREATED)
+				existingWatcher.Gitops.Status.SetState(status.CREATED)
 				existingWatcher.GitopsQueue <- gitopsObj
 			}
 		}
@@ -86,7 +86,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 		w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
 
 		w.Logger.Info("new gitops object created")
-		w.Gitops.Status.SetState(status.STATUS_CREATED)
+		w.Gitops.Status.SetState(status.CREATED)
 
 		gitops.Shared.Registry.AddOrUpdate(w.Gitops.GetGroup(), w.Gitops.GetName(), w.Gitops)
 		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
@@ -116,17 +116,17 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 	gitopsObj := gitops.Shared.Registry.FindLocal(request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 
 	if gitopsObj == nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil), nil
+		return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil), nil
 	} else {
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.STATUS_PENDING_DELETE)
+			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.PENDING_DELETE)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 
-			return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil), nil
+			return common.Response(http.StatusOK, static.RESPONSE_DELETED, nil, nil), nil
 		} else {
-			return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil), nil
+			return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil), nil
 		}
 	}
 }
@@ -143,7 +143,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.ForcePoll = true
-			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
@@ -158,7 +158,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 
 		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.DoSync = true
-			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
@@ -172,7 +172,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
-			gitopsObj.GetStatus().SetState(status.STATUS_INSPECTING)
+			gitopsObj.GetStatus().SetState(status.INSPECTING)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break

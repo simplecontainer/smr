@@ -211,8 +211,11 @@ func (c *Container) Exec(command []string) (types.ExecResult, error) {
 func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(follow)
 }
-func (c *Container) Wait() error {
-	return c.Platform.Wait()
+func (c *Container) Wait(condition string) error {
+	return c.Platform.Wait(condition)
+}
+func (c *Container) Clean() error {
+	return c.Platform.Clean()
 }
 
 func (c *Container) ToJson() ([]byte, error) {

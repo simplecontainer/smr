@@ -55,10 +55,11 @@ type IContainer interface {
 	Kill(signal string) error
 	Restart() error
 	Delete() error
-	Wait() error
+	Wait(string) error
 	Rename(newName string) error
 	Exec(command []string) (types.ExecResult, error)
 	Logs(bool) (io.ReadCloser, error)
+	Clean() error
 
 	ToJson() ([]byte, error)
 }
@@ -96,7 +97,8 @@ type IPlatform interface {
 	Rename(newName string) error
 	Exec(command []string) (types.ExecResult, error)
 	Logs(bool) (io.ReadCloser, error)
-	Wait() error
+	Wait(string) error
+	Clean() error
 
 	ToJson() ([]byte, error)
 }

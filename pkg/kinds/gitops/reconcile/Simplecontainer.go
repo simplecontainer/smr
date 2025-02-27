@@ -13,7 +13,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 	gitopsObj := gitopsWatcher.Gitops
 
 	switch gitopsWatcher.Gitops.Status.GetState() {
-	case status.STATUS_CREATED:
+	case status.CREATED:
 		gitopsWatcher.Logger.Info(fmt.Sprintf("%s is created", gitopsObj.GetName()))
 
 		err := gitopsWatcher.Gitops.Prepare(shared.Client, gitopsWatcher.User)
@@ -22,17 +22,17 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 			gitopsWatcher.Logger.Info(fmt.Sprintf("%s failed to resolve gitops references and generate auth credentials", gitopsObj.GetName()))
 			gitopsWatcher.Logger.Error(err.Error())
 
-			return status.STATUS_INVALID_GIT, true
+			return status.INVALID_GIT, true
 		}
 
-		return status.STATUS_CLONING_GIT, true
-	case status.STATUS_CLONING_GIT:
+		return status.CLONING_GIT, true
+	case status.CLONING_GIT:
 		headRemote, err := gitopsObj.Git.RemoteHead()
 		gitopsObj.ForcePoll = false
 
 		if err != nil {
 			gitopsWatcher.Logger.Error(err.Error())
-			return status.STATUS_INVALID_GIT, true
+			return status.INVALID_GIT, true
 		} else {
 			if headRemote.IsZero() || gitopsObj.Commit.ID() != headRemote {
 				gitopsWatcher.Logger.Info(fmt.Sprintf("found new commit on remote - pulling latest"))
@@ -40,15 +40,15 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 
 				if err != nil {
 					gitopsWatcher.Logger.Error(err.Error())
-					return status.STATUS_INVALID_GIT, true
+					return status.INVALID_GIT, true
 				} else {
-					return status.STATUS_CLONED_GIT, true
+					return status.CLONED_GIT, true
 				}
 			} else {
-				return status.STATUS_CLONED_GIT, true
+				return status.CLONED_GIT, true
 			}
 		}
-	case status.STATUS_CLONED_GIT:
+	case status.CLONED_GIT:
 		var err error
 
 		if len(gitopsObj.Definitions) == 0 {
@@ -58,34 +58,34 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 			tmp, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
 
 			if err != nil {
-				return status.STATUS_INVALID_DEFINITIONS, true
+				return status.INVALID_DEFINITIONS, true
 			}
 
 			err = gitopsObj.Update(tmp)
 		}
 
 		if err != nil {
-			return status.STATUS_INVALID_DEFINITIONS, true
+			return status.INVALID_DEFINITIONS, true
 		} else {
 			if gitopsWatcher.Gitops.ShouldSync() {
-				return status.STATUS_SYNCING, true
+				return status.SYNCING, true
 			} else {
-				return status.STATUS_INSPECTING, true
+				return status.INSPECTING, true
 			}
 		}
-	case status.STATUS_INVALID_GIT:
+	case status.INVALID_GIT:
 		gitopsWatcher.Logger.Info("git configuration is invalid or pull failed")
-		return status.STATUS_INVALID_GIT, false
-	case status.STATUS_INVALID_DEFINITIONS:
+		return status.INVALID_GIT, false
+	case status.INVALID_DEFINITIONS:
 		gitopsWatcher.Logger.Info("definitions are invalid")
-		return status.STATUS_INVALID_DEFINITIONS, false
-	case status.STATUS_SYNCING:
+		return status.INVALID_DEFINITIONS, false
+	case status.SYNCING:
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gitopsWatcher.Gitops.Commit.ID()))
 
 		if gitopsObj.Status.LastSyncedCommit != gitopsObj.Commit.ID() || !gitopsObj.Status.InSync {
 			if len(gitopsObj.Definitions) == 0 {
 				gitopsWatcher.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath))
-				return status.STATUS_INVALID_DEFINITIONS, true
+				return status.INVALID_DEFINITIONS, true
 			} else {
 				var errs []error
 				_, errs = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User)
@@ -95,7 +95,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 						gitopsWatcher.Logger.Error(e.Error())
 					}
 
-					return status.STATUS_INVALID_DEFINITIONS, true
+					return status.INVALID_DEFINITIONS, true
 				}
 
 				gitopsObj.GetStatus().LastSyncedCommit = gitopsObj.Commit.ID()
@@ -103,13 +103,13 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 				gitopsObj.DoSync = false
 
 				gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
-				return status.STATUS_INSYNC, true
+				return status.INSYNC, true
 			}
 		} else {
 			gitopsWatcher.Logger.Info("everything synced")
-			return status.STATUS_INSYNC, true
+			return status.INSYNC, true
 		}
-	case status.STATUS_INSPECTING:
+	case status.INSPECTING:
 		var errs []error
 		var drifted bool
 
@@ -120,7 +120,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 				gitopsWatcher.Logger.Error(e.Error())
 			}
 
-			return status.STATUS_INVALID_DEFINITIONS, true
+			return status.INVALID_DEFINITIONS, true
 		}
 
 		if gitopsObj.GetStatus().InSync {
@@ -128,29 +128,29 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		}
 
 		if gitopsObj.GetStatus().InSync {
-			return status.STATUS_INSYNC, true
+			return status.INSYNC, true
 		} else {
-			return status.STATUS_DRIFTED, true
+			return status.DRIFTED, true
 		}
-	case status.STATUS_INSYNC:
-		return status.STATUS_INSYNC, false
-	case status.STATUS_DRIFTED:
+	case status.INSYNC:
+		return status.INSYNC, false
+	case status.DRIFTED:
 		if gitopsWatcher.Gitops.AutomaticSync {
 			gitopsWatcher.Logger.Info("drift detected")
-			return status.STATUS_SYNCING, true
+			return status.SYNCING, true
 		} else {
-			if gitopsObj.GetStatus().PreviousState.State == status.STATUS_DRIFTED {
-				return status.STATUS_INSPECTING, true
+			if gitopsObj.GetStatus().PreviousState.State == status.DRIFTED {
+				return status.INSPECTING, true
 			} else {
-				return status.STATUS_DRIFTED, false
+				return status.DRIFTED, false
 			}
 		}
-	case status.STATUS_PENDING_DELETE:
+	case status.PENDING_DELETE:
 		gitopsWatcher.Logger.Info("triggering context cancel")
 		gitopsWatcher.Gitops.Status.PendingDelete = true
 
 		return "", false
 	default:
-		return status.STATUS_CREATED, true
+		return status.CREATED, true
 	}
 }

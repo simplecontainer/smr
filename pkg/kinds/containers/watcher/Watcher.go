@@ -12,7 +12,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -29,8 +28,6 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 
 	watcher := &Container{
 		Container:      containerObj,
-		Lock:           &sync.RWMutex{},
-		Syncing:        false,
 		ContainerQueue: make(chan platforms.IContainer),
 		ReadinessChan:  make(chan *readiness.ReadinessState),
 		DependencyChan: make(chan *dependency.State),

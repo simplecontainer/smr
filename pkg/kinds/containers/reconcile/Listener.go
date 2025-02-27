@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+var goroutines = 0
+
 func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container, pauseHandler func(*watcher.Container) error) {
 	wg := &sync.WaitGroup{}
 
@@ -22,6 +24,12 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			close(containerWatcher.ContainerQueue)
 			close(containerWatcher.ReadinessChan)
 			close(containerWatcher.DependencyChan)
+
+			err := containerWatcher.Container.Clean()
+
+			if err != nil {
+				containerWatcher.Logger.Error(err.Error())
+			}
 
 			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
 			shared.Watchers.Remove(containerWatcher.Container.GetGroupIdentifier())
@@ -51,15 +59,20 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			wg = nil
 			return
 		case <-containerWatcher.ContainerQueue:
-			wg.Wait()
-			go Containers(shared, containerWatcher, wg)
+			go func() {
+				wg.Wait()
+				Containers(shared, containerWatcher, wg)
+			}()
 			break
 		case <-containerWatcher.Ticker.C:
-			containerWatcher.Ticker.Stop()
-			wg.Wait()
-			if !containerWatcher.Done {
-				go Containers(shared, containerWatcher, wg)
-			}
+			go func() {
+				containerWatcher.Ticker.Stop()
+				wg.Wait()
+
+				if !containerWatcher.Done {
+					Containers(shared, containerWatcher, wg)
+				}
+			}()
 			break
 		case <-containerWatcher.PauseC:
 			if pauseHandler(containerWatcher) != nil {
