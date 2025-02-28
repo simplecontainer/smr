@@ -114,7 +114,7 @@ func IsDaemonRunning() error {
 }
 
 func (container *Docker) Run() error {
-	c, err := container.Get()
+	c, _ := container.Get()
 
 	if c == nil {
 		ctx := context.Background()
