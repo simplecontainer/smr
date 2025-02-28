@@ -116,8 +116,6 @@ func IsDaemonRunning() error {
 func (container *Docker) Run() error {
 	c, err := container.Get()
 
-	fmt.Println(err)
-
 	if c == nil {
 		ctx := context.Background()
 		cli := &IDClient.Client{}

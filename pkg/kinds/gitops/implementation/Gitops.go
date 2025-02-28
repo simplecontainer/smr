@@ -166,8 +166,6 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
 			}
 		}
-
-		fmt.Println(gitops.GetName(), request.Definition.GetMeta(), flagError, flagDrift)
 	}
 
 	if flagError {

@@ -16,7 +16,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/mock/gomock"
-	"sync"
 	"testing"
 	"time"
 )
@@ -60,16 +59,16 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					return registry[name]
 				}).AnyTimes()
 
+				registryMock.EXPECT().FindGroup("", "internal").DoAndReturn(func(prefix string, group string) []platforms.IContainer {
+					return []platforms.IContainer{}
+				}).AnyTimes()
+
 				registryMock.EXPECT().Sync("internal", "internal-testing-1").DoAndReturn(func(group string, name string) error {
 					return nil
 				}).AnyTimes()
 
 				registryMock.EXPECT().Remove("", "internal", "internal-testing-1").DoAndReturn(func(prefix string, group string, name string) error {
 					delete(registry, name)
-					return nil
-				}).AnyTimes()
-
-				registryMock.EXPECT().FindReplicas("", "internal", "testing").DoAndReturn(func(prefix string, group string, name string) error {
 					return nil
 				}).AnyTimes()
 
@@ -98,6 +97,10 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
+				containerMock.EXPECT().Clean().DoAndReturn(func() error {
+					return nil
+				}).AnyTimes()
+
 				containerMock.EXPECT().Run().DoAndReturn(func() error {
 					return nil
 				}).AnyTimes()
@@ -123,7 +126,6 @@ func TestFromInitialStateToRunning(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.mockFunc()
 
-			wg := &sync.WaitGroup{}
 			shared.Registry.AddOrUpdate(containerMock.GetGroup(), containerMock.GetGeneratedName(), containerMock)
 
 			w := watcher.New(containerMock, status.CREATED, shared.User)
@@ -166,7 +168,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 				}
 			}()
 
-			go Containers(shared, w, wg)
+			go Containers(shared, w)
 			HandleTickerAndEvents(shared, w, func(w *watcher.Container) error {
 				return errors.New("done")
 			})

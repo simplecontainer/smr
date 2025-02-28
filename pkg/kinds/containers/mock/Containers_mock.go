@@ -52,6 +52,20 @@ func (m *MockIContainer) EXPECT() *MockIContainerMockRecorder {
 	return m.recorder
 }
 
+// Clean mocks base method.
+func (m *MockIContainer) Clean() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Clean")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Clean indicates an expected call of Clean.
+func (mr *MockIContainerMockRecorder) Clean() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clean", reflect.TypeOf((*MockIContainer)(nil).Clean))
+}
+
 // Delete mocks base method.
 func (m *MockIContainer) Delete() error {
 	m.ctrl.T.Helper()
@@ -587,17 +601,17 @@ func (mr *MockIContainerMockRecorder) UpdateDns(dnsCache any) *gomock.Call {
 }
 
 // Wait mocks base method.
-func (m *MockIContainer) Wait() error {
+func (m *MockIContainer) Wait(arg0 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Wait")
+	ret := m.ctrl.Call(m, "Wait", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Wait indicates an expected call of Wait.
-func (mr *MockIContainerMockRecorder) Wait() *gomock.Call {
+func (mr *MockIContainerMockRecorder) Wait(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIContainer)(nil).Wait))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIContainer)(nil).Wait), arg0)
 }
 
 // MockIPlatform is a mock of IPlatform interface.
@@ -622,6 +636,20 @@ func NewMockIPlatform(ctrl *gomock.Controller) *MockIPlatform {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockIPlatform) EXPECT() *MockIPlatformMockRecorder {
 	return m.recorder
+}
+
+// Clean mocks base method.
+func (m *MockIPlatform) Clean() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Clean")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Clean indicates an expected call of Clean.
+func (mr *MockIPlatformMockRecorder) Clean() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clean", reflect.TypeOf((*MockIPlatform)(nil).Clean))
 }
 
 // Delete mocks base method.
@@ -1035,17 +1063,17 @@ func (mr *MockIPlatformMockRecorder) UpdateDns(dnsCache any) *gomock.Call {
 }
 
 // Wait mocks base method.
-func (m *MockIPlatform) Wait() error {
+func (m *MockIPlatform) Wait(arg0 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Wait")
+	ret := m.ctrl.Call(m, "Wait", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Wait indicates an expected call of Wait.
-func (mr *MockIPlatformMockRecorder) Wait() *gomock.Call {
+func (mr *MockIPlatformMockRecorder) Wait(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIPlatform)(nil).Wait))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIPlatform)(nil).Wait), arg0)
 }
 
 // MockRegistry is a mock of Registry interface.
@@ -1150,20 +1178,6 @@ func (m *MockRegistry) FindLocal(group, name string) platforms.IContainer {
 func (mr *MockRegistryMockRecorder) FindLocal(group, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLocal", reflect.TypeOf((*MockRegistry)(nil).FindLocal), group, name)
-}
-
-// FindReplicas mocks base method.
-func (m *MockRegistry) FindReplicas(prefix, group, name string) []platforms.IContainer {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindReplicas", prefix, group, name)
-	ret0, _ := ret[0].([]platforms.IContainer)
-	return ret0
-}
-
-// FindReplicas indicates an expected call of FindReplicas.
-func (mr *MockRegistryMockRecorder) FindReplicas(prefix, group, name any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReplicas", reflect.TypeOf((*MockRegistry)(nil).FindReplicas), prefix, group, name)
 }
 
 // GetIndexes mocks base method.
