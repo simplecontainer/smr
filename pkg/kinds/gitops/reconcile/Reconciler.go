@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
@@ -9,7 +10,7 @@ import (
 )
 
 func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
-	if gitopsWatcher.Done {
+	if gitopsWatcher.Done || gitopsWatcher.Gitops.Status.PendingDelete {
 		return
 	}
 
@@ -24,22 +25,16 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	if gitopsObj.ForcePoll {
 		gitopsObj.ForcePoll = false
-		gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 	}
+
+	gitopsWatcher.Logger.Info("reconcile")
 
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
 
 	gitopsObj.GetStatus().Reconciling = false
 
-	if gitopsObj.GetStatus().State.State != newState {
-		transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
-
-		if !transitioned {
-			gitopsWatcher.Logger.Error("failed to transition state",
-				zap.String("old", gitopsObj.GetStatus().State.State),
-				zap.String("new", newState))
-		}
-	}
+	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
 
 	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
 
@@ -47,16 +42,35 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		gitopsWatcher.Logger.Error(err.Error())
 	}
 
+	if !transitioned {
+		gitopsWatcher.Logger.Error("failed to transition state",
+			zap.String("old", gitopsObj.GetStatus().State.State),
+			zap.String("new", newState))
+	} else {
+		events.Dispatch(
+			events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
+			shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+		)
+	}
+
 	if reconcile {
 		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
+		events.Dispatch(
+			events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+			shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+		)
+
 		switch gitopsObj.GetStatus().GetState() {
-		case status.STATUS_INVALID_GIT:
-		case status.STATUS_INVALID_DEFINITIONS:
-			gitopsWatcher.Ticker.Stop()
-			break
-		case status.STATUS_INSYNC:
+		case status.DRIFTED:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
+			return
+		case status.INSPECTING:
+			gitopsWatcher.Ticker.Reset(5 * time.Second)
+			return
+		case status.PENDING_DELETE:
+			gitopsWatcher.Ticker.Stop()
+			gitopsWatcher.Cancel()
 			break
 		default:
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {

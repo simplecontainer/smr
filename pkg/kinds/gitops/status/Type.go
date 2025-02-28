@@ -7,15 +7,14 @@ import (
 )
 
 type Status struct {
-	State                  *StatusState `json:"state"`
-	PreviousState          *StatusState `json:"previousState"`
-	LastReadiness          bool
-	LastReadinessTimestamp time.Time
-	StateMachine           gograph.Graph[*StatusState] `json:"-"`
-	Reconciling            bool
-	InSync                 bool
-	LastSyncedCommit       plumbing.Hash
-	LastUpdate             time.Time
+	State            *StatusState                `json:"state"`
+	PreviousState    *StatusState                `json:"previousState"`
+	StateMachine     gograph.Graph[*StatusState] `json:"-"`
+	Reconciling      bool
+	PendingDelete    bool
+	InSync           bool
+	LastSyncedCommit plumbing.Hash
+	LastUpdate       time.Time
 }
 
 type StatusState struct {
@@ -28,14 +27,15 @@ const CATEGORY_WHILERUN = 1
 const CATEGORY_POSTRUN = 2
 const CATEGORY_END = 3
 
-const STATUS_CREATED string = "created"
-const STATUS_SYNCING string = "syncing"
-const STATUS_BACKOFF string = "backoff"
-const STATUS_CLONING_GIT string = "cloning"
-const STATUS_CLONED_GIT string = "cloned"
-const STATUS_INVALID_GIT string = "gitinvalid"
-const STATUS_INVALID_DEFINITIONS string = "definitionsinvalid"
-const STATUS_INSYNC string = "insync"
-const STATUS_DRIFTED string = "drifted"
-const STATUS_INSPECTING string = "inspecting"
-const STATUS_PENDING_DELETE string = "pending_delete"
+const CREATED string = "created"
+const SYNCING string = "syncing"
+const BACKOFF string = "backoff"
+const CLONING_GIT string = "cloning"
+const CLONED_GIT string = "cloned"
+const INVALID_GIT string = "gitinvalid"
+const INVALID_DEFINITIONS string = "definitionsinvalid"
+const INSYNC string = "insync"
+const DRIFTED string = "drifted"
+const INSPECTING string = "inspecting"
+const PENDING_DELETE string = "pending_delete"
+const ANOTHER_OWNER string = "not_owner"

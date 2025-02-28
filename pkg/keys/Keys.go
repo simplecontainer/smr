@@ -1,10 +1,13 @@
 package keys
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"io/fs"
+	"log"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +18,7 @@ func NewKeys() *Keys {
 		CA:      NewCA(),
 		Server:  NewServer(),
 		Clients: NewClients(),
+		Sni:     0,
 	}
 }
 
@@ -136,4 +140,13 @@ func (keys *Keys) GeneratePemBundle(directory string, username string, client *C
 	}
 
 	return nil
+}
+
+func generateSerialNumber() *big.Int {
+	// Generate a random serial number as a large integer (64-bit in this case)
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128)) // 128-bit serial number
+	if err != nil {
+		log.Fatalf("Failed to generate serial number: %v", err)
+	}
+	return serialNumber
 }

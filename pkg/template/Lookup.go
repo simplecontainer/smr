@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -133,7 +133,7 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 	}
 }
 
-func Fetch(format contracts.Format, name string, client *client.Http, user *authentication.User) ([]byte, f.Format, error) {
+func Fetch(format iformat.Format, name string, client *client.Http, user *authentication.User) ([]byte, f.Format, error) {
 	obj := objects.New(client.Clients[user.Username], user)
 
 	var formatNoKey f.Format

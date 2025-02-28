@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
@@ -35,7 +36,7 @@ func (gitops *Gitops) Start() error {
 func (gitops *Gitops) GetShared() interface{} {
 	return gitops.Shared
 }
-func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_GITOPS, definition)
 
 	if err != nil {
@@ -58,7 +59,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 
 	if obj.Exists() {
 		if obj.ChangeDetected() {
-			gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition))
+			gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition), gitops.Shared.Manager.Config)
 
 			if existingWatcher == nil {
 				w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
@@ -69,23 +70,23 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 				gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				w.Gitops.Status.SetState(status.STATUS_CREATED)
+				w.Gitops.Status.SetState(status.CREATED)
 				w.GitopsQueue <- gitopsObj
 			} else {
 				existingWatcher.Gitops = gitopsObj
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				existingWatcher.Gitops.Status.SetState(status.STATUS_CREATED)
+				existingWatcher.Gitops.Status.SetState(status.CREATED)
 				existingWatcher.GitopsQueue <- gitopsObj
 			}
 		}
 	} else {
-		gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition))
+		gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition), gitops.Shared.Manager.Config)
 
 		w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
 
 		w.Logger.Info("new gitops object created")
-		w.Gitops.Status.SetState(status.STATUS_CREATED)
+		w.Gitops.Status.SetState(status.CREATED)
 
 		gitops.Shared.Registry.AddOrUpdate(w.Gitops.GetGroup(), w.Gitops.GetName(), w.Gitops)
 		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
@@ -99,8 +100,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
-
-func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_GITOPS, definition)
 
 	if err != nil {
@@ -116,21 +116,21 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 	gitopsObj := gitops.Shared.Registry.FindLocal(request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 
 	if gitopsObj == nil {
-		return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil), nil
+		return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil), nil
 	} else {
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.PENDING_DELETE)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 
-			return common.Response(http.StatusOK, static.STATUS_RESPONSE_DELETED, nil, nil), nil
+			return common.Response(http.StatusOK, static.RESPONSE_DELETED, nil, nil), nil
 		} else {
-			return common.Response(http.StatusNotFound, static.STATUS_RESPONSE_NOT_FOUND, nil, nil), nil
+			return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil), nil
 		}
 	}
 }
-func (gitops *Gitops) Event(event contracts.Event) error {
+func (gitops *Gitops) Event(event ievents.Event) error {
 	switch event.GetType() {
 	case events.EVENT_REFRESH:
 		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
@@ -141,9 +141,9 @@ func (gitops *Gitops) Event(event contracts.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil {
+		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.ForcePoll = true
-			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
@@ -156,13 +156,28 @@ func (gitops *Gitops) Event(event contracts.Event) error {
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil {
+		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
 			gitopsObj.DoSync = true
-			gitopsObj.GetStatus().SetState(status.STATUS_CLONING_GIT)
+			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
+			gitopsWatcher.GitopsQueue <- gitopsObj
+		}
+		break
+	case events.EVENT_INSPECT:
+		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
+
+		if gitopsObj == nil {
+			return errors.New("gitops is not controlled on this instance")
+		}
+
+		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+
+		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
+			gitopsObj.GetStatus().SetState(status.INSPECTING)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
 	}
 
 	return nil
+
 }

@@ -3,13 +3,18 @@ package docker
 import (
 	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/static"
 )
+
+func (container *Docker) GetReadiness() []*readiness.Readiness {
+	return container.Readiness.Readinesses
+}
 
 func (container *Docker) GetState() (state.State, error) {
 	dockerContainer, err := internal.Get(container.GeneratedName)
@@ -59,7 +64,7 @@ func (container *Docker) GetId() string {
 	return container.DockerID
 }
 
-func (container *Docker) GetDefinition() contracts.IDefinition {
+func (container *Docker) GetDefinition() idefinitions.IDefinition {
 	return &container.Definition
 }
 

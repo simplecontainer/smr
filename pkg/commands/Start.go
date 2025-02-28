@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
+	"github.com/simplecontainer/smr/pkg/api/middlewares"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -155,6 +156,8 @@ func Start() {
 				router := gin.New()
 				routerHttp := gin.New()
 
+				router.Use(middlewares.CORS())
+
 				v1 := router.Group("/api/v1")
 				{
 					definition := v1.Group("/attempt")
@@ -170,6 +173,7 @@ func Start() {
 						kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKindGroup)
 						kind.GET("/:prefix/:version/:category/:kind/:group/:name", api.GetKind)
 						kind.POST("/propose/:prefix/:version/:category/:kind/:group/:name", api.ProposeKind)
+						kind.POST("/compare/:prefix/:version/:category/:kind/:group/:name", api.CompareKind)
 						kind.POST("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
 						kind.PUT("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
 						kind.DELETE("/:prefix/:version/:category/:kind/:group/:name", api.DeleteKind)
@@ -186,6 +190,7 @@ func Start() {
 					{
 						cluster.GET("/", api.GetCluster)
 						cluster.POST("/start", api.StartCluster)
+						cluster.GET("/nodes", api.Nodes)
 						cluster.POST("/node", api.AddNode)
 						cluster.DELETE("/node/:node", api.RemoveNode)
 					}
@@ -210,6 +215,7 @@ func Start() {
 				router.GET("/metrics", api.MetricsHandle())
 				router.GET("/healthz", api.Health)
 				router.GET("/version", api.Version)
+				router.GET("/events", api.Events)
 
 				//debug := routerHttp.Group("/debug", func(c *gin.Context) {
 				//	c.Next()

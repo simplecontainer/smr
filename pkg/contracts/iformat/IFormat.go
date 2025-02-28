@@ -1,4 +1,4 @@
-package contracts
+package iformat
 
 import "github.com/google/uuid"
 

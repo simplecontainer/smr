@@ -9,21 +9,20 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	"math/big"
 	"os"
 	"time"
 )
 
 func NewClient() *Client {
 	return &Client{
-		Sni: 0,
+		Sni: nil,
 	}
 }
 
 func (client *Client) Generate(ca *CA, domains *configuration.Domains, ips *configuration.IPs, CN string) error {
 	var err error
 
-	client.Sni = client.Sni + 1
+	client.Sni = generateSerialNumber()
 
 	client.PrivateKey, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -45,7 +44,7 @@ func (client *Client) Generate(ca *CA, domains *configuration.Domains, ips *conf
 	SubjectKeyIdentifier := sha1.Sum(PublicKey)
 
 	client.Certificate = &x509.Certificate{
-		SerialNumber: big.NewInt(client.Sni),
+		SerialNumber: client.Sni,
 		Subject: pkix.Name{
 			Organization: []string{"simplecontainer"},
 			CommonName:   CN,

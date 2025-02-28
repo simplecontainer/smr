@@ -23,6 +23,7 @@ func (api *Api) Debug(c *gin.Context) {
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
+	which := c.Param("which")
 
 	follow, err := strconv.ParseBool(c.Param("follow"))
 
@@ -45,13 +46,13 @@ func (api *Api) Debug(c *gin.Context) {
 			network.StreamByte([]byte("container is not found"), w)
 		} else {
 			if container.IsGhost() {
-				client, ok := api.Manager.Http.Clients[container.GetRuntime().NodeName]
+				client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 
 				if !ok {
 					stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
 					return
 				} else {
-					stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/debug/%s/%s", client.API, format.ToString(), c.Param("follow")), client)
+					stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
 				}
 			} else {
 				stream.StreamTail(w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)

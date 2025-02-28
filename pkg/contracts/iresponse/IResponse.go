@@ -1,4 +1,4 @@
-package contracts
+package iresponse
 
 import "encoding/json"
 

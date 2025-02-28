@@ -2,13 +2,13 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/network"
 	"net/http"
 )
 
 func (api *Api) Version(c *gin.Context) {
-	c.JSON(http.StatusOK, contracts.Response{
+	c.JSON(http.StatusOK, iresponse.Response{
 		Explanation:      "server version",
 		ErrorExplanation: "",
 		Error:            false,

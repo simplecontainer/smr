@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -18,6 +19,7 @@ import (
 func NewRequest(kind string) (*Request, error) {
 	request := &Request{
 		Definition: definitions.New(kind),
+		DeleteC:    make(chan ievents.Event),
 	}
 
 	if request.Definition.Definition == nil {
@@ -45,19 +47,19 @@ func NewRequestFromJson(kind string, data []byte) (*Request, error) {
 	return request, nil
 }
 
-func (request *Request) Apply(client *client.Http, user *authentication.User) (contracts.ObjectInterface, error) {
+func (request *Request) Apply(client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error) {
 	return request.Action("apply", client, user)
 }
 
-func (request *Request) Compare(client *client.Http, user *authentication.User) (contracts.ObjectInterface, error) {
+func (request *Request) Compare(client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error) {
 	return request.Action("compare", client, user)
 }
 
-func (request *Request) Remove(client *client.Http, user *authentication.User) (contracts.ObjectInterface, error) {
+func (request *Request) Remove(client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error) {
 	return request.Action("remove", client, user)
 }
 
-func (request *Request) Action(action string, client *client.Http, user *authentication.User) (contracts.ObjectInterface, error) {
+func (request *Request) Action(action string, client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error) {
 	valid, err := request.Definition.Validate()
 
 	if !valid {

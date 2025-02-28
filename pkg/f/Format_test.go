@@ -2,13 +2,13 @@ package f
 
 import (
 	"github.com/go-playground/assert/v2"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"testing"
 )
 
 func TestNew(t *testing.T) {
 	type Wanted struct {
-		format contracts.Format
+		format iformat.Format
 	}
 
 	type Parameters struct {
@@ -62,7 +62,7 @@ func TestNew(t *testing.T) {
 
 func TestInverse(t *testing.T) {
 	type Wanted struct {
-		format contracts.Format
+		format iformat.Format
 	}
 
 	type Parameters struct {
@@ -102,7 +102,7 @@ func TestInverse(t *testing.T) {
 
 func TestNewFromString(t *testing.T) {
 	type Wanted struct {
-		format contracts.Format
+		format iformat.Format
 	}
 
 	type Parameters struct {
@@ -168,7 +168,7 @@ func TestToString(t *testing.T) {
 	}
 
 	type Parameters struct {
-		format contracts.Format
+		format iformat.Format
 	}
 
 	testCases := []struct {
@@ -217,7 +217,7 @@ func TestToBytes(t *testing.T) {
 	}
 
 	type Parameters struct {
-		format contracts.Format
+		format iformat.Format
 	}
 
 	testCases := []struct {

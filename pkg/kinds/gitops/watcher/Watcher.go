@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
@@ -19,7 +18,6 @@ func New(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *authentic
 
 	return &Gitops{
 		Gitops:      gitopsObj,
-		Children:    make([]*common.Request, 0),
 		GitopsQueue: make(chan *implementation.Gitops),
 		User:        user,
 		Ctx:         ctx,

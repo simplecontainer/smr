@@ -27,7 +27,11 @@ func New(nodeID uint64, nodes []*node.Node) *Replicas {
 }
 
 func (replicas *Replicas) GenerateContainers(registry platforms.Registry, definition *v1.ContainersDefinition, config *configuration.Configuration) ([]platforms.IContainer, []platforms.IContainer, []platforms.IContainer, error) {
-	create, destroy := replicas.GetContainersIndexes(registry, definition)
+	create, destroy, err := replicas.GetContainersIndexes(registry, definition)
+
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	createContainers := make([]platforms.IContainer, 0)
 	updateContainers := make([]platforms.IContainer, 0)
@@ -64,11 +68,15 @@ func (replicas *Replicas) GenerateContainers(registry platforms.Registry, defini
 }
 
 func (replicas *Replicas) RemoveContainers(registry platforms.Registry, definition *v1.ContainersDefinition) ([]platforms.IContainer, error) {
-	destroy, _ := replicas.GetContainersIndexes(registry, definition)
+	indexes, err := registry.GetIndexes(definition.Prefix, definition.Meta.Group, definition.Meta.Name)
+
+	if err != nil {
+		return nil, err
+	}
 
 	destroyContainers := make([]platforms.IContainer, 0)
 
-	for _, index := range destroy {
+	for _, index := range indexes {
 		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
 		existing := registry.FindLocal(definition.Meta.Group, generatedName)
 
@@ -80,18 +88,24 @@ func (replicas *Replicas) RemoveContainers(registry platforms.Registry, definiti
 	return destroyContainers, nil
 }
 
-func (replicas *Replicas) GetContainersIndexes(registry platforms.Registry, definition *v1.ContainersDefinition) ([]uint64, []uint64) {
+func (replicas *Replicas) GetContainersIndexes(registry platforms.Registry, definition *v1.ContainersDefinition) ([]uint64, []uint64, error) {
+	indexes, err := registry.GetIndexes(definition.Prefix, definition.Meta.Group, definition.Meta.Name)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if definition.Spec.Spread.Spread == "" {
 		// No spread so create only for node who sourced the object
 		replicas.Recalculate(v1.ContainersSpread{
 			Spread: "specific",
 			Agents: []uint64{definition.GetRuntime().GetNode()},
-		}, definition.Spec.Replicas, registry.GetIndexes(definition.Meta.Group, definition.Meta.Name))
+		}, definition.Spec.Replicas, indexes)
 	} else {
-		replicas.Recalculate(definition.Spec.Spread, definition.Spec.Replicas, registry.GetIndexes(definition.Meta.Group, definition.Meta.Name))
+		replicas.Recalculate(definition.Spec.Spread, definition.Spec.Replicas, indexes)
 	}
 
-	return replicas.Create, replicas.Destroy
+	return replicas.Create, replicas.Destroy, nil
 }
 
 func (replicas *Replicas) Recalculate(spread v1.ContainersSpread, replicasDefined uint64, existingIndexes []uint64) {

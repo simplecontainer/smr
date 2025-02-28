@@ -1,11 +1,11 @@
 package common
 
 import (
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"net/http"
 )
 
-func BuildFromRequest(kind string, bytes []byte) (*Request, contracts.Response) {
+func BuildFromRequest(kind string, bytes []byte) (*Request, iresponse.Response) {
 	request, err := NewRequest(kind)
 
 	if err != nil {
@@ -22,5 +22,5 @@ func BuildFromRequest(kind string, bytes []byte) (*Request, contracts.Response) 
 		return nil, Response(http.StatusBadRequest, "invalid definition sent", err, nil)
 	}
 
-	return request, contracts.Response{}
+	return request, iresponse.Response{}
 }

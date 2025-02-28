@@ -3,7 +3,7 @@ package kinds
 import (
 	"errors"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ikinds"
 	"github.com/simplecontainer/smr/pkg/kinds/certkey"
 	"github.com/simplecontainer/smr/pkg/kinds/config"
 	"github.com/simplecontainer/smr/pkg/kinds/containers"
@@ -17,7 +17,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/manager"
 )
 
-func New(kind string, mgr *manager.Manager) (contracts.Kind, error) {
+func New(kind string, mgr *manager.Manager) (ikinds.Kind, error) {
 	switch kind {
 	case "custom":
 		return custom.New(mgr), nil
@@ -42,8 +42,8 @@ func New(kind string, mgr *manager.Manager) (contracts.Kind, error) {
 	}
 }
 
-func BuildRegistry(mgr *manager.Manager) map[string]contracts.Kind {
-	var kindsRegistry = make(map[string]contracts.Kind, 0)
+func BuildRegistry(mgr *manager.Manager) map[string]ikinds.Kind {
+	var kindsRegistry = make(map[string]ikinds.Kind, 0)
 	var err error
 
 	for kind, _ := range mgr.Kinds.Relations {

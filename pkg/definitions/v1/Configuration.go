@@ -3,7 +3,8 @@ package v1
 import (
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
 )
@@ -54,7 +55,7 @@ func (configuration *ConfigurationDefinition) GetKind() string {
 	return static.KIND_CONFIGURATION
 }
 
-func (configuration *ConfigurationDefinition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+func (configuration *ConfigurationDefinition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
 	return nil, nil
 }
 

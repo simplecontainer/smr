@@ -2,6 +2,7 @@ package docker
 
 import (
 	TDNetwork "github.com/docker/docker/api/types/network"
+	IDClient "github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
 )
 
@@ -9,6 +10,14 @@ func (container *Docker) SyncNetwork() error {
 	containerInspected, err := internal.Inspect(container.DockerID)
 
 	if err != nil {
+		if IDClient.IsErrNotFound(err) {
+			for _, network := range container.Networks.Networks {
+				container.RemoveNetworkInfo(container.DockerID, network.Docker.NetworkId, network.Docker.IP, network.Reference.Name)
+			}
+
+			return nil
+		}
+
 		return err
 	}
 

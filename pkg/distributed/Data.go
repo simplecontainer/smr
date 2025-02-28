@@ -6,7 +6,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
@@ -25,8 +26,13 @@ func New(client *client.Client, user *authentication.User, nodeName string, node
 		Node:       node,
 		User:       user,
 		DataC:      make(chan KV.KV),
+		DeleteC:    make(map[string]chan ievents.Event),
 		Replicated: smaps.New(),
 	}
+}
+
+func (replication *Replication) NewDeleteC(format iformat.Format) {
+	replication.DeleteC[format.ToString()] = make(chan ievents.Event)
 }
 
 func (replication *Replication) ListenData(agent string) {
@@ -69,8 +75,8 @@ func (replication *Replication) ListenData(agent string) {
 	}
 }
 
-func (replication *Replication) HandleObject(format contracts.Format, data KV.KV) {
-	acks.ACKS.Ack(format.GetUUID())
+func (replication *Replication) HandleObject(format iformat.Format, data KV.KV) {
+	defer acks.ACKS.Ack(format.GetUUID())
 
 	request, _ := common.NewRequest(format.GetKind())
 	err := request.Definition.FromJson(data.Val)
@@ -99,9 +105,8 @@ func (replication *Replication) HandleObject(format contracts.Format, data KV.KV
 	}
 }
 
-func (replication *Replication) HandlePlain(format contracts.Format, data KV.KV) {
-	acks.ACKS.Ack(format.GetUUID())
-
+func (replication *Replication) HandlePlain(format iformat.Format, data KV.KV) {
+	defer acks.ACKS.Ack(format.GetUUID())
 	obj := objects.New(replication.Client, replication.User)
 
 	if data.Val == nil {
@@ -119,8 +124,8 @@ func (replication *Replication) HandlePlain(format contracts.Format, data KV.KV)
 	}
 }
 
-func (replication *Replication) HandleDns(format contracts.Format, data KV.KV) {
-	acks.ACKS.Ack(format.GetUUID())
+func (replication *Replication) HandleDns(format iformat.Format, data KV.KV) {
+	defer acks.ACKS.Ack(format.GetUUID())
 
 	obj := objects.New(replication.Client, replication.User)
 

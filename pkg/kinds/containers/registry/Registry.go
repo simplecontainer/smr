@@ -40,7 +40,7 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		err := obj.Propose(format, nil)
+		err := obj.Wait(format, nil)
 
 		if err != nil {
 			return err

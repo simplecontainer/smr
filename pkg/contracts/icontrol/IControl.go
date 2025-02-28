@@ -1,4 +1,4 @@
-package contracts
+package icontrol
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"

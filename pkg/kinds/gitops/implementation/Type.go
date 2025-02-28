@@ -6,11 +6,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
+	"github.com/simplecontainer/smr/pkg/node"
 	"time"
 )
 
 type Gitops struct {
 	Git             *internal.Git
+	Node            *node.Node
 	LogPath         string
 	DirectoryPath   string
 	PoolingInterval time.Duration
@@ -23,7 +25,7 @@ type Gitops struct {
 	Auth            *Auth
 	Context         string
 	Definition      *v1.GitopsDefinition
-	Definitions     []common.Request
+	Definitions     []*common.Request
 	Ghost           bool
 }
 

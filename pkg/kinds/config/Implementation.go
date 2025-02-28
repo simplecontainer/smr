@@ -2,10 +2,10 @@ package config
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
 )
@@ -18,7 +18,7 @@ func (config *Config) GetShared() interface{} {
 	return config.Shared
 }
 
-func (config *Config) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (config *Config) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
 
 	if err != nil {
@@ -32,21 +32,17 @@ func (config *Config) Apply(user *authentication.User, definition []byte, agent 
 	}
 
 	if obj.ChangeDetected() {
-		event := events.New(events.EVENT_CHANGE, static.KIND_CONFIGURATION, request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name, nil)
-
-		if config.Shared.Manager.Cluster.Node.NodeID == request.Definition.GetRuntime().GetNode() {
-			err = event.Propose(config.Shared.Manager.Cluster.KVStore, request.Definition.GetRuntime().GetNode())
-
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-		}
+		events.DispatchGroup([]events.Event{
+			events.NewKindEvent(events.EVENT_CHANGE, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+		}, config.Shared, request.Definition.GetRuntime().GetNode())
 	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (config *Config) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (config *Config) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
 
 	if err != nil {
@@ -58,10 +54,16 @@ func (config *Config) Delete(user *authentication.User, definition []byte, agent
 	if err != nil {
 		return common.Response(http.StatusTeapot, "", err, nil), err
 	} else {
+		events.DispatchGroup([]events.Event{
+			events.NewKindEvent(events.EVENT_CHANGE, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_DELETED, request.Definition, nil),
+			events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+		}, config.Shared, request.Definition.GetRuntime().GetNode())
+
 		return common.Response(http.StatusOK, "object deleted", nil, nil), nil
 	}
 }
 
-func (config *Config) Event(event contracts.Event) error {
+func (config *Config) Event(event ievents.Event) error {
 	return nil
 }

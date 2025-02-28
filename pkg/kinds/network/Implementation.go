@@ -3,7 +3,9 @@ package network
 import (
 	"errors"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -20,7 +22,7 @@ func (network *Network) GetShared() interface{} {
 	return network.Shared
 }
 
-func (network *Network) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (network *Network) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 
 	if err != nil {
@@ -82,10 +84,15 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
 	}
 
+	events.DispatchGroup([]events.Event{
+		events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
+		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+	}, network.Shared, request.Definition.GetRuntime().GetNode())
+
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (network *Network) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (network *Network) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 
 	if err != nil {
@@ -128,9 +135,14 @@ func (network *Network) Delete(user *authentication.User, definition []byte, age
 		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
 	}
 
+	events.DispatchGroup([]events.Event{
+		events.NewKindEvent(events.EVENT_DELETED, request.Definition, nil),
+		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+	}, network.Shared, request.Definition.GetRuntime().GetNode())
+
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (network *Network) Event(event contracts.Event) error {
+func (network *Network) Event(event ievents.Event) error {
 	return nil
 }

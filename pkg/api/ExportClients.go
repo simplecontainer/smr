@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"github.com/simplecontainer/smr/pkg/encrypt"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -15,7 +15,7 @@ func (api *Api) ExportClients(c *gin.Context) {
 	bytes, err := json.Marshal(api.Keys)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, &contracts.Response{
+		c.JSON(http.StatusInternalServerError, &iresponse.Response{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      "",
 			ErrorExplanation: err.Error(),
@@ -33,7 +33,7 @@ func (api *Api) ExportClients(c *gin.Context) {
 	encrypted := keys.Encrypted{Keys: ciphertext}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, &contracts.Response{
+		c.JSON(http.StatusInternalServerError, &iresponse.Response{
 			HttpStatus:       http.StatusInternalServerError,
 			Explanation:      "",
 			ErrorExplanation: err.Error(),
@@ -45,7 +45,7 @@ func (api *Api) ExportClients(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, &contracts.Response{
+	c.JSON(http.StatusOK, &iresponse.Response{
 		HttpStatus:       http.StatusOK,
 		Explanation:      "Client certificates exported with success",
 		ErrorExplanation: "",

@@ -1,58 +1,49 @@
 package internal
 
 import (
-	"context"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 )
 
 type Readinesses struct {
-	Readinesses []*Readiness
+	Readinesses []*readiness.Readiness
 }
 
-type Readiness struct {
-	Reference ReadinessReference
-	Docker    ReadinessDocker
-}
-
-type ReadinessReference struct {
-	Group      string
-	Name       string
-	Key        string
-	MountPoint string
-	Data       map[string]string
-}
-
-type ReadinessDocker struct {
-	Name       string
-	Operator   string
-	Timeout    string
-	Body       map[string]string
-	Solved     bool
-	BodyUnpack map[string]string  `json:"-"`
-	Function   func() error       `json:"-"`
-	Ctx        context.Context    `json:"-"`
-	Cancel     context.CancelFunc `json:"-"`
-}
-
-func NewReadinesses(readinesses []v1.ContainersReadiness) *Readinesses {
+func NewReadinesses(readinesses []v1.ContainersReadiness) (*Readinesses, error) {
 	ReadinessesObj := &Readinesses{
-		Readinesses: make([]*Readiness, 0),
+		Readinesses: make([]*readiness.Readiness, 0),
 	}
 
+	var err error
 	for _, readiness := range readinesses {
-		ReadinessesObj.Add(readiness)
+		err = ReadinessesObj.Add(readiness)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return ReadinessesObj
+	return ReadinessesObj, nil
 }
 
-func NewReadiness(readiness v1.ContainersReadiness) *Readiness {
-	return &Readiness{
-		Reference: ReadinessReference{},
-		Docker:    ReadinessDocker{},
+func NewReadiness(readinessDefinition v1.ContainersReadiness) (*readiness.Readiness, error) {
+	r, err := readiness.NewReadinessFromDefinition(readinessDefinition)
+
+	if err != nil {
+		return nil, err
 	}
+
+	return r, nil
 }
 
-func (Readinesses *Readinesses) Add(Readiness v1.ContainersReadiness) {
-	Readinesses.Readinesses = append(Readinesses.Readinesses, NewReadiness(Readiness))
+func (Readinesses *Readinesses) Add(Readiness v1.ContainersReadiness) error {
+	r, err := NewReadiness(Readiness)
+
+	if err != nil {
+		return err
+	}
+
+	Readinesses.Readinesses = append(Readinesses.Readinesses, r)
+
+	return nil
 }

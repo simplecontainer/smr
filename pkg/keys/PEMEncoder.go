@@ -5,7 +5,7 @@ import (
 	"encoding/pem"
 )
 
-const PRIVATE_KEY = "PRIVATE KEY"
+const PRIVATE_KEY = "EC PRIVATE KEY"
 const CERTIFICATE = "CERTIFICATE"
 
 func PEMEncode(FileType string, ContentBytes []byte) ([]byte, error) {

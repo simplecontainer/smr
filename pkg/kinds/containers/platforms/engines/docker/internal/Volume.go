@@ -56,7 +56,6 @@ func NewVolume(name string, volume v1.ContainersVolume) *Volume {
 func (volumes *Volumes) Add(name string, volume v1.ContainersVolume) error {
 	for _, v := range volumes.Volumes {
 		if v.MountPoint == volume.MountPoint {
-			fmt.Println(volumes.Volumes)
 			return errors.New(fmt.Sprintf("mountpoints need to be unique: %s", volume.MountPoint))
 		}
 	}

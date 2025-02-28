@@ -44,13 +44,13 @@ func (api *Api) Logs(c *gin.Context) {
 		return
 	} else {
 		if container.IsGhost() {
-			client, ok := api.Manager.Http.Clients[container.GetRuntime().NodeName]
+			client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 
 			if !ok {
 				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", static.KIND_CONTAINER)))
 				return
 			} else {
-				stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/logs/%s/%s", client.API, format.ToString(), c.Param("follow")), client)
+				stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
 			}
 		} else {
 			switch which {

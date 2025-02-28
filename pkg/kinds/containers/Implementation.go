@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
-	"github.com/simplecontainer/smr/pkg/events/platform"
+	"github.com/simplecontainer/smr/pkg/events/platform/listener"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
@@ -45,7 +46,7 @@ func (containers *Containers) Start() error {
 	}
 
 	// Start listening events based on the platform and for internal events
-	go platform.Listen(containers.Shared, containers.Shared.Manager.Config.Platform)
+	go listener.Listen(containers.Shared, containers.Shared.Manager.Config.Platform)
 
 	logger.Log.Info(fmt.Sprintf("started listening events for simplecontainer and platform: %s", containers.Shared.Manager.Config.Platform))
 
@@ -54,8 +55,7 @@ func (containers *Containers) Start() error {
 func (containers *Containers) GetShared() interface{} {
 	return containers.Shared
 }
-
-func (containers *Containers) Apply(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (containers *Containers) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)
 
 	if err != nil {
@@ -65,7 +65,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 	obj, err := request.Apply(containers.Shared.Client, user)
 
 	if !obj.ChangeDetected() {
-		return common.Response(http.StatusOK, static.STATUS_RESPONSE_APPLIED, nil, nil), nil
+		return common.Response(http.StatusOK, static.RESPONSE_APPLIED, nil, nil), nil
 	}
 
 	if err != nil {
@@ -86,7 +86,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 		for _, containerObj := range destroy {
 			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.PENDING_DELETE)
 			reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier))
 		}
 	}
@@ -109,7 +109,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 					if existingContainer != nil {
 						existingWatcher.Ticker.Stop()
 
-						containerObj.GetStatus().SetState(status.STATUS_CREATED)
+						containerObj.GetStatus().SetState(status.CREATED)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
 						existingWatcher.Container = containerObj
@@ -142,7 +142,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 					existingContainer := containers.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 
 					if existingContainer != nil && existingContainer.IsGhost() {
-						w := watcher.New(containerObj, status.STATUS_TRANSFERING, user)
+						w := watcher.New(containerObj, status.TRANSFERING, user)
 						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
@@ -154,7 +154,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 						go reconcile.Containers(containers.Shared, w)
 					} else {
-						w := watcher.New(containerObj, status.STATUS_CREATED, user)
+						w := watcher.New(containerObj, status.CREATED, user)
 						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
@@ -173,7 +173,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 				// - assing container to the wathcer
 				// - roll the reconciler
 
-				w := watcher.New(containerObj, status.STATUS_CREATED, user)
+				w := watcher.New(containerObj, status.CREATED, user)
 				containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
 				containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
@@ -190,8 +190,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
-
-func (containers *Containers) Delete(user *authentication.User, definition []byte, agent string) (contracts.Response, error) {
+func (containers *Containers) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)
 
 	if err != nil {
@@ -216,9 +215,13 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 			for _, containerObj := range destroy {
 				go func() {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_PENDING_DELETE)
+					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.DELETE)
 
-					reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier))
+					containerW := containers.Shared.Watchers.Find(GroupIdentifier)
+
+					if containerW != nil && !containerW.Done {
+						containers.Shared.Watchers.Find(GroupIdentifier).ContainerQueue <- containerObj
+					}
 				}()
 			}
 
@@ -230,16 +233,17 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 		return common.Response(http.StatusNotFound, "object not found", errors.New("object not found"), nil), errors.New("object not found")
 	}
 }
-func (containers *Containers) Event(event contracts.Event) error {
+func (containers *Containers) Event(event ievents.Event) error {
 	switch event.GetType() {
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.STATUS_CHANGE)
+				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
 				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
 			}
 		}
-		break
+
+		return nil
 	case events.EVENT_RESTART:
 		containerObj := containers.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
@@ -247,8 +251,12 @@ func (containers *Containers) Event(event contracts.Event) error {
 			return errors.New("container not found event is ignored")
 		}
 
-		containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.STATUS_CREATED)
-		containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier()).ContainerQueue <- containerObj
+		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
+
+		if !containerW.Done {
+			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.RESTART)
+			containerW.ContainerQueue <- containerObj
+		}
 
 		break
 	}

@@ -2,8 +2,13 @@ package implementation
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 )
+
+func (gitops *Gitops) GetDefinition() idefinitions.IDefinition {
+	return gitops.Definition
+}
 
 func (gitops *Gitops) GetGroup() string {
 	return gitops.Definition.Meta.Group

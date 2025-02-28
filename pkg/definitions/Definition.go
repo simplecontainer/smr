@@ -1,9 +1,13 @@
 package definitions
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
+	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -12,11 +16,12 @@ import (
 func New(kind string) *Definition {
 	return &Definition{
 		Definition: NewImplementation(kind),
+		Kind:       kind,
 	}
 }
 
-func NewImplementation(kind string) contracts.IDefinition {
-	var def contracts.IDefinition
+func NewImplementation(kind string) idefinitions.IDefinition {
+	var def idefinitions.IDefinition
 
 	switch kind {
 	case static.KIND_GITOPS:
@@ -51,7 +56,106 @@ func NewImplementation(kind string) contracts.IDefinition {
 	return def
 }
 
-func (definition *Definition) Apply(format contracts.Format, obj contracts.ObjectInterface) (contracts.ObjectInterface, error) {
+func (definition *Definition) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Definition json.RawMessage `json:"definition"`
+		Kind       string
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	switch raw.Kind {
+	case static.KIND_GITOPS:
+		tmp := &v1.GitopsDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_CONTAINERS:
+		tmp := &v1.ContainersDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_CONFIGURATION:
+		tmp := &v1.ConfigurationDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_RESOURCE:
+		tmp := &v1.ResourceDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_HTTPAUTH:
+		tmp := &v1.HttpAuthDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_CERTKEY:
+		tmp := &v1.CertKeyDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_CUSTOM:
+		tmp := &v1.CustomDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_NETWORK:
+		tmp := &v1.NetworkDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_SECRET:
+		tmp := &v1.SecretDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	default:
+		definition.Definition = nil
+	}
+
+	return nil
+}
+
+func (definition *Definition) Apply(format iformat.Format, obj iobjects.ObjectInterface) (iobjects.ObjectInterface, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -74,7 +178,7 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 		}
 
 		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
-			return obj, errors.New("object has owner - direct modification not allowed")
+			return obj, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%s)", definition.GetMeta()))
 		}
 	}
 
@@ -84,7 +188,7 @@ func (definition *Definition) Apply(format contracts.Format, obj contracts.Objec
 		return obj, nil
 	}
 }
-func (definition *Definition) Delete(format contracts.Format, obj contracts.ObjectInterface) (contracts.IDefinition, error) {
+func (definition *Definition) Delete(format iformat.Format, obj iobjects.ObjectInterface) (idefinitions.IDefinition, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -100,7 +204,7 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 		}
 
 		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
-			return existing, errors.New("object has owner - direct modification not allowed")
+			return existing, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%s)", definition.GetMeta()))
 		}
 
 		if err != nil {
@@ -113,7 +217,7 @@ func (definition *Definition) Delete(format contracts.Format, obj contracts.Obje
 		return nil, errors.New("object doesnt exist")
 	}
 }
-func (definition *Definition) Changed(format contracts.Format, obj contracts.ObjectInterface) (bool, error) {
+func (definition *Definition) Changed(format iformat.Format, obj iobjects.ObjectInterface) (bool, error) {
 	err := obj.Find(format)
 
 	if err != nil {
@@ -133,7 +237,7 @@ func (definition *Definition) Changed(format contracts.Format, obj contracts.Obj
 		if len(bytes) == 0 {
 			return true, nil
 		} else {
-			return true, errors.New(static.STATUS_RESPONSE_NOT_FOUND)
+			return true, errors.New(static.RESPONSE_NOT_FOUND)
 		}
 	}
 }
@@ -158,11 +262,59 @@ func (definition *Definition) GetState() *commonv1.State {
 	return definition.Definition.GetState()
 }
 
+func (definition *Definition) SetState(state *commonv1.State) {
+	definition.Definition.SetState(state)
+}
+
 func (definition *Definition) GetKind() string {
 	return definition.Definition.GetKind()
 }
 
-func (definition *Definition) ResolveReferences(obj contracts.ObjectInterface) ([]contracts.IDefinition, error) {
+func (definition *Definition) IsOf(compare idefinitions.IDefinition) bool {
+	if definition.GetKind() == compare.GetKind() &&
+		definition.GetMeta().Group == compare.GetMeta().Group &&
+		definition.GetMeta().Name == compare.GetMeta().Name {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (definition *Definition) Patch(compare idefinitions.IDefinition) error {
+	var b1 []byte
+	var b2 []byte
+	var patch []byte
+	var modified []byte
+	var err error
+
+	b1, err = definition.Definition.ToJson()
+
+	if err != nil {
+		return err
+	}
+
+	b2, err = compare.ToJson()
+
+	if err != nil {
+		return err
+	}
+
+	patch, err = jsonpatch.CreateMergePatch(b1, b2)
+
+	if err != nil {
+		return err
+	}
+
+	modified, err = jsonpatch.MergePatch(b1, patch)
+
+	if err != nil {
+		return err
+	}
+
+	return definition.FromJson(modified)
+}
+
+func (definition *Definition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
 	return definition.Definition.ResolveReferences(obj)
 }
 

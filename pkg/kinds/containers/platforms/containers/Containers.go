@@ -7,21 +7,23 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 )
 
-func New(platform string, name string, config *configuration.Configuration, definition contracts.IDefinition) (platforms.IContainer, error) {
+func New(platform string, name string, config *configuration.Configuration, definition idefinitions.IDefinition) (platforms.IContainer, error) {
 	statusObj := status.New()
 
 	switch platform {
@@ -38,9 +40,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      smaps.New(),
 					ObjectDependencies: make([]f.Format, 0),
-					NodeURL:            config.KVStore.URL,
-					Node:               config.KVStore.Node,
-					NodeName:           config.NodeName,
+					Node:               node.NewNodeDefinition(definition.GetRuntime(), config.KVStore.Cluster),
 				},
 				Status: statusObj,
 			},
@@ -98,7 +98,6 @@ func (c *Container) InitContainer(definition v1.ContainersInternal, config *conf
 func (c *Container) MountResources() error {
 	return c.Platform.MountResources()
 }
-
 func (c *Container) UpdateDns(cache *dns.Records) error {
 	return c.Platform.UpdateDns(cache)
 }
@@ -123,6 +122,10 @@ func (c *Container) HasOwner() bool {
 	return c.GetDefinition().GetRuntime().GetOwner().IsEmpty()
 }
 
+func (c *Container) GetReadiness() []*readiness.Readiness {
+	return c.Platform.GetReadiness()
+}
+
 func (c *Container) GetState() (state.State, error) {
 	return c.Platform.GetState()
 }
@@ -136,15 +139,15 @@ func (c *Container) GetRuntime() *types.Runtime {
 func (c *Container) GetStatus() *status.Status {
 	return c.General.Status
 }
-func (c *Container) GetNode() uint64 {
+func (c *Container) GetNode() *node.Node {
 	return c.General.Runtime.Node
 }
 
 func (c *Container) GetNodeName() string {
-	return c.General.Runtime.NodeName
+	return c.General.Runtime.Node.NodeName
 }
 
-func (c *Container) GetDefinition() contracts.IDefinition {
+func (c *Container) GetDefinition() idefinitions.IDefinition {
 	return c.Platform.GetDefinition()
 }
 func (c *Container) GetLabels() map[string]string {
@@ -207,6 +210,12 @@ func (c *Container) Exec(command []string) (types.ExecResult, error) {
 }
 func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(follow)
+}
+func (c *Container) Wait(condition string) error {
+	return c.Platform.Wait(condition)
+}
+func (c *Container) Clean() error {
+	return c.Platform.Clean()
 }
 
 func (c *Container) ToJson() ([]byte, error) {

@@ -3,12 +3,12 @@ package docker
 import (
 	DTTypes "github.com/docker/docker/api/types"
 	DTEvents "github.com/docker/docker/api/types/events"
-	"github.com/simplecontainer/smr/pkg/contracts"
+	"github.com/simplecontainer/smr/pkg/events/platform"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 )
 
-func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
+func NewEvent(event DTEvents.Message) platform.Event {
 	var c DTTypes.Container
 	var err error
 
@@ -20,7 +20,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 		c, err = internal.Get(event.Actor.ID)
 		break
 	default:
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   "",
 			ContainerID: "",
 			Group:       "",
@@ -31,7 +31,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 	}
 
 	if err != nil {
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   "",
 			ContainerID: "",
 			Group:       "",
@@ -52,7 +52,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 
 	switch event.Action {
 	case "connect":
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   event.Actor.ID,
 			ContainerID: c.ID,
 			Group:       group,
@@ -61,7 +61,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 			Type:        types.EVENT_NETWORK_CONNECT,
 		}
 	case "disconnect":
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   event.Actor.ID,
 			ContainerID: c.ID,
 			Group:       group,
@@ -70,7 +70,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 			Type:        types.EVENT_NETWORK_DISCONNECT,
 		}
 	case "start":
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   event.Actor.ID,
 			ContainerID: c.ID,
 			Group:       group,
@@ -79,7 +79,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 			Type:        types.EVENT_START,
 		}
 	case "kill":
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   event.Actor.ID,
 			ContainerID: c.ID,
 			Group:       group,
@@ -88,7 +88,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 			Type:        types.EVENT_KILL,
 		}
 	case "stop":
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   event.Actor.ID,
 			ContainerID: c.ID,
 			Group:       group,
@@ -97,7 +97,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 			Type:        types.EVENT_STOP,
 		}
 	case "die":
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   event.Actor.ID,
 			ContainerID: c.ID,
 			Group:       group,
@@ -106,7 +106,7 @@ func NewEvent(event DTEvents.Message) contracts.PlatformEvent {
 			Type:        types.EVENT_DIE,
 		}
 	default:
-		return contracts.PlatformEvent{
+		return platform.Event{
 			NetworkID:   "",
 			ContainerID: "",
 			Group:       "",

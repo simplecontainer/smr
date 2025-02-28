@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/wI2L/jsondiff"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"io"
 	"net/http"
@@ -238,5 +239,54 @@ func (api *Api) DeleteKind(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 	} else {
 		c.JSON(http.StatusOK, common.Response(http.StatusOK, "object deleted", nil, nil))
+	}
+}
+
+// CompareKind godoc
+//
+//	@Summary		Get specific kind
+//	@Description	get specific kind from the store
+//	@Tags			database
+//	@Produce		json
+//
+// @Success		200	{object}	  contracts.Response
+// @Failure		400	{object}	  contracts.Response
+// @Failure		404	{object}	  contracts.Response
+// @Failure		500	{object}	  contracts.Response
+// @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [get]
+func (api *Api) CompareKind(c *gin.Context) {
+	prefix := c.Param("prefix")
+	version := c.Param("version")
+	category := c.Param("category")
+	kind := c.Param("kind")
+	group := c.Param("group")
+	name := c.Param("name")
+
+	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+	} else {
+		if len(response.Kvs) == 0 {
+			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("key not found"), nil))
+		} else {
+			var data []byte
+			data, err = io.ReadAll(c.Request.Body)
+
+			if err != nil {
+				common.Response(http.StatusInternalServerError, "", err, nil)
+			} else {
+				changelog, _ := jsondiff.CompareJSON(data, response.Kvs[0].Value)
+
+				var bytes []byte
+				bytes, err = json.Marshal(changelog)
+
+				if err != nil {
+					common.Response(http.StatusInternalServerError, "", err, nil)
+				} else {
+					c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, bytes))
+				}
+			}
+		}
 	}
 }

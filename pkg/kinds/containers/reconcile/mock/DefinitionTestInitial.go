@@ -13,6 +13,11 @@ func DefinitionTestInitial(name string, platform string) *v1.ContainersDefinitio
 			Name:   name,
 			Group:  "internal",
 			Labels: nil,
+			Runtime: &commonv1.Runtime{
+				Owner:    commonv1.Owner{},
+				Node:     1,
+				NodeName: "node-1",
+			},
 		},
 		Spec: v1.ContainersInternal{
 			Image: "dummy",

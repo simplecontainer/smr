@@ -16,13 +16,15 @@ import (
 	authentication "github.com/simplecontainer/smr/pkg/authentication"
 	client "github.com/simplecontainer/smr/pkg/client"
 	configuration "github.com/simplecontainer/smr/pkg/configuration"
-	contracts "github.com/simplecontainer/smr/pkg/contracts"
+	idefinitions "github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	dns "github.com/simplecontainer/smr/pkg/dns"
 	platforms "github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
+	readiness "github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	state "github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	types "github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	status "github.com/simplecontainer/smr/pkg/kinds/containers/status"
+	node "github.com/simplecontainer/smr/pkg/node"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -80,10 +82,10 @@ func (mr *MockIContainerMockRecorder) Exec(command any) *gomock.Call {
 }
 
 // GetDefinition mocks base method.
-func (m *MockIContainer) GetDefinition() contracts.IDefinition {
+func (m *MockIContainer) GetDefinition() idefinitions.IDefinition {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDefinition")
-	ret0, _ := ret[0].(contracts.IDefinition)
+	ret0, _ := ret[0].(idefinitions.IDefinition)
 	return ret0
 }
 
@@ -234,10 +236,10 @@ func (mr *MockIContainerMockRecorder) GetName() *gomock.Call {
 }
 
 // GetNode mocks base method.
-func (m *MockIContainer) GetNode() uint64 {
+func (m *MockIContainer) GetNode() *node.Node {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNode")
-	ret0, _ := ret[0].(uint64)
+	ret0, _ := ret[0].(*node.Node)
 	return ret0
 }
 
@@ -259,6 +261,20 @@ func (m *MockIContainer) GetNodeName() string {
 func (mr *MockIContainerMockRecorder) GetNodeName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeName", reflect.TypeOf((*MockIContainer)(nil).GetNodeName))
+}
+
+// GetReadiness mocks base method.
+func (m *MockIContainer) GetReadiness() []*readiness.Readiness {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReadiness")
+	ret0, _ := ret[0].([]*readiness.Readiness)
+	return ret0
+}
+
+// GetReadiness indicates an expected call of GetReadiness.
+func (mr *MockIContainerMockRecorder) GetReadiness() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReadiness", reflect.TypeOf((*MockIContainer)(nil).GetReadiness))
 }
 
 // GetRuntime mocks base method.
@@ -570,6 +586,20 @@ func (mr *MockIContainerMockRecorder) UpdateDns(dnsCache any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDns", reflect.TypeOf((*MockIContainer)(nil).UpdateDns), dnsCache)
 }
 
+// Wait mocks base method.
+func (m *MockIContainer) Wait() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Wait")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Wait indicates an expected call of Wait.
+func (mr *MockIContainerMockRecorder) Wait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIContainer)(nil).Wait))
+}
+
 // MockIPlatform is a mock of IPlatform interface.
 type MockIPlatform struct {
 	ctrl     *gomock.Controller
@@ -624,10 +654,10 @@ func (mr *MockIPlatformMockRecorder) Exec(command any) *gomock.Call {
 }
 
 // GetDefinition mocks base method.
-func (m *MockIPlatform) GetDefinition() contracts.IDefinition {
+func (m *MockIPlatform) GetDefinition() idefinitions.IDefinition {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDefinition")
-	ret0, _ := ret[0].(contracts.IDefinition)
+	ret0, _ := ret[0].(idefinitions.IDefinition)
 	return ret0
 }
 
@@ -761,6 +791,20 @@ func (m *MockIPlatform) GetName() string {
 func (mr *MockIPlatformMockRecorder) GetName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockIPlatform)(nil).GetName))
+}
+
+// GetReadiness mocks base method.
+func (m *MockIPlatform) GetReadiness() []*readiness.Readiness {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReadiness")
+	ret0, _ := ret[0].([]*readiness.Readiness)
+	return ret0
+}
+
+// GetReadiness indicates an expected call of GetReadiness.
+func (mr *MockIPlatformMockRecorder) GetReadiness() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReadiness", reflect.TypeOf((*MockIPlatform)(nil).GetReadiness))
 }
 
 // GetState mocks base method.
@@ -990,6 +1034,20 @@ func (mr *MockIPlatformMockRecorder) UpdateDns(dnsCache any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDns", reflect.TypeOf((*MockIPlatform)(nil).UpdateDns), dnsCache)
 }
 
+// Wait mocks base method.
+func (m *MockIPlatform) Wait() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Wait")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Wait indicates an expected call of Wait.
+func (mr *MockIPlatformMockRecorder) Wait() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockIPlatform)(nil).Wait))
+}
+
 // MockRegistry is a mock of Registry interface.
 type MockRegistry struct {
 	ctrl     *gomock.Controller
@@ -1094,33 +1152,49 @@ func (mr *MockRegistryMockRecorder) FindLocal(group, name any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLocal", reflect.TypeOf((*MockRegistry)(nil).FindLocal), group, name)
 }
 
-// GetIndexes mocks base method.
-func (m *MockRegistry) GetIndexes(group, name string) []uint64 {
+// FindReplicas mocks base method.
+func (m *MockRegistry) FindReplicas(prefix, group, name string) []platforms.IContainer {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIndexes", group, name)
-	ret0, _ := ret[0].([]uint64)
+	ret := m.ctrl.Call(m, "FindReplicas", prefix, group, name)
+	ret0, _ := ret[0].([]platforms.IContainer)
 	return ret0
 }
 
-// GetIndexes indicates an expected call of GetIndexes.
-func (mr *MockRegistryMockRecorder) GetIndexes(group, name any) *gomock.Call {
+// FindReplicas indicates an expected call of FindReplicas.
+func (mr *MockRegistryMockRecorder) FindReplicas(prefix, group, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndexes", reflect.TypeOf((*MockRegistry)(nil).GetIndexes), group, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReplicas", reflect.TypeOf((*MockRegistry)(nil).FindReplicas), prefix, group, name)
 }
 
-// Name mocks base method.
-func (m *MockRegistry) Name(client *client.Http, group, name string) (string, []uint64) {
+// GetIndexes mocks base method.
+func (m *MockRegistry) GetIndexes(prefix, group, name string) ([]uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Name", client, group, name)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].([]uint64)
+	ret := m.ctrl.Call(m, "GetIndexes", prefix, group, name)
+	ret0, _ := ret[0].([]uint64)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Name indicates an expected call of Name.
-func (mr *MockRegistryMockRecorder) Name(client, group, name any) *gomock.Call {
+// GetIndexes indicates an expected call of GetIndexes.
+func (mr *MockRegistryMockRecorder) GetIndexes(prefix, group, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockRegistry)(nil).Name), client, group, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndexes", reflect.TypeOf((*MockRegistry)(nil).GetIndexes), prefix, group, name)
+}
+
+// Name mocks base method.
+func (m *MockRegistry) Name(client *client.Http, prefix, group, name string) (string, []uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name", client, prefix, group, name)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].([]uint64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockRegistryMockRecorder) Name(client, prefix, group, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockRegistry)(nil).Name), client, prefix, group, name)
 }
 
 // NameReplica mocks base method.
@@ -1163,4 +1237,28 @@ func (m *MockRegistry) Sync(group, name string) error {
 func (mr *MockRegistryMockRecorder) Sync(group, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockRegistry)(nil).Sync), group, name)
+}
+
+// MockReadiness is a mock of Readiness interface.
+type MockReadiness struct {
+	ctrl     *gomock.Controller
+	recorder *MockReadinessMockRecorder
+	isgomock struct{}
+}
+
+// MockReadinessMockRecorder is the mock recorder for MockReadiness.
+type MockReadinessMockRecorder struct {
+	mock *MockReadiness
+}
+
+// NewMockReadiness creates a new mock instance.
+func NewMockReadiness(ctrl *gomock.Controller) *MockReadiness {
+	mock := &MockReadiness{ctrl: ctrl}
+	mock.recorder = &MockReadinessMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockReadiness) EXPECT() *MockReadinessMockRecorder {
+	return m.recorder
 }

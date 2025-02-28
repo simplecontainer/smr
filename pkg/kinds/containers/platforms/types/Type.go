@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/smaps"
 )
 
@@ -18,8 +19,7 @@ type Runtime struct {
 	Ready              bool
 	Configuration      *smaps.Smap
 	ObjectDependencies []f.Format
-	NodeURL            string
-	Node               uint64
+	Node               *node.Node
 	NodeName           string
 }
 

@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
@@ -10,28 +11,19 @@ import (
 )
 
 func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
-	if containerWatcher.Done {
+	if containerWatcher.Container.GetStatus().GetPending().Is(status.PENDING_DELETE) {
 		return
 	}
 
 	containerObj := containerWatcher.Container
 
-	if containerObj.GetStatus().Reconciling {
-		containerWatcher.Logger.Info("container already reconciling, waiting for the free slot")
-		return
-	}
-
-	containerObj.GetStatus().Reconciling = true
-
-	state := GetState(containerWatcher)
+	cs := GetState(containerWatcher)
 
 	existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
-	newState, reconcile := Reconcile(shared, containerWatcher, existing, state.State, state.Error)
-
-	containerObj.GetStatus().Reconciling = false
+	newState, reconcile := Reconcile(shared, containerWatcher, existing, cs.State, cs.Error)
 
 	// Do not touch container on this node since it is active on another node
-	if containerObj.GetStatus().State.State != status.STATUS_TRANSFERING {
+	if containerObj.GetStatus().State.State != status.TRANSFERING {
 		if containerObj.GetStatus().State.State != newState {
 			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
 
@@ -42,7 +34,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			}
 		}
 
-		state = GetState(containerWatcher)
+		cs = GetState(containerWatcher)
 
 		err := shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
 
@@ -50,13 +42,31 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			containerWatcher.Logger.Error(err.Error())
 		}
 
+		events.Dispatch(
+			events.NewKindEvent(events.EVENT_CHANGED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
+			shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+		)
+
+		if newState == "" {
+			containerWatcher.Container.GetStatus().GetPending().Set(status.PENDING_DELETE)
+			containerWatcher.Cancel()
+
+			return
+		}
+
 		if reconcile {
 			containerWatcher.ContainerQueue <- containerObj
 		} else {
-			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
-				containerWatcher.PauseC <- containerObj
-			} else {
-				containerWatcher.Ticker.Reset(5 * time.Second)
+			switch containerObj.GetStatus().GetState() {
+			default:
+				if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.RUNNING {
+					events.Dispatch(
+						events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+						shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+					)
+				} else {
+					containerWatcher.Ticker.Reset(5 * time.Second)
+				}
 			}
 		}
 	}
