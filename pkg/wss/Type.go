@@ -6,6 +6,6 @@ import (
 )
 
 type WebSockets struct {
-	Channels []chan ievents.Event
+	Channels map[int]chan ievents.Event
 	Lock     *sync.RWMutex
 }

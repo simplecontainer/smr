@@ -2,24 +2,28 @@ package network
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
 	"io"
 	"net/http"
+	"time"
 )
 
 func Send(client *http.Client, URL string, method string, data []byte) *iresponse.Response {
 	var req *http.Request
 	var err error
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if data != nil {
-		req, err = http.NewRequest(method, URL, bytes.NewBuffer(data))
-		req.Header.Set("Content-Type", "application/json")
+		req, err = http.NewRequestWithContext(ctx, method, URL, bytes.NewBuffer(data))
 	} else {
-		req, err = http.NewRequest(method, URL, nil)
-		req.Header.Set("Content-Type", "application/json")
+		req, err = http.NewRequestWithContext(ctx, method, URL, nil)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "smr")
 
 	if err != nil {

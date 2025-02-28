@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/wss"
 	"go.uber.org/zap"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -28,16 +29,33 @@ func (api *Api) Events(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	// Locking to safely add the new channel to the map
 	api.Wss.Lock.Lock()
-	ch := make(chan ievents.Event, 10) // Use buffered channel to avoid blocking
-	position := len(api.Wss.Channels)
-	api.Wss.Channels = append(api.Wss.Channels, ch)
+	ch := make(chan ievents.Event, 100) // Increased buffer size to avoid blocking
+	position := len(api.Wss.Channels)   // Use position as the map key
+	api.Wss.Channels[position] = ch
 	api.Wss.Lock.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go ListenEvents(ctx, api.Wss, position, conn)
+	var closeOnce sync.Once
+
+	go func() {
+		defer func() {
+			api.Wss.Lock.Lock()
+			defer api.Wss.Lock.Unlock()
+
+			closeOnce.Do(func() {
+				close(ch)
+			})
+
+			// Safely remove the channel from the map
+			delete(api.Wss.Channels, position)
+		}()
+
+		ListenEvents(ctx, api.Wss, position, conn)
+	}()
 
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(string) error {
@@ -54,19 +72,14 @@ func (api *Api) Events(c *gin.Context) {
 			break
 		}
 	}
+
+	cancel()
+	closeOnce.Do(func() {
+		close(ch)
+	})
 }
 
 func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *websocket.Conn) {
-	defer func() {
-		wss.Lock.Lock()
-		defer wss.Lock.Unlock()
-
-		if position >= 0 && position < len(wss.Channels) {
-			close(wss.Channels[position])
-			wss.Channels = append(wss.Channels[:position], wss.Channels[position+1:]...)
-		}
-	}()
-
 	for {
 		select {
 		case data := <-wss.Channels[position]:

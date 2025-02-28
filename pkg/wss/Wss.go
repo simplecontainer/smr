@@ -7,7 +7,7 @@ import (
 
 func New() *WebSockets {
 	return &WebSockets{
-		Channels: make([]chan ievents.Event, 0),
+		Channels: make(map[int]chan ievents.Event, 0),
 		Lock:     &sync.RWMutex{},
 	}
 }

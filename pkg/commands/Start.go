@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/api"
@@ -218,10 +217,10 @@ func Start() {
 				router.GET("/version", api.Version)
 				router.GET("/events", api.Events)
 
-				debug := routerHttp.Group("/debug", func(c *gin.Context) {
-					c.Next()
-				})
-				pprof.RouteRegister(debug, "pprof")
+				//debug := routerHttp.Group("/debug", func(c *gin.Context) {
+				//	c.Next()
+				//})
+				//pprof.RouteRegister(debug, "pprof")
 
 				routerHttp.GET("/metrics", api.MetricsHandle())
 				routerHttp.GET("/healthz", api.Health)

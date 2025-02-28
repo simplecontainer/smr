@@ -36,29 +36,25 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
 
-	if !transitioned {
-		gitopsWatcher.Logger.Error("failed to transition state",
-			zap.String("old", gitopsObj.GetStatus().State.State),
-			zap.String("new", newState))
-	}
-
 	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
 
 	if err != nil {
 		gitopsWatcher.Logger.Error(err.Error())
 	}
 
-	events.Dispatch(
-		events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
-		shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
-	)
+	if !transitioned {
+		gitopsWatcher.Logger.Error("failed to transition state",
+			zap.String("old", gitopsObj.GetStatus().State.State),
+			zap.String("new", newState))
+	} else {
+		events.Dispatch(
+			events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
+			shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+		)
+	}
 
 	if reconcile {
-		go func() {
-			if !gitopsWatcher.Done {
-				gitopsWatcher.GitopsQueue <- gitopsObj
-			}
-		}()
+		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
 		events.Dispatch(
 			events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
