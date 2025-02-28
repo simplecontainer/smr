@@ -403,7 +403,7 @@ func (container *Docker) Delete() error {
 	}(cli)
 
 	// Resource cleanup after delete is not that fast - hence rename before delete
-	container.Rename(fmt.Sprintf("%s-delete-%s", container.GetGeneratedName(), time.Now().UnixMicro()))
+	container.Rename(fmt.Sprintf("%s-delete-%d", container.GetGeneratedName(), time.Now().UnixMicro()))
 
 	err = cli.ContainerRemove(ctx, container.DockerID, TDContainer.RemoveOptions{
 		Force: true,
