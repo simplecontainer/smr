@@ -178,7 +178,7 @@ func (definition *Definition) Apply(format iformat.Format, obj iobjects.ObjectIn
 		}
 
 		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
-			return obj, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%s)", definition.GetMeta()))
+			return obj, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%v)", definition.GetMeta()))
 		}
 	}
 
@@ -204,7 +204,7 @@ func (definition *Definition) Delete(format iformat.Format, obj iobjects.ObjectI
 		}
 
 		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
-			return existing, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%s)", definition.GetMeta()))
+			return existing, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%v)", definition.GetMeta()))
 		}
 
 		if err != nil {
