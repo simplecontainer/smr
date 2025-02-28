@@ -8,15 +8,13 @@ import (
 	"sync"
 )
 
-var goroutines = 0
-
 func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container, pauseHandler func(*watcher.Container) error) {
-	wg := &sync.WaitGroup{}
+	lock := &sync.Mutex{}
 
 	for {
 		select {
 		case <-containerWatcher.Ctx.Done():
-			wg.Wait()
+			lock.Lock()
 			containerWatcher.Ticker.Stop()
 
 			containerWatcher.Done = true
@@ -56,22 +54,25 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 			}
 
 			containerWatcher = nil
-			wg = nil
+			lock = nil
 			return
 		case <-containerWatcher.ContainerQueue:
 			go func() {
-				wg.Wait()
-				Containers(shared, containerWatcher, wg)
+				lock.Lock()
+				Containers(shared, containerWatcher)
+				lock.Unlock()
 			}()
 			break
 		case <-containerWatcher.Ticker.C:
 			go func() {
 				containerWatcher.Ticker.Stop()
-				wg.Wait()
+				lock.Lock()
 
 				if !containerWatcher.Done {
-					Containers(shared, containerWatcher, wg)
+					Containers(shared, containerWatcher)
 				}
+
+				lock.Unlock()
 			}()
 			break
 		case <-containerWatcher.PauseC:

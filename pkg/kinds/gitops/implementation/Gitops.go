@@ -74,21 +74,10 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
+		request.Definition.GetRuntime().SetNodeName(gitops.Definition.GetRuntime().GetNodeName())
 
-		err := request.ProposeApply(client.Clients[user.Username].Http, client.Clients[user.Username].API)
-
-		if err != nil {
-			errs = append(errs, err)
-
-			request.Definition.GetState().Gitops.Set(commonv1.GITOPS_DRIFTED, true)
-			request.Definition.GetState().Gitops.SetError(err)
-		} else {
-			request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
-			request.Definition.GetState().Gitops.Commit = gitops.Commit.Hash
-			request.Definition.GetState().Gitops.LastSync = time.Now()
-
-			logger.Debug("object synced", zap.String("object", request.Definition.GetMeta().Name))
-		}
+		request.ProposeApply(client.Clients[user.Username].Http, client.Clients[user.Username].API)
+		logger.Info("object proposed", zap.String("object", request.Definition.GetMeta().Name))
 	}
 
 	return requests, errs
@@ -159,9 +148,26 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 					request.Definition.GetState().Gitops.Changes = changes
 
 					flagDrift = true
+				} else {
+					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
 				}
 			}
+		} else {
+			c := definitions.New(request.Definition.GetKind())
+
+			err = c.FromJson(obj.GetDefinitionByte())
+
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			if c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
+				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
+			}
 		}
+
+		fmt.Println(gitops.GetName(), request.Definition.GetMeta(), flagError, flagDrift)
 	}
 
 	if flagError {

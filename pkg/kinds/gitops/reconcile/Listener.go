@@ -12,7 +12,7 @@ import (
 )
 
 func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops, pauseHandler func(gitops *watcher.Gitops) error) {
-	wg := &sync.WaitGroup{}
+	lock := &sync.Mutex{}
 
 	for {
 		select {
@@ -67,16 +67,19 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			gitopsWatcher = nil
 			return
 		case <-gitopsWatcher.GitopsQueue:
-			wg.Wait()
 			if !gitopsWatcher.Done {
-				go Gitops(shared, gitopsWatcher, wg)
+				lock.Lock()
+				go Gitops(shared, gitopsWatcher)
+				lock.Unlock()
 			}
 			break
 		case <-gitopsWatcher.Ticker.C:
 			gitopsWatcher.Ticker.Stop()
-			wg.Wait()
+
 			if !gitopsWatcher.Done {
-				go Gitops(shared, gitopsWatcher, wg)
+				lock.Lock()
+				go Gitops(shared, gitopsWatcher)
+				lock.Unlock()
 			}
 			break
 		case <-gitopsWatcher.Poller.C:

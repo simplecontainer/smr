@@ -23,7 +23,6 @@ import (
 	"github.com/wI2L/jsondiff"
 	"net/http"
 	"os"
-	"sync"
 )
 
 func (containers *Containers) Start() error {
@@ -88,7 +87,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
 
 			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.PENDING_DELETE)
-			reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier), &sync.WaitGroup{})
+			reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier))
 		}
 	}
 
@@ -114,7 +113,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
 						existingWatcher.Container = containerObj
-						go reconcile.Containers(containers.Shared, existingWatcher, &sync.WaitGroup{})
+						go reconcile.Containers(containers.Shared, existingWatcher)
 					}
 				} else {
 					existingWatcher.Logger.Info("no changes detected on the container object")
@@ -153,7 +152,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 							return nil
 						})
 
-						go reconcile.Containers(containers.Shared, w, &sync.WaitGroup{})
+						go reconcile.Containers(containers.Shared, w)
 					} else {
 						w := watcher.New(containerObj, status.CREATED, user)
 						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
@@ -164,7 +163,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 						go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
 							return nil
 						})
-						go reconcile.Containers(containers.Shared, w, &sync.WaitGroup{})
+						go reconcile.Containers(containers.Shared, w)
 					}
 				}
 			} else {
@@ -184,7 +183,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 					return nil
 				})
 
-				go reconcile.Containers(containers.Shared, w, &sync.WaitGroup{})
+				go reconcile.Containers(containers.Shared, w)
 			}
 		}
 	}

@@ -1,25 +1,17 @@
 package reconcile
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"go.uber.org/zap"
-	"sync"
 	"time"
 )
 
-func Containers(shared *shared.Shared, containerWatcher *watcher.Container, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer func() {
-		wg.Done()
-	}()
-
+func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	if containerWatcher.Container.GetStatus().GetPending().Is(status.PENDING_DELETE) {
-		fmt.Println("no mas acktionas")
 		return
 	}
 

@@ -6,14 +6,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"go.uber.org/zap"
-	"sync"
 	"time"
 )
 
-func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
-
+func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	if gitopsWatcher.Done || gitopsWatcher.Gitops.Status.PendingDelete {
 		return
 	}
@@ -64,6 +60,11 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops, wg *sync.WaitG
 			}
 		}()
 	} else {
+		events.Dispatch(
+			events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+			shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+		)
+
 		switch gitopsObj.GetStatus().GetState() {
 		case status.DRIFTED:
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
