@@ -141,8 +141,8 @@ Manager(){
           exit
         fi
 
-        smr node rename "${NODE}-create-${ID}" --name "${NODE}" --w exited
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${NODE}" -w running
+        smr node rename "${NODE}-create-${ID}" --name "${NODE}"
+        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${NODE}" --w running
 
         if [[ $NODE_DOMAIN == "localhost" ]]; then
           NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${NODE_PORT}"
