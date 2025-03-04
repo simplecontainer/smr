@@ -46,6 +46,7 @@ const KIND_NETWORK = "network"
 const KIND_SECRET = "secret"
 const KIND_CUSTOM = "custom"
 
+const STATE_KIND = "state"
 const REMOVE_KIND = "remove"
 
 const RESPONSE_SCHEDULED = "action accepted and scheduled for action"

@@ -190,6 +190,21 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
+func (containers *Containers) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	_, err = request.State(containers.Shared.Client, user)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
+	} else {
+		return common.Response(http.StatusOK, "", err, nil), err
+	}
+}
 func (containers *Containers) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)
 

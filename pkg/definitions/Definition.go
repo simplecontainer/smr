@@ -188,6 +188,15 @@ func (definition *Definition) Apply(format iformat.Format, obj iobjects.ObjectIn
 		return obj, nil
 	}
 }
+func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectInterface) (iobjects.ObjectInterface, error) {
+	bytes, err := definition.Definition.ToJson()
+
+	if err != nil {
+		return obj, err
+	}
+
+	return obj, obj.AddLocal(format, bytes)
+}
 func (definition *Definition) Delete(format iformat.Format, obj iobjects.ObjectInterface) (idefinitions.IDefinition, error) {
 	err := obj.Find(format)
 

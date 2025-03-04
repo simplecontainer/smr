@@ -38,7 +38,21 @@ func (custom *Custom) Apply(user *authentication.User, definition []byte, agent 
 		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 }
+func (custom *Custom) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_CUSTOM, definition)
 
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	_, err = request.Apply(custom.Shared.Client, user)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
+	} else {
+		return common.Response(http.StatusOK, "", err, nil), err
+	}
+}
 func (custom *Custom) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CUSTOM, definition)
 

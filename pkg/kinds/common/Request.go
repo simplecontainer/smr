@@ -51,6 +51,10 @@ func (request *Request) Apply(client *client.Http, user *authentication.User) (i
 	return request.Action("apply", client, user)
 }
 
+func (request *Request) State(client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error) {
+	return request.Action("state", client, user)
+}
+
 func (request *Request) Compare(client *client.Http, user *authentication.User) (iobjects.ObjectInterface, error) {
 	return request.Action("compare", client, user)
 }
@@ -73,6 +77,9 @@ func (request *Request) Action(action string, client *client.Http, user *authent
 	case "apply":
 		_, err = request.Definition.Apply(format, obj)
 		break
+	case "state":
+		_, err = request.Definition.State(format, obj)
+		break
 	case "compare":
 		_, err = request.Definition.Changed(format, obj)
 		break
@@ -88,16 +95,27 @@ func (request *Request) AttemptApply(client *http.Client, API string) error {
 	return request.Send("attempt/apply", http.MethodPost, client, API)
 }
 
+func (request *Request) AttemptState(client *http.Client, API string) error {
+	return request.Send("attempt/state", http.MethodPost, client, API)
+}
+
 func (request *Request) AttemptRemove(client *http.Client, API string) error {
 	return request.Send("attempt/remove", http.MethodDelete, client, API)
 }
 
+// This is non-blocking and async method
 func (request *Request) ProposeApply(client *http.Client, API string) error {
 	return request.Send("propose/apply", http.MethodPost, client, API)
 }
 
+// This is non-blocking and async method
 func (request *Request) ProposeRemove(client *http.Client, API string) error {
 	return request.Send("propose/remove", http.MethodDelete, client, API)
+}
+
+// This is blocking and sync method
+func (request *Request) ProposeState(client *http.Client, API string) error {
+	return request.Send("propose/state", http.MethodPost, client, API)
 }
 
 func (request *Request) Send(action string, method string, client *http.Client, API string) error {

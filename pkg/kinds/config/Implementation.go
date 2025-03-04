@@ -42,6 +42,22 @@ func (config *Config) Apply(user *authentication.User, definition []byte, agent 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
+func (config *Config) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
+	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+	}
+
+	_, err = request.Apply(config.Shared.Client, user)
+
+	if err != nil {
+		return common.Response(http.StatusBadRequest, "", err, nil), err
+	} else {
+		return common.Response(http.StatusOK, "", err, nil), err
+	}
+}
+
 func (config *Config) Delete(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
 

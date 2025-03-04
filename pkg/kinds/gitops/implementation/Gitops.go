@@ -91,6 +91,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 	for _, request := range gitops.Definitions {
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
+		request.Definition.GetRuntime().SetNodeName(gitops.Definition.GetRuntime().GetNodeName())
 
 		obj, err := request.Compare(client, user)
 
@@ -100,7 +101,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 				flagDrift = true
 			} else {
 				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_ERROR, true)
-				request.Definition.GetState().Gitops.SetError(err)
+				request.Definition.GetState().Gitops.AddError(err)
 
 				errs = append(errs, err)
 
@@ -127,7 +128,7 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 						request.Definition.GetState().Gitops.Set(commonv1.GITOPS_NOTOWNER, true)
 
 						err = errors.New(fmt.Sprintf("owner of the object is %s", request.Definition.GetRuntime().GetOwner()))
-						request.Definition.GetState().Gitops.SetError(err)
+						request.Definition.GetState().Gitops.AddError(err)
 						errs = append(errs, err)
 					}
 				} else {
@@ -141,16 +142,20 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 
 			if request.Definition.GetState().Gitops.NotOwner {
 				flagError = true
-				request.Definition.GetState().Gitops.SetError(errors.New("someone else is owner of the object"))
+				request.Definition.GetState().Gitops.AddError(errors.New("someone else is owner of the object"))
 			} else {
 				if len(changes) > 0 {
+					request.Definition.GetState().Gitops.AddMessage("warning", "object is drifted")
 					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_DRIFTED, true)
 					request.Definition.GetState().Gitops.Changes = changes
 
 					flagDrift = true
 				} else {
+					request.Definition.GetState().Gitops.AddMessage("success", "object synced successfully")
 					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
 				}
+
+				request.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 			}
 		} else {
 			if obj.Exists() {
@@ -165,12 +170,16 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 
 				if c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
 					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
+					request.Definition.GetState().Gitops.AddMessage("success", "object synced successfully")
 
 					if request.Definition.GetState().Gitops.LastSync.IsZero() {
 						request.Definition.GetState().Gitops.LastSync = time.Now()
 					}
+
+					request.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 				}
 			} else {
+				request.Definition.GetState().Gitops.AddMessage("neutral", "object is not found on the cluster")
 				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_MISSING, true)
 			}
 		}

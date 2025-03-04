@@ -12,16 +12,22 @@ type State struct {
 }
 
 type Gitops struct {
-	Synced           bool
-	Drifted          bool
-	Missing          bool
-	NotOwner         bool
-	Error            bool
-	State            string
-	ErrorDescription string
-	Commit           plumbing.Hash
-	Changes          []jsondiff.Operation
-	LastSync         time.Time
+	Synced   bool
+	Drifted  bool
+	Missing  bool
+	NotOwner bool
+	Error    bool
+	State    string
+	Messages []Message
+	Commit   plumbing.Hash
+	Changes  []jsondiff.Operation
+	LastSync time.Time
+}
+
+type Message struct {
+	Category  string
+	Message   string
+	Timestamp time.Time
 }
 
 func (g *Gitops) Clean() {
@@ -53,8 +59,41 @@ func (g *Gitops) Set(state string, value bool) {
 	}
 }
 
-func (g *Gitops) SetError(err error) {
-	g.ErrorDescription = err.Error()
+func (g *Gitops) AddMessage(category string, message string) {
+	msg := Message{
+		Category:  category,
+		Message:   message,
+		Timestamp: time.Now(),
+	}
+
+	if len(g.Messages) > 0 {
+		last := g.Messages[len(g.Messages)-1]
+
+		if last.Category == msg.Category && last.Message == msg.Message {
+			g.Messages[len(g.Messages)-1] = msg
+			return
+		}
+	}
+
+	g.Messages = append(g.Messages, msg)
+}
+func (g *Gitops) AddError(err error) {
+	msg := Message{
+		Category:  "error",
+		Message:   err.Error(),
+		Timestamp: time.Now(),
+	}
+
+	if len(g.Messages) > 0 {
+		last := g.Messages[len(g.Messages)-1]
+
+		if last.Message == msg.Message {
+			g.Messages[len(g.Messages)-1] = msg
+			return
+		}
+	}
+
+	g.Messages = append(g.Messages, msg)
 }
 
 var GITOPS_SYNCED = "synced"
@@ -86,4 +125,14 @@ func (state *State) GetOpt(name string) *Opts {
 	}
 
 	return &Opts{}
+}
+
+func (state *State) ClearOpt(name string) {
+	if state.Options != nil {
+		for k, v := range state.Options {
+			if v.Name == name {
+				state.Options = append(state.Options[:k], state.Options[k+1:]...)
+			}
+		}
+	}
 }

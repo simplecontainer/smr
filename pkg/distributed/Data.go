@@ -90,7 +90,13 @@ func (replication *Replication) HandleObject(format iformat.Format, data KV.KV) 
 		}
 	}
 
-	switch request.Definition.GetState().GetOpt("action").Value {
+	action := request.Definition.GetState().GetOpt("action").Value
+	request.Definition.GetState().ClearOpt("action")
+
+	switch action {
+	case static.STATE_KIND:
+		helpers.LogIfError(request.AttemptState(replication.Client.Http, replication.Client.API))
+		break
 	case static.REMOVE_KIND:
 		helpers.LogIfError(request.AttemptRemove(replication.Client.Http, replication.Client.API))
 		break

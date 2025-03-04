@@ -46,9 +46,6 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 							}
 						}
 					}()
-				} else {
-					format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
-					fmt.Println("last sync is zerou", format.ToString())
 				}
 			}
 			wgChild.Wait()

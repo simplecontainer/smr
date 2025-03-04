@@ -60,8 +60,15 @@ func (api *Api) Propose(c *gin.Context) {
 						request.Definition.Definition.GetRuntime().SetNodeName(api.Cluster.Node.NodeName)
 					}
 
-					switch c.Request.Method {
-					case http.MethodDelete:
+					var format f.Format
+
+					switch c.Param("action") {
+					case "apply":
+						break
+					case "state":
+						request.Definition.GetState().AddOpt("action", static.STATE_KIND)
+						break
+					case "remove":
 						request.Definition.GetState().AddOpt("action", static.REMOVE_KIND)
 						break
 					}
@@ -74,7 +81,8 @@ func (api *Api) Propose(c *gin.Context) {
 						return
 					}
 
-					format := f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+					format = f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+
 					api.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, api.Manager.Config.KVStore.Node)
 
 					c.JSON(http.StatusOK, common.Response(http.StatusOK, static.RESPONSE_SCHEDULED, nil, nil))
