@@ -1195,6 +1195,21 @@ func (mr *MockRegistryMockRecorder) GetIndexes(prefix, group, name any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndexes", reflect.TypeOf((*MockRegistry)(nil).GetIndexes), prefix, group, name)
 }
 
+// GetIndexesLocal mocks base method.
+func (m *MockRegistry) GetIndexesLocal(prefix, group, name string) ([]uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIndexesLocal", prefix, group, name)
+	ret0, _ := ret[0].([]uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIndexesLocal indicates an expected call of GetIndexesLocal.
+func (mr *MockRegistryMockRecorder) GetIndexesLocal(prefix, group, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndexesLocal", reflect.TypeOf((*MockRegistry)(nil).GetIndexesLocal), prefix, group, name)
+}
+
 // Name mocks base method.
 func (m *MockRegistry) Name(client *client.Http, prefix, group, name string) (string, []uint64, error) {
 	m.ctrl.T.Helper()
