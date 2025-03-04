@@ -116,6 +116,7 @@ type Registry interface {
 	BackOff(group string, name string) error
 	BackOffReset(group string, name string)
 	GetIndexes(prefix string, group string, name string) ([]uint64, error)
+	GetIndexesLocal(prefix string, group string, name string) ([]uint64, error)
 }
 
 type Readiness interface {

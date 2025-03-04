@@ -6,7 +6,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
-	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/helpers"
@@ -26,13 +25,9 @@ func New(client *client.Client, user *authentication.User, nodeName string, node
 		Node:       node,
 		User:       user,
 		DataC:      make(chan KV.KV),
-		DeleteC:    make(map[string]chan ievents.Event),
+		Informer:   NewInformer(),
 		Replicated: smaps.New(),
 	}
-}
-
-func (replication *Replication) NewDeleteC(format iformat.Format) {
-	replication.DeleteC[format.ToString()] = make(chan ievents.Event)
 }
 
 func (replication *Replication) ListenData(agent string) {

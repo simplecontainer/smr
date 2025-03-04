@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/smaps"
+	"sync"
 )
 
 type Replication struct {
@@ -15,7 +16,12 @@ type Replication struct {
 	Node        uint64
 	DataC       chan KV.KV
 	EventsC     chan KV.KV
-	DeleteC     map[string]chan ievents.Event
+	Informer    *Informer
 	DnsUpdatesC chan KV.KV
 	Replicated  *smaps.Smap
+}
+
+type Informer struct {
+	Chs  map[string]chan ievents.Event
+	Lock *sync.RWMutex
 }

@@ -153,17 +153,25 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 				}
 			}
 		} else {
-			c := definitions.New(request.Definition.GetKind())
+			if obj.Exists() {
+				c := definitions.New(request.Definition.GetKind())
 
-			err = c.FromJson(obj.GetDefinitionByte())
+				err = c.FromJson(obj.GetDefinitionByte())
 
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
 
-			if c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
-				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
+				if c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
+					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
+
+					if request.Definition.GetState().Gitops.LastSync.IsZero() {
+						request.Definition.GetState().Gitops.LastSync = time.Now()
+					}
+				}
+			} else {
+				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_MISSING, true)
 			}
 		}
 	}

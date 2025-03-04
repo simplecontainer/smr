@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,7 +27,7 @@ import (
 // @Failure		500	{object}	  contracts.Response
 // @Router			/kind/{prefix}/{category}/{kind} [get]
 func (api *Api) List(c *gin.Context) {
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/"), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	response, err := api.Etcd.Get(c.Request.Context(), fmt.Sprintf("/"), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -61,7 +60,7 @@ func (api *Api) ListKind(c *gin.Context) {
 	category := c.Param("category")
 	kind := c.Param("kind")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s", prefix, version, category, kind), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	response, err := api.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s", prefix, version, category, kind), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -95,7 +94,7 @@ func (api *Api) ListKindGroup(c *gin.Context) {
 	kind := c.Param("kind")
 	group := c.Param("group")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, version, category, kind, group), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	response, err := api.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, version, category, kind, group), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -130,7 +129,7 @@ func (api *Api) GetKind(c *gin.Context) {
 	group := c.Param("group")
 	name := c.Param("name")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+	response, err := api.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -203,7 +202,7 @@ func (api *Api) SetKind(c *gin.Context) {
 		group := c.Param("group")
 		name := c.Param("name")
 
-		_, err = api.Etcd.Put(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name), string(data))
+		_, err = api.Etcd.Put(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name), string(data))
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -233,7 +232,7 @@ func (api *Api) DeleteKind(c *gin.Context) {
 	group := c.Param("group")
 	name := c.Param("name")
 
-	_, err := api.Etcd.Delete(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+	_, err := api.Etcd.Delete(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -262,7 +261,7 @@ func (api *Api) CompareKind(c *gin.Context) {
 	group := c.Param("group")
 	name := c.Param("name")
 
-	response, err := api.Etcd.Get(context.Background(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+	response, err := api.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))

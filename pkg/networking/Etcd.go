@@ -40,6 +40,7 @@ func Flannel(network string, backend string) error {
 		Endpoints:   []string{"localhost:2379"},
 		DialTimeout: 5 * time.Second,
 	})
+	defer cli.Close()
 
 	if err != nil {
 		return err

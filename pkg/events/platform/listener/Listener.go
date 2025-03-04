@@ -41,7 +41,7 @@ func Listen(shared *shared.Shared, platform string) {
 				logger.Log.Error(err.Error())
 			case msg := <-cEvents:
 				// TODO: Do I want to do blocking here? Or go with gouroutine?
-				go Handle(platform, shared, msg)
+				Handle(platform, shared, msg)
 			}
 		}
 	}

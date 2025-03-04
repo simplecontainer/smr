@@ -72,8 +72,11 @@ func NewNetwork(network v1.ContainersNetwork) *Network {
 	}
 }
 
-func (networks *Networks) Add(network v1.ContainersNetwork) {
-	networks.Networks = append(networks.Networks, NewNetwork(network))
+func (networks *Networks) Add(network v1.ContainersNetwork) *Network {
+	ntw := NewNetwork(network)
+	networks.Networks = append(networks.Networks, ntw)
+
+	return ntw
 }
 
 func (networks *Networks) Remove(containerId string, networkId string) error {

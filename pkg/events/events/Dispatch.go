@@ -8,10 +8,12 @@ import (
 func Dispatch(event Event, shared ishared.Shared, node uint64) {
 	if shared.GetManager().Config.KVStore.Node == node {
 		if shared.GetManager().Cluster != nil {
-			err := event.Propose(shared.GetManager().Cluster.KVStore, node)
+			if !event.IsEmpty() {
+				err := event.Propose(shared.GetManager().Cluster.KVStore, node)
 
-			if err != nil {
-				logger.Log.Error(err.Error())
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
 			}
 		}
 	}
@@ -20,7 +22,9 @@ func Dispatch(event Event, shared ishared.Shared, node uint64) {
 func DispatchGroup(events []Event, shared ishared.Shared, node uint64) {
 	if shared.GetManager().Config.KVStore.Node == node {
 		for _, event := range events {
-			Dispatch(event, shared, node)
+			if !event.IsEmpty() {
+				Dispatch(event, shared, node)
+			}
 		}
 	}
 }

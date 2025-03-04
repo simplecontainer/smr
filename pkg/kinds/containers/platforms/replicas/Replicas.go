@@ -89,7 +89,7 @@ func (replicas *Replicas) RemoveContainers(registry platforms.Registry, definiti
 }
 
 func (replicas *Replicas) GetContainersIndexes(registry platforms.Registry, definition *v1.ContainersDefinition) ([]uint64, []uint64, error) {
-	indexes, err := registry.GetIndexes(definition.Prefix, definition.Meta.Group, definition.Meta.Name)
+	indexes, err := registry.GetIndexesLocal(definition.Prefix, definition.Meta.Group, definition.Meta.Name)
 
 	if err != nil {
 		return nil, nil, err

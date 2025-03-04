@@ -3,6 +3,7 @@ package registry
 import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"strconv"
 	"strings"
 )
@@ -38,6 +39,28 @@ func (registry *Registry) GetIndexes(prefix string, group string, name string) (
 
 			if err != nil {
 				return nil, err
+			}
+
+			indexes = append(indexes, index)
+		}
+	}
+
+	return indexes, nil
+}
+
+func (registry *Registry) GetIndexesLocal(prefix string, group string, name string) ([]uint64, error) {
+	registry.ContainersLock.RLock()
+	defer registry.ContainersLock.RUnlock()
+
+	var indexes = make([]uint64, 0)
+
+	for _, containerObj := range registry.Containers {
+		if containerObj.GetName() == name {
+			split := strings.Split(containerObj.GetGeneratedName(), "-")
+			index, err := strconv.ParseUint(split[len(split)-1], 10, 64)
+
+			if err != nil {
+				logger.Log.Fatal("Failed to convert string to uint64 for index calculation")
 			}
 
 			indexes = append(indexes, index)

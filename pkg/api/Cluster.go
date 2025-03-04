@@ -175,7 +175,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.SaveClusterConfiguration()
 
-	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC, api.Replication.DeleteC, api.Wss)
+	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC, api.Replication.Informer, api.Wss)
 
 	go api.ListenNode()
 	go api.Replication.ListenData(api.Config.NodeName)
@@ -208,7 +208,8 @@ func (api *Api) SaveClusterConfiguration() {
 	format := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
 	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
-	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)
+	var bytes []byte
+	bytes, err = json.Marshal(api.Cluster.Cluster.Nodes)
 
 	if err == nil {
 		obj.Propose(format, bytes)

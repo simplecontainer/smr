@@ -7,7 +7,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"go.uber.org/zap"
-	"time"
 )
 
 func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
@@ -52,6 +51,11 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			containerWatcher.Cancel()
 
 			return
+		} else {
+			events.Dispatch(
+				events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+				shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+			)
 		}
 
 		if reconcile {
@@ -59,14 +63,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		} else {
 			switch containerObj.GetStatus().GetState() {
 			default:
-				if containerObj.GetStatus().GetCategory() == status.CATEGORY_END || containerObj.GetStatus().GetState() == status.RUNNING {
-					events.Dispatch(
-						events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
-						shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
-					)
-				} else {
-					containerWatcher.Ticker.Reset(5 * time.Second)
-				}
+				containerWatcher.Ticker.Stop()
 			}
 		}
 	}

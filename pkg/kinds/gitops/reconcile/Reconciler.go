@@ -36,43 +36,37 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
 
+	if !transitioned {
+		gitopsWatcher.Logger.Error("failed to transition state",
+			zap.String("old", gitopsObj.GetStatus().State.State),
+			zap.String("new", newState))
+	}
+
 	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
 
 	if err != nil {
 		gitopsWatcher.Logger.Error(err.Error())
 	}
 
-	if !transitioned {
-		gitopsWatcher.Logger.Error("failed to transition state",
-			zap.String("old", gitopsObj.GetStatus().State.State),
-			zap.String("new", newState))
-	} else {
-		events.Dispatch(
-			events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
-			shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
-		)
-	}
+	events.Dispatch(
+		events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
+		shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+	)
 
 	if reconcile {
 		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
-		events.Dispatch(
-			events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
-			shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
-		)
-
 		switch gitopsObj.GetStatus().GetState() {
-		case status.DRIFTED:
-			gitopsWatcher.Ticker.Reset(5 * time.Second)
-			return
-		case status.INSPECTING:
-			gitopsWatcher.Ticker.Reset(5 * time.Second)
-			return
 		case status.PENDING_DELETE:
 			gitopsWatcher.Ticker.Stop()
 			gitopsWatcher.Cancel()
 			break
 		default:
+			events.Dispatch(
+				events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+				shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+			)
+
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
 				gitopsWatcher.Ticker.Stop()
 			} else {

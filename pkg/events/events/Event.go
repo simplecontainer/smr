@@ -23,14 +23,18 @@ func New(event string, target string, prefix string, kind string, group string, 
 func NewKindEvent(event string, definition idefinitions.IDefinition, data []byte) Event {
 	switch event {
 	case EVENT_INSPECT:
-		return Event{
-			Type:   event,
-			Target: definition.GetRuntime().GetOwner().Kind,
-			Prefix: definition.GetPrefix(),
-			Kind:   definition.GetRuntime().GetOwner().Kind,
-			Group:  definition.GetRuntime().GetOwner().Group,
-			Name:   definition.GetRuntime().GetOwner().Name,
-			Data:   data,
+		if definition.GetRuntime().GetOwner().IsEmpty() {
+			return Event{}
+		} else {
+			return Event{
+				Type:   event,
+				Target: definition.GetRuntime().GetOwner().Kind,
+				Prefix: definition.GetPrefix(),
+				Kind:   definition.GetRuntime().GetOwner().Kind,
+				Group:  definition.GetRuntime().GetOwner().Group,
+				Name:   definition.GetRuntime().GetOwner().Name,
+				Data:   data,
+			}
 		}
 	default:
 		return Event{
@@ -111,4 +115,8 @@ func (event Event) IsManaged() bool {
 
 func (event Event) ToJson() ([]byte, error) {
 	return json.Marshal(event)
+}
+
+func (event Event) IsEmpty() bool {
+	return event.Kind == ""
 }

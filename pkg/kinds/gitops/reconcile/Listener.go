@@ -28,7 +28,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 
 					go func() {
 						format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
-						shared.Manager.Replication.NewDeleteC(format)
+						shared.Manager.Replication.Informer.AddCh(format.ToString())
 
 						request.Definition.Definition.GetRuntime().SetOwner(gitopsWatcher.Gitops.Definition.GetKind(), gitopsWatcher.Gitops.Definition.GetMeta().Group, gitopsWatcher.Gitops.Definition.GetMeta().Name)
 						err := request.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
@@ -39,15 +39,16 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 
 						for {
 							select {
-							case <-shared.Manager.Replication.DeleteC[format.ToString()]:
-								close(shared.Manager.Replication.DeleteC[format.ToString()])
-								delete(shared.Manager.Replication.DeleteC, format.ToString())
-
+							case <-shared.Manager.Replication.Informer.GetCh(format.ToString()):
+								shared.Manager.Replication.Informer.RmCh(format.ToString())
 								wgChild.Done()
 								break
 							}
 						}
 					}()
+				} else {
+					format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+					fmt.Println("last sync is zerou", format.ToString())
 				}
 			}
 			wgChild.Wait()

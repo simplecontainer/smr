@@ -21,6 +21,7 @@ var upgrader = websocket.Upgrader{
 
 func (api *Api) Events(c *gin.Context) {
 	w, r := c.Writer, c.Request
+	lock := &sync.RWMutex{}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -41,7 +42,7 @@ func (api *Api) Events(c *gin.Context) {
 
 	var closeOnce sync.Once
 
-	go func() {
+	go func(lock *sync.RWMutex) {
 		defer func() {
 			api.Wss.Lock.Lock()
 			defer api.Wss.Lock.Unlock()
@@ -54,7 +55,32 @@ func (api *Api) Events(c *gin.Context) {
 			delete(api.Wss.Channels, position)
 		}()
 
-		ListenEvents(ctx, api.Wss, position, conn)
+		ListenEvents(ctx, api.Wss, position, conn, lock)
+	}(lock)
+
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
+	go func() {
+		for {
+			select {
+			case <-pingTicker.C:
+				lock.Lock()
+				err := conn.WriteMessage(websocket.PingMessage, []byte{})
+				lock.Unlock()
+
+				if err != nil {
+					logger.Log.Warn("Failed to send ping: ", zap.Error(err))
+					cancel()
+					closeOnce.Do(func() { close(ch) })
+					lock.Unlock()
+
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -79,7 +105,7 @@ func (api *Api) Events(c *gin.Context) {
 	})
 }
 
-func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *websocket.Conn) {
+func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *websocket.Conn, lock *sync.RWMutex) {
 	for {
 		select {
 		case data := <-wss.Channels[position]:
@@ -95,14 +121,16 @@ func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *
 				continue
 			}
 
+			lock.Lock()
 			err = conn.WritePreparedMessage(message)
+			lock.Unlock()
+
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					logger.Log.Warn("WebSocket write error: ", zap.Error(err))
 				}
 				return
 			}
-
 		case <-ctx.Done():
 			return
 		}

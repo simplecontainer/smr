@@ -3,6 +3,7 @@ package docker
 import (
 	TDNetwork "github.com/docker/docker/api/types/network"
 	IDClient "github.com/docker/docker/client"
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
 )
 
@@ -47,10 +48,15 @@ func (container *Docker) SyncNetwork() error {
 func (container *Docker) UpdateNetworkInfo(networkId string, ipAddress string, networkName string) {
 	network := container.Networks.Find(networkId)
 
-	if network != nil {
-		network.Docker.IP = ipAddress
-		network.Docker.NetworkId = networkId
+	if network == nil {
+		network = container.Networks.Add(v1.ContainersNetwork{
+			Group: "internal",
+			Name:  networkName,
+		})
 	}
+
+	network.Docker.IP = ipAddress
+	network.Docker.NetworkId = networkId
 }
 
 func (container *Docker) RemoveNetworkInfo(containerId string, networkId string, ipAddress string, networkName string) error {

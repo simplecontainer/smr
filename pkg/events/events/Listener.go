@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/acks"
-	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/ikinds"
+	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/wss"
 	"go.uber.org/zap"
 )
 
-func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, deleteC map[string]chan ievents.Event, wss *wss.WebSockets) {
+func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, informer *distributed.Informer, wss *wss.WebSockets) {
 	for {
 		select {
 		case data := <-e:
@@ -34,12 +34,12 @@ func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, deleteC map[strin
 			}
 			wss.Lock.RUnlock()
 
-			Handle(kindRegistry, deleteC, event, data.Node)
+			Handle(kindRegistry, informer, event, data.Node)
 		}
 	}
 }
 
-func Handle(kindRegistry map[string]ikinds.Kind, deleteC map[string]chan ievents.Event, event Event, node uint64) {
+func Handle(kindRegistry map[string]ikinds.Kind, informer *distributed.Informer, event Event, node uint64) {
 	go func() {
 		kind, ok := kindRegistry[event.Target]
 
@@ -47,9 +47,9 @@ func Handle(kindRegistry map[string]ikinds.Kind, deleteC map[string]chan ievents
 			if event.GetType() == EVENT_DELETED {
 				format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
 
-				ch, ok := deleteC[format.ToString()]
+				ch := informer.GetCh(format.ToString())
 
-				if ok {
+				if ch != nil {
 					ch <- event
 				}
 			}
