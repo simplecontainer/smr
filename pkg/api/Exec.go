@@ -54,7 +54,7 @@ func (api *Api) Exec(c *gin.Context) {
 		client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 
 		if ok {
-			wss.StreamRemote(client.Http, conn, fmt.Sprintf("https://%s/api/v1/exec/%s/%s/%s", client.API, format.ToString(), interactive, command))
+			wss.StreamRemote(client.Http, conn, fmt.Sprintf("https://%s/api/v1/exec/%s/%s/%s", client.API, format.ToString(), c.Param("interactive"), command))
 		} else {
 			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(0, err.Error()))
 		}
