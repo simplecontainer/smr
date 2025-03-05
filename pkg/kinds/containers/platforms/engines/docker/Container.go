@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -26,6 +27,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"io"
 	"io/ioutil"
+	"net"
 	"strconv"
 	"sync"
 	"time"
@@ -567,6 +569,63 @@ func (container *Docker) Exec(command []string) (types.ExecResult, error) {
 		return types.ExecResult{}, errors.New("container is not running")
 	}
 }
+func (container *Docker) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
+		ctx := context.Background()
+		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+		if err != nil {
+			return "", nil, nil, err
+		}
+
+		defer func(cli *IDClient.Client) {
+			err = cli.Close()
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+		}(cli)
+
+		config := TDContainer.ExecOptions{
+			AttachStderr: true,
+			AttachStdout: true,
+			AttachStdin:  true,
+			Tty:          interactive,
+			Cmd:          command,
+		}
+
+		exec, err := cli.ContainerExecCreate(ctx, container.GeneratedName, config)
+		if err != nil {
+			return "", nil, nil, err
+		}
+
+		resp, err := cli.ContainerExecAttach(context.Background(), exec.ID, TDTypes.ExecStartCheck{})
+		if err != nil {
+			return "", nil, nil, err
+		}
+
+		return exec.ID, resp.Reader, resp.Conn, nil
+	} else {
+		return "", nil, nil, errors.New("container is not running")
+	}
+}
+
+func (container *Docker) ExecClose(ID string) (int, error) {
+	ctx := context.Background()
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return 1, err
+	}
+
+	res, err := cli.ContainerExecInspect(ctx, ID)
+
+	if err != nil {
+		return 1, err
+	}
+
+	return res.ExitCode, nil
+}
+
 func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())

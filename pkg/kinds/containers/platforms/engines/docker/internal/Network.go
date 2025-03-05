@@ -6,11 +6,12 @@ import (
 	dockerNetwork "github.com/docker/docker/api/types/network"
 	dockerClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/logger"
+	"sync"
 )
 
 type Networks struct {
 	Networks []*Network
+	Lock     *sync.RWMutex
 }
 
 type Network struct {
@@ -31,6 +32,7 @@ type NetworkDocker struct {
 func NewNetworks(networks []v1.ContainersNetwork) *Networks {
 	networksObj := &Networks{
 		Networks: make([]*Network, 0),
+		Lock:     &sync.RWMutex{},
 	}
 
 	var bridgeFound = false
@@ -85,7 +87,7 @@ func (networks *Networks) Remove(containerId string, networkId string) error {
 			err := n.Disconnect(containerId)
 
 			if err != nil {
-				logger.Log.Error(err.Error())
+				return err
 			}
 
 			networks.Networks = append(networks.Networks[:i], networks.Networks[i+1:]...)

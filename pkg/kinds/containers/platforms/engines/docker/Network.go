@@ -46,6 +46,9 @@ func (container *Docker) SyncNetwork() error {
 }
 
 func (container *Docker) UpdateNetworkInfo(networkId string, ipAddress string, networkName string) {
+	container.Networks.Lock.Lock()
+	defer container.Networks.Lock.Unlock()
+
 	network := container.Networks.Find(networkId)
 
 	if network == nil {
@@ -60,6 +63,9 @@ func (container *Docker) UpdateNetworkInfo(networkId string, ipAddress string, n
 }
 
 func (container *Docker) RemoveNetworkInfo(containerId string, networkId string, ipAddress string, networkName string) error {
+	container.Networks.Lock.Lock()
+	defer container.Networks.Lock.Unlock()
+
 	err := container.Networks.Remove(containerId, networkId)
 
 	if err != nil {

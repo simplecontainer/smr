@@ -30,10 +30,9 @@ func (api *Api) Events(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// Locking to safely add the new channel to the map
 	api.Wss.Lock.Lock()
-	ch := make(chan ievents.Event, 100) // Increased buffer size to avoid blocking
-	position := len(api.Wss.Channels)   // Use position as the map key
+	ch := make(chan ievents.Event, 100)
+	position := len(api.Wss.Channels)
 	api.Wss.Channels[position] = ch
 	api.Wss.Lock.Unlock()
 
@@ -51,7 +50,6 @@ func (api *Api) Events(c *gin.Context) {
 				close(ch)
 			})
 
-			// Safely remove the channel from the map
 			delete(api.Wss.Channels, position)
 		}()
 

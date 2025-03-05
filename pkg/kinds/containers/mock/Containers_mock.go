@@ -10,7 +10,9 @@
 package mock_platforms
 
 import (
+	bufio "bufio"
 	io "io"
+	net "net"
 	reflect "reflect"
 
 	authentication "github.com/simplecontainer/smr/pkg/authentication"
@@ -93,6 +95,38 @@ func (m *MockIContainer) Exec(command []string) (types.ExecResult, error) {
 func (mr *MockIContainerMockRecorder) Exec(command any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIContainer)(nil).Exec), command)
+}
+
+// ExecInspect mocks base method.
+func (m *MockIContainer) ExecInspect(arg0 string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecInspect", arg0)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExecInspect indicates an expected call of ExecInspect.
+func (mr *MockIContainerMockRecorder) ExecInspect(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecInspect", reflect.TypeOf((*MockIContainer)(nil).ExecInspect), arg0)
+}
+
+// ExecTTY mocks base method.
+func (m *MockIContainer) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecTTY", command, interactive)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(*bufio.Reader)
+	ret2, _ := ret[2].(net.Conn)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ExecTTY indicates an expected call of ExecTTY.
+func (mr *MockIContainerMockRecorder) ExecTTY(command, interactive any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecTTY", reflect.TypeOf((*MockIContainer)(nil).ExecTTY), command, interactive)
 }
 
 // GetDefinition mocks base method.
@@ -679,6 +713,38 @@ func (m *MockIPlatform) Exec(command []string) (types.ExecResult, error) {
 func (mr *MockIPlatformMockRecorder) Exec(command any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIPlatform)(nil).Exec), command)
+}
+
+// ExecClose mocks base method.
+func (m *MockIPlatform) ExecClose(arg0 string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecClose", arg0)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExecClose indicates an expected call of ExecClose.
+func (mr *MockIPlatformMockRecorder) ExecClose(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecClose", reflect.TypeOf((*MockIPlatform)(nil).ExecClose), arg0)
+}
+
+// ExecTTY mocks base method.
+func (m *MockIPlatform) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecTTY", command, interactive)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(*bufio.Reader)
+	ret2, _ := ret[2].(net.Conn)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ExecTTY indicates an expected call of ExecTTY.
+func (mr *MockIPlatformMockRecorder) ExecTTY(command, interactive any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecTTY", reflect.TypeOf((*MockIPlatform)(nil).ExecTTY), command, interactive)
 }
 
 // GetDefinition mocks base method.

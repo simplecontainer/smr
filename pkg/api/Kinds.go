@@ -173,7 +173,7 @@ func (api *Api) ProposeKind(c *gin.Context) {
 		format := f.New(prefix, version, category, kind, group, name)
 		api.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, api.Cluster.Node.NodeID)
 
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, "object stored", nil, nil))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, fmt.Sprintf("%s/%s/%s/%s proposed", category, kind, group, name), nil, nil))
 	}
 }
 

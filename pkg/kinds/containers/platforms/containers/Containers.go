@@ -1,6 +1,7 @@
 package containers
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	jsoniter "github.com/json-iterator/go"
@@ -21,6 +22,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"io"
+	"net"
 )
 
 func New(platform string, name string, config *configuration.Configuration, definition idefinitions.IDefinition) (platforms.IContainer, error) {
@@ -207,6 +209,12 @@ func (c *Container) Rename(newName string) error {
 }
 func (c *Container) Exec(command []string) (types.ExecResult, error) {
 	return c.Platform.Exec(command)
+}
+func (c *Container) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
+	return c.Platform.ExecTTY(command, interactive)
+}
+func (c *Container) ExecInspect(ID string) (int, error) {
+	return c.Platform.ExecClose(ID)
 }
 func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(follow)
