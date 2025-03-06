@@ -194,6 +194,7 @@ Import(){
   done < /dev/stdin
 
   smr context import "${1}" <<< "${KEY}"
+  smr context fetch
 }
 
 Download(){
