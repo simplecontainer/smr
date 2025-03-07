@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 )
 
 func NewNode() *Node {
@@ -14,9 +13,9 @@ func NewNode() *Node {
 	}
 }
 
-func NewNodeDefinition(runtime *commonv1.Runtime, cluster []*Node) *Node {
+func NewNodeDefinition(cluster []*Node, nodeId uint64) *Node {
 	for _, n := range cluster {
-		if n.NodeID == runtime.GetNode() {
+		if n.NodeID == nodeId {
 			return &Node{
 				NodeID:   n.NodeID,
 				NodeName: n.NodeName,

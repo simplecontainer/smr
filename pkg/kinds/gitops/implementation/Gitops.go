@@ -42,7 +42,7 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 		PoolingInterval: duration,
 		AutomaticSync:   definition.Spec.AutomaticSync,
 		Context:         definition.Spec.Context,
-		Node:            node.NewNodeDefinition(definition.GetRuntime(), config.KVStore.Cluster),
+		Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node),
 		Commit: &object.Commit{
 			Hash:         plumbing.Hash{},
 			Author:       object.Signature{},
@@ -73,8 +73,6 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 		logger.Info("syncing object", zap.String("object", request.Definition.GetMeta().Name))
 
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
-		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
-		request.Definition.GetRuntime().SetNodeName(gitops.Definition.GetRuntime().GetNodeName())
 
 		request.ProposeApply(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 		logger.Info("object proposed", zap.String("object", request.Definition.GetMeta().Name))

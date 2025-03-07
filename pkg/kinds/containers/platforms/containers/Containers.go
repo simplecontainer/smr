@@ -42,7 +42,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      smaps.New(),
 					ObjectDependencies: make([]f.Format, 0),
-					Node:               node.NewNodeDefinition(definition.GetRuntime(), config.KVStore.Cluster),
+					Node:               node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node),
 				},
 				Status: statusObj,
 			},
