@@ -197,12 +197,14 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 }
 
 func (gitops *Gitops) Update(reqs []*common.Request) error {
+	var err error
+
 	for _, req := range reqs {
 		update := false
 
 		for k, definition := range gitops.Definitions {
 			if definition.Definition.IsOf(req.Definition) {
-				err := req.Definition.Patch(gitops.Definitions[k].Definition)
+				err = req.Definition.Patch(gitops.Definitions[k].Definition)
 
 				if err != nil {
 					definition.Definition.GetState().Gitops.AddError(err)
@@ -218,7 +220,7 @@ func (gitops *Gitops) Update(reqs []*common.Request) error {
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (gitops *Gitops) ShouldSync() bool {

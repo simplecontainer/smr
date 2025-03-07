@@ -23,17 +23,12 @@ import (
 	"github.com/wI2L/jsondiff"
 	"net/http"
 	"os"
-	"sync"
 )
 
 func (containers *Containers) Start() error {
 	containers.Started = true
 
-	containers.Shared.Watchers = &watcher.Containers{
-		Watchers: make(map[string]*watcher.Container),
-		Lock:     &sync.RWMutex{},
-	}
-
+	containers.Shared.Watchers = watcher.NewWatchers()
 	containers.Shared.Registry = registry.New(containers.Shared.Client, containers.Shared.User)
 
 	logger.Log.Info(fmt.Sprintf("platform for running containers is %s", containers.Shared.Manager.Config.Platform))

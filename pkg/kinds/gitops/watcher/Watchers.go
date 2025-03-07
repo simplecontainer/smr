@@ -1,5 +1,14 @@
 package watcher
 
+import "sync"
+
+func NewWatchers() *RepositoryWatcher {
+	return &RepositoryWatcher{
+		Repositories: map[string]*Gitops{},
+		Lock:         &sync.RWMutex{},
+	}
+}
+
 func (RepositoryWatcher *RepositoryWatcher) AddOrUpdate(groupidentifier string, gitopsWatcher *Gitops) {
 	RepositoryWatcher.Lock.RLock()
 	RepositoryWatcher.Lock.RUnlock()

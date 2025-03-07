@@ -1,5 +1,14 @@
 package watcher
 
+import "sync"
+
+func NewWatchers() *Containers {
+	return &Containers{
+		Watchers: map[string]*Container{},
+		Lock:     &sync.RWMutex{},
+	}
+}
+
 func (ContainerWatcher *Containers) AddOrUpdate(groupidentifier string, container *Container) {
 	ContainerWatcher.Lock.RLock()
 	defer ContainerWatcher.Lock.RUnlock()

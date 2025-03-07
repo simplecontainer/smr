@@ -39,8 +39,7 @@ func GetShared(registryMock *mock_platforms.MockRegistry) *shared.Shared {
 		Client:   httpClient,
 	}
 
-	sh.Watchers = &watcher.Containers{}
-	sh.Watchers.Watchers = make(map[string]*watcher.Container)
+	sh.Watchers = watcher.NewWatchers()
 
 	return sh
 }

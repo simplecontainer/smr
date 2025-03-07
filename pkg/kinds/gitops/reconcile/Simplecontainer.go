@@ -53,6 +53,10 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 
 		if len(gitopsObj.Definitions) == 0 {
 			gitopsObj.Definitions, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
+
+			if err != nil {
+				return status.INVALID_DEFINITIONS, true
+			}
 		} else {
 			var tmp []*common.Request
 			tmp, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
@@ -62,16 +66,16 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 			}
 
 			err = gitopsObj.Update(tmp)
+
+			if err != nil {
+				return status.INVALID_DEFINITIONS, true
+			}
 		}
 
-		if err != nil {
-			return status.INVALID_DEFINITIONS, true
+		if gitopsWatcher.Gitops.ShouldSync() {
+			return status.SYNCING, true
 		} else {
-			if gitopsWatcher.Gitops.ShouldSync() {
-				return status.SYNCING, true
-			} else {
-				return status.INSPECTING, true
-			}
+			return status.INSPECTING, true
 		}
 	case status.INVALID_GIT:
 		gitopsWatcher.Logger.Info("git configuration is invalid or pull failed")
