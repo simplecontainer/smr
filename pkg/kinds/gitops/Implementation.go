@@ -16,6 +16,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
+	"sync"
 )
 
 func (gitops *Gitops) Start() error {
@@ -23,6 +24,7 @@ func (gitops *Gitops) Start() error {
 
 	gitops.Shared.Watcher = &watcher.RepositoryWatcher{
 		Repositories: make(map[string]*watcher.Gitops),
+		Lock:         &sync.RWMutex{},
 	}
 
 	gitops.Shared.Registry = &registry.Registry{

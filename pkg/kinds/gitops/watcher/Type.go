@@ -7,11 +7,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/registry"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
 type RepositoryWatcher struct {
 	Repositories map[string]*Gitops
+	Lock         *sync.RWMutex
 }
 
 type Gitops struct {

@@ -7,11 +7,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
 type Containers struct {
 	Watchers map[string]*Container
+	Lock     *sync.RWMutex
 }
 
 type Container struct {

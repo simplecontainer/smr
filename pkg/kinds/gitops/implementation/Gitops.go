@@ -205,11 +205,11 @@ func (gitops *Gitops) Update(reqs []*common.Request) error {
 				err := req.Definition.Patch(gitops.Definitions[k].Definition)
 
 				if err != nil {
-					return err
+					definition.Definition.GetState().Gitops.AddError(err)
+				} else {
+					gitops.Definitions[k] = req
+					update = true
 				}
-
-				gitops.Definitions[k] = req
-				update = true
 			}
 		}
 

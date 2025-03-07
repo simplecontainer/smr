@@ -1,21 +1,30 @@
 package watcher
 
-func (repositorywatcher *RepositoryWatcher) AddOrUpdate(groupidentifier string, gitopsWatcher *Gitops) {
-	repositorywatcher.Repositories[groupidentifier] = gitopsWatcher
+func (RepositoryWatcher *RepositoryWatcher) AddOrUpdate(groupidentifier string, gitopsWatcher *Gitops) {
+	RepositoryWatcher.Lock.RLock()
+	RepositoryWatcher.Lock.RUnlock()
+
+	RepositoryWatcher.Repositories[groupidentifier] = gitopsWatcher
 }
 
-func (repositorywatcher *RepositoryWatcher) Remove(groupidentifier string) bool {
-	if repositorywatcher.Repositories[groupidentifier] == nil {
+func (RepositoryWatcher *RepositoryWatcher) Remove(groupidentifier string) bool {
+	RepositoryWatcher.Lock.Lock()
+	RepositoryWatcher.Lock.Unlock()
+
+	if RepositoryWatcher.Repositories[groupidentifier] == nil {
 		return true
 	} else {
-		delete(repositorywatcher.Repositories, groupidentifier)
+		delete(RepositoryWatcher.Repositories, groupidentifier)
 		return true
 	}
 }
 
-func (repositorywatcher *RepositoryWatcher) Find(groupidentifier string) *Gitops {
-	if repositorywatcher.Repositories[groupidentifier] != nil {
-		return repositorywatcher.Repositories[groupidentifier]
+func (RepositoryWatcher *RepositoryWatcher) Find(groupidentifier string) *Gitops {
+	RepositoryWatcher.Lock.RLock()
+	RepositoryWatcher.Lock.RUnlock()
+
+	if RepositoryWatcher.Repositories[groupidentifier] != nil {
+		return RepositoryWatcher.Repositories[groupidentifier]
 	} else {
 		return nil
 	}
