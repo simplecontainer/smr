@@ -28,7 +28,6 @@ func (status *Status) CreateGraph() {
 	created := gograph.NewVertex(&State{CREATED, INITIAL, CATEGORY_PRERUN})
 	prepare := gograph.NewVertex(&State{PREPARE, INITIAL, CATEGORY_PRERUN})
 	init := gograph.NewVertex(&State{INIT, INITIAL, CATEGORY_PRERUN})
-	initFailed := gograph.NewVertex(&State{INIT_FAILED, INITIAL, CATEGORY_END})
 	dependsChecking := gograph.NewVertex(&State{DEPENDS_CHECKING, INITIAL, CATEGORY_PRERUN})
 	dependsSolved := gograph.NewVertex(&State{DEPENDS_SOLVED, INITIAL, CATEGORY_PRERUN})
 	start := gograph.NewVertex(&State{START, INITIAL, CATEGORY_PRERUN})
@@ -41,13 +40,14 @@ func (status *Status) CreateGraph() {
 	readinessChecking := gograph.NewVertex(&State{READINESS_CHECKING, INITIAL, CATEGORY_WHILERUN})
 	change := gograph.NewVertex(&State{CHANGE, INITIAL, CATEGORY_WHILERUN})
 	readinessReady := gograph.NewVertex(&State{READY, INITIAL, CATEGORY_WHILERUN})
-	running := gograph.NewVertex(&State{RUNNING, INITIAL, CATEGORY_WHILERUN})
 
 	dead := gograph.NewVertex(&State{DEAD, INITIAL, CATEGORY_POSTRUN})
 
+	running := gograph.NewVertex(&State{RUNNING, INITIAL, CATEGORY_END})
 	backoff := gograph.NewVertex(&State{BACKOFF, INITIAL, CATEGORY_END})
 	pendingDelete := gograph.NewVertex(&State{PENDING_DELETE, INITIAL, CATEGORY_END})
 	daemonFailure := gograph.NewVertex(&State{DAEMON_FAILURE, INITIAL, CATEGORY_END})
+	initFailed := gograph.NewVertex(&State{INIT_FAILED, INITIAL, CATEGORY_END})
 
 	status.StateMachine.AddEdge(transfering, created)
 

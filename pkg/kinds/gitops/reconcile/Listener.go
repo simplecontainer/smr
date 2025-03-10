@@ -65,20 +65,23 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			gitopsWatcher = nil
 			return
 		case <-gitopsWatcher.GitopsQueue:
-			if !gitopsWatcher.Done {
+			go func() {
 				lock.Lock()
-				go Gitops(shared, gitopsWatcher)
+				Gitops(shared, gitopsWatcher)
 				lock.Unlock()
-			}
+			}()
 			break
 		case <-gitopsWatcher.Ticker.C:
-			gitopsWatcher.Ticker.Stop()
-
-			if !gitopsWatcher.Done {
+			go func() {
+				gitopsWatcher.Ticker.Stop()
 				lock.Lock()
-				go Gitops(shared, gitopsWatcher)
+
+				if !gitopsWatcher.Done {
+					Gitops(shared, gitopsWatcher)
+				}
+
 				lock.Unlock()
-			}
+			}()
 			break
 		case <-gitopsWatcher.Poller.C:
 			gitopsWatcher.Gitops.ForcePoll = true

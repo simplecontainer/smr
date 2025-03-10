@@ -51,11 +51,6 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			containerWatcher.Cancel()
 
 			return
-		} else {
-			events.Dispatch(
-				events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
-				shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
-			)
 		}
 
 		if reconcile {
@@ -63,6 +58,13 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		} else {
 			switch containerObj.GetStatus().GetState() {
 			default:
+				if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
+					events.Dispatch(
+						events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+						shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+					)
+				}
+
 				containerWatcher.Ticker.Stop()
 			}
 		}

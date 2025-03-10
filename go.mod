@@ -8,7 +8,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/evanphx/json-patch v0.5.2
+	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-git/go-git/v5 v5.13.0
 	github.com/go-playground/assert/v2 v2.2.0

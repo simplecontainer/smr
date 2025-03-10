@@ -19,7 +19,7 @@ type Gitops struct {
 	LastPoll        time.Time
 	ForcePoll       bool
 	AutomaticSync   bool
-	DoSync          bool
+	ForceSync       bool
 	Commit          *object.Commit
 	Status          *status.Status
 	Auth            *Auth

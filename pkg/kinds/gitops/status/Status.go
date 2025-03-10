@@ -9,6 +9,7 @@ import (
 func New() *Status {
 	s := &Status{
 		State:      &StatusState{},
+		Pending:    NewPending(),
 		LastUpdate: time.Now(),
 	}
 
@@ -21,15 +22,16 @@ func (status *Status) CreateGraph() {
 
 	created := gograph.NewVertex(&StatusState{CREATED, CATEGORY_PRERUN})
 	syncing := gograph.NewVertex(&StatusState{SYNCING, CATEGORY_WHILERUN})
-	insync := gograph.NewVertex(&StatusState{INSYNC, CATEGORY_END})
-	backoff := gograph.NewVertex(&StatusState{BACKOFF, CATEGORY_END})
-	invalidgit := gograph.NewVertex(&StatusState{INVALID_GIT, CATEGORY_END})
-	invaliddefinitions := gograph.NewVertex(&StatusState{INVALID_DEFINITIONS, CATEGORY_END})
+	syncingstate := gograph.NewVertex(&StatusState{SYNCING_STATE, CATEGORY_WHILERUN})
 	inspecting := gograph.NewVertex(&StatusState{INSPECTING, CATEGORY_WHILERUN})
-	drifted := gograph.NewVertex(&StatusState{DRIFTED, CATEGORY_WHILERUN})
 	cloning := gograph.NewVertex(&StatusState{CLONING_GIT, CATEGORY_WHILERUN})
 	cloned := gograph.NewVertex(&StatusState{CLONED_GIT, CATEGORY_WHILERUN})
 	pendingDelete := gograph.NewVertex(&StatusState{PENDING_DELETE, CATEGORY_END})
+	insync := gograph.NewVertex(&StatusState{INSYNC, CATEGORY_END})
+	drifted := gograph.NewVertex(&StatusState{DRIFTED, CATEGORY_END})
+	backoff := gograph.NewVertex(&StatusState{BACKOFF, CATEGORY_END})
+	invalidgit := gograph.NewVertex(&StatusState{INVALID_GIT, CATEGORY_END})
+	invaliddefinitions := gograph.NewVertex(&StatusState{INVALID_DEFINITIONS, CATEGORY_END})
 
 	status.StateMachine.AddEdge(created, syncing)
 	status.StateMachine.AddEdge(created, invalidgit)
@@ -41,12 +43,18 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(cloned, syncing)
 	status.StateMachine.AddEdge(cloned, inspecting)
+	status.StateMachine.AddEdge(cloned, invaliddefinitions)
 
+	status.StateMachine.AddEdge(inspecting, cloned)
 	status.StateMachine.AddEdge(inspecting, cloning)
 	status.StateMachine.AddEdge(inspecting, drifted)
 	status.StateMachine.AddEdge(inspecting, insync)
+	status.StateMachine.AddEdge(inspecting, syncingstate)
 	status.StateMachine.AddEdge(inspecting, invaliddefinitions)
 	status.StateMachine.AddEdge(inspecting, invalidgit)
+
+	status.StateMachine.AddEdge(syncingstate, insync)
+	status.StateMachine.AddEdge(syncingstate, drifted)
 
 	status.StateMachine.AddEdge(syncing, insync)
 	status.StateMachine.AddEdge(syncing, backoff)
@@ -75,6 +83,10 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(invalidgit, pendingDelete)
 }
 
+func (status *Status) GetPending() *Pending {
+	return status.Pending
+}
+
 func (status *Status) SetState(state string) error {
 	st, err := status.TypeFromString(state)
 
@@ -95,7 +107,6 @@ func (status *Status) TransitionState(group string, name string, destination str
 
 		for _, edge := range edges {
 			if edge.Destination().Label().State == destination {
-				status.PreviousState = status.State
 				status.State = edge.Destination().Label()
 				status.Reconciling = false
 				status.LastUpdate = time.Now()

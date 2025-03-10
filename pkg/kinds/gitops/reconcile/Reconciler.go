@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
@@ -28,7 +29,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 	}
 
-	gitopsWatcher.Logger.Info("reconcile")
+	gitopsWatcher.Logger.Info("reconcile", zap.String("gitops", gitopsObj.GetName()), zap.String("status", fmt.Sprintf("%v", gitopsObj.GetStatus().State)))
 
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
 
@@ -57,17 +58,19 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
 		switch gitopsObj.GetStatus().GetState() {
+		case status.DRIFTED, status.INSYNC:
+			gitopsWatcher.Ticker.Stop()
 		case status.PENDING_DELETE:
 			gitopsWatcher.Ticker.Stop()
 			gitopsWatcher.Cancel()
 			break
 		default:
-			events.Dispatch(
-				events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
-				shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
-			)
-
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
+				//events.Dispatch(
+				//	events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+				//	shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+				//)
+
 				gitopsWatcher.Ticker.Stop()
 			} else {
 				gitopsWatcher.Ticker.Reset(5 * time.Second)
