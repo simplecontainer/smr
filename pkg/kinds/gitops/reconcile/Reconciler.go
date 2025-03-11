@@ -66,10 +66,10 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			break
 		default:
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
-				//events.Dispatch(
-				//	events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
-				//	shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
-				//)
+				events.Dispatch(
+					events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+					shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+				)
 
 				gitopsWatcher.Ticker.Stop()
 			} else {
