@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"sync"
+	"time"
 )
 
 func New(kind string) *Definition {
@@ -50,6 +53,10 @@ func NewImplementation(kind string) idefinitions.IDefinition {
 		def.SetRuntime(&commonv1.Runtime{
 			Owner: commonv1.Owner{},
 			Node:  0,
+		})
+
+		def.SetState(&commonv1.State{
+			Lock: &sync.RWMutex{},
 		})
 	}
 
@@ -189,13 +196,41 @@ func (definition *Definition) Apply(format iformat.Format, obj iobjects.ObjectIn
 	}
 }
 func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectInterface) (iobjects.ObjectInterface, error) {
-	bytes, err := definition.Definition.ToJson()
+	err := obj.Find(format)
 
 	if err != nil {
 		return obj, err
 	}
 
-	return obj, obj.AddLocal(format, bytes)
+	if obj.Exists() {
+		var bytes []byte
+		bytes, err = definition.Definition.ToJson()
+
+		if err != nil {
+			return obj, err
+		}
+
+		existing := NewImplementation(definition.GetKind())
+		err = existing.FromJson(obj.GetDefinitionByte())
+
+		if err != nil {
+			return obj, err
+		}
+
+		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
+			existing.SetState(definition.GetState())
+		}
+
+		bytes, err = existing.ToJson()
+
+		if err != nil {
+			return obj, err
+		}
+
+		return obj, obj.AddLocal(format, bytes)
+	}
+
+	return obj, nil
 }
 func (definition *Definition) Delete(format iformat.Format, obj iobjects.ObjectInterface) (idefinitions.IDefinition, error) {
 	err := obj.Find(format)
@@ -257,6 +292,10 @@ func (definition *Definition) SetRuntime(runtime *commonv1.Runtime) {
 
 func (definition *Definition) GetRuntime() *commonv1.Runtime {
 	return definition.Definition.GetRuntime()
+}
+
+func (definition *Definition) GetFormat() string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s")
 }
 
 func (definition *Definition) GetPrefix() string {
@@ -340,7 +379,20 @@ func (definition *Definition) FromJson(bytes []byte) error {
 
 	if definition.GetState() == nil {
 		definition.Definition.SetState(&commonv1.State{
+			Lock:    &sync.RWMutex{},
 			Options: make([]*commonv1.Opts, 0),
+			Gitops: commonv1.Gitops{
+				Synced:   false,
+				Drifted:  false,
+				Missing:  false,
+				NotOwner: false,
+				Error:    false,
+				State:    "",
+				Messages: nil,
+				Commit:   plumbing.Hash{},
+				Changes:  nil,
+				LastSync: time.Time{},
+			},
 		})
 	}
 

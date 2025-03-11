@@ -18,12 +18,12 @@ func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 
 	cfg.AdvertiseClientUrls = []url.URL{*URLC}
 	cfg.ListenClientUrls = []url.URL{*URLC}
-	cfg.SnapshotCount = 50000
-	cfg.MaxSnapFiles = 1
-	cfg.MaxWalFiles = 1
+	cfg.SnapshotCount = 1000
+	cfg.MaxSnapFiles = 10
+	cfg.MaxWalFiles = 10
 
 	cfg.AutoCompactionMode = "revision"
-	cfg.AutoCompactionRetention = "1000"
+	cfg.AutoCompactionRetention = "1m"
 
 	cfg.QuotaBackendBytes = 8 * 1024 * 1024
 	cfg.MaxTxnOps = 64

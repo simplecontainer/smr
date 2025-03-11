@@ -6,7 +6,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/packer"
+	"go.uber.org/zap"
 )
 
 func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bool) {
@@ -72,11 +74,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 			}
 		}
 
-		if gitopsWatcher.Gitops.ShouldSync() {
-			return status.SYNCING, true
-		} else {
-			return status.INSPECTING, true
-		}
+		return status.INSPECTING, true
 	case status.INVALID_GIT:
 		gitopsWatcher.Logger.Info("git configuration is invalid or pull failed")
 		return status.INVALID_GIT, false
@@ -84,35 +82,33 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		gitopsWatcher.Logger.Info("definitions are invalid")
 		return status.INVALID_DEFINITIONS, false
 	case status.SYNCING:
+		gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_SYNC)
+
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gitopsWatcher.Gitops.Commit.ID()))
 
-		if gitopsObj.Status.LastSyncedCommit != gitopsObj.Commit.ID() || !gitopsObj.Status.InSync {
-			if len(gitopsObj.Definitions) == 0 {
-				gitopsWatcher.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath))
-				return status.INVALID_DEFINITIONS, true
-			} else {
-				var errs []error
-				_, errs = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User)
+		if len(gitopsObj.Definitions) == 0 {
+			gitopsWatcher.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath))
+			return status.INVALID_DEFINITIONS, true
+		} else {
+			var errs []error
+			_, errs = gitopsWatcher.Gitops.Sync(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User)
 
-				if len(errs) > 0 {
-					for _, e := range errs {
-						gitopsWatcher.Logger.Error(e.Error())
-					}
-
-					return status.INVALID_DEFINITIONS, true
+			if len(errs) > 0 {
+				for _, e := range errs {
+					gitopsWatcher.Logger.Error(e.Error())
 				}
 
-				gitopsObj.GetStatus().LastSyncedCommit = gitopsObj.Commit.ID()
-				gitopsObj.GetStatus().InSync = true
-				gitopsObj.DoSync = false
-
-				gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
-				return status.INSYNC, true
+				return status.INVALID_DEFINITIONS, true
 			}
-		} else {
-			gitopsWatcher.Logger.Info("everything synced")
-			return status.INSYNC, true
+
+			gitopsObj.GetStatus().LastSyncedCommit = gitopsObj.Commit.ID()
+			gitopsObj.GetStatus().InSync = true
+			gitopsObj.ForceSync = false
+
+			gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
+			return status.INSPECTING, true
 		}
+
 	case status.INSPECTING:
 		var errs []error
 		var drifted bool
@@ -131,6 +127,30 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 			gitopsObj.GetStatus().InSync = drifted == false
 		}
 
+		return status.SYNCING_STATE, true
+	case status.SYNCING_STATE:
+		gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_SYNC)
+
+		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync state"))
+
+		if len(gitopsObj.Definitions) == 0 {
+			gitopsWatcher.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath))
+			return status.INVALID_DEFINITIONS, true
+		} else {
+			var errs []error
+			_, errs = gitopsWatcher.Gitops.SyncState(gitopsWatcher.Logger, shared.Client, gitopsWatcher.User)
+
+			if len(errs) > 0 {
+				for _, e := range errs {
+					gitopsWatcher.Logger.Error(e.Error())
+				}
+
+				return status.INVALID_DEFINITIONS, true
+			}
+
+			gitopsWatcher.Logger.Info(fmt.Sprintf("state synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
+		}
+
 		if gitopsObj.GetStatus().InSync {
 			return status.INSYNC, true
 		} else {
@@ -139,19 +159,20 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 	case status.INSYNC:
 		return status.INSYNC, false
 	case status.DRIFTED:
-		if gitopsWatcher.Gitops.AutomaticSync {
-			gitopsWatcher.Logger.Info("drift detected")
+		gitopsWatcher.Logger.Info("drift detected")
+
+		if gitopsWatcher.Gitops.ShouldSync() {
 			return status.SYNCING, true
 		} else {
-			if gitopsObj.GetStatus().PreviousState.State == status.DRIFTED {
-				return status.INSPECTING, true
-			} else {
-				return status.DRIFTED, false
-			}
+			return status.DRIFTED, false
 		}
-	case status.PENDING_DELETE:
+	case status.DELETE:
 		gitopsWatcher.Logger.Info("triggering context cancel")
-		gitopsWatcher.Gitops.Status.PendingDelete = true
+		err := gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_DELETE)
+
+		if err != nil {
+			logger.Log.Error("failed to set pending delete state", zap.Error(err))
+		}
 
 		return "", false
 	default:

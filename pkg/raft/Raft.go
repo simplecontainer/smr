@@ -36,7 +36,6 @@ type Commit struct {
 	applyDoneC chan<- struct{}
 }
 
-// A key-value stream backed by raft
 type RaftNode struct {
 	proposeC    <-chan string            // proposed messages (k,v)
 	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
@@ -55,7 +54,6 @@ type RaftNode struct {
 	snapshotIndex uint64
 	appliedIndex  uint64
 
-	// raft backing for the commit/error channel
 	node        raft.Node
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
@@ -189,6 +187,7 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 
 				n := node.NewNode()
 				n.NodeID = cc.NodeID
+				rc.nodeUpdate <- *n
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
 			}
 		}
@@ -566,8 +565,10 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 func (rc *RaftNode) Process(ctx context.Context, m raftpb.Message) error {
 	return rc.node.Step(ctx, m)
 }
-func (rc *RaftNode) IsIDRemoved(_ uint64) bool   { return false }
-func (rc *RaftNode) ReportUnreachable(id uint64) { rc.node.ReportUnreachable(id) }
+func (rc *RaftNode) IsIDRemoved(_ uint64) bool { return false }
+func (rc *RaftNode) ReportUnreachable(id uint64) {
+	rc.node.ReportUnreachable(id)
+}
 func (rc *RaftNode) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	rc.node.ReportSnapshot(id, status)
 }

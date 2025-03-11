@@ -30,7 +30,6 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 						format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 						shared.Manager.Replication.Informer.AddCh(format.ToString())
 
-						request.Definition.Definition.GetRuntime().SetOwner(gitopsWatcher.Gitops.Definition.GetKind(), gitopsWatcher.Gitops.Definition.GetMeta().Group, gitopsWatcher.Gitops.Definition.GetMeta().Name)
 						err := request.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
 
 						if err != nil {
@@ -65,20 +64,23 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			gitopsWatcher = nil
 			return
 		case <-gitopsWatcher.GitopsQueue:
-			if !gitopsWatcher.Done {
+			go func() {
 				lock.Lock()
-				go Gitops(shared, gitopsWatcher)
+				Gitops(shared, gitopsWatcher)
 				lock.Unlock()
-			}
+			}()
 			break
 		case <-gitopsWatcher.Ticker.C:
-			gitopsWatcher.Ticker.Stop()
-
-			if !gitopsWatcher.Done {
+			go func() {
+				gitopsWatcher.Ticker.Stop()
 				lock.Lock()
-				go Gitops(shared, gitopsWatcher)
+
+				if !gitopsWatcher.Done {
+					Gitops(shared, gitopsWatcher)
+				}
+
 				lock.Unlock()
-			}
+			}()
 			break
 		case <-gitopsWatcher.Poller.C:
 			gitopsWatcher.Gitops.ForcePoll = true

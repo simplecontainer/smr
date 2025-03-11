@@ -2,13 +2,16 @@ package commonv1
 
 import (
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/wI2L/jsondiff"
+	"sync"
 	"time"
 )
 
 type State struct {
 	Gitops  Gitops
 	Options []*Opts
+	Lock    *sync.RWMutex `json:"-"`
 }
 
 type Gitops struct {
@@ -112,10 +115,17 @@ func (opt *Opts) IsEmpty() bool {
 }
 
 func (state *State) AddOpt(name string, value string) {
+	state.Lock.Lock()
+	defer state.Lock.Unlock()
+
+	state.clearOptUnsafe(name)
 	state.Options = append(state.Options, &Opts{name, value})
 }
 
 func (state *State) GetOpt(name string) *Opts {
+	state.Lock.RLock()
+	defer state.Lock.RUnlock()
+
 	if state.Options != nil {
 		for _, v := range state.Options {
 			if v.Name == name {
@@ -128,10 +138,17 @@ func (state *State) GetOpt(name string) *Opts {
 }
 
 func (state *State) ClearOpt(name string) {
+	state.Lock.Lock()
+	defer state.Lock.Unlock()
+
+	state.clearOptUnsafe(name)
+}
+
+func (state *State) clearOptUnsafe(name string) {
 	if state.Options != nil {
 		for k, v := range state.Options {
 			if v.Name == name {
-				state.Options = append(state.Options[:k], state.Options[k+1:]...)
+				state.Options = helpers.RemoveElement(state.Options, k)
 			}
 		}
 	}

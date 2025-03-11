@@ -18,15 +18,18 @@ import (
 	"github.com/simplecontainer/smr/pkg/wss"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"sync"
 	"time"
 )
 
 func NewApi(config *configuration.Configuration) *Api {
 	api := &Api{
-		User:          &authentication.User{},
-		Config:        config,
-		Keys:          &keys.Keys{},
-		DnsCache:      &dns.Records{},
+		User:   &authentication.User{},
+		Config: config,
+		Keys:   &keys.Keys{},
+		DnsCache: &dns.Records{
+			Lock: &sync.RWMutex{},
+		},
 		Wss:           wss.New(),
 		Kinds:         relations.NewDefinitionRelationRegistry(),
 		KindsRegistry: nil,

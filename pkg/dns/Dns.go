@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"net"
 	"strings"
+	"sync"
 )
 
 var (
@@ -35,6 +36,7 @@ func New(agent string, client *client.Http, user *authentication.User) *Records 
 		Client:      client,
 		User:        user,
 		Nameservers: ns.ToString(),
+		Lock:        &sync.RWMutex{},
 		Records:     make(chan KV.KV),
 	}
 

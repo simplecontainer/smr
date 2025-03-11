@@ -1,7 +1,6 @@
 package gitops
 
 import (
-	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
@@ -129,7 +128,7 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.PENDING_DELETE)
+			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.DELETE)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 
 			return common.Response(http.StatusOK, static.RESPONSE_DELETED, nil, nil), nil
@@ -144,12 +143,16 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
 		if gitopsObj == nil {
-			return errors.New("gitops is not controlled on this instance")
+			return nil
 		}
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
+		if gitopsWatcher != nil {
+			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+				return nil
+			}
+
 			gitopsObj.ForcePoll = true
 			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
@@ -159,13 +162,17 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
 		if gitopsObj == nil {
-			return errors.New("gitops is not controlled on this instance")
+			return nil
 		}
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
-			gitopsObj.DoSync = true
+		if gitopsWatcher != nil {
+			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+				return nil
+			}
+
+			gitopsObj.ForceSync = true
 			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
@@ -174,12 +181,16 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
 		if gitopsObj == nil {
-			return errors.New("gitops is not controlled on this instance")
+			return nil
 		}
 
 		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
 
-		if gitopsWatcher != nil && !gitopsWatcher.Gitops.Status.PendingDelete {
+		if gitopsWatcher != nil {
+			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+				return nil
+			}
+
 			gitopsObj.GetStatus().SetState(status.INSPECTING)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}

@@ -8,7 +8,7 @@ import (
 
 type Status struct {
 	State            *StatusState                `json:"state"`
-	PreviousState    *StatusState                `json:"previousState"`
+	Pending          *Pending                    `json:"pending"`
 	StateMachine     gograph.Graph[*StatusState] `json:"-"`
 	Reconciling      bool
 	PendingDelete    bool
@@ -22,6 +22,13 @@ type StatusState struct {
 	category int8
 }
 
+type Pending struct {
+	Pending string
+}
+
+const PENDING_SYNC = "pending_sync"
+const PENDING_DELETE = "delete"
+
 const CATEGORY_PRERUN = 0
 const CATEGORY_WHILERUN = 1
 const CATEGORY_POSTRUN = 2
@@ -29,6 +36,7 @@ const CATEGORY_END = 3
 
 const CREATED string = "created"
 const SYNCING string = "syncing"
+const SYNCING_STATE string = "syncing_state"
 const BACKOFF string = "backoff"
 const CLONING_GIT string = "cloning"
 const CLONED_GIT string = "cloned"
@@ -37,5 +45,5 @@ const INVALID_DEFINITIONS string = "definitionsinvalid"
 const INSYNC string = "insync"
 const DRIFTED string = "drifted"
 const INSPECTING string = "inspecting"
-const PENDING_DELETE string = "pending_delete"
+const DELETE string = "pending_delete"
 const ANOTHER_OWNER string = "not_owner"
