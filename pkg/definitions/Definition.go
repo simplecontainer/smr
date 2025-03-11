@@ -290,10 +290,6 @@ func (definition *Definition) GetRuntime() *commonv1.Runtime {
 	return definition.Definition.GetRuntime()
 }
 
-func (definition *Definition) GetFormat() string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s")
-}
-
 func (definition *Definition) GetPrefix() string {
 	return definition.Definition.GetPrefix()
 }

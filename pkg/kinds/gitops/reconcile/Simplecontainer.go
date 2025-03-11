@@ -148,7 +148,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 				return status.INVALID_DEFINITIONS, true
 			}
 
-			gitopsWatcher.Logger.Info(fmt.Sprintf("state synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
+			gitopsWatcher.Logger.Info("state synced")
 		}
 
 		if gitopsObj.GetStatus().InSync {
