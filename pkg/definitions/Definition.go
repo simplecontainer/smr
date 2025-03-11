@@ -251,10 +251,6 @@ func (definition *Definition) Delete(format iformat.Format, obj iobjects.ObjectI
 			return existing, errors.New(fmt.Sprintf("object has owner - direct modification not allowed (%v)", definition.GetMeta()))
 		}
 
-		if err != nil {
-			return nil, err
-		}
-
 		_, err = obj.RemoveLocal(format)
 		return existing, err
 	} else {
