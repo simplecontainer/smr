@@ -7,8 +7,8 @@ import (
 )
 
 type Status struct {
-	State            *StatusState `json:"state"`
-	Pending          *Pending
+	State            *StatusState                `json:"state"`
+	Pending          *Pending                    `json:"pending"`
 	StateMachine     gograph.Graph[*StatusState] `json:"-"`
 	Reconciling      bool
 	PendingDelete    bool

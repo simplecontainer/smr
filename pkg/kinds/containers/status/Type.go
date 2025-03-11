@@ -6,8 +6,8 @@ import (
 )
 
 type Status struct {
-	State                       *State `json:"state"`
-	Pending                     *Pending
+	State                       *State   `json:"state"`
+	Pending                     *Pending `json:"pending"`
 	LastReadiness               bool
 	LastReadinessTimestamp      time.Time
 	LastReadinessStarted        time.Time

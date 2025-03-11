@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/domains"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -13,30 +14,35 @@ func (r *Records) ListenRecords() {
 	for {
 		select {
 		case data := <-r.Records:
-			// Be careful to not break or return we want this to run forever
-			d := Distributed{}
-			err := json.Unmarshal(data.Val, &d)
+			go func(data KV.KV) {
+				r.Lock.Lock()
+				defer r.Lock.Unlock()
 
-			format := f.NewFromString(data.Key)
-			acks.ACKS.Ack(format.GetUUID())
+				// Be careful to not break or return we want this to run forever
+				d := Distributed{}
+				err := json.Unmarshal(data.Val, &d)
 
-			if err != nil {
-				logger.Log.Error(err.Error())
-				continue
-			}
+				format := f.NewFromString(data.Key)
+				acks.ACKS.Ack(format.GetUUID())
 
-			switch d.Action {
-			case AddRecord:
-				r.AddAndSave(d.Domain, d.IP)
-				r.AddAndSave(d.Headless, d.IP)
+				if err != nil {
+					logger.Log.Error(err.Error())
+					return
+				}
 
-				break
-			case RemoveRecord:
-				r.RemoveAndSave(d.Domain, d.IP)
-				r.RemoveAndSave(d.Headless, d.IP)
+				switch d.Action {
+				case AddRecord:
+					r.AddAndSave(d.Domain, d.IP)
+					r.AddAndSave(d.Headless, d.IP)
 
-				break
-			}
+					break
+				case RemoveRecord:
+					r.RemoveAndSave(d.Domain, d.IP)
+					r.RemoveAndSave(d.Headless, d.IP)
+
+					break
+				}
+			}(data)
 			break
 		}
 	}

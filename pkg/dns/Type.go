@@ -5,12 +5,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/smaps"
+	"sync"
 )
 
 type Records struct {
 	ARecords    *smaps.Smap
 	Client      *client.Http
 	User        *authentication.User
+	Lock        *sync.RWMutex
 	Nameservers []string
 	Records     chan KV.KV
 }

@@ -109,6 +109,7 @@ func (gitops *Gitops) SyncState(logger *zap.Logger, client *client.Http, user *a
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 
 		action := request.Definition.GetState().GetOpt("action").Value
+		request.Definition.GetState().ClearOpt("action")
 
 		switch action {
 		case static.STATE_KIND:
@@ -127,6 +128,12 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 	var errs = make([]error, 0)
 
 	for _, request := range gitops.Definitions {
+		if !request.Definition.GetState().GetOpt("action").IsEmpty() {
+			if request.Definition.GetState().GetOpt("action").Value == static.REMOVE_KIND {
+				continue
+			}
+		}
+
 		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
 		request.Definition.GetRuntime().SetNodeName(gitops.Definition.GetRuntime().GetNodeName())

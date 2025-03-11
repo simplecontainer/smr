@@ -6,7 +6,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/packer"
+	"go.uber.org/zap"
 )
 
 func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bool) {
@@ -81,6 +83,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		return status.INVALID_DEFINITIONS, false
 	case status.SYNCING:
 		gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_SYNC)
+
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gitopsWatcher.Gitops.Commit.ID()))
 
 		if len(gitopsObj.Definitions) == 0 {
@@ -103,7 +106,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 			gitopsObj.ForceSync = false
 
 			gitopsWatcher.Logger.Info(fmt.Sprintf("commit %s synced", gitopsWatcher.Gitops.Status.LastSyncedCommit))
-			return status.INSYNC, true
+			return status.INSPECTING, true
 		}
 
 	case status.INSPECTING:
@@ -127,6 +130,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		return status.SYNCING_STATE, true
 	case status.SYNCING_STATE:
 		gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_SYNC)
+
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync state"))
 
 		if len(gitopsObj.Definitions) == 0 {
@@ -162,9 +166,13 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		} else {
 			return status.DRIFTED, false
 		}
-	case status.PENDING_DELETE:
+	case status.DELETE:
 		gitopsWatcher.Logger.Info("triggering context cancel")
-		gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_DELETE)
+		err := gitopsWatcher.Gitops.Status.GetPending().Set(status.PENDING_DELETE)
+
+		if err != nil {
+			logger.Log.Error("failed to set pending delete state", zap.Error(err))
+		}
 
 		return "", false
 	default:

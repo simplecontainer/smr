@@ -59,13 +59,16 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	} else {
 		switch gitopsObj.GetStatus().GetState() {
 		case status.DRIFTED, status.INSYNC:
+			gitopsWatcher.Gitops.Status.GetPending().Clear()
 			gitopsWatcher.Ticker.Stop()
-		case status.PENDING_DELETE:
+		case status.DELETE:
 			gitopsWatcher.Ticker.Stop()
 			gitopsWatcher.Cancel()
 			break
 		default:
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
+				gitopsWatcher.Gitops.Status.GetPending().Clear()
+
 				events.Dispatch(
 					events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
 					shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),

@@ -11,7 +11,7 @@ import (
 type State struct {
 	Gitops  Gitops
 	Options []*Opts
-	Lock    *sync.RWMutex
+	Lock    *sync.RWMutex `json:"-"`
 }
 
 type Gitops struct {
@@ -118,6 +118,7 @@ func (state *State) AddOpt(name string, value string) {
 	state.Lock.Lock()
 	defer state.Lock.Unlock()
 
+	state.clearOptUnsafe(name)
 	state.Options = append(state.Options, &Opts{name, value})
 }
 
@@ -140,6 +141,10 @@ func (state *State) ClearOpt(name string) {
 	state.Lock.Lock()
 	defer state.Lock.Unlock()
 
+	state.clearOptUnsafe(name)
+}
+
+func (state *State) clearOptUnsafe(name string) {
 	if state.Options != nil {
 		for k, v := range state.Options {
 			if v.Name == name {

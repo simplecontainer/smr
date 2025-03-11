@@ -30,7 +30,6 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 						format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 						shared.Manager.Replication.Informer.AddCh(format.ToString())
 
-						request.Definition.Definition.GetRuntime().SetOwner(gitopsWatcher.Gitops.Definition.GetKind(), gitopsWatcher.Gitops.Definition.GetMeta().Group, gitopsWatcher.Gitops.Definition.GetMeta().Name)
 						err := request.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
 
 						if err != nil {
