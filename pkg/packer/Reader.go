@@ -4,12 +4,28 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/relations"
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 )
 
-func Read(path string, relations *relations.RelationRegistry) ([]*common.Request, error) {
-	entries, err := os.ReadDir(filepath.Clean(path))
+func Read(path string, relations *relations.RelationRegistry) (*Pack, error) {
+	entries, err := os.ReadDir(fmt.Sprintf("%s/definitions", filepath.Clean(path)))
+
+	if err != nil {
+		return nil, err
+	}
+
+	var packID []byte
+	packID, err = ReadYAMLFile(fmt.Sprintf("%s/Pack.yaml", filepath.Clean(path)))
+
+	if err != nil {
+		return nil, err
+	}
+
+	pack := New()
+
+	err = yaml.Unmarshal(packID, pack)
 
 	if err != nil {
 		return nil, err
@@ -21,7 +37,7 @@ func Read(path string, relations *relations.RelationRegistry) ([]*common.Request
 	for _, e := range entries {
 		if filepath.Ext(e.Name()) == ".yaml" {
 			var definition []byte
-			definition, err = ReadYAMLFile(fmt.Sprintf("%s/%s", path, e.Name()))
+			definition, err = ReadYAMLFile(fmt.Sprintf("%s/definitions/%s", path, e.Name()))
 
 			if err != nil {
 				return nil, err
@@ -58,5 +74,7 @@ func Read(path string, relations *relations.RelationRegistry) ([]*common.Request
 		}
 	}
 
-	return ordered, nil
+	pack.Definitions = ordered
+
+	return pack, nil
 }

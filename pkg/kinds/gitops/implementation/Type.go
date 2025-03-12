@@ -3,10 +3,10 @@ package implementation
 import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
-	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/node"
+	"github.com/simplecontainer/smr/pkg/packer"
 	"time"
 )
 
@@ -25,7 +25,7 @@ type Gitops struct {
 	Auth            *Auth
 	Context         string
 	Definition      *v1.GitopsDefinition
-	Definitions     []*common.Request
+	Pack            *packer.Pack
 	Ghost           bool
 }
 

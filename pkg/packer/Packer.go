@@ -11,6 +11,10 @@ import (
 	"os"
 )
 
+func New() *Pack {
+	return &Pack{}
+}
+
 func Parse(bytes []byte) ([]*common.Request, error) {
 	parsed, err := ParseYAML(bytes)
 

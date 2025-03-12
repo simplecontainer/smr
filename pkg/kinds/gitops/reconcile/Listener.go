@@ -22,7 +22,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			close(gitopsWatcher.GitopsQueue)
 
 			var wgChild sync.WaitGroup
-			for _, request := range gitopsWatcher.Gitops.Definitions {
+			for _, request := range gitopsWatcher.Gitops.Pack.Definitions {
 				if !request.Definition.GetState().Gitops.LastSync.IsZero() {
 					wgChild.Add(1)
 

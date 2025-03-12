@@ -46,15 +46,7 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Manager.Http = client.NewHttpClients()
 	api.Manager.Wss = api.Wss
 
-	api.Kinds.Register("network", []string{""})
-	api.Kinds.Register("containers", []string{"network", "resource", "configuration", "certkey"})
-	api.Kinds.Register("gitops", []string{"certkey", "httpauth"})
-	api.Kinds.Register("configuration", []string{"secret"})
-	api.Kinds.Register("resource", []string{"configuration"})
-	api.Kinds.Register("certkey", []string{})
-	api.Kinds.Register("httpauth", []string{})
-	api.Kinds.Register("custom", []string{})
-	api.Kinds.Register("secret", []string{})
+	api.Kinds.InTree()
 
 	return api
 }

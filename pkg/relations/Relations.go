@@ -9,6 +9,18 @@ func NewDefinitionRelationRegistry() *RelationRegistry {
 	return &defs
 }
 
+func (defRegistry *RelationRegistry) InTree() {
+	defRegistry.Register("network", []string{""})
+	defRegistry.Register("containers", []string{"network", "resource", "configuration", "certkey"})
+	defRegistry.Register("gitops", []string{"certkey", "httpauth"})
+	defRegistry.Register("configuration", []string{"secret"})
+	defRegistry.Register("resource", []string{"configuration"})
+	defRegistry.Register("certkey", []string{})
+	defRegistry.Register("httpauth", []string{})
+	defRegistry.Register("custom", []string{})
+	defRegistry.Register("secret", []string{})
+}
+
 func (defRegistry *RelationRegistry) Register(kind string, dependencies []string) {
 	defRegistry.Relations[kind] = dependencies
 }

@@ -2,7 +2,6 @@ package reconcile
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
@@ -53,14 +52,14 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 	case status.CLONED_GIT:
 		var err error
 
-		if len(gitopsObj.Definitions) == 0 {
-			gitopsObj.Definitions, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
+		if len(gitopsObj.Pack.Definitions) == 0 {
+			gitopsObj.Pack, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
 
 			if err != nil {
 				return status.INVALID_DEFINITIONS, true
 			}
 		} else {
-			var tmp []*common.Request
+			var tmp *packer.Pack
 			tmp, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
 
 			if err != nil {
@@ -86,7 +85,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gitopsWatcher.Gitops.Commit.ID()))
 
-		if len(gitopsObj.Definitions) == 0 {
+		if len(gitopsObj.Pack.Definitions) == 0 {
 			gitopsWatcher.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath))
 			return status.INVALID_DEFINITIONS, true
 		} else {
@@ -133,7 +132,7 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 
 		gitopsWatcher.Logger.Info(fmt.Sprintf("attempt to sync state"))
 
-		if len(gitopsObj.Definitions) == 0 {
+		if len(gitopsObj.Pack.Definitions) == 0 {
 			gitopsWatcher.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath))
 			return status.INVALID_DEFINITIONS, true
 		} else {
