@@ -172,7 +172,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 						}
 					case dependency.FAILED:
 						containerWatcher.Logger.Info("readiness check failed")
-						break
+						return status.READINESS_FAILED, true
 					}
 				} else {
 					return status.READINESS_FAILED, true
