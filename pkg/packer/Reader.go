@@ -10,25 +10,25 @@ import (
 )
 
 func Read(path string, relations *relations.RelationRegistry) (*Pack, error) {
+	pack := New()
+
 	entries, err := os.ReadDir(fmt.Sprintf("%s/definitions", filepath.Clean(path)))
 
 	if err != nil {
-		return nil, err
+		return pack, err
 	}
 
 	var packID []byte
 	packID, err = ReadYAMLFile(fmt.Sprintf("%s/Pack.yaml", filepath.Clean(path)))
 
 	if err != nil {
-		return nil, err
+		return pack, err
 	}
-
-	pack := New()
 
 	err = yaml.Unmarshal(packID, pack)
 
 	if err != nil {
-		return nil, err
+		return pack, err
 	}
 
 	var requests []*common.Request
@@ -40,13 +40,13 @@ func Read(path string, relations *relations.RelationRegistry) (*Pack, error) {
 			definition, err = ReadYAMLFile(fmt.Sprintf("%s/definitions/%s", path, e.Name()))
 
 			if err != nil {
-				return nil, err
+				return pack, err
 			}
 
 			requests, err = Parse(definition)
 
 			if err != nil {
-				return nil, err
+				return pack, err
 			}
 
 			for _, request := range requests {
