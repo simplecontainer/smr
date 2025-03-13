@@ -33,13 +33,20 @@ type Message struct {
 	Timestamp time.Time
 }
 
+func NewState() *State {
+	return &State{
+		Gitops:  Gitops{},
+		Options: make([]*Opts, 0),
+		Lock:    &sync.RWMutex{},
+	}
+}
+
 func (g *Gitops) Clean() {
 	g.Synced = false
 	g.Drifted = false
 	g.Missing = false
 	g.NotOwner = false
 }
-
 func (g *Gitops) Set(state string, value bool) {
 	g.Clean()
 

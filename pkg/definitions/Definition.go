@@ -55,9 +55,7 @@ func NewImplementation(kind string) idefinitions.IDefinition {
 			Node:  0,
 		})
 
-		def.SetState(&commonv1.State{
-			Lock: &sync.RWMutex{},
-		})
+		def.SetState(commonv1.NewState())
 	}
 
 	return def
