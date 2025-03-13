@@ -12,7 +12,11 @@ import (
 )
 
 func New() *Pack {
-	return &Pack{}
+	return &Pack{
+		Name:        "",
+		Version:     "",
+		Definitions: make([]*common.Request, 0),
+	}
 }
 
 func Parse(bytes []byte) ([]*common.Request, error) {

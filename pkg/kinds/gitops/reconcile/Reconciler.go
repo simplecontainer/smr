@@ -37,7 +37,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
 
-	if !transitioned {
+	if !transitioned && newState != "" {
 		gitopsWatcher.Logger.Error("failed to transition state",
 			zap.String("old", gitopsObj.GetStatus().State.State),
 			zap.String("new", newState))
