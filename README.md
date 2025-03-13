@@ -223,7 +223,7 @@ smr sync gitops/examples/plain-manual
 smr ps
 NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE         
 smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (29m24s)  
-smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (29m25s)```
+smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (29m25s)
 ```
 In this example, auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
 all the definitions in the `/tests/minimal` pack from the `https://github.com/simplecontainer/examples` repository.
