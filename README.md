@@ -212,10 +212,13 @@ Applying this definition will create GitOps object on the simplecontainer.
 
 ```bash
 smr ps gitops
-smr ps gitops
 RESOURCE                      REPOSITORY                                             REVISION  SYNCED        AUTO   STATE    STATUS              
 gitops/examples/plain-manual  https://github.com/simplecontainer/examples (2fbe408)  main      Never synced  false  Drifted  drifted
+```
 
+Since auto sync is disabled - sync must be triggered by the user.
+
+```bash
 smr sync gitops/examples/plain-manual
 smr ps
 NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE         
