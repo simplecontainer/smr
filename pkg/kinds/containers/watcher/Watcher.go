@@ -27,17 +27,18 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 	containerObj.GetStatus().SetState(startState)
 
 	watcher := &Container{
-		Container:      containerObj,
-		ContainerQueue: make(chan platforms.IContainer),
-		ReadinessChan:  make(chan *readiness.ReadinessState),
-		DependencyChan: make(chan *dependency.State),
-		PauseC:         make(chan platforms.IContainer),
-		Ctx:            ctx,
-		Cancel:         fn,
-		Ticker:         time.NewTicker(interval),
-		Retry:          0,
-		Logger:         loggerObj,
-		User:           user,
+		Container:           containerObj,
+		ContainerQueue:      make(chan platforms.IContainer),
+		ReadinessChan:       make(chan *readiness.ReadinessState),
+		DependencyChan:      make(chan *dependency.State),
+		PauseC:              make(chan platforms.IContainer),
+		AllowPlatformEvents: true,
+		Ctx:                 ctx,
+		Cancel:              fn,
+		Ticker:              time.NewTicker(interval),
+		Retry:               0,
+		Logger:              loggerObj,
+		User:                user,
 	}
 
 	// reconciler will turn on the ticker when needed

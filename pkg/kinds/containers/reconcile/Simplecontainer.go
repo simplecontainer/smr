@@ -16,8 +16,6 @@ import (
 func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
 	containerObj := containerWatcher.Container
 
-	containerWatcher.AllowPlatformEvents = false
-
 	switch containerObj.GetStatus().State.State {
 	case status.TRANSFERING:
 		if existing != nil && existing.IsGhost() {
@@ -191,7 +189,6 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		return status.KILL, true
 
 	case status.RUNNING:
-		containerWatcher.AllowPlatformEvents = true
 		containerWatcher.Logger.Info("container is running - reconciler going to sleep")
 		return status.RUNNING, false
 
@@ -224,6 +221,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		}
 
 	case status.DELETE:
+		containerWatcher.AllowPlatformEvents = false
 		return "", false
 	case status.DAEMON_FAILURE:
 		containerWatcher.Logger.Info("container daemon engine failed - reconciler going to sleep")
