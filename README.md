@@ -1,28 +1,48 @@
-![simplecontainer manager](.github/resources/promo.png)
+![simplecontainer manager](.github/resources/simplecontainer-gitops-promo.png)
 
-Quick start
+Introduction
 ===========
 
 > [!IMPORTANT]
-> The project is not stable yet. Releases and major changes are introduced often. 
+> The project is not stable yet.
 
-Would you like to apply docker to various remote daemons, as you can for k8s? Well:
+Introducing Kubernetes alike features for docker. Deploy to docker daemons with ease using the simplecontainer. Works as an overlay over docker daemon and
+providing API for orchestrating containers and additional resources like configuration, secrect, etc. 
+
+Simplecontainer runs as container itself with the access to the /var/run/docker.sock to orchestrate containers.
+
+mTLS is used to authenticate the clients and security is on high level.
+
+In practice, it would look like this:
 ```cgo
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal-cluster/definition.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definitions/Containers.yaml
 smr ps
-NODE             GROUP    NAME     DOCKER NAME        IMAGE           IP                    PORTS  DEPS  ENGINE STATE      SMR STATE     
-smr-agent-2 (2)  example  busybox  example-busybox-2  busybox:latest  10.10.42.3 (cluster)  -      -     running (docker)  running (1s)  
-smr-agent-1 (1)  example  busybox  example-busybox-1  busybox:latest  10.10.42.2 (cluster)  -      -     running (docker)  running (1s)  
+NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE     
+smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (9s)  
+smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (9s) ```
 ```
 
-Voila! This is a quick start tutorial for how you can do just that
+Make VMs, On-prem servers, or trifty VMs stable resources for serverless with simplecontainer.
 
-These containers are running on different nodes and are connected via flannel with encrypted overlay network! Cool? We think so too.
+
 To explore more dive into this README.md.
-## What is simplecontainer?
-### Architecture
-![simplecontainer manager](.github/resources/arch.drawio.png)
+## Architecture
+![simplecontainer manager](.github/resources/architecture.drawio.png)
 
+Simplecontainer relies on etcd, RAFT and flannel to enable cluster of docker daemons.
+
+The etcd is started in the single instance mode, embedded in the simplecontainer itself. RAFT protocol is used to enable multi
+node architecture, also embeded in the simplecontainer - not to be confused with cluster of etcd nodes. 
+Flannel is used to configure overlay network so that each container can reach other containers in the cluster.
+
+Flannel can be configured in multiple ways as flannel itself supports multiple backends. Default backend for simplecontainer is wiregurad
+since it is secure by default and overlay communication is encrypted over non-secure networks.
+
+> [!IMPORTANT]
+> To use flannel wireguard network encryption wireguard package needs to be installed on the machine running simplecontainer.
+> See more at: https://www.wireguard.com/install/
+
+In the simple terms the simplecontainer works similar as git where every instance holds copy of all state information.
 ### Introduction
 The simplecontainer manager is designed to ease life for the developers and DevOps engineers running containers on Docker.
 
@@ -31,23 +51,18 @@ Afterward, it exposes API for container manipulation and orchestration.**
 
 The simplecontainer introduces the following:
 
-- Cluster of Docker daemons or single Docker daemon
+- Single docker daemon or cluster of docker daemons
 - Overlay networking for containers using flannel (encrypted using wireguard by default)
 - Integrated DNS server isolated from Docker daemon
-- GitOps: deploy objects from the Git repositories using GitOps approach
+- GitOps: deploy containers on Docker using GitOps pattern
 - Replication of containers in cluster of Docker daemons
 - Reconciliation and tracking the lifecycle of the Docker containers
 - Reliable dependency ordering using readiness probes
-- Recreate containers from the KV store in case of failure
-- Templating of the container objects to leverage secrets and configuration
+- Server side templating of the container objects to leverage secrets, configuration, and resources
 - Secrets, Configuration and Resources objects for external configuration
 - CLI to interact with the simplecontainer
 - Fast learning curve - simplicity and deterministic behavior
-
-> [!IMPORTANT]
-> To use flannel wireguard network encryption wireguard package needs to be installed on the machine running simplecontainer.
-> See more at: https://www.wireguard.com/install/
-
+- UI dashboard for better overview with real-time updates
 
 Installation
 --------------------------
@@ -166,7 +181,6 @@ Requirements:
 
 ```bash
 smrmgr import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
-smr context fetch
 smrmgr start -a smr-agent-2 -d smr2.example.com -j smr1.example.com:1443
 ```
 
@@ -178,78 +192,118 @@ To connect containers with cluster network in the container definition specify t
 The simplecontainer introduces objects which can be defined as YAML definition and sent to the simplecontainer manager to produce containers on the engine via reconciliation:
 
 - Containers
-- Container
 - Configuration
 - Resource
 - Gitops
 - CertKey
 - HttpAuth
 
-These objects let you deploy containers on local/remote Docker daemon.
+These objects let you deploy and configure containers on local/remote Docker daemon.
 
 ## Running Docker containers (GitOps approach)
-
-![simplecontainer manager](.github/resources/simplecontainer-gitops-promo.png)
-
 
 It is possible to keep definition YAML files in the repository and let the simplecontainer apply it from the repository - a.k.a GitOps.
 
 ```bash
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/gitops/apps/gitops-plain.yaml
+smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/gitops-apps/definitions/gitops-plain.yaml
 ```
 
 Applying this definition will create GitOps object on the simplecontainer.
 
 ```bash
-smr gitops list
-GROUP     NAME          REPOSITORY                                             REVISION  SYNCED        AUTO   STATE    
-examples  plain-manual  https://github.com/simplecontainer/examples (cb849c3)  main      cb849c3       false  InSync  
+smr ps gitops
+smr ps gitops
+RESOURCE                      REPOSITORY                                             REVISION  SYNCED        AUTO   STATE    STATUS              
+gitops/examples/plain-manual  https://github.com/simplecontainer/examples (2fbe408)  main      Never synced  false  Drifted  drifted
 
-smr gitops sync test smr
-
-smr ps 
-GROUP    NAME     DOCKER NAME        IMAGE           IP  PORTS  DEPS  DOCKER STATE  SMR STATE         
-example  busybox  example-busybox-1  busybox:latest                   running       running (50m40s)  
-example  busybox  example-busybox-2  busybox:latest                   running       running (50m40s)  
+smr sync gitops/examples/plain-manual
+smr ps
+NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE         
+smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (29m24s)  
+smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (29m25s)```
 ```
-
 In this example, auto sync is disabled and needs to be triggered manually. When triggered the reconciler will apply 
-all the definitions in the `/tests/minimal` directory from the `https://github.com/simplecontainer/examples` repository.
+all the definitions in the `/tests/minimal` pack from the `https://github.com/simplecontainer/examples` repository.
 
 To see more info about the Gitops object:
 
 ```bash
-smr gitops get examples plain-manual
+smr get gitops/examples/plain-manual```
 ```
-
 Output:
 
 ```json
 {
-  "gitops": {
-    "meta": {
-      "group": "examples",
-      "name": "plain-manual"
-    },
-    "spec": {
-      "API": "",
-      "automaticSync": false,
-      "certKeyRef": {
+  "kind": "gitops",
+  "prefix": "simplecontainer.io/v1",
+  "meta": {
+    "group": "examples",
+    "name": "plain-manual",
+    "runtime": {
+      "owner": {
+        "Kind": "",
         "Group": "",
         "Name": ""
       },
-      "context": "",
-      "directory": "/tests/minimal",
-      "httpAuthRef": {
-        "Group": "",
-        "Name": ""
-      },
-      "poolingInterval": "",
-      "repoURL": "https://github.com/simplecontainer/examples",
-      "revision": "main"
+      "node": 2,
+      "nodeName": "smr-agent-2"
     }
   },
-  "kind": "gitops"
+  "spec": {
+    "repoURL": "https://github.com/simplecontainer/examples",
+    "revision": "main",
+    "directoryPath": "/tests/minimal",
+    "poolingInterval": "",
+    "automaticSync": false,
+    "API": "",
+    "context": "",
+    "certKeyRef": {
+      "Prefix": "",
+      "Group": "",
+      "Name": ""
+    },
+    "httpAuthRef": {
+      "Prefix": "",
+      "Group": "",
+      "Name": ""
+    }
+  },
+  "state": {
+    "Gitops": {
+      "Synced": false,
+      "Drifted": false,
+      "Missing": false,
+      "NotOwner": false,
+      "Error": false,
+      "State": "",
+      "Messages": null,
+      "Commit": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "Changes": null,
+      "LastSync": "0001-01-01T00:00:00Z"
+    },
+    "Options": []
+  }
 }
 ```
 
@@ -259,15 +313,21 @@ This scenario assumes two nodes of simplecontainer running.
 
 Run the next commands:
 ```bash
-smr secret create secret.mysql.mysql.password 123456789
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/mysql-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/mysql-envs.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/nginx-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/traefik-config.yaml
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/main/tests/dependency-readiness-simple/containers.yaml
+git clone https://github.com/simplecontainer/examples
+smr apply examples/tests/dependency-readiness-simple 
+object applied: resource
+object applied: configuration
+object applied: configuration
+object applied: secret
+object applied: containers
+object applied: resource
+object applied: containers
+object applied: resource
+object applied: containers
 ```
 
 This example demonstrates:
+- secrets
 - configuration
 - resource
 - container
@@ -277,11 +337,13 @@ This example demonstrates:
 After running commands above, check the `smr ps`:
 ```bash
 smr ps
-NODE             GROUP    NAME     DOCKER NAME        IMAGE         IP                   PORTS                      DEPS      ENGINE STATE      SMR STATE                  
-smr-agent-1 (1)  mysql    mysql    mysql-mysql-1      mysql:8.0                          3306                       -         running (docker)  running  (36s)          
-smr-agent-2 (2)  mysql    mysql    mysql-mysql-2      mysql:8.0                          3306                       -         running (docker)  running  (36s)          
-smr-agent-2 (2)  nginx    nginx    nginx-nginx-1      nginx:1.23.3                       80, 443                    mysql.*   running (docker)  running  (36s)          
-smr-agent-2 (2)  traefik  traefik  traefik-traefik-1  traefik:v2.5  172.17.0.7 (bridge)  80:80, 443:443, 8888:8080  mysql.*   running (docker)  running  (36s)  
+NODE         RESOURCE                              PORTS                      DEPS      ENGINE STATE      SMR STATE              
+smr-agent-2  containers/example/example-busybox-1  -                          -         running (docker)  running (32m55s)       
+smr-agent-2  containers/example/example-busybox-2  -                          -         running (docker)  running (32m55s)       
+smr-agent-1  containers/mysql/mysql-mysql-1        3306                       -         running (docker)  readiness_check (1s)   
+smr-agent-2  containers/nginx/nginx-nginx-1        80, 443                    mysql.*   -                 depends_checking (1s)  
+smr-agent-2  containers/nginx/nginx-nginx-2        80, 443                    mysql.*   -                 depends_checking (1s)  
+smr-agent-2  containers/traefik/traefik-traefik-1  80:80, 443:443, 8888:8080  mysql.*   -                 depends_checking (1s)
 ```
 
 Containers from group mysql will start first. 
@@ -291,6 +353,8 @@ Traefik and nginx will wait till mysql is ready because of the dependency defini
 Important links
 ---------------------------
 - https://simplecontainer.io
+- https://docs.simplecontainer.io
+- https://blog.simplecontainer.io
 - https://quay.io/repository/simplecontainer/smr
 - https://github.com/simplecontainer/smr
 - https://github.com/simplecontainer/client
