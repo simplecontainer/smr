@@ -231,7 +231,7 @@ all the definitions in the `/tests/minimal` pack from the `https://github.com/si
 To see more info about the Gitops object:
 
 ```bash
-smr get gitops/examples/plain-manual```
+smr get gitops/examples/plain-manual
 ```
 Output:
 
