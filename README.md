@@ -7,7 +7,7 @@ Introduction
 > The project is not stable yet.
 
 Introducing Kubernetes alike features for docker. Deploy to docker daemons with ease using the simplecontainer. Works as an overlay over docker daemon and
-providing API for orchestrating containers and additional resources like configuration, secrect, etc. 
+providing API for orchestrating containers and additional resources like configuration, secret, etc. 
 
 Simplecontainer runs as container itself with the access to the /var/run/docker.sock to orchestrate containers.
 
@@ -19,7 +19,7 @@ smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/
 smr ps
 NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE     
 smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (9s)  
-smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (9s) ```
+smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (9s)
 ```
 
 Make VMs, On-prem servers, or trifty VMs stable resources for serverless with simplecontainer.
