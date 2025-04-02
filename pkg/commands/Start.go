@@ -190,6 +190,7 @@ func Start() {
 					{
 						cluster.GET("/", api.GetCluster)
 						cluster.POST("/start", api.StartCluster)
+						cluster.POST("/drain", api.Drain)
 						cluster.GET("/nodes", api.Nodes)
 						cluster.POST("/node", api.AddNode)
 						cluster.DELETE("/node/:node", api.RemoveNode)

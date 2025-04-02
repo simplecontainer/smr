@@ -20,6 +20,8 @@ const SMR_ENDPOINT_NAME = "node"
 const SMR_NODE_DOMAIN = "node.private"
 const SMR_LOCAL_DOMAIN = "private"
 
+const CLUSTER_NETWORK = "cluster"
+
 const PLATFORM_DOCKER = "docker"
 const PLATFORM_MOCKER = "mocker"
 

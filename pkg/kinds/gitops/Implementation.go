@@ -20,7 +20,7 @@ import (
 func (gitops *Gitops) Start() error {
 	gitops.Started = true
 
-	gitops.Shared.Watcher = watcher.NewWatchers()
+	gitops.Shared.Watchers = watcher.NewWatchers()
 	gitops.Shared.Registry = registry.New(gitops.Shared.Client, gitops.Shared.Manager.User)
 
 	return nil
@@ -42,7 +42,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 	}
 
 	GroupIdentifier := fmt.Sprintf("%s.%s", request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
-	existingWatcher := gitops.Shared.Watcher.Find(GroupIdentifier)
+	existingWatcher := gitops.Shared.Watchers.Find(GroupIdentifier)
 
 	if request.Definition.GetRuntime().GetNode() != gitops.Shared.Manager.Cluster.Node.NodeID {
 		// Only one node can control gitops other will just have copy of the object and state
@@ -59,7 +59,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 					return nil
 				})
 
-				gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
+				gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
 				w.Gitops.Status.SetState(status.CREATED)
@@ -81,7 +81,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 		w.Gitops.Status.SetState(status.CREATED)
 
 		gitops.Shared.Registry.AddOrUpdate(w.Gitops.GetGroup(), w.Gitops.GetName(), w.Gitops)
-		gitops.Shared.Watcher.AddOrUpdate(GroupIdentifier, w)
+		gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
 
 		go reconcile.HandleTickerAndEvents(gitops.Shared, w, func(w *watcher.Gitops) error {
 			return nil
@@ -125,7 +125,7 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 	if gitopsObj == nil {
 		return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil), nil
 	} else {
-		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
 			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.DELETE)
@@ -146,7 +146,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			return nil
 		}
 
-		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
 			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
@@ -165,7 +165,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			return nil
 		}
 
-		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
 			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
@@ -184,7 +184,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			return nil
 		}
 
-		gitopsWatcher := gitops.Shared.Watcher.Find(gitopsObj.GetGroupIdentifier())
+		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
 			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {

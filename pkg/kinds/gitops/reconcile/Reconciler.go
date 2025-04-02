@@ -17,13 +17,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	gitopsObj := gitopsWatcher.Gitops
 
-	if gitopsObj.GetStatus().Reconciling {
-		gitopsWatcher.Logger.Info("gitops already reconciling, waiting for the free slot")
-		return
-	}
-
-	gitopsObj.GetStatus().Reconciling = true
-
 	if gitopsObj.ForcePoll {
 		gitopsObj.ForcePoll = false
 		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
@@ -32,8 +25,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	gitopsWatcher.Logger.Info("reconcile", zap.String("gitops", gitopsObj.GetName()), zap.String("status", fmt.Sprintf("%v", gitopsObj.GetStatus().State)))
 
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
-
-	gitopsObj.GetStatus().Reconciling = false
 
 	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
 

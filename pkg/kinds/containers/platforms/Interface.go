@@ -87,6 +87,7 @@ type IPlatform interface {
 	GetGeneratedName() string
 	GetName() string
 	GetGroup() string
+	GetIndex() (uint64, error)
 	GetGroupIdentifier() string
 	GetDomain(networkName string) string
 	GetHeadlessDomain(networkName string) string

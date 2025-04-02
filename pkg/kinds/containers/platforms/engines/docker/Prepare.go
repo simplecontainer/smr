@@ -14,14 +14,25 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/template"
 	"os"
+	"strconv"
 )
 
 func (container *Docker) PrepareConfiguration(client *client.Http, user *authentication.User, runtime *types.Runtime) error {
 	var parsed string
 	var dependencies []f.Format
 	var err error
+	var index uint64
+
+	index, err = container.GetIndex()
+
+	if err != nil {
+		return err
+	}
 
 	runtime.Configuration.Map.Store("name", container.GetGeneratedName())
+	runtime.Configuration.Map.Store("index", strconv.FormatUint(index, 10))
+	runtime.Configuration.Map.Store("fqdn", container.GetDomain(static.CLUSTER_NETWORK))
+	runtime.Configuration.Map.Store("headless", container.GetHeadlessDomain(static.CLUSTER_NETWORK))
 
 	container.Configuration.Map.Range(func(key, value any) bool {
 		parsed, dependencies, err = template.Parse(key.(string), value.(string), client, user, runtime.Configuration, 0)

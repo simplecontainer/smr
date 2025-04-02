@@ -18,12 +18,12 @@ func New(elements ...string) Domain {
 }
 
 func NewFromString(data string) Domain {
-	elements, _ := BuildElements(strings.SplitN(data, ".", 4))
+	elements, _ := BuildElements(strings.SplitN(data, ".", 3))
+
 	domain := Domain{
 		Network:    strings.TrimSpace(elements[0]),
-		Group:      strings.TrimSpace(elements[1]),
-		Identifier: strings.TrimSpace(elements[2]),
-		TLD:        strings.TrimSpace(elements[3]),
+		Identifier: strings.TrimSpace(elements[1]),
+		TLD:        strings.TrimSpace(elements[2]),
 	}
 
 	if domain.IsValid() {
@@ -34,7 +34,7 @@ func NewFromString(data string) Domain {
 }
 
 func BuildElements(splitted []string) ([]string, int) {
-	elements := make([]string, 4)
+	elements := make([]string, 3)
 
 	lengthSplitted := len(splitted)
 	nonEmptyCount := 0
@@ -55,7 +55,9 @@ func BuildElements(splitted []string) ([]string, int) {
 }
 
 func (domain Domain) IsValid() bool {
-	split := strings.SplitN(domain.ToString(), ".", 4)
+	split := strings.SplitN(domain.ToString(), ".", 3)
+
+	fmt.Println(split)
 
 	for _, element := range split {
 		if element == "" {
@@ -67,9 +69,10 @@ func (domain Domain) IsValid() bool {
 }
 
 func (domain Domain) ToString() string {
-	return fmt.Sprintf("%s.%s.%s.%s", domain.Network, domain.Group, domain.Identifier, domain.TLD)
+	return fmt.Sprintf("%s.%s.%s", domain.Network, domain.Identifier, domain.TLD)
 }
 
 func (domain Domain) ToHeadles() string {
-	return fmt.Sprintf("%s.%s.%s.%s", domain.Network, domain.Group, domain.Group, domain.TLD)
+	tmp := strings.Split(domain.Identifier, "-")
+	return fmt.Sprintf("%s.%s.%s.%s", domain.Network, tmp[0], tmp[1], domain.TLD)
 }

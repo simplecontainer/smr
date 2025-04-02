@@ -1,6 +1,9 @@
 package watcher
 
-import "sync"
+import (
+	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
+	"sync"
+)
 
 func NewWatchers() *RepositoryWatcher {
 	return &RepositoryWatcher{
@@ -11,14 +14,14 @@ func NewWatchers() *RepositoryWatcher {
 
 func (RepositoryWatcher *RepositoryWatcher) AddOrUpdate(groupidentifier string, gitopsWatcher *Gitops) {
 	RepositoryWatcher.Lock.RLock()
-	RepositoryWatcher.Lock.RUnlock()
+	defer RepositoryWatcher.Lock.RUnlock()
 
 	RepositoryWatcher.Repositories[groupidentifier] = gitopsWatcher
 }
 
 func (RepositoryWatcher *RepositoryWatcher) Remove(groupidentifier string) bool {
 	RepositoryWatcher.Lock.Lock()
-	RepositoryWatcher.Lock.Unlock()
+	defer RepositoryWatcher.Lock.Unlock()
 
 	if RepositoryWatcher.Repositories[groupidentifier] == nil {
 		return true
@@ -28,9 +31,19 @@ func (RepositoryWatcher *RepositoryWatcher) Remove(groupidentifier string) bool 
 	}
 }
 
+func (RepositoryWatcher *RepositoryWatcher) Drain() {
+	RepositoryWatcher.Lock.Lock()
+	defer RepositoryWatcher.Lock.Unlock()
+
+	for _, watcher := range RepositoryWatcher.Repositories {
+		watcher.Gitops.GetStatus().SetState(status.PENDING_DELETE)
+		watcher.GitopsQueue <- watcher.Gitops
+	}
+}
+
 func (RepositoryWatcher *RepositoryWatcher) Find(groupidentifier string) *Gitops {
 	RepositoryWatcher.Lock.RLock()
-	RepositoryWatcher.Lock.RUnlock()
+	defer RepositoryWatcher.Lock.RUnlock()
 
 	if RepositoryWatcher.Repositories[groupidentifier] != nil {
 		return RepositoryWatcher.Repositories[groupidentifier]

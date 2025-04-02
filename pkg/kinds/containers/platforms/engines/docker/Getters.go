@@ -10,6 +10,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/static"
+	"strconv"
+	"strings"
 )
 
 func (container *Docker) GetReadiness() []*readiness.Readiness {
@@ -80,16 +82,21 @@ func (container *Docker) GetGroup() string {
 	return container.Group
 }
 
+func (container *Docker) GetIndex() (uint64, error) {
+	tmp := strings.Split(container.GetGeneratedName(), "-")
+	return strconv.ParseUint(tmp[2], 10, 64)
+}
+
 func (container *Docker) GetGroupIdentifier() string {
 	return fmt.Sprintf("%s.%s", container.Group, container.GeneratedName)
 }
 
 func (container *Docker) GetDomain(network string) string {
-	return fmt.Sprintf("%s.%s.%s.%s", network, container.Group, container.GeneratedName, static.SMR_LOCAL_DOMAIN)
+	return fmt.Sprintf("%s.%s.%s", network, container.GeneratedName, static.SMR_LOCAL_DOMAIN)
 }
 
 func (container *Docker) GetHeadlessDomain(network string) string {
-	return fmt.Sprintf(".%s.%s.%s.%s", network, container.Group, container.Name, static.SMR_LOCAL_DOMAIN)
+	return fmt.Sprintf("%s.%s.%s.%s", network, container.Group, container.Name, static.SMR_LOCAL_DOMAIN)
 }
 
 func (container *Docker) GetInit() platforms.IPlatform {

@@ -3,7 +3,6 @@ package raft
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -170,7 +169,7 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
 					n := node.NewNode()
-					err := json.Unmarshal(cc.Context, &n)
+					err := n.Parse(cc)
 
 					if err != nil {
 						log.Println("Invalid node configuration sent - conf change ignored.")
@@ -180,14 +179,16 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
+				n := node.NewNode()
+				_ = n.Parse(cc)
+
+				rc.nodeUpdate <- *n
+
 				if cc.NodeID == uint64(rc.id) {
 					log.Println("I've been removed from the cluster! Shutting down.")
 					return nil, false
 				}
 
-				n := node.NewNode()
-				n.NodeID = cc.NodeID
-				rc.nodeUpdate <- *n
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
 			}
 		}
@@ -528,7 +529,7 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	return ms
 }
 
-func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) {
+func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
 	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers[rc.id-1]))
 	url, err := url.Parse(rc.Peers[rc.id-1])
 	if err != nil {
@@ -550,7 +551,7 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	err = server.ServeTLS(ln, "", "")
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	select {
@@ -560,6 +561,7 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	}
 
 	close(rc.httpdonec)
+	return nil
 }
 
 func (rc *RaftNode) Process(ctx context.Context, m raftpb.Message) error {

@@ -8,7 +8,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.uber.org/zap"
 	"net/http"
+	"os"
 	"strconv"
 	"syscall"
 )
@@ -78,41 +80,46 @@ func (api *Api) ListenNode() {
 		select {
 		case n, ok := <-api.Cluster.NodeConf:
 			if ok {
-				if n.URL != "" {
-					if api.Cluster.Cluster.Find(&n) == nil {
-						api.Cluster.Cluster.Add(&n)
+				switch n.ConfChange.Type {
+				case raftpb.ConfChangeAddNode:
+					api.Cluster.Cluster.Add(&n)
 
-						api.Cluster.Regenerate(api.Config, api.Keys)
-						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+					//api.Cluster.Regenerate(api.Config, api.Keys)
+					//api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-						api.Config.KVStore.Node = api.Cluster.Node.NodeID
-						api.Config.KVStore.URL = api.Cluster.Node.URL
-						api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-						api.SaveClusterConfiguration()
+					api.Config.KVStore.Node = api.Cluster.Node.NodeID
+					api.Config.KVStore.URL = api.Cluster.Node.URL
+					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+					api.SaveClusterConfiguration()
 
-						api.Cluster.Regenerate(api.Config, api.Keys)
-						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+					api.Cluster.Regenerate(api.Config, api.Keys)
+					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
 
-						logger.Log.Info("added new node")
+					logger.Log.Info("added new node")
+					break
+				case raftpb.ConfChangeRemoveNode:
+					api.Cluster.Cluster.Remove(&n)
+
+					api.Config.KVStore.Node = api.Cluster.Node.NodeID
+					api.Config.KVStore.URL = api.Cluster.Node.URL
+					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+					api.SaveClusterConfiguration()
+
+					api.Cluster.Regenerate(api.Config, api.Keys)
+					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+
+					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+
+					logger.Log.Info("removed node from the cluster", zap.String("node", n.NodeName))
+
+					if n.NodeID == api.Cluster.Node.NodeID {
+						logger.Log.Info("that node is me - proceed with shutdown")
+						os.Exit(0)
 					}
-				} else {
-					if api.Cluster.Cluster.Find(&n) != nil {
-						api.Cluster.Cluster.Remove(&n)
 
-						api.Config.KVStore.Node = api.Cluster.Node.NodeID
-						api.Config.KVStore.URL = api.Cluster.Node.URL
-						api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-						api.SaveClusterConfiguration()
-
-						api.Cluster.Regenerate(api.Config, api.Keys)
-						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-
-						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
-
-						logger.Log.Info("removed node")
-					}
+					break
 				}
 			} else {
 				logger.Log.Error("channel for node updates closed")

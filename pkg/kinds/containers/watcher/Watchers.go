@@ -1,6 +1,9 @@
 package watcher
 
-import "sync"
+import (
+	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
+	"sync"
+)
 
 func NewWatchers() *Containers {
 	return &Containers{
@@ -20,6 +23,16 @@ func (ContainerWatcher *Containers) Remove(groupidentifier string) {
 	defer ContainerWatcher.Lock.Unlock()
 
 	delete(ContainerWatcher.Watchers, groupidentifier)
+}
+
+func (ContainerWatcher *Containers) Drain() {
+	ContainerWatcher.Lock.Lock()
+	defer ContainerWatcher.Lock.Unlock()
+
+	for _, watcher := range ContainerWatcher.Watchers {
+		watcher.Container.GetStatus().SetState(status.PENDING_DELETE)
+		watcher.ContainerQueue <- watcher.Container
+	}
 }
 
 func (ContainerWatcher *Containers) Find(groupidentifier string) *Container {

@@ -17,6 +17,9 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+	Subprotocols: []string{
+		"Authorization",
+	},
 }
 
 func (api *Api) Events(c *gin.Context) {

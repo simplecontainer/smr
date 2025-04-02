@@ -9,7 +9,7 @@ import (
 
 type Shared struct {
 	Registry *registry.Registry
-	Watcher  *watcher.RepositoryWatcher
+	Watchers *watcher.RepositoryWatcher
 	Manager  *manager.Manager
 	Client   *client.Http
 }
