@@ -34,7 +34,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 
 			events.Dispatch(
 				events.NewKindEvent(events.EVENT_DELETED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
-				shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+				shared, containerWatcher.Container.GetRuntime().Node.NodeID,
 			)
 
 			replicas := make([]platforms.IContainer, 0)

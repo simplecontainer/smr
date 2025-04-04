@@ -29,3 +29,18 @@ func NewReadinessFromDefinition(readiness v1.ContainersReadiness) (*Readiness, e
 		Cancel:  cancel,
 	}, nil
 }
+
+func (r *Readiness) Reset() error {
+	if r.Timeout == "" {
+		r.Timeout = "30s"
+	}
+
+	timeout, err := time.ParseDuration(r.Timeout)
+
+	if err != nil {
+		return err
+	}
+
+	r.Ctx, r.Cancel = context.WithTimeout(context.Background(), timeout)
+	return nil
+}

@@ -233,6 +233,7 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 					containerW := containers.Shared.Watchers.Find(GroupIdentifier)
 
 					if containerW != nil && !containerW.Done {
+						containers.Shared.Watchers.Find(GroupIdentifier).Cancel()
 						containers.Shared.Watchers.Find(GroupIdentifier).ContainerQueue <- containerObj
 					}
 				}()

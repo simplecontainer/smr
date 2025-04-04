@@ -46,13 +46,19 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 			return err
 		}
 
+		err := r.Reset()
+
+		if err != nil {
+			return false, errors.New("readiness reset failed")
+		}
+
 		if done {
 			return false, errors.New("context expired")
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), r.Ctx)
 
-		err := backoff.Retry(r.Function, backOff)
+		err = backoff.Retry(r.Function, backOff)
 		if err != nil {
 			channel <- &readiness.ReadinessState{
 				State: readiness.FAILED,
@@ -142,7 +148,7 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 				return errors.New("readiness command failed")
 			}
 		} else {
-			return errors.New("readiness request failed - container not running")
+			return errors.New("readiness command failed - container not running")
 		}
 	default:
 		return nil
