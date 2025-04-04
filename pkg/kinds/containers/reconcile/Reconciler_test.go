@@ -161,8 +161,8 @@ func TestFromInitialStateToRunning(t *testing.T) {
 							w.ContainerQueue <- containerObj
 						}
 						break
-					case containerObj := <-w.PauseC:
-						w.PauseC <- containerObj
+					case containerObj := <-w.DeleteC:
+						w.DeleteC <- containerObj
 						return
 					}
 				}

@@ -18,6 +18,7 @@ import (
 func New(containerObj platforms.IContainer, startState string, user *authentication.User) *Container {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
+	rctx, rfn := context.WithCancel(context.Background())
 
 	format := f.New(containerObj.GetDefinition().GetPrefix(), "kind", static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName())
 	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
@@ -31,10 +32,12 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 		ContainerQueue:      make(chan platforms.IContainer),
 		ReadinessChan:       make(chan *readiness.ReadinessState),
 		DependencyChan:      make(chan *dependency.State),
-		PauseC:              make(chan platforms.IContainer),
+		DeleteC:             make(chan platforms.IContainer),
 		AllowPlatformEvents: true,
 		Ctx:                 ctx,
 		Cancel:              fn,
+		ReconcileCtx:        rctx,
+		ReconcileCancel:     rfn,
 		Ticker:              time.NewTicker(interval),
 		Retry:               0,
 		Logger:              loggerObj,

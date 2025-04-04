@@ -228,13 +228,10 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 			for _, containerObj := range destroy {
 				go func() {
 					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.DELETE)
-
 					containerW := containers.Shared.Watchers.Find(GroupIdentifier)
 
 					if containerW != nil && !containerW.Done {
-						containers.Shared.Watchers.Find(GroupIdentifier).Cancel()
-						containers.Shared.Watchers.Find(GroupIdentifier).ContainerQueue <- containerObj
+						containers.Shared.Watchers.Find(GroupIdentifier).DeleteC <- containerObj
 					}
 				}()
 			}

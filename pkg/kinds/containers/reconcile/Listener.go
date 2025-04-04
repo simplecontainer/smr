@@ -4,6 +4,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"sync"
 )
@@ -75,9 +76,21 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 				lock.Unlock()
 			}()
 			break
-		case <-containerWatcher.PauseC:
-			if pauseHandler(containerWatcher) != nil {
-				containerWatcher.Cancel()
+		case <-containerWatcher.DeleteC:
+			if pauseHandler(containerWatcher) == nil {
+				go func() {
+					containerWatcher.ReconcileCancel()
+
+					lock.Lock()
+
+					containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.DELETE)
+
+					if !containerWatcher.Done {
+						Containers(shared, containerWatcher)
+					}
+
+					lock.Unlock()
+				}()
 			}
 			break
 		}

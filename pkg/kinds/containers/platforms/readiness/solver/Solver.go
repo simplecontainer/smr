@@ -18,22 +18,6 @@ import (
 )
 
 func Ready(ctx context.Context, client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *readiness.ReadinessState, logger *zap.Logger) (bool, error) {
-	var done bool
-	var expired chan bool
-	defer func(expired chan bool) { expired <- true }(expired)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				done = true
-				return
-			case <-expired:
-				return
-			}
-		}
-	}()
-
 	for _, r := range container.GetReadiness() {
 		r.Function = func() error {
 			container.GetStatus().LastReadinessStarted = time.Now()
@@ -52,11 +36,7 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 			return false, errors.New("readiness reset failed")
 		}
 
-		if done {
-			return false, errors.New("context expired")
-		}
-
-		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), r.Ctx)
+		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
 
 		err = backoff.Retry(r.Function, backOff)
 		if err != nil {
@@ -66,10 +46,6 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 
 			return false, err
 		}
-	}
-
-	if done {
-		return false, errors.New("context expired")
 	}
 
 	channel <- &readiness.ReadinessState{

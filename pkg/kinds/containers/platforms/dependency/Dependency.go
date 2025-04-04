@@ -34,33 +34,13 @@ func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
 }
 
 func Ready(ctx context.Context, registry platforms.Registry, group string, name string, dependsOn []v1.ContainersDependsOn, channel chan *State) (bool, error) {
-	var done bool
-	var expired chan bool
-	defer func(expired chan bool) { expired <- true }(expired)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				done = true
-				return
-			case <-expired:
-				return
-			}
-		}
-	}()
-
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
 			return SolveDepends(registry, depend.Prefix, group, name, dependency, channel)
 		}
 
-		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), dependency.Ctx)
-
-		if done {
-			return false, errors.New("context expired")
-		}
+		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
 
 		err := backoff.Retry(dependency.Function, backOff)
 		if err != nil {
@@ -73,10 +53,6 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 
 			return false, err
 		}
-	}
-
-	if done {
-		return false, errors.New("context expired")
 	}
 
 	channel <- &State{
