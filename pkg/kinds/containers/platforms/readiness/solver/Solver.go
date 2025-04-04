@@ -139,7 +139,7 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 				r.Solved = true
 				return nil
 			} else {
-				return errors.New("readiness request failed")
+				return errors.New("readiness command failed")
 			}
 		} else {
 			return errors.New("readiness request failed - container not running")

@@ -74,7 +74,6 @@ func (api *Api) Events(c *gin.Context) {
 					logger.Log.Warn("Failed to send ping: ", zap.Error(err))
 					cancel()
 					closeOnce.Do(func() { close(ch) })
-					lock.Unlock()
 
 					return
 				}

@@ -74,6 +74,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		Group:          definition.(*v1.ContainersDefinition).Meta.Group,
 		Image:          definition.(*v1.ContainersDefinition).Spec.Image,
 		Tag:            definition.(*v1.ContainersDefinition).Spec.Tag,
+		Auth:           definition.(*v1.ContainersDefinition).Spec.RepositoryAuth,
 		Replicas:       definition.(*v1.ContainersDefinition).Spec.Replicas,
 		Lock:           sync.RWMutex{},
 		Env:            definition.(*v1.ContainersDefinition).Spec.Envs,
@@ -244,6 +245,12 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 	}
 
 	err = container.PrepareReadiness(runtime)
+
+	if err != nil {
+		return err
+	}
+
+	err = container.PrepareAuth(runtime)
 
 	if err != nil {
 		return err

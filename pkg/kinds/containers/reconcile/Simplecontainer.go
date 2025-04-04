@@ -186,6 +186,8 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		return status.RUNNING, true
 	case status.READINESS_FAILED:
 		containerWatcher.Logger.Info("container readiness failed")
+		containerObj.GetStatus().LastReadiness = false
+		containerObj.GetStatus().LastReadinessTimestamp = time.Now()
 		return status.KILL, true
 
 	case status.RUNNING:

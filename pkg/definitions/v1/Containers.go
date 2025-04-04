@@ -22,6 +22,7 @@ type ContainersDefinition struct {
 type ContainersInternal struct {
 	Image          string                     `validate:"required" json:"image"`
 	Tag            string                     `validate:"required" json:"tag"`
+	RepositoryAuth string                     `json:"repositoryAuth"`
 	Envs           []string                   `json:"envs,omitempty"`
 	Entrypoint     []string                   `json:"entrypoint,omitempty"`
 	Args           []string                   `json:"args,omitempty"`
