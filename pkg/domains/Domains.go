@@ -57,8 +57,6 @@ func BuildElements(splitted []string) ([]string, int) {
 func (domain Domain) IsValid() bool {
 	split := strings.SplitN(domain.ToString(), ".", 3)
 
-	fmt.Println(split)
-
 	for _, element := range split {
 		if element == "" {
 			return false
