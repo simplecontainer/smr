@@ -27,5 +27,5 @@ COPY --from=initial / /
 USER node
 
 ENTRYPOINT ["/opt/smr/smr"]
-CMD ["start", "--opt"]
+CMD ["start"]
 EXPOSE 1443

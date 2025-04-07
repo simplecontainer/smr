@@ -3,14 +3,15 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/network"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.uber.org/zap"
 	"net/http"
-	"os"
 	"strconv"
 	"syscall"
 )
@@ -55,6 +56,56 @@ func (api *Api) AddNode(c *gin.Context) {
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node added", nil, bytes))
 }
 
+func (api *Api) GetNode(c *gin.Context) {
+	if c.Param("id") != "" {
+		nodeID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
+			return
+		}
+
+		n := api.Cluster.Cluster.FindById(nodeID)
+
+		if n == nil {
+			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
+		} else {
+			bytes, err := n.ToJson()
+
+			if err != nil {
+				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+				return
+			}
+
+			c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, network.ToJson(bytes)))
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", nil, nil))
+	}
+}
+
+func (api *Api) GetNodeVersion(c *gin.Context) {
+	if c.Param("id") != "" {
+		nodeID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
+			return
+		}
+
+		n := api.Cluster.Cluster.FindById(nodeID)
+
+		if n == nil {
+			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
+		} else {
+			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("https://%s/version", n.API), http.MethodGet, nil)
+			c.JSON(response.HttpStatus, response)
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", nil, nil))
+	}
+}
+
 func (api *Api) RemoveNode(c *gin.Context) {
 	if !api.Cluster.Started {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("cluster is not started"), nil))
@@ -87,7 +138,7 @@ func (api *Api) ListenNode() {
 					//api.Cluster.Regenerate(api.Config, api.Keys)
 					//api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-					api.Config.KVStore.Node = api.Cluster.Node.NodeID
+					api.Config.KVStore.Node = api.Cluster.Node
 					api.Config.KVStore.URL = api.Cluster.Node.URL
 					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 					api.SaveClusterConfiguration()
@@ -102,7 +153,7 @@ func (api *Api) ListenNode() {
 				case raftpb.ConfChangeRemoveNode:
 					api.Cluster.Cluster.Remove(&n)
 
-					api.Config.KVStore.Node = api.Cluster.Node.NodeID
+					api.Config.KVStore.Node = api.Cluster.Node
 					api.Config.KVStore.URL = api.Cluster.Node.URL
 					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 					api.SaveClusterConfiguration()
@@ -115,8 +166,8 @@ func (api *Api) ListenNode() {
 					logger.Log.Info("removed node from the cluster", zap.String("node", n.NodeName))
 
 					if n.NodeID == api.Cluster.Node.NodeID {
-						logger.Log.Info("that node is me - proceed with shutdown")
-						os.Exit(0)
+						//logger.Log.Info("that node is me - proceed with shutdown")
+						//os.Exit(0)
 					}
 
 					break

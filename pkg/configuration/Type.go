@@ -27,7 +27,7 @@ type Environment struct {
 
 type KVStore struct {
 	Cluster     []*node.Node `yaml:"cluster"`
-	Node        uint64       `yaml:"node"`
+	Node        *node.Node   `yaml:"node"`
 	URL         string       `yaml:"url"`
 	JoinCluster bool         `yaml:"join"`
 }

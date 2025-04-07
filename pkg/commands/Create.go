@@ -35,7 +35,7 @@ func Create() {
 					panic(err)
 				}
 
-				api.Config.NodeName = viper.GetString("name")
+				api.Config.NodeName = viper.GetString("node")
 				api.Config.NodeImage = fmt.Sprintf("%s:%s", viper.GetString("image"), viper.GetString("tag"))
 				api.Config.Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
 				api.Config.Certificates.IPs = configuration.NewIPs(strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean))
@@ -49,7 +49,7 @@ func Create() {
 
 				api.Config.KVStore = &configuration.KVStore{
 					Cluster:     []*node.Node{},
-					Node:        uint64(viper.GetInt("node")),
+					Node:        nil,
 					URL:         viper.GetString("url"),
 					JoinCluster: viper.GetBool("join"),
 				}

@@ -12,10 +12,10 @@ import (
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/flannel"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
-	"github.com/simplecontainer/smr/pkg/networking"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
@@ -161,14 +161,14 @@ func (api *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
-	err = api.SetupCluster(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
+	err = api.SetupCluster(tlsConfig, api.Cluster.Node, api.Cluster, request["join"])
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
 
-	api.Config.KVStore.Node = api.Cluster.Node.NodeID
+	api.Config.KVStore.Node = api.Cluster.Node
 	api.Config.KVStore.URL = api.Cluster.Node.URL
 	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 	api.Config.KVStore.JoinCluster = request["join"] != ""
@@ -180,7 +180,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	go api.ListenNode()
 	go api.Replication.ListenData(api.Config.NodeName)
 
-	err = networking.Flannel(request["overlay"], request["backend"])
+	err = flannel.Setup(c, api.Etcd, request["overlay"], request["backend"])
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New("flannel overlay network failed to start"), nil))
@@ -196,7 +196,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 }
 
 func (api *Api) GetCluster(c *gin.Context) {
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster starte", nil, network.ToJson(api.Cluster.Cluster.Nodes)))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started", nil, network.ToJson(api.Cluster.Cluster.Nodes)))
 }
 
 func (api *Api) SaveClusterConfiguration() {

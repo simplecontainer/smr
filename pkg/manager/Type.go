@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/relations"
+	"github.com/simplecontainer/smr/pkg/version"
 	"github.com/simplecontainer/smr/pkg/wss"
 	"go.uber.org/zap/zapcore"
 )
@@ -27,5 +28,5 @@ type Manager struct {
 	DnsCache        *dns.Records
 	Wss             *wss.WebSockets
 	LogLevel        zapcore.Level
-	VersionServer   string
+	Version         *version.Version
 }

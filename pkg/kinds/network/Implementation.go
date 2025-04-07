@@ -35,7 +35,7 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node {
+	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node.NodeID {
 		return common.Response(http.StatusOK, "networks are local scoped", err, nil), nil
 	}
 
@@ -119,7 +119,7 @@ func (network *Network) Delete(user *authentication.User, definition []byte, age
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node {
+	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node.NodeID {
 		return common.Response(http.StatusOK, "networks are local scoped", err, nil), nil
 	}
 

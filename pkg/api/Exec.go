@@ -34,7 +34,7 @@ func (api *Api) Exec(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group, name)
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := wssUpgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upgrade WebSocket"})

@@ -45,7 +45,7 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 		AutomaticSync:   definition.Spec.AutomaticSync,
 		Context:         definition.Spec.Context,
 		Pack:            packer.New(),
-		Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node),
+		Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node.NodeID),
 		Commit: &object.Commit{
 			Hash:         plumbing.Hash{},
 			Author:       object.Signature{},

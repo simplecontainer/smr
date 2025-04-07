@@ -11,6 +11,7 @@ func NewNode() *Node {
 		NodeName: "",
 		API:      "",
 		URL:      "",
+		State:    NewState(),
 	}
 }
 
@@ -22,11 +23,25 @@ func NewNodeDefinition(cluster []*Node, nodeId uint64) *Node {
 				NodeName: n.NodeName,
 				API:      n.API,
 				URL:      n.URL,
+				State:    n.State,
 			}
 		}
 	}
 
 	return nil
+}
+
+func (node *Node) Accepting() bool {
+	// If any of this status is true - node should not accept new objects
+	return !(node.State.Control.Draining || node.State.Control.Upgrading)
+}
+
+func (node *Node) SetDrain(drain bool) {
+	node.State.Control.Draining = drain
+}
+
+func (node *Node) SetUpgrade(upgrade bool) {
+	node.State.Control.Upgrading = upgrade
 }
 
 func (node *Node) Parse(change raftpb.ConfChange) error {

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 HelpStart(){
   echo """Usage:
 
@@ -97,10 +95,10 @@ Manager(){
   fi
 
   echo "....cli version:          $(smr version)"
-  echo "....node logs path:       ~/smr/smr/logs/flannel-${NODE}.log"
+  echo "....node logs path:       ~/smr/logs/flannel-${NODE}.log"
   echo "................................................................................................................"
 
-  touch ~/smr/smr/logs/flannel-${NODE}.log
+  touch ~/smr/logs/flannel-${NODE}.log || (echo "Failed to create log file: ~/smr/logs/flannel-${NODE}.log" && exit 2)
 
   if ! dpkg -s curl &>/dev/null; then
     echo 'please install curl manually'
@@ -113,9 +111,9 @@ Manager(){
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
         if [[ $RESTART == "true" ]]; then
-          smr node restart --image "${REPOSITORY}" --tag "${TAG}" --name "${NODE}" $CLIENT_ARGS --w running
+          smr node restart --image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --w running
         else
-          smr node upgrade --image "${REPOSITORY}" --tag "${TAG}" -name "${NODE}" $CLIENT_ARGS --w running
+          smr node upgrade --image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --w running
         fi
 
         while :
@@ -128,21 +126,23 @@ Manager(){
           fi
         done
 
-        sudo nohup smr node cluster join --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+        sudo nohup smr node cluster join --api "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
     fi
   else
     if [[ ${NODE} != "" ]]; then
       if [[ ${MODE} == "cluster" ]]; then
+        ID=$(smr node create --node "${NODE}" --image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --args="create --image ${REPOSITORY} --tag ${TAG} --node ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --w exited)
+        EXIT_CODE=${?}
 
-        ID=$(smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --image ${REPOSITORY} --tag ${TAG} --name ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --name "${NODE}" $CLIENT_ARGS  --w exited)
-
-        if [[ ${?} != 0 ]]; then
-          echo "Simplecontainer returned non-zero exit code - check the logs of the node controller container"
-          exit
+        if [[ ${EXIT_CODE} != 0 ]]; then
+          echo $ID
+          exit ${EXIT_CODE}
         fi
 
-        smr node rename "${NODE}-create-${ID}" --name "${NODE}"
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS --name "${NODE}" --w running
+        echo "Configuration created with success - configuration container id: $ID"
+
+        smr node rename --node "${NODE}" "${NODE}-create-${ID}" || exit 3
+        smr node run --node "${NODE}" --args="start" --w running
 
         if [[ $NODE_DOMAIN == "localhost" ]]; then
           NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${NODE_PORT}"
@@ -161,17 +161,17 @@ Manager(){
         done
 
         if [[ ${JOIN} == "" ]]; then
-          sudo nohup smr node cluster join --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+          sudo nohup smr node cluster join --node "$NODE" --api "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
         else
-          sudo nohup smr node cluster join --node "${NODE_DOMAIN}" --join "https://${JOIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+          sudo nohup smr node cluster join --node "$NODE" --api "${NODE_DOMAIN}" --join "https://${JOIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
         fi
 
         echo "The simplecontainer is started in cluster mode."
       else
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="create --name ${NODE} --domain ${DOMAIN} --ip ${IP}" --name "${NODE}" --wait exited
-        smr node run --image "${REPOSITORY}" --tag "${TAG}" --args="start" $CLIENT_ARGS "${CONTROL_PLANE}" --name "${NODE}"
+        smr node run --node "${NODE}" "${CONTROL_PLANE}" $CLIENT_ARGS --image "${REPOSITORY}" --tag "${TAG}" --image "${REPOSITORY}" --tag "${TAG}" --args="create --node ${NODE} --domain ${DOMAIN} --ip ${IP}" --wait exited
+        smr node run --node "$NODE" --args="start"
 
-        sudo nohup smr node cluster join --name "${NODE}" --node "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/smr/logs/flannel-${NODE}.log &
+        sudo nohup smr node cluster join --node "$NODE" --api "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
 
         echo "The simplecontainer is started in single mode."
       fi

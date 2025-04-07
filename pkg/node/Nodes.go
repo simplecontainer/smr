@@ -11,12 +11,14 @@ func NewNodes() *Nodes {
 }
 
 func (nodes *Nodes) NewNode(nodeName string, url string, API string) *Node {
-	return &Node{
-		NodeID:   nodes.generateID(uint64(0)),
-		NodeName: nodeName,
-		API:      API,
-		URL:      url,
-	}
+	n := NewNode()
+
+	n.NodeID = nodes.generateID(uint64(0))
+	n.NodeName = nodeName
+	n.API = API
+	n.URL = url
+
+	return n
 }
 
 func (nodes *Nodes) NewNodeRequest(body io.ReadCloser, id uint64) (*Node, error) {
@@ -36,20 +38,20 @@ func (nodes *Nodes) NewNodeRequest(body io.ReadCloser, id uint64) (*Node, error)
 		return nil, err
 	}
 
-	node := &Node{
-		NodeID:   nodes.generateID(id),
-		NodeName: request["nodeName"],
-		API:      request["API"],
-		URL:      request["node"],
-	}
+	n := NewNode()
 
-	_, err = client.ParseHostURL(node.URL)
+	n.NodeID = nodes.generateID(id)
+	n.NodeName = request["nodeName"]
+	n.API = request["API"]
+	n.URL = request["node"]
+
+	_, err = client.ParseHostURL(n.URL)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return node, nil
+	return n, nil
 }
 
 func (nodes *Nodes) Add(node *Node) {
@@ -85,6 +87,20 @@ func (nodes *Nodes) Find(node *Node) *Node {
 
 	for _, n := range nodes.Nodes {
 		if n.URL == node.URL {
+			return n
+		}
+	}
+
+	return nil
+}
+
+func (nodes *Nodes) FindById(id uint64) *Node {
+	if id == 0 {
+		return nil
+	}
+
+	for _, n := range nodes.Nodes {
+		if n.NodeID == id {
 			return n
 		}
 	}

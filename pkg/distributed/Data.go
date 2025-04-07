@@ -11,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -18,10 +19,9 @@ import (
 	"strings"
 )
 
-func New(client *client.Client, user *authentication.User, nodeName string, node uint64) *Replication {
+func New(client *client.Client, user *authentication.User, nodeName string, node *node.Node) *Replication {
 	return &Replication{
 		Client:     client,
-		NodeName:   nodeName,
 		Node:       node,
 		User:       user,
 		DataC:      make(chan KV.KV),
@@ -83,7 +83,7 @@ func (replication *Replication) HandleObject(format iformat.Format, data KV.KV) 
 
 	if request.Definition.GetState() != nil {
 		if request.Definition.GetState().GetOpt("scope").Value == "local" {
-			if data.Node != replication.Node {
+			if data.Node != replication.Node.NodeID {
 				logger.Log.Info("locally scoped object only", zap.Uint64("node", data.Node))
 				return
 			}

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var upgrader = websocket.Upgrader{
+var wssUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -26,7 +26,7 @@ func (api *Api) Events(c *gin.Context) {
 	w, r := c.Writer, c.Request
 	lock := &sync.RWMutex{}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := wssUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Log.Error("Failed to upgrade WebSocket connection: ", zap.Error(err))
 		return
