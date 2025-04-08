@@ -81,6 +81,7 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *clust
 	proposeC := make(chan string)
 	confChangeC := make(chan raftpb.ConfChange)
 	nodeUpdate := make(chan node.Node)
+	nodeFinalizer := make(chan node.Node)
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
@@ -103,6 +104,7 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *clust
 	api.Cluster.KVStore.ConfChangeC = confChangeC
 	api.Cluster.KVStore.Node = n
 	api.Cluster.NodeConf = nodeUpdate
+	api.Cluster.NodeFinalizer = nodeFinalizer
 
 	api.Manager.Cluster = api.Cluster
 

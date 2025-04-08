@@ -71,8 +71,7 @@ func SetFlags() {
 	flag.String("image", "", "Node image name")
 	flag.String("tag", "", "Node image tag")
 	flag.String("cluster", "", "SMR Cluster")
-	flag.Bool("join", false, "Join the cluster")
-	flag.Bool("restore", false, "Restore cluster")
+	flag.String("join", "", "Join the cluster")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()

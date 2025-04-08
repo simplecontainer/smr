@@ -51,7 +51,7 @@ func Create() {
 					Cluster:     []*node.Node{},
 					Node:        nil,
 					URL:         viper.GetString("url"),
-					JoinCluster: viper.GetBool("join"),
+					JoinCluster: viper.GetString("join"),
 				}
 
 				err = startup.Save(api.Config)

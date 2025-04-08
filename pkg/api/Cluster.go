@@ -171,7 +171,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	api.Config.KVStore.Node = api.Cluster.Node
 	api.Config.KVStore.URL = api.Cluster.Node.URL
 	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-	api.Config.KVStore.JoinCluster = request["join"] != ""
+	api.Config.KVStore.JoinCluster = request["join"]
 
 	api.SaveClusterConfiguration()
 

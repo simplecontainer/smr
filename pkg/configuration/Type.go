@@ -29,7 +29,7 @@ type KVStore struct {
 	Cluster     []*node.Node `yaml:"cluster"`
 	Node        *node.Node   `yaml:"node"`
 	URL         string       `yaml:"url"`
-	JoinCluster bool         `yaml:"join"`
+	JoinCluster string       `yaml:"join"`
 }
 
 type Certificates struct {

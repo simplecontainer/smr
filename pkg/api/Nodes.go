@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/startup"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.uber.org/zap"
 	"net/http"
@@ -167,11 +168,14 @@ func (api *Api) ListenNode() {
 
 					logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
 
-					if n.NodeID == api.Cluster.Node.NodeID {
-						//logger.Log.Info("that node is me - proceed with shutdown")
-						//os.Exit(0)
+					if nodeID == api.Cluster.Node.NodeID {
+						api.Config.KVStore.Cluster = nil
+						api.Config.KVStore.Node = nil
 
-						break
+						startup.Save(api.Config)
+
+						api.Cluster.NodeFinalizer <- n
+						return
 					}
 				}
 			} else {

@@ -183,14 +183,13 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				n := node.NewNode()
 				_ = n.Parse(cc)
 
-				rc.nodeUpdate <- *n
-
 				if cc.NodeID == uint64(rc.id) {
 					log.Println("I've been removed from the cluster! Shutting down.")
-					return nil, false
 				}
 
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
+				rc.nodeUpdate <- *n
+				break
 			}
 		}
 	}

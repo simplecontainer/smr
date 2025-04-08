@@ -85,12 +85,14 @@ func (api *Api) Upgrade(c *gin.Context) {
 							Type:   raftpb.ConfChangeRemoveNode,
 							NodeID: control.Drain.NodeID,
 						}
+					}
+					break
+				case n := <-api.Cluster.NodeFinalizer:
+					fmt.Println(n)
+					fmt.Println("Kill the switch")
 
-						if err := control.Apply(c, api.Etcd); err != nil {
-							logger.Log.Error("upgrade start error", zap.Error(err))
-						}
-
-						return
+					if err := control.Apply(c, api.Etcd); err != nil {
+						logger.Log.Error("upgrade start error", zap.Error(err))
 					}
 				}
 			}
