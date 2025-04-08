@@ -56,12 +56,12 @@ func (common *CommonDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, common)
 }
 
-func (common *CommonDefinition) ToJson() ([]byte, error) {
+func (common *CommonDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(common)
 	return bytes, err
 }
 
-func (common *CommonDefinition) ToJsonString() (string, error) {
+func (common *CommonDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(common)
 	return string(bytes), err
 }

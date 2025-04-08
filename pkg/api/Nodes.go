@@ -40,7 +40,7 @@ func (api *Api) AddNode(c *gin.Context) {
 	}
 
 	var bytes []byte
-	bytes, err = newNode.ToJson()
+	bytes, err = newNode.ToJSON()
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
@@ -70,14 +70,14 @@ func (api *Api) GetNode(c *gin.Context) {
 		if n == nil {
 			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		} else {
-			bytes, err := n.ToJson()
+			bytes, err := n.ToJSON()
 
 			if err != nil {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 				return
 			}
 
-			c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, network.ToJson(bytes)))
+			c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, network.ToJSON(bytes)))
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", nil, nil))
@@ -151,11 +151,13 @@ func (api *Api) ListenNode() {
 					logger.Log.Info("added new node")
 					break
 				case raftpb.ConfChangeRemoveNode:
+					nodeID := n.NodeID
 					api.Cluster.Cluster.Remove(&n)
 
 					api.Config.KVStore.Node = api.Cluster.Node
 					api.Config.KVStore.URL = api.Cluster.Node.URL
 					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+
 					api.SaveClusterConfiguration()
 
 					api.Cluster.Regenerate(api.Config, api.Keys)
@@ -163,14 +165,14 @@ func (api *Api) ListenNode() {
 
 					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
 
-					logger.Log.Info("removed node from the cluster", zap.String("node", n.NodeName))
+					logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
 
 					if n.NodeID == api.Cluster.Node.NodeID {
 						//logger.Log.Info("that node is me - proceed with shutdown")
 						//os.Exit(0)
-					}
 
-					break
+						break
+					}
 				}
 			} else {
 				logger.Log.Error("channel for node updates closed")

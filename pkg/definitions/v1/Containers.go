@@ -131,12 +131,12 @@ func (containers *ContainersDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, containers)
 }
 
-func (containers *ContainersDefinition) ToJson() ([]byte, error) {
+func (containers *ContainersDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(containers)
 	return bytes, err
 }
 
-func (containers *ContainersDefinition) ToJsonString() (string, error) {
+func (containers *ContainersDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(containers)
 	return string(bytes), err
 }

@@ -56,6 +56,6 @@ func (node *Node) Parse(change raftpb.ConfChange) error {
 	}
 }
 
-func (node *Node) ToJson() ([]byte, error) {
+func (node *Node) ToJSON() ([]byte, error) {
 	return json.Marshal(node)
 }

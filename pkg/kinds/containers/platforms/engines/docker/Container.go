@@ -494,8 +494,14 @@ func (container *Docker) Rename(newName string) error {
 			}
 		}(cli)
 
-		//container.GeneratedName = newName
-		return cli.ContainerRename(ctx, c.ID, newName)
+		err = cli.ContainerRename(ctx, c.ID, newName)
+
+		if err != nil {
+			return err
+		}
+
+		container.GeneratedName = newName
+		return nil
 	} else {
 		return errors.New("container is not found")
 	}
@@ -759,7 +765,7 @@ func (container *Docker) InitContainer(definition v1.ContainersInternal, config 
 	return nil
 }
 
-func (container *Docker) ToJson() ([]byte, error) {
+func (container *Docker) ToJSON() ([]byte, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	return json.Marshal(container)
 }

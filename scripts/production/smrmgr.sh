@@ -111,7 +111,7 @@ Manager(){
 
     if [[ $REPLY =~ ^[Yy]$ || $ALLYES == "true" ]]; then
         if [[ $RESTART == "true" ]]; then
-          smr node restart --image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --w running
+          smr node restart --static.image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --w running
         else
           smr node upgrade --image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --w running
         fi
@@ -131,7 +131,7 @@ Manager(){
   else
     if [[ ${NODE} != "" ]]; then
       if [[ ${MODE} == "cluster" ]]; then
-        ID=$(smr node create --node "${NODE}" --image "${REPOSITORY}" --tag "${TAG}" $CLIENT_ARGS --args="create --image ${REPOSITORY} --tag ${TAG} --node ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --w exited)
+        ID=$(smr node create --node "${NODE}" --static.image "${REPOSITORY}" --static.tag "${TAG}" $CLIENT_ARGS --args="create --image ${REPOSITORY} --tag ${TAG} --node ${NODE} --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --w exited)
         EXIT_CODE=${?}
 
         if [[ ${EXIT_CODE} != 0 ]]; then

@@ -189,14 +189,14 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Cluster.Started = true
 
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJson(map[string]string{
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJSON(map[string]string{
 		"name": api.Config.NodeName,
 	})))
 	return
 }
 
 func (api *Api) GetCluster(c *gin.Context) {
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started", nil, network.ToJson(api.Cluster.Cluster.Nodes)))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started", nil, network.ToJSON(api.Cluster.Cluster.Nodes)))
 }
 
 func (api *Api) SaveClusterConfiguration() {

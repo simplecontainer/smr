@@ -64,12 +64,12 @@ func (certkey *CertKeyDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, certkey)
 }
 
-func (certkey *CertKeyDefinition) ToJson() ([]byte, error) {
+func (certkey *CertKeyDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(certkey)
 	return bytes, err
 }
 
-func (certkey *CertKeyDefinition) ToJsonString() (string, error) {
+func (certkey *CertKeyDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(certkey)
 	return string(bytes), err
 }

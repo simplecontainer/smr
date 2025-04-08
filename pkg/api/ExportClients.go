@@ -51,6 +51,6 @@ func (api *Api) ExportClients(c *gin.Context) {
 		ErrorExplanation: "",
 		Error:            false,
 		Success:          true,
-		Data:             network.ToJson(encrypted),
+		Data:             network.ToJSON(encrypted),
 	})
 }

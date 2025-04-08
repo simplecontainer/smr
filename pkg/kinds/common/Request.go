@@ -119,7 +119,7 @@ func (request *Request) ProposeState(client *http.Client, API string) error {
 }
 
 func (request *Request) Send(action string, method string, client *http.Client, API string) error {
-	bytes, err := request.Definition.ToJson()
+	bytes, err := request.Definition.ToJSON()
 
 	if err != nil {
 		return err

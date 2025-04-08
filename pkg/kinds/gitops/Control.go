@@ -8,7 +8,7 @@ package gitops
 //
 //		event := events.New(events.EVENT_REFRESH, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
 //
-//		bytes, err := event.ToJson()
+//		bytes, err := event.ToJSON()
 //
 //		if err != nil {
 //			return common.Response(http.StatusInternalServerError, static.RESPONSE_INTERNAL_ERROR, err, nil)
@@ -27,7 +27,7 @@ package gitops
 //	if gitopsObj != nil {
 //		event := events.New(events.EVENT_SYNC, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName(), nil)
 //
-//		bytes, err := event.ToJson()
+//		bytes, err := event.ToJSON()
 //
 //		if err != nil {
 //			return common.Response(http.StatusInternalServerError, static.RESPONSE_INTERNAL_ERROR, err, nil)

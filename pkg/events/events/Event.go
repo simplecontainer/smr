@@ -113,7 +113,7 @@ func (event Event) IsManaged() bool {
 	return true
 }
 
-func (event Event) ToJson() ([]byte, error) {
+func (event Event) ToJSON() ([]byte, error) {
 	return json.Marshal(event)
 }
 

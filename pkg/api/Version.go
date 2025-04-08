@@ -8,5 +8,5 @@ import (
 )
 
 func (api *Api) GetVersion(c *gin.Context) {
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(api.Version)))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(api.Version)))
 }

@@ -226,11 +226,11 @@ func (c *Container) Clean() error {
 	return c.Platform.Clean()
 }
 
-func (c *Container) ToJson() ([]byte, error) {
+func (c *Container) ToJSON() ([]byte, error) {
 	var output = make(map[string]json.RawMessage)
 	var err error
 
-	output["Platform"], err = c.Platform.ToJson()
+	output["Platform"], err = c.Platform.ToJSON()
 
 	if err != nil {
 		return nil, err

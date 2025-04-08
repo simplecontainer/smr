@@ -65,7 +65,7 @@ type IContainer interface {
 	Logs(bool) (io.ReadCloser, error)
 	Clean() error
 
-	ToJson() ([]byte, error)
+	ToJSON() ([]byte, error)
 }
 
 type IPlatform interface {
@@ -107,7 +107,7 @@ type IPlatform interface {
 	Wait(string) error
 	Clean() error
 
-	ToJson() ([]byte, error)
+	ToJSON() ([]byte, error)
 }
 
 type Registry interface {

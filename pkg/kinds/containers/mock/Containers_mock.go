@@ -605,19 +605,19 @@ func (mr *MockIContainerMockRecorder) SyncNetwork() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncNetwork", reflect.TypeOf((*MockIContainer)(nil).SyncNetwork))
 }
 
-// ToJson mocks base method.
-func (m *MockIContainer) ToJson() ([]byte, error) {
+// ToJSON mocks base method.
+func (m *MockIContainer) ToJSON() ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ToJson")
+	ret := m.ctrl.Call(m, "ToJSON")
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ToJson indicates an expected call of ToJson.
-func (mr *MockIContainerMockRecorder) ToJson() *gomock.Call {
+// ToJSON indicates an expected call of ToJSON.
+func (mr *MockIContainerMockRecorder) ToJSON() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToJson", reflect.TypeOf((*MockIContainer)(nil).ToJson))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToJSON", reflect.TypeOf((*MockIContainer)(nil).ToJSON))
 }
 
 // UpdateDns mocks base method.
@@ -1099,19 +1099,19 @@ func (mr *MockIPlatformMockRecorder) SyncNetwork() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncNetwork", reflect.TypeOf((*MockIPlatform)(nil).SyncNetwork))
 }
 
-// ToJson mocks base method.
-func (m *MockIPlatform) ToJson() ([]byte, error) {
+// ToJSON mocks base method.
+func (m *MockIPlatform) ToJSON() ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ToJson")
+	ret := m.ctrl.Call(m, "ToJSON")
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ToJson indicates an expected call of ToJson.
-func (mr *MockIPlatformMockRecorder) ToJson() *gomock.Call {
+// ToJSON indicates an expected call of ToJSON.
+func (mr *MockIPlatformMockRecorder) ToJSON() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToJson", reflect.TypeOf((*MockIPlatform)(nil).ToJson))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToJSON", reflect.TypeOf((*MockIPlatform)(nil).ToJSON))
 }
 
 // UpdateDns mocks base method.

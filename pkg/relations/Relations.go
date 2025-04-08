@@ -35,6 +35,6 @@ func (defRegistry *RelationRegistry) GetDependencies(kind string) []string {
 	}
 }
 
-func (defRegistry *RelationRegistry) ToJson() ([]byte, error) {
+func (defRegistry *RelationRegistry) ToJSON() ([]byte, error) {
 	return json.Marshal(defRegistry)
 }

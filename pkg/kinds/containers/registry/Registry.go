@@ -123,7 +123,7 @@ func (registry *Registry) Sync(group string, name string) error {
 		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		bytes, err := container.ToJson()
+		bytes, err := container.ToJSON()
 
 		if err != nil {
 			return err

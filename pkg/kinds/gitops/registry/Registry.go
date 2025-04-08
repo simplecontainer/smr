@@ -69,7 +69,7 @@ func (registry *Registry) Sync(group string, name string) error {
 		format := f.New(gitopsObj.Definition.GetPrefix(), static.CATEGORY_STATE, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName())
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
-		bytes, err := gitopsObj.ToJson()
+		bytes, err := gitopsObj.ToJSON()
 
 		if err != nil {
 			return err

@@ -63,12 +63,12 @@ func (configuration *ConfigurationDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, configuration)
 }
 
-func (configuration *ConfigurationDefinition) ToJson() ([]byte, error) {
+func (configuration *ConfigurationDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(configuration)
 	return bytes, err
 }
 
-func (configuration *ConfigurationDefinition) ToJsonString() (string, error) {
+func (configuration *ConfigurationDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(configuration)
 	return string(bytes), err
 }

@@ -296,6 +296,6 @@ func (gitops *Gitops) ShouldSync() bool {
 	return gitops.AutomaticSync || gitops.ForceSync
 }
 
-func (gitops *Gitops) ToJson() ([]byte, error) {
+func (gitops *Gitops) ToJSON() ([]byte, error) {
 	return json.Marshal(gitops)
 }

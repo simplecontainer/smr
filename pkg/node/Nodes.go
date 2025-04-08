@@ -74,7 +74,7 @@ func (nodes *Nodes) Remove(node *Node) {
 	}
 
 	for i, n := range nodes.Nodes {
-		if n.URL == node.URL {
+		if n.NodeID == node.NodeID {
 			nodes.Nodes = append(nodes.Nodes[:i], nodes.Nodes[i+1:]...)
 		}
 	}

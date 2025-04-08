@@ -57,7 +57,7 @@ func (r *Records) AddARecord(domain string, ip string) ([]byte, error) {
 		r.ARecords.Map.Store(domain, AR)
 	}
 
-	return record.ToJson()
+	return record.ToJSON()
 }
 
 func (r *Records) RemoveARecord(domain string, ip string) ([]byte, error) {
@@ -72,7 +72,7 @@ func (r *Records) RemoveARecord(domain string, ip string) ([]byte, error) {
 	if len(record.Addresses) == 0 {
 		return nil, nil
 	} else {
-		return record.ToJson()
+		return record.ToJSON()
 	}
 }
 

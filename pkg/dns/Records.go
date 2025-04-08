@@ -53,6 +53,6 @@ func (AR *ARecord) Fetch(client *client.Http, user *authentication.User, domain 
 	}
 }
 
-func (AR *ARecord) ToJson() ([]byte, error) {
+func (AR *ARecord) ToJSON() ([]byte, error) {
 	return json.Marshal(AR.Addresses)
 }

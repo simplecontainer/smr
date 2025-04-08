@@ -59,12 +59,12 @@ func (httpauth *HttpAuthDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, httpauth)
 }
 
-func (httpauth *HttpAuthDefinition) ToJson() ([]byte, error) {
+func (httpauth *HttpAuthDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(httpauth)
 	return bytes, err
 }
 
-func (httpauth *HttpAuthDefinition) ToJsonString() (string, error) {
+func (httpauth *HttpAuthDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(httpauth)
 	return string(bytes), err
 }

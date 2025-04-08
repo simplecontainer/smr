@@ -109,7 +109,7 @@ func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *
 	for {
 		select {
 		case data := <-wss.Channels[position]:
-			bytes, err := data.ToJson()
+			bytes, err := data.ToJSON()
 			if err != nil {
 				logger.Log.Error("Failed to serialize event: ", zap.Error(err))
 				continue
