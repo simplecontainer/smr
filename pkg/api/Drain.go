@@ -89,7 +89,7 @@ func (api *Api) Drain(c *gin.Context) {
 		if n == nil {
 			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		} else {
-			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("https://%s/api/v1/drain", n.API), http.MethodPost, data)
+			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/api/v1/cluster/drain", n.API), http.MethodPost, data)
 			c.JSON(response.HttpStatus, response)
 		}
 	}

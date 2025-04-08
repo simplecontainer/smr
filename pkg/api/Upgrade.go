@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -81,10 +82,15 @@ func (api *Api) Upgrade(c *gin.Context) {
 					}
 
 					if gitopsEmpty && containersEmpty {
-						api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
-							Type:   raftpb.ConfChangeRemoveNode,
-							NodeID: control.Drain.NodeID,
-						}
+						var once sync.Once
+						once.Do(func() {
+							api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
+								Type:   raftpb.ConfChangeRemoveNode,
+								NodeID: control.Drain.NodeID,
+							}
+						})
+
+						ticker.Stop()
 					}
 					break
 				case n := <-api.Cluster.NodeFinalizer:
@@ -104,7 +110,7 @@ func (api *Api) Upgrade(c *gin.Context) {
 		if n == nil {
 			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		} else {
-			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("https://%s/api/v1/upgrade", n.API), http.MethodPost, data)
+			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/api/v1/cluster/upgrade", n.API), http.MethodPost, data)
 			c.JSON(response.HttpStatus, response)
 		}
 	}

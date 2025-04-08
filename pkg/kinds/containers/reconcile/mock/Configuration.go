@@ -14,10 +14,10 @@ func NewConfig(platform string) *configuration.Configuration {
 			Port: "1443",
 		},
 		KVStore: &configuration.KVStore{
-			Cluster:     []*node.Node{node.NewNode()},
-			Node:        1,
-			URL:         "172.0.0.2",
-			JoinCluster: false,
+			Cluster: []*node.Node{node.NewNode()},
+			Node:    1,
+			URL:     "172.0.0.2",
+			Join:    "",
 		},
 		Certificates: nil,
 		Environment: &configuration.Environment{

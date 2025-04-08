@@ -71,7 +71,8 @@ func SetFlags() {
 	flag.String("image", "", "Node image name")
 	flag.String("tag", "", "Node image tag")
 	flag.String("cluster", "", "SMR Cluster")
-	flag.String("join", "", "Join the cluster")
+	flag.Bool("join", false, "Join the raft")
+	flag.String("peer", "", "Peer for entering cluster first time. Format: https://host:port")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()

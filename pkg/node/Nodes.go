@@ -1,10 +1,6 @@
 package node
 
-import (
-	"encoding/json"
-	"github.com/docker/docker/client"
-	"io"
-)
+import "sort"
 
 func NewNodes() *Nodes {
 	return &Nodes{}
@@ -13,45 +9,12 @@ func NewNodes() *Nodes {
 func (nodes *Nodes) NewNode(nodeName string, url string, API string) *Node {
 	n := NewNode()
 
-	n.NodeID = nodes.generateID(uint64(0))
+	n.NodeID = nodes.GenerateID()
 	n.NodeName = nodeName
 	n.API = API
 	n.URL = url
 
 	return n
-}
-
-func (nodes *Nodes) NewNodeRequest(body io.ReadCloser, id uint64) (*Node, error) {
-	var data []byte
-	var err error
-
-	data, err = io.ReadAll(body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var request map[string]string
-	err = json.Unmarshal(data, &request)
-
-	if err != nil {
-		return nil, err
-	}
-
-	n := NewNode()
-
-	n.NodeID = nodes.generateID(id)
-	n.NodeName = request["nodeName"]
-	n.API = request["API"]
-	n.URL = request["node"]
-
-	_, err = client.ParseHostURL(n.URL)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return n, nil
 }
 
 func (nodes *Nodes) Add(node *Node) {
@@ -60,12 +23,35 @@ func (nodes *Nodes) Add(node *Node) {
 	}
 
 	for _, n := range nodes.Nodes {
-		if n.URL == node.URL {
+		if n.NodeID == node.NodeID {
 			return
 		}
 	}
 
 	nodes.Nodes = append(nodes.Nodes, node)
+
+	sort.Slice(nodes.Nodes, func(i, j int) bool {
+		return nodes.Nodes[i].NodeID < nodes.Nodes[j].NodeID
+	})
+}
+
+func (nodes *Nodes) AddOrUpdate(node *Node) {
+	if node == nil {
+		return
+	}
+
+	for i, n := range nodes.Nodes {
+		if n.NodeID == node.NodeID {
+			nodes.Nodes[i] = node
+			return
+		}
+	}
+
+	nodes.Nodes = append(nodes.Nodes, node)
+
+	sort.Slice(nodes.Nodes, func(i, j int) bool {
+		return nodes.Nodes[i].NodeID < nodes.Nodes[j].NodeID
+	})
 }
 
 func (nodes *Nodes) Remove(node *Node) {
@@ -108,20 +94,18 @@ func (nodes *Nodes) FindById(id uint64) *Node {
 	return nil
 }
 
-func (nodes *Nodes) generateID(currentNodeId uint64) uint64 {
-	maxID := uint64(0)
+func (nodes *Nodes) GenerateID() uint64 {
+	usedIDs := make(map[uint64]struct{})
 
 	for _, node := range nodes.Nodes {
-		if node.NodeID > maxID {
-			maxID = node.NodeID
+		usedIDs[node.NodeID] = struct{}{}
+	}
+
+	for i := uint64(1); ; i++ {
+		if _, exists := usedIDs[i]; !exists {
+			return i
 		}
 	}
-
-	if currentNodeId > maxID {
-		maxID = currentNodeId
-	}
-
-	return maxID + 1
 }
 
 func (nodes *Nodes) ToString() []string {

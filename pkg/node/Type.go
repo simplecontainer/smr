@@ -14,8 +14,8 @@ type Node struct {
 	Version    string
 	API        string
 	URL        string
-	ConfChange raftpb.ConfChange `json:"-"`
-	State      State             `json:"-"`
+	ConfChange raftpb.ConfChange `yaml:"-" json:"-"`
+	State      State
 }
 
 type State struct {

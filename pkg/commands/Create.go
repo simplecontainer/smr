@@ -48,10 +48,11 @@ func Create() {
 				api.Config.Certificates.IPs.Add("127.0.0.1")
 
 				api.Config.KVStore = &configuration.KVStore{
-					Cluster:     []*node.Node{},
-					Node:        nil,
-					URL:         viper.GetString("url"),
-					JoinCluster: viper.GetString("join"),
+					Cluster: []*node.Node{},
+					Node:    nil,
+					URL:     viper.GetString("url"),
+					Join:    viper.GetBool("join"),
+					Peer:    viper.GetString("peer"),
 				}
 
 				err = startup.Save(api.Config)

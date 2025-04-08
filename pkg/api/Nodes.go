@@ -9,9 +9,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"strconv"
 	"syscall"
@@ -33,24 +35,38 @@ func (api *Api) AddNode(c *gin.Context) {
 		return
 	}
 
-	newNode, err := api.Cluster.Cluster.NewNodeRequest(c.Request.Body, api.Cluster.Node.NodeID)
+	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		return
 	}
+
+	n := node.NewNode()
+
+	err = json.Unmarshal(data, n)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+		return
+	}
+
+	n.NodeID = api.Cluster.Cluster.GenerateID()
 
 	var bytes []byte
-	bytes, err = newNode.ToJSON()
+	bytes, err = n.ToJSON()
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		return
 	}
+
+	fmt.Println(api.Cluster)
+	fmt.Println(api.Cluster.KVStore)
 
 	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  newNode.NodeID,
+		NodeID:  n.NodeID,
 		Context: bytes,
 	}
 
@@ -136,13 +152,12 @@ func (api *Api) ListenNode() {
 				case raftpb.ConfChangeAddNode:
 					api.Cluster.Cluster.Add(&n)
 
-					//api.Cluster.Regenerate(api.Config, api.Keys)
-					//api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-
 					api.Config.KVStore.Node = api.Cluster.Node
 					api.Config.KVStore.URL = api.Cluster.Node.URL
 					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+
 					api.SaveClusterConfiguration()
+					startup.Save(api.Config)
 
 					api.Cluster.Regenerate(api.Config, api.Keys)
 					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
@@ -153,27 +168,24 @@ func (api *Api) ListenNode() {
 					break
 				case raftpb.ConfChangeRemoveNode:
 					nodeID := n.NodeID
-					api.Cluster.Cluster.Remove(&n)
 
-					api.Config.KVStore.Node = api.Cluster.Node
-					api.Config.KVStore.URL = api.Cluster.Node.URL
-					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+					if nodeID != api.Cluster.Node.NodeID {
+						api.Cluster.Cluster.Remove(&n)
 
-					api.SaveClusterConfiguration()
+						api.Config.KVStore.Node = api.Cluster.Node
+						api.Config.KVStore.URL = api.Cluster.Node.URL
+						api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 
-					api.Cluster.Regenerate(api.Config, api.Keys)
-					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-
-					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
-
-					logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
-
-					if nodeID == api.Cluster.Node.NodeID {
-						api.Config.KVStore.Cluster = nil
-						api.Config.KVStore.Node = nil
-
+						api.SaveClusterConfiguration()
 						startup.Save(api.Config)
 
+						api.Cluster.Regenerate(api.Config, api.Keys)
+						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+
+						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+
+						logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
+					} else {
 						api.Cluster.NodeFinalizer <- n
 						return
 					}

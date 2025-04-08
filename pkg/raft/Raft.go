@@ -175,8 +175,12 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 					if err != nil {
 						log.Println("Invalid node configuration sent - conf change ignored.")
 					} else {
-						rc.nodeUpdate <- *n
-						rc.transport.AddPeer(types.ID(cc.NodeID), []string{n.URL})
+						// Don't add itself
+
+						if uint64(rc.id) != cc.NodeID {
+							rc.transport.AddPeer(types.ID(cc.NodeID), []string{n.URL})
+							rc.nodeUpdate <- *n
+						}
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
@@ -184,11 +188,11 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				_ = n.Parse(cc)
 
 				if cc.NodeID == uint64(rc.id) {
-					log.Println("I've been removed from the cluster! Shutting down.")
+					rc.nodeUpdate <- *n
+				} else {
+					rc.transport.RemovePeer(types.ID(cc.NodeID))
+					rc.nodeUpdate <- *n
 				}
-
-				rc.transport.RemovePeer(types.ID(cc.NodeID))
-				rc.nodeUpdate <- *n
 				break
 			}
 		}
@@ -376,7 +380,7 @@ func (rc *RaftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	if snapshotToSave.Metadata.Index <= rc.appliedIndex {
 		log.Fatalf("snapshot index [%d] should > progress.appliedIndex [%d]", snapshotToSave.Metadata.Index, rc.appliedIndex)
 	}
-	rc.commitC <- nil // trigger kvstore to load snapshot
+	rc.commitC <- nil
 
 	rc.confState = snapshotToSave.Metadata.ConfState
 	rc.snapshotIndex = snapshotToSave.Metadata.Index
@@ -531,6 +535,7 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 
 func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
 	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers[rc.id-1]))
+
 	url, err := url.Parse(rc.Peers[rc.id-1])
 	if err != nil {
 		log.Fatalf("raft: Failed parsing URL (%v)", err)

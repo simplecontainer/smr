@@ -74,25 +74,33 @@ func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Clus
 
 	// Configure node users
 	if cluster != nil && cluster.Cluster != nil {
+		if keys.Clients == nil {
+			return nil, errors.New("certificates for the node missing")
+		}
+
 		for _, c := range cluster.Cluster.Nodes {
-			_, ok := keys.Clients[cluster.Node.NodeName]
+			if cluster.Node != nil {
+				_, ok := keys.Clients[cluster.Node.NodeName]
 
-			if ok {
-				httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[cluster.Node.NodeName])
+				if ok {
+					httpClient, err := GenerateHttpClient(keys.CA, keys.Clients[cluster.Node.NodeName])
 
-				if err != nil {
-					return nil, err
+					if err != nil {
+						return nil, err
+					}
+
+					hc.Append(c.NodeName, &Client{
+						Http:     httpClient,
+						Username: c.NodeName,
+						API:      c.API,
+						Domains:  keys.Clients[cluster.Node.NodeName].Certificate.DNSNames,
+						IPs:      keys.Clients[cluster.Node.NodeName].Certificate.IPAddresses,
+					})
+				} else {
+					return nil, errors.New("certificates for the node missing")
 				}
-
-				hc.Append(c.NodeName, &Client{
-					Http:     httpClient,
-					Username: c.NodeName,
-					API:      c.API,
-					Domains:  keys.Clients[cluster.Node.NodeName].Certificate.DNSNames,
-					IPs:      keys.Clients[cluster.Node.NodeName].Certificate.IPAddresses,
-				})
 			} else {
-				return nil, errors.New("certificates for the node missing")
+				return nil, errors.New("cluster node invalid")
 			}
 		}
 	}
