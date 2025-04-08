@@ -63,7 +63,7 @@ func (api *Api) Upgrade(c *gin.Context) {
 			for {
 				select {
 				case <-ctx.Done():
-					logger.Log.Error("draining timeout exceeded 160 seconds, drain aborted - could leave incosistent state")
+					logger.Log.Error("draining timeout exceeded 160 seconds, drain aborted - could leave inconsistent state")
 					return
 
 				case <-ticker.C:
@@ -88,8 +88,7 @@ func (api *Api) Upgrade(c *gin.Context) {
 					}
 					break
 				case n := <-api.Cluster.NodeFinalizer:
-					fmt.Println(n)
-					fmt.Println("Kill the switch")
+					logger.Log.Info("finalizing node", zap.Uint64("node", n.NodeID))
 
 					if err := control.Apply(c, api.Etcd); err != nil {
 						logger.Log.Error("upgrade start error", zap.Error(err))

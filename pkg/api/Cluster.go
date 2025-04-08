@@ -125,10 +125,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 				}
 
 				for _, n := range peers {
-					api.Cluster.Cluster.Add(n)
-
 					if n.URL == thisNode.URL {
 						api.Cluster.Node = n
+					} else {
+						api.Cluster.Cluster.Add(n)
 					}
 				}
 			} else {
