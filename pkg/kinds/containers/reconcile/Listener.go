@@ -1,11 +1,14 @@
 package reconcile
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"go.uber.org/zap"
 	"sync"
 )
 
@@ -30,13 +33,20 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 				containerWatcher.Logger.Error(err.Error())
 			}
 
-			shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
+			err = shared.Registry.Remove(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName())
+
+			if err != nil {
+				logger.Log.Error("failed to remove container state", zap.Error(err))
+			}
+
 			shared.Watchers.Remove(containerWatcher.Container.GetGroupIdentifier())
 
 			events.Dispatch(
 				events.NewKindEvent(events.EVENT_DELETED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
 				shared, containerWatcher.Container.GetRuntime().Node.NodeID,
 			)
+
+			fmt.Println("xxxx")
 
 			replicas := make([]platforms.IContainer, 0)
 			group := shared.Registry.FindGroup(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup())

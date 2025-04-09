@@ -96,6 +96,7 @@ func (status *Status) SetState(state string) error {
 	}
 
 	status.State = st
+	status.LastUpdate = time.Now()
 
 	return errors.New("failed to set state")
 }

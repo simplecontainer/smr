@@ -500,7 +500,6 @@ func (container *Docker) Rename(newName string) error {
 			return err
 		}
 
-		container.GeneratedName = newName
 		return nil
 	} else {
 		return errors.New("container is not found")

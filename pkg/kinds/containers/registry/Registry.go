@@ -2,6 +2,7 @@ package registry
 
 import (
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -33,7 +34,7 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 	defer registry.ContainersLock.Unlock()
 
 	if registry.Containers[common.GroupIdentifier(group, name)] == nil {
-		return errors.New("container not found")
+		return errors.New(fmt.Sprintf("container not found: %s", common.GroupIdentifier(group, name)))
 	} else {
 		delete(registry.Containers, common.GroupIdentifier(group, name))
 

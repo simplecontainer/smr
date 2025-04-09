@@ -141,7 +141,7 @@ func HandleDie(shared *shared.Shared, container platforms.IContainer, event ieve
 	if !reconcileIgnore(container.GetLabels()) {
 		containerW := shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName()))
 
-		if containerW.AllowPlatformEvents {
+		if containerW != nil && containerW.AllowPlatformEvents {
 			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", container.GetGeneratedName()))
 
 			container.GetStatus().GetPending().Clear()
