@@ -74,7 +74,10 @@ func GetState(containerWatcher *watcher.Container) state.State {
 	engine, err := containerWatcher.Container.GetState()
 
 	if err != nil {
-		return state.State{}
+		return state.State{
+			Error: err.Error(),
+			State: "",
+		}
 	}
 
 	return engine

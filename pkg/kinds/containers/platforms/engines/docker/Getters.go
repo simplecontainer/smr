@@ -22,6 +22,7 @@ func (container *Docker) GetState() (state.State, error) {
 	dockerContainer, err := internal.Get(container.GeneratedName)
 
 	if err != nil {
+		container.DockerState = ""
 		return state.State{}, err
 	}
 
