@@ -32,7 +32,8 @@ func (container *Docker) SyncNetwork() error {
 		networkInspected, err = internal.InspectNetwork(network.NetworkID)
 
 		if err != nil {
-			return err
+			container.RemoveNetworkInfo(container.DockerID, networkInspected.ID, network.IPAddress, networkInspected.Name)
+			continue
 		}
 
 		if container.Networks.Find(networkInspected.ID) != nil {
