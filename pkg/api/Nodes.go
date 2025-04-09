@@ -105,53 +105,55 @@ func (api *Api) RemoveNode(c *gin.Context) {
 }
 
 func (api *Api) GetNode(c *gin.Context) {
-	if c.Param("id") != "" {
-		nodeID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
-			return
-		}
-
-		n := api.Cluster.Cluster.FindById(nodeID)
-
-		if n == nil {
-			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
-		} else {
-			bytes, err := n.ToJSON()
-
-			if err != nil {
-				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
-				return
-			}
-
-			c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, network.ToJSON(bytes)))
-		}
-	} else {
-		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", nil, nil))
+	nodeID, err := api.parseNodeID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
+		return
 	}
+
+	n := api.Cluster.Cluster.FindById(nodeID)
+	if n == nil {
+		c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
+		return
+	}
+
+	bytes, err := n.ToJSON()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, network.ToJSON(bytes)))
 }
 
 func (api *Api) GetNodeVersion(c *gin.Context) {
-	if c.Param("id") != "" {
-		nodeID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
-			return
-		}
-
-		n := api.Cluster.Cluster.FindById(nodeID)
-
-		if n == nil {
-			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
-		} else {
-			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/version", n.API), http.MethodGet, nil)
-			c.JSON(response.HttpStatus, response)
-		}
-	} else {
-		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", nil, nil))
+	nodeID, err := api.parseNodeID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
+		return
 	}
+
+	n := api.Cluster.Cluster.FindById(nodeID)
+	if n == nil {
+		c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
+		return
+	}
+
+	response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/version", n.API), http.MethodGet, nil)
+	c.JSON(response.HttpStatus, response)
+}
+
+func (api *Api) parseNodeID(c *gin.Context) (uint64, error) {
+	if c.Param("id") == "" {
+		return 0, fmt.Errorf("missing node id")
+	}
+
+	nodeID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid node id format")
+	}
+
+	return nodeID, nil
 }
 
 func (api *Api) ListenNode() {

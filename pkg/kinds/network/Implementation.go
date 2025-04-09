@@ -10,7 +10,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
 	"github.com/simplecontainer/smr/pkg/static"
 	"net/http"
-	"time"
 )
 
 func (network *Network) Start() error {
@@ -23,67 +22,62 @@ func (network *Network) GetShared() interface{} {
 }
 
 func (network *Network) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
+	// Create request from JSON definition
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
-
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+		return network.createErrorResponse(http.StatusBadRequest, "invalid definition sent", err)
 	}
 
+	// Apply the request
 	obj, err := request.Apply(network.Shared.Client, user)
-
 	if err != nil {
-		return common.Response(http.StatusBadRequest, "", err, nil), err
+		return network.createErrorResponse(http.StatusBadRequest, "", err)
 	}
 
+	// Check if the network is local scoped to the node
 	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node.NodeID {
-		return common.Response(http.StatusOK, "networks are local scoped", err, nil), nil
+		return common.Response(http.StatusOK, "networks are local scoped", nil, nil), nil
 	}
 
+	// Create network object based on definition or existing object
 	var networkObj *implementation.Network
-
 	if obj.Exists() {
 		networkObj = implementation.New(obj.GetDefinitionByte())
 	} else {
 		networkObj = implementation.New(definition)
 	}
 
+	// Find the network members
 	members, found, err := networkObj.Find()
-
 	if err != nil {
-		return common.Response(http.StatusInternalServerError, "", err, nil), err
+		return network.createErrorResponse(http.StatusInternalServerError, "", err)
 	}
 
 	if found {
+		// If members exist, ask to disconnect them first
 		if len(members) > 0 {
-			return common.Response(http.StatusBadRequest, "", errors.New("disconnect all container from network and try again"), nil), err
-		} else {
-			err = networkObj.Remove()
-
-			if err != nil {
-				return common.Response(http.StatusInternalServerError, "", err, nil), err
-			}
-
-			for {
-				select {
-				case <-time.After(5 * time.Second):
-					return common.Response(http.StatusInternalServerError, "", errors.New("network didn't delete properly"), nil), err
-				case <-time.Tick(500 * time.Millisecond):
-					err = networkObj.Create()
-
-					if err == nil {
-						return common.Response(http.StatusOK, "object applied", nil, nil), nil
-					}
-				}
-			}
+			return common.Response(http.StatusBadRequest, "disconnect all container from network and try again", nil, nil), nil
 		}
-	} else {
-		err = networkObj.Create()
+
+		// Attempt to remove and recreate network
+		if err := networkObj.Remove(); err != nil {
+			return network.createErrorResponse(http.StatusInternalServerError, "", err)
+		}
+
+		// Try recreating the network with retries
+		if err := network.recreateNetworkWithRetry(networkObj); err != nil {
+			return network.createErrorResponse(http.StatusInternalServerError, "", err)
+		}
+
+		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 
-	if err != nil {
-		return common.Response(http.StatusInternalServerError, "internal error", err, nil), err
+	// Create network if it doesn't exist
+	if err := networkObj.Create(); err != nil {
+		return network.createErrorResponse(http.StatusInternalServerError, "internal error", err)
 	}
 
+	// Dispatch events
 	events.DispatchGroup([]events.Event{
 		events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
 		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
@@ -91,9 +85,16 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
+
+// Helper function for creating error responses
+func (network *Network) createErrorResponse(status int, message string, err error) (iresponse.Response, error) {
+	return common.Response(status, message, err, nil), err
+}
+
 func (network *Network) Replay(user *authentication.User) (iresponse.Response, error) {
 	return iresponse.Response{}, nil
 }
+
 func (network *Network) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 

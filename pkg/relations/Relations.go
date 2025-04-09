@@ -2,23 +2,24 @@ package relations
 
 import "encoding/json"
 
-func NewDefinitionRelationRegistry() *RelationRegistry {
-	defs := RelationRegistry{}
-	defs.Relations = make(map[string][]string)
+var emptyDependencies = []string{}
 
-	return &defs
+func NewDefinitionRelationRegistry() *RelationRegistry {
+	return &RelationRegistry{
+		Relations: make(map[string][]string),
+	}
 }
 
 func (defRegistry *RelationRegistry) InTree() {
-	defRegistry.Register("network", []string{""})
+	defRegistry.Register("network", emptyDependencies)
 	defRegistry.Register("containers", []string{"network", "resource", "configuration", "certkey"})
 	defRegistry.Register("gitops", []string{"certkey", "httpauth"})
 	defRegistry.Register("configuration", []string{"secret"})
 	defRegistry.Register("resource", []string{"configuration"})
-	defRegistry.Register("certkey", []string{})
-	defRegistry.Register("httpauth", []string{})
-	defRegistry.Register("custom", []string{})
-	defRegistry.Register("secret", []string{})
+	defRegistry.Register("certkey", emptyDependencies)
+	defRegistry.Register("httpauth", emptyDependencies)
+	defRegistry.Register("custom", emptyDependencies)
+	defRegistry.Register("secret", emptyDependencies)
 }
 
 func (defRegistry *RelationRegistry) Register(kind string, dependencies []string) {
@@ -26,13 +27,10 @@ func (defRegistry *RelationRegistry) Register(kind string, dependencies []string
 }
 
 func (defRegistry *RelationRegistry) GetDependencies(kind string) []string {
-	dependencies, ok := defRegistry.Relations[kind]
-
-	if ok {
+	if dependencies, ok := defRegistry.Relations[kind]; ok {
 		return dependencies
-	} else {
-		return []string{}
 	}
+	return emptyDependencies
 }
 
 func (defRegistry *RelationRegistry) ToJSON() ([]byte, error) {

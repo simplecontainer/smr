@@ -28,10 +28,10 @@ func New(agent string, client *client.Http, user *authentication.User) *Records 
 	ns, err := nameservers.NewfromResolvConf(false)
 
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("failed to load nameservers: %v", err))
 	}
 
-	r := &Records{
+	return &Records{
 		ARecords:    smaps.New(),
 		Client:      client,
 		User:        user,
@@ -39,105 +39,92 @@ func New(agent string, client *client.Http, user *authentication.User) *Records 
 		Lock:        &sync.RWMutex{},
 		Records:     make(chan KV.KV),
 	}
-
-	return r
 }
 
-func (r *Records) AddARecord(domain string, ip string) ([]byte, error) {
-	var record = &ARecord{}
-	tmp, ok := r.ARecords.Map.Load(domain)
-
-	if ok {
-		record = tmp.(*ARecord)
-		record.Append(ip)
-	} else {
-		AR := NewARecord()
-		AR.Append(ip)
-
-		r.ARecords.Map.Store(domain, AR)
+func (r *Records) getRecord(domain string) *ARecord {
+	r.Lock.RLock()
+	defer r.Lock.RUnlock()
+	record, _ := r.ARecords.Map.Load(domain)
+	if record != nil {
+		return record.(*ARecord)
 	}
+	return nil
+}
+
+func (r *Records) AddARecord(domain, ip string) ([]byte, error) {
+	record := r.getRecord(domain)
+	if record == nil {
+		record = NewARecord()
+		r.ARecords.Map.Store(domain, record)
+	}
+	record.Append(ip)
 
 	return record.ToJSON()
 }
 
-func (r *Records) RemoveARecord(domain string, ip string) ([]byte, error) {
-	var record = &ARecord{}
-	tmp, ok := r.ARecords.Map.Load(domain)
-
-	if ok {
-		record = tmp.(*ARecord)
-		record.Remove(ip)
+func (r *Records) RemoveARecord(domain, ip string) ([]byte, error) {
+	record := r.getRecord(domain)
+	if record == nil {
+		return nil, nil
 	}
+
+	record.Remove(ip)
 
 	if len(record.Addresses) == 0 {
 		return nil, nil
-	} else {
-		return record.ToJSON()
 	}
+	return record.ToJSON()
 }
 
 func (r *Records) Save(bytes []byte, domain string) error {
 	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
-
 	return obj.AddLocal(format, bytes)
 }
 
 func (r *Records) Remove(bytes []byte, domain string) (bool, error) {
 	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(r.Client.Clients[r.User.Username], r.User)
-
 	return obj.RemoveLocal(format)
 }
 
 func (r *Records) Find(domain string) ([]string, error) {
-	var record = &ARecord{}
-	tmp, ok := r.ARecords.Map.Load(strings.TrimSuffix(domain, "."))
+	trimmedDomain := strings.TrimSuffix(domain, ".")
+	record := r.getRecord(trimmedDomain)
 
-	if ok {
-		record = tmp.(*ARecord)
-		return record.Addresses, nil
-	} else {
-		return record.Fetch(r.Client, r.User, strings.TrimSuffix(domain, "."))
+	if record == nil {
+		return record.Fetch(r.Client, r.User, trimmedDomain)
 	}
+	return record.Addresses, nil
 }
 
 func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
 	if strings.HasSuffix(m.Question[0].Name, ".private.") {
 		return LookupLocal(records, m)
-	} else {
-		return LookupRemote(records, m)
 	}
+	return LookupRemote(records, m)
 }
 
 func LookupLocal(records *Records, m *dns.Msg) (*dns.Msg, error) {
 	for _, q := range m.Question {
-		switch q.Qtype {
-		case dns.TypeA:
+		if q.Qtype == dns.TypeA {
 			addresses, err := records.Find(q.Name)
-
-			if err == nil {
-				var rr dns.RR
-				var err error
-
-				for _, ip := range addresses {
-					rr, err = dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
-
-					if err == nil {
-						m.Answer = append(m.Answer, rr)
-					}
-				}
-
-				return m, nil
-			} else {
+			if err != nil {
 				return m, err
 			}
-		default:
-			return m, ErrNotFound
+
+			for _, ip := range addresses {
+				rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
+				if err != nil {
+					return m, fmt.Errorf("failed to create RR: %v", err)
+				}
+				m.Answer = append(m.Answer, rr)
+			}
+
+			return m, nil
 		}
 	}
-
-	return m, errors.New("questions empty")
+	return m, ErrNotFound
 }
 
 func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, error) {
@@ -149,16 +136,12 @@ func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, error) {
 		Attempts: 5,
 	}
 
-	c := new(dns.Client)
+	client := new(dns.Client)
 	m.RecursionDesired = true
 
-	var r *dns.Msg
-	var err error
-
-	r, _, err = c.Exchange(m, net.JoinHostPort(config.Servers[0], config.Port))
-
+	r, _, err := client.Exchange(m, net.JoinHostPort(config.Servers[0], config.Port))
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("failed to perform DNS exchange: %v", err)
 	}
 
 	if r.Rcode != dns.RcodeSuccess {

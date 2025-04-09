@@ -101,7 +101,6 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
-
 func (containers *Containers) Replay(user *authentication.User) (iresponse.Response, error) {
 	obj := objects.New(containers.Shared.Client.Clients[user.Username], user)
 
@@ -128,7 +127,6 @@ func (containers *Containers) Replay(user *authentication.User) (iresponse.Respo
 
 	return common.Response(http.StatusOK, "containers replayed", nil, nil), nil
 }
-
 func (containers *Containers) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)
 

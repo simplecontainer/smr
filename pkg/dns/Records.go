@@ -10,47 +10,51 @@ import (
 
 func NewARecord() *ARecord {
 	return &ARecord{
-		[]string{},
+		Addresses: []string{},
 	}
 }
 
 func (AR *ARecord) Append(ip string) {
-	for _, i := range AR.Addresses {
-		if i == ip {
-			return
+	if !AR.contains(ip) {
+		AR.Addresses = append(AR.Addresses, ip)
+	}
+}
+
+func (AR *ARecord) contains(ip string) bool {
+	for _, existingIP := range AR.Addresses {
+		if existingIP == ip {
+			return true
 		}
 	}
-
-	AR.Addresses = append(AR.Addresses, ip)
+	return false
 }
 
 func (AR *ARecord) Remove(ip string) {
-	for i, ARip := range AR.Addresses {
-		if ARip == ip {
-			AR.Addresses = append(AR.Addresses[:i], AR.Addresses[i+1:]...)
+	var newAddresses []string
+	for _, existingIP := range AR.Addresses {
+		if existingIP != ip {
+			newAddresses = append(newAddresses, existingIP)
 		}
 	}
+	AR.Addresses = newAddresses
 }
 
 func (AR *ARecord) Fetch(client *client.Http, user *authentication.User, domain string) ([]string, error) {
 	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(client.Clients[user.Username], user)
 
-	obj.Find(format)
-
-	if obj.Exists() {
-		records := make([]string, 0)
-
-		err := json.Unmarshal(obj.GetDefinitionByte(), &records)
-
-		if err != nil {
-			return []string{}, ErrNotFound
-		}
-
-		return records, nil
-	} else {
-		return []string{}, ErrNotFound
+	err := obj.Find(format)
+	if err != nil || !obj.Exists() {
+		return nil, ErrNotFound
 	}
+
+	var records []string
+	err = json.Unmarshal(obj.GetDefinitionByte(), &records)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+
+	return records, nil
 }
 
 func (AR *ARecord) ToJSON() ([]byte, error) {

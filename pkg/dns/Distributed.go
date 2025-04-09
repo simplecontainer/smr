@@ -10,36 +10,29 @@ import (
 )
 
 func (r *Records) ListenRecords() {
-	for {
-		select {
-		case data := <-r.Records:
-			// Be careful to not break or return we want this to run forever
-			d := Distributed{}
-			err := json.Unmarshal(data.Val, &d)
+	for data := range r.Records {
+		d := Distributed{}
+		err := json.Unmarshal(data.Val, &d)
 
-			format := f.NewFromString(data.Key)
-			acks.ACKS.Ack(format.GetUUID())
+		format := f.NewFromString(data.Key)
+		acks.ACKS.Ack(format.GetUUID())
 
-			if err != nil {
-				logger.Log.Error(err.Error())
-				break
-			}
+		if err != nil {
+			logger.Log.Error(err.Error())
+			continue
+		}
 
-			switch d.Action {
-			case AddRecord:
-				r.AddAndSave(d.Domain, d.IP)
-				r.AddAndSave(d.Headless, d.IP)
-
-				break
-			case RemoveRecord:
-				r.RemoveAndSave(d.Domain, d.IP)
-				r.RemoveAndSave(d.Headless, d.IP)
-
-				break
-			}
-			break
+		switch d.Action {
+		case AddRecord:
+			r.processRecord(d.Domain, d.IP, r.AddAndSave)
+		case RemoveRecord:
+			r.processRecord(d.Domain, d.IP, r.RemoveAndSave)
 		}
 	}
+}
+
+func (r *Records) processRecord(domain, ip string, actionFunc func(string, string)) {
+	actionFunc(domain, ip)
 }
 
 func (r *Records) Propose(domain string, ip string, action uint8) error {
@@ -61,30 +54,21 @@ func (r *Records) Propose(domain string, ip string, action uint8) error {
 
 	return obj.Wait(format, bytes)
 }
+
 func (r *Records) AddAndSave(domain string, ip string) {
-	var addresses []byte
-	var err error
-
-	addresses, err = r.AddARecord(domain, ip)
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
-
-	err = r.Save(addresses, domain)
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
+	r.saveRecord(r.AddARecord, domain, ip)
 }
-func (r *Records) RemoveAndSave(domain string, ip string) {
-	var addresses []byte
-	var err error
 
-	addresses, err = r.RemoveARecord(domain, ip)
+func (r *Records) RemoveAndSave(domain string, ip string) {
+	r.saveRecord(r.RemoveARecord, domain, ip)
+}
+
+func (r *Records) saveRecord(actionFunc func(string, string) ([]byte, error), domain string, ip string) {
+	addresses, err := actionFunc(domain, ip)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
+		return
 	}
 
 	if addresses == nil {

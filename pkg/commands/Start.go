@@ -190,8 +190,7 @@ func Start() {
 					{
 						cluster.GET("/", api.GetCluster)
 						cluster.POST("/start", api.StartCluster)
-						cluster.POST("/drain", api.Drain)
-						cluster.POST("/upgrade", api.Upgrade)
+						cluster.POST("/control", api.Control)
 						cluster.GET("/nodes", api.Nodes)
 						cluster.GET("/node/:id", api.GetNode)
 						cluster.GET("/node/version/:id", api.GetNodeVersion)
