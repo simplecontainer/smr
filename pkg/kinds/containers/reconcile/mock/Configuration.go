@@ -6,6 +6,10 @@ import (
 )
 
 func NewConfig(platform string) *configuration.Configuration {
+	n := node.NewNode()
+	n.NodeID = 1
+	n.NodeName = "smr-1"
+
 	return &configuration.Configuration{
 		Platform: platform,
 		NodeName: "node-1",
@@ -15,9 +19,9 @@ func NewConfig(platform string) *configuration.Configuration {
 		},
 		KVStore: &configuration.KVStore{
 			Cluster: []*node.Node{node.NewNode()},
-			Node:    1,
+			Node:    n,
 			URL:     "172.0.0.2",
-			Join:    "",
+			Join:    false,
 		},
 		Certificates: nil,
 		Environment: &configuration.Environment{

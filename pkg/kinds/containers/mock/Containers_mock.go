@@ -845,6 +845,21 @@ func (mr *MockIPlatformMockRecorder) GetId() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetId", reflect.TypeOf((*MockIPlatform)(nil).GetId))
 }
 
+// GetIndex mocks base method.
+func (m *MockIPlatform) GetIndex() (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIndex")
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIndex indicates an expected call of GetIndex.
+func (mr *MockIPlatformMockRecorder) GetIndex() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndex", reflect.TypeOf((*MockIPlatform)(nil).GetIndex))
+}
+
 // GetInit mocks base method.
 func (m *MockIPlatform) GetInit() platforms.IPlatform {
 	m.ctrl.T.Helper()
