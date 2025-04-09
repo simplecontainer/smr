@@ -21,6 +21,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
@@ -151,12 +152,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 	}
 
-	fmt.Println(api.Cluster.Node)
-
-	for _, n := range api.Cluster.Cluster.Nodes {
-		fmt.Println(n)
-	}
-
 	api.Manager.Cluster = api.Cluster
 
 	CAPool := x509.NewCertPool()
@@ -185,6 +180,26 @@ func (api *Api) StartCluster(c *gin.Context) {
 	}
 
 	api.SaveClusterConfiguration()
+
+	go func() {
+		select {
+		case <-api.Cluster.InSync:
+			// Replay after RAFT synced with cluster
+
+			_, err = api.Manager.KindsRegistry[static.KIND_CONTAINERS].Replay(api.Manager.User)
+
+			if err != nil {
+				logger.Log.Error("failed to replay containers", zap.Error(err))
+			}
+
+			_, err = api.Manager.KindsRegistry[static.KIND_GITOPS].Replay(api.Manager.User)
+
+			if err != nil {
+				logger.Log.Error("failed to replay gitops", zap.Error(err))
+			}
+			break
+		}
+	}()
 
 	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC, api.Replication.Informer, api.Wss)
 	go api.ListenNode()

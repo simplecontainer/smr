@@ -256,6 +256,10 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 		return err
 	}
 
+	for _, depends := range container.Definition.Spec.Dependencies {
+		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, depends.Group, depends.Name))
+	}
+
 	return err
 }
 func (container *Docker) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {

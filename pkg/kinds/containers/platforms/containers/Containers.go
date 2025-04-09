@@ -112,7 +112,7 @@ func (c *Container) SyncNetwork() error {
 
 func (c *Container) HasDependencyOn(kind string, group string, name string) bool {
 	for _, format := range c.GetRuntime().ObjectDependencies {
-		if format.GetName() == name && format.GetGroup() == group && format.GetKind() == kind {
+		if (format.GetName() == name || format.GetName() == "*") && format.GetGroup() == group && format.GetKind() == kind {
 			return true
 		}
 	}

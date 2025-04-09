@@ -16,6 +16,7 @@ type Shared struct {
 	DnsCache *dns.Records
 	Manager  *manager.Manager
 	Client   *client.Http
+	Replay   bool
 }
 
 func (shared *Shared) GetManager() *manager.Manager {

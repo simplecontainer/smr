@@ -35,34 +35,32 @@ func (replication *Replication) ListenData(agent string) {
 		select {
 		case data, ok := <-replication.DataC:
 			if ok {
-				go func() {
-					format := f.NewFromString(data.Key)
+				format := f.NewFromString(data.Key)
 
-					if !format.IsValid() {
-						logger.Log.Error("invalid format distributed", zap.String("format", data.Key))
-					} else {
-						switch format.GetCategory() {
-						case static.CATEGORY_PLAIN:
-							replication.HandlePlain(format, data)
-							break
-						case static.CATEGORY_STATE:
-							replication.HandlePlain(format, data)
-							break
-						case static.CATEGORY_KIND:
-							replication.HandleObject(format, data)
-							break
-						case static.CATEGORY_DNS:
-							replication.DnsUpdatesC <- data
-							break
-						case static.CATEGORY_EVENT:
-							replication.EventsC <- data
-							break
-						default:
-							replication.HandleOutside(data)
-							break
-						}
+				if !format.IsValid() {
+					logger.Log.Error("invalid format distributed", zap.String("format", data.Key))
+				} else {
+					switch format.GetCategory() {
+					case static.CATEGORY_PLAIN:
+						replication.HandlePlain(format, data)
+						break
+					case static.CATEGORY_STATE:
+						replication.HandlePlain(format, data)
+						break
+					case static.CATEGORY_KIND:
+						replication.HandleObject(format, data)
+						break
+					case static.CATEGORY_DNS:
+						replication.DnsUpdatesC <- data
+						break
+					case static.CATEGORY_EVENT:
+						replication.EventsC <- data
+						break
+					default:
+						replication.HandleOutside(data)
+						break
 					}
-				}()
+				}
 				break
 			}
 		}

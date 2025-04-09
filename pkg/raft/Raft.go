@@ -190,8 +190,6 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
-				fmt.Println("Got config change!", cc.Context)
-
 				n := node.NewNode()
 				_ = n.Parse(cc)
 
@@ -204,13 +202,12 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				}
 
 				if rc.started.After(control.Timestamp) {
-					fmt.Println(string(cc.Context))
-
 					logger.Log.Info("ignoring control message since it happened before our lifetime")
 					continue
 				}
 
 				if cc.NodeID == uint64(rc.id) {
+					fmt.Println("abort node")
 					return nil, false
 				} else {
 					rc.transport.RemovePeer(types.ID(cc.NodeID))
@@ -306,6 +303,7 @@ func (rc *RaftNode) writeError(err error) {
 	rc.errorC <- err
 	close(rc.errorC)
 	rc.node.Stop()
+	close(rc.stopc)
 }
 
 func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
@@ -382,13 +380,19 @@ func (rc *RaftNode) stop() {
 	rc.stopHTTP()
 	close(rc.commitC)
 	close(rc.errorC)
+
 	rc.node.Stop()
+	close(rc.stopc)
 }
 
 func (rc *RaftNode) stopHTTP() {
 	rc.transport.Stop()
 	close(rc.httpstopc)
-	<-rc.httpdonec
+	close(rc.httpdonec)
+}
+
+func (rc *RaftNode) Done() <-chan struct{} {
+	return rc.stopc
 }
 
 func (rc *RaftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
@@ -596,12 +600,12 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
 	}
 
 	select {
-	case <-rc.httpstopc:
+	case <-rc.httpdonec:
+		return nil
 	default:
 		log.Fatalf("raft: Failed to serve rafthttp (%v)", err)
 	}
 
-	close(rc.httpdonec)
 	return nil
 }
 

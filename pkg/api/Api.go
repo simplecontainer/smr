@@ -79,6 +79,7 @@ func (api *Api) SetupEtcd() {
 
 func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error {
 	proposeC := make(chan string)
+	insyncC := make(chan bool)
 	confChangeC := make(chan raftpb.ConfChange)
 	nodeUpdate := make(chan node.Node)
 	nodeFinalizer := make(chan node.Node)
@@ -95,7 +96,7 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *clust
 	api.Manager.Replication = api.Replication
 
 	var err error
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, api.Replication.DataC, n)
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, api.Replication.DataC, insyncC, join, n)
 
 	if err != nil {
 		return err
@@ -104,6 +105,7 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *clust
 	api.Cluster.RaftNode = rn
 	api.Cluster.KVStore.ConfChangeC = confChangeC
 	api.Cluster.KVStore.Node = n
+	api.Cluster.InSync = insyncC
 	api.Cluster.NodeConf = nodeUpdate
 	api.Cluster.NodeFinalizer = nodeFinalizer
 

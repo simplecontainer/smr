@@ -25,8 +25,8 @@ func (ContainerWatcher *Containers) Remove(groupidentifier string) {
 }
 
 func (ContainerWatcher *Containers) Drain() {
-	ContainerWatcher.Lock.RLock()
-	defer ContainerWatcher.Lock.RUnlock()
+	ContainerWatcher.Lock.Lock()
+	defer ContainerWatcher.Lock.Unlock()
 
 	for _, watcher := range ContainerWatcher.Watchers {
 		watcher.DeleteC <- watcher.Container

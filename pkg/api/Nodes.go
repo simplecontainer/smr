@@ -194,6 +194,8 @@ func (api *Api) ListenNode() {
 						logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
 					} else {
 						if api.Cluster.RaftNode.IsLeader.Load() {
+							logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
+
 							ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 							api.Cluster.RaftNode.TransferLeadership(ctx, api.Cluster.Peers().Nodes[0].NodeID)
 
@@ -210,12 +212,20 @@ func (api *Api) ListenNode() {
 								case <-ticker.C:
 								}
 							}
+
+							logger.Log.Info(fmt.Sprintf("transefered leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
 						}
 
-						api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+						go func() {
+							<-api.Cluster.RaftNode.Done()
 
-						api.Cluster.NodeFinalizer <- n
-						return
+							logger.Log.Info("raft is stopped")
+							api.Cluster.NodeFinalizer <- n
+
+							return
+						}()
+
+						api.Cluster.KVStore.ConfChangeC <- n.ConfChange
 					}
 				}
 			} else {

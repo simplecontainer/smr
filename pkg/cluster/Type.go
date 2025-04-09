@@ -8,6 +8,7 @@ import (
 type Cluster struct {
 	Node          *node.Node
 	Cluster       *node.Nodes
+	InSync        chan bool
 	NodeConf      chan node.Node
 	NodeFinalizer chan node.Node
 	KVStore       *raft.KVStore

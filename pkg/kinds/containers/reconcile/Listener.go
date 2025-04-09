@@ -1,7 +1,6 @@
 package reconcile
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
@@ -46,8 +45,6 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 				shared, containerWatcher.Container.GetRuntime().Node.NodeID,
 			)
 
-			fmt.Println("xxxx")
-
 			replicas := make([]platforms.IContainer, 0)
 			group := shared.Registry.FindGroup(containerWatcher.Container.GetDefinition().GetPrefix(), containerWatcher.Container.GetGroup())
 
@@ -61,6 +58,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 				events.DispatchGroup([]events.Event{
 					events.NewKindEvent(events.EVENT_DELETED, containerWatcher.Container.GetDefinition(), nil),
 					events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+					events.NewKindEvent(events.EVENT_DEPENDENCY, containerWatcher.Container.GetDefinition(), nil),
 				}, shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode())
 			}
 

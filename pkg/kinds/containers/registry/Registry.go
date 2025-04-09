@@ -36,8 +36,6 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 	if registry.Containers[common.GroupIdentifier(group, name)] == nil {
 		return errors.New(fmt.Sprintf("container not found: %s", common.GroupIdentifier(group, name)))
 	} else {
-		delete(registry.Containers, common.GroupIdentifier(group, name))
-
 		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
@@ -46,6 +44,8 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 		if err != nil {
 			return err
 		}
+
+		delete(registry.Containers, common.GroupIdentifier(group, name))
 
 		return nil
 	}
@@ -124,6 +124,7 @@ func (registry *Registry) Sync(group string, name string) error {
 		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
+		container.GetState()
 		bytes, err := container.ToJSON()
 
 		if err != nil {

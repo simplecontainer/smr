@@ -45,9 +45,6 @@ func (api *Api) Upgrade(c *gin.Context) {
 	}
 
 	if api.Cluster.Node.NodeID == control.Drain.NodeID {
-		api.Cluster.Node.SetDrain(true)
-		api.Cluster.Node.SetUpgrade(true)
-
 		api.Manager.KindsRegistry[static.KIND_GITOPS].GetShared().(*shared.Shared).Watchers.Drain()
 		api.Manager.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*cshared.Shared).Watchers.Drain()
 
@@ -82,6 +79,9 @@ func (api *Api) Upgrade(c *gin.Context) {
 						once := sync.Once{}
 
 						once.Do(func() {
+							api.Cluster.Node.SetDrain(true)
+							api.Cluster.Node.SetUpgrade(true)
+
 							api.Cluster.Node.ConfChange = raftpb.ConfChange{
 								Type:    raftpb.ConfChangeRemoveNode,
 								NodeID:  control.Drain.NodeID,
@@ -123,7 +123,6 @@ func (api *Api) Upgrade(c *gin.Context) {
 		if n == nil {
 			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		} else {
-			fmt.Println(n)
 			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/api/v1/cluster/upgrade", n.API), http.MethodPost, data)
 			c.JSON(response.HttpStatus, response)
 		}

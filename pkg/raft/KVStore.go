@@ -34,20 +34,21 @@ import (
 type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
 	DataC       chan KV.KV
-	EventsC     chan KV.KV
+	InSyncC     chan bool
+	JoinInSync  bool
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
 	Node        *node.Node
 	mu          sync.RWMutex
-	kvStore     map[string]string
 	snapshotter *snap.Snapshotter
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, node *node.Node) (*KVStore, error) {
+func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, node *node.Node) (*KVStore, error) {
 	s := &KVStore{
 		proposeC:    proposeC,
 		DataC:       dataC,
-		kvStore:     make(map[string]string),
+		InSyncC:     insyncC,
 		snapshotter: snapshotter,
+		JoinInSync:  join,
 		Node:        node,
 	}
 
@@ -105,6 +106,11 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node.NodeID)
 			}
 
+			if s.JoinInSync {
+				s.JoinInSync = false
+				s.InSyncC <- true
+			}
+
 			s.mu.Unlock()
 
 			close(commit.applyDoneC)
@@ -120,7 +126,8 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 func (s *KVStore) GetSnapshot() ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return json.Marshal(s.kvStore)
+
+	return json.Marshal([]byte{})
 }
 
 func (s *KVStore) loadSnapshot() (*raftpb.Snapshot, error) {

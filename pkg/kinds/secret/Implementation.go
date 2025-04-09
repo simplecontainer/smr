@@ -39,6 +39,9 @@ func (secret *Secret) Apply(user *authentication.User, definition []byte, agent 
 		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 }
+func (secret *Secret) Replay(user *authentication.User) (iresponse.Response, error) {
+	return iresponse.Response{}, nil
+}
 func (secret *Secret) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_SECRET, definition)
 
