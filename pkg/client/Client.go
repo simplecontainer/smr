@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/cluster"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"net"
 	"net/http"
@@ -52,7 +53,7 @@ func (http *Http) FindValidFor(DomainOrIp string) *Client {
 	return nil
 }
 
-func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Cluster) (*Http, error) {
+func GenerateHttpClients(nodeName string, keys *keys.Keys, hostPort configuration.HostPort, cluster *cluster.Cluster) (*Http, error) {
 	hc := NewHttpClients()
 
 	// Configure custom users
@@ -66,7 +67,7 @@ func GenerateHttpClients(nodeName string, keys *keys.Keys, cluster *cluster.Clus
 		hc.Append(username, &Client{
 			Http:     httpClient,
 			Username: username,
-			API:      fmt.Sprintf("%s:%s", c.Certificate.DNSNames[0], "1443"),
+			API:      fmt.Sprintf("https://%s:%s", c.Certificate.DNSNames[0], hostPort.Port),
 			Domains:  c.Certificate.DNSNames,
 			IPs:      c.Certificate.IPAddresses,
 		})

@@ -3,8 +3,10 @@ package raft
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/controler"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
@@ -16,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -42,11 +45,11 @@ type RaftNode struct {
 	commitC     chan<- *Commit // entries committed to log (k,v)
 	errorC      chan<- error   // errors from raft session
 
-	id          int      // client ID for raft session
-	Peers       []string // raft peer URLs
-	join        bool     // node is joining an existing cluster
-	waldir      string   // path to WAL directory
-	snapdir     string   // path to snapshot directory
+	id          int         // client ID for raft session
+	Peers       *node.Nodes // raft peer URLs
+	join        bool        // node is joining an existing cluster
+	waldir      string      // path to WAL directory
+	snapdir     string      // path to snapshot directory
 	getSnapshot func() ([]byte, error)
 
 	confState     raftpb.ConfState
@@ -54,8 +57,10 @@ type RaftNode struct {
 	appliedIndex  uint64
 
 	node        raft.Node
+	IsLeader    atomic.Bool
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
+	started     time.Time
 
 	snapshotter      *snap.Snapshotter
 	snapshotterReady chan *snap.Snapshotter // signals when snapshotter is ready
@@ -90,7 +95,7 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 		commitC:     commitC,
 		errorC:      errorC,
 		id:          int(id),
-		Peers:       peers.ToString(),
+		Peers:       peers,
 		join:        join,
 		waldir:      fmt.Sprintf("/home/node/smr/persistent/smr-%d", id),
 		snapdir:     fmt.Sprintf("/home/node/smr/persistent/smr-%d-snap", id),
@@ -99,6 +104,8 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 		stopc:       make(chan struct{}),
 		httpstopc:   make(chan struct{}),
 		httpdonec:   make(chan struct{}),
+
+		started: time.Now(),
 
 		TLSConfig: TLSConfig,
 
@@ -179,19 +186,34 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 
 						if uint64(rc.id) != cc.NodeID {
 							rc.transport.AddPeer(types.ID(cc.NodeID), []string{n.URL})
-							rc.nodeUpdate <- *n
 						}
 					}
 				}
 			case raftpb.ConfChangeRemoveNode:
+				fmt.Println("Got config change!", cc.Context)
+
 				n := node.NewNode()
 				_ = n.Parse(cc)
 
+				control := controler.New()
+
+				err := json.Unmarshal(cc.Context, control)
+
+				if err != nil {
+					panic("invalid control in node context for removal")
+				}
+
+				if rc.started.After(control.Timestamp) {
+					fmt.Println(string(cc.Context))
+
+					logger.Log.Info("ignoring control message since it happened before our lifetime")
+					continue
+				}
+
 				if cc.NodeID == uint64(rc.id) {
-					rc.nodeUpdate <- *n
+					return nil, false
 				} else {
 					rc.transport.RemovePeer(types.ID(cc.NodeID))
-					rc.nodeUpdate <- *n
 				}
 				break
 			}
@@ -300,7 +322,7 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	// signal replay has finished
 	rc.snapshotterReady <- rc.snapshotter
 
-	rpeers := make([]raft.Peer, len(rc.Peers))
+	rpeers := make([]raft.Peer, len(rc.Peers.ToString()))
 	for i := range rpeers {
 		rpeers[i] = raft.Peer{ID: uint64(i + 1)}
 	}
@@ -345,9 +367,9 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 		panic(err)
 	}
 
-	for i := range rc.Peers {
+	for i := range rc.Peers.ToString() {
 		if i+1 != rc.id {
-			rc.transport.AddPeer(types.ID(i+1), []string{rc.Peers[i]})
+			rc.transport.AddPeer(types.ID(i+1), []string{rc.Peers.ToString()[i]})
 		}
 	}
 
@@ -431,6 +453,10 @@ func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	rc.snapshotIndex = rc.appliedIndex
 }
 
+func (rc *RaftNode) TransferLeadership(ctx context.Context, nodeID uint64) {
+	rc.node.TransferLeadership(ctx, uint64(rc.id), nodeID)
+}
+
 func (rc *RaftNode) serveChannels() {
 	snap, err := rc.raftStorage.Snapshot()
 	if err != nil {
@@ -495,19 +521,29 @@ func (rc *RaftNode) serveChannels() {
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				rc.saveSnap(rd.Snapshot)
 			}
+
 			rc.wal.Save(rd.HardState, rd.Entries)
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				rc.raftStorage.ApplySnapshot(rd.Snapshot)
 				rc.publishSnapshot(rd.Snapshot)
 			}
+
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rc.processMessages(rd.Messages))
+
+			if rd.SoftState != nil {
+				rc.IsLeader.Store(rd.SoftState.RaftState == raft.StateLeader)
+			}
+
 			applyDoneC, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
+
 			if !ok {
 				rc.stop()
 				return
 			}
+
 			rc.maybeTriggerSnapshot(applyDoneC)
+
 			rc.node.Advance()
 
 		case err := <-rc.transport.ErrorC:
@@ -534,9 +570,9 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 }
 
 func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
-	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers[rc.id-1]))
+	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers.ToString()[rc.id-1]))
 
-	url, err := url.Parse(rc.Peers[rc.id-1])
+	url, err := url.Parse(rc.Peers.ToString()[rc.id-1])
 	if err != nil {
 		log.Fatalf("raft: Failed parsing URL (%v)", err)
 	}

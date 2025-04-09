@@ -16,7 +16,6 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -46,8 +45,6 @@ func (api *Api) Upgrade(c *gin.Context) {
 	}
 
 	if api.Cluster.Node.NodeID == control.Drain.NodeID {
-		c.AddParam("node", strconv.FormatUint(api.Cluster.Node.NodeID, 10))
-
 		api.Cluster.Node.SetDrain(true)
 		api.Cluster.Node.SetUpgrade(true)
 
@@ -58,7 +55,7 @@ func (api *Api) Upgrade(c *gin.Context) {
 			ctx, cancel := context.WithTimeout(context.Background(), 160*time.Second)
 			defer cancel()
 
-			ticker := time.NewTicker(1 * time.Second)
+			ticker := time.NewTicker(500 * time.Millisecond)
 			defer ticker.Stop()
 
 			for {
@@ -82,22 +79,38 @@ func (api *Api) Upgrade(c *gin.Context) {
 					}
 
 					if gitopsEmpty && containersEmpty {
-						var once sync.Once
-						once.Do(func() {
-							api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
-								Type:   raftpb.ConfChangeRemoveNode,
-								NodeID: control.Drain.NodeID,
-							}
-						})
+						once := sync.Once{}
 
-						ticker.Stop()
+						once.Do(func() {
+							api.Cluster.Node.ConfChange = raftpb.ConfChange{
+								Type:    raftpb.ConfChangeRemoveNode,
+								NodeID:  control.Drain.NodeID,
+								Context: data,
+							}
+
+							api.Cluster.NodeConf <- *api.Cluster.Node
+							ticker.Stop()
+						})
 					}
 					break
 				case n := <-api.Cluster.NodeFinalizer:
-					logger.Log.Info("finalizing node", zap.Uint64("node", n.NodeID))
+					controlTmp := controler.New()
 
-					if err := control.Apply(c, api.Etcd); err != nil {
-						logger.Log.Error("upgrade start error", zap.Error(err))
+					err := json.Unmarshal(n.ConfChange.Context, controlTmp)
+
+					if err != nil {
+						logger.Log.Info("invalid finalizer context", zap.Error(err))
+						break
+					}
+
+					if controlTmp.Timestamp == control.Timestamp {
+						logger.Log.Info("finalizing node", zap.Uint64("node", n.NodeID))
+
+						if err := control.Apply(c, api.Etcd); err != nil {
+							logger.Log.Error("upgrade start error", zap.Error(err))
+						}
+					} else {
+						logger.Log.Error("timestamp of control mismatch")
 					}
 				}
 			}
@@ -110,6 +123,7 @@ func (api *Api) Upgrade(c *gin.Context) {
 		if n == nil {
 			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		} else {
+			fmt.Println(n)
 			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/api/v1/cluster/upgrade", n.API), http.MethodPost, data)
 			c.JSON(response.HttpStatus, response)
 		}

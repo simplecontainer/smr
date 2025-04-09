@@ -1,9 +1,12 @@
 package controler
 
+import "time"
+
 type Control struct {
-	Drain   *Drain   `validate:"omitempty,dive" json:"drain,omitempty"`
-	Upgrade *Upgrade `validate:"omitempty,dive" json:"upgrade,omitempty"`
-	Start   *Start   `validate:"omitempty,dive" json:"start,omitempty"`
+	Drain     *Drain    `validate:"omitempty,dive" json:"drain,omitempty"`
+	Upgrade   *Upgrade  `validate:"omitempty,dive" json:"upgrade,omitempty"`
+	Start     *Start    `validate:"omitempty,dive" json:"start,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
 type Drain struct {

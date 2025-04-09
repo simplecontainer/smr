@@ -151,6 +151,12 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 	}
 
+	fmt.Println(api.Cluster.Node)
+
+	for _, n := range api.Cluster.Cluster.Nodes {
+		fmt.Println(n)
+	}
+
 	api.Manager.Cluster = api.Cluster
 
 	CAPool := x509.NewCertPool()
@@ -164,7 +170,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Cluster.Regenerate(api.Config, api.Keys)
 	api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-	api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+	api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -177,11 +183,6 @@ func (api *Api) StartCluster(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
-
-	api.Config.KVStore.Node = api.Cluster.Node
-	api.Config.KVStore.URL = api.Cluster.Node.URL
-	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-	api.Config.KVStore.Join = true
 
 	api.SaveClusterConfiguration()
 
@@ -209,6 +210,12 @@ func (api *Api) GetCluster(c *gin.Context) {
 }
 
 func (api *Api) SaveClusterConfiguration() {
+	api.Config.KVStore.Node = api.Cluster.Node
+	api.Config.KVStore.URL = api.Cluster.Node.URL
+	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+	api.Config.KVStore.API = api.Cluster.Node.API
+	api.Config.KVStore.Join = true
+
 	err := startup.Save(api.Config)
 	if err != nil {
 		logger.Log.Error(err.Error())

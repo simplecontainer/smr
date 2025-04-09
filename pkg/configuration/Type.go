@@ -29,6 +29,7 @@ type KVStore struct {
 	Cluster []*node.Node `yaml:"cluster"`
 	Node    *node.Node   `yaml:"node"`
 	URL     string       `yaml:"url"`
+	API     string       `yaml:"api"`
 	Join    bool         `yaml:"join"`
 	Peer    string       `yaml:"peer"`
 }

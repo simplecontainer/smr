@@ -120,7 +120,7 @@ func Start() {
 				}
 
 				// Cluster information is unknown, this only enables localhost to talk to itself via https
-				api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, nil)
+				api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, nil)
 
 				if err != nil {
 					panic(err)

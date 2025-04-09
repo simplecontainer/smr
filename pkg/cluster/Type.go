@@ -11,5 +11,7 @@ type Cluster struct {
 	NodeConf      chan node.Node
 	NodeFinalizer chan node.Node
 	KVStore       *raft.KVStore
+	RaftLeader    uint64
+	RaftNode      *raft.RaftNode
 	Started       bool
 }

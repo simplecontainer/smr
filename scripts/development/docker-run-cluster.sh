@@ -5,6 +5,8 @@ set -e
 
 echo "Doing work in directory $PWD"
 
+sudo pkill -f smr
+
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 TAG="$(git rev-parse --short "$BRANCH")"
 

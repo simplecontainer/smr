@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"time"
 )
 
 func New() *Control {
@@ -59,14 +61,21 @@ func NewStart(nodeAPI string, overlay string, backend string) *Start {
 	}
 }
 
+func (c *Control) Time() {
+	c.Timestamp = time.Now()
+}
+
 func (c *Control) Apply(ctx context.Context, client *clientv3.Client) error {
+	c.Time()
 	bytes, err := c.ToJSON()
 
 	if err != nil {
 		return err
 	}
 
-	_, err = client.Put(ctx, "/smr/control", string(bytes))
+	UUID := uuid.New()
+	_, err = client.Put(ctx, fmt.Sprintf("/smr/control/%s", UUID.String()), string(bytes))
+
 	return err
 }
 func (c *Control) ToJSON() ([]byte, error) {

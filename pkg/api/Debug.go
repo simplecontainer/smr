@@ -52,7 +52,7 @@ func (api *Api) Debug(c *gin.Context) {
 					stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
 					return
 				} else {
-					stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+					stream.StreamRemote(w, fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
 				}
 			} else {
 				stream.StreamTail(w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
@@ -85,7 +85,7 @@ func (api *Api) Debug(c *gin.Context) {
 				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
 				return
 			} else {
-				stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/debug/%s/%s", client.API, format.ToString(), c.Param("follow")), client)
+				stream.StreamRemote(w, fmt.Sprintf("%s/api/v1/debug/%s/%s", client.API, format.ToString(), c.Param("follow")), client)
 			}
 		} else {
 			stream.StreamTail(w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)

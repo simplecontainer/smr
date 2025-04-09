@@ -125,7 +125,7 @@ func (request *Request) Send(action string, method string, client *http.Client, 
 		return err
 	}
 
-	response := network.Send(client, fmt.Sprintf("https://%s/api/v1/%s", API, action), method, bytes)
+	response := network.Send(client, fmt.Sprintf("%s/api/v1/%s", API, action), method, bytes)
 
 	if !response.Success {
 		if !strings.HasSuffix(response.ErrorExplanation, "object is same on the server") {

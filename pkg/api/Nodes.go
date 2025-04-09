@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"net/http"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 func (api *Api) Nodes(c *gin.Context) {
@@ -51,7 +53,13 @@ func (api *Api) AddNode(c *gin.Context) {
 		return
 	}
 
-	n.NodeID = api.Cluster.Cluster.GenerateID()
+	existing := api.Cluster.Cluster.Find(n)
+
+	if existing == nil {
+		n.NodeID = api.Cluster.Cluster.GenerateID()
+	} else {
+		n.NodeID = existing.NodeID
+	}
 
 	var bytes []byte
 	bytes, err = n.ToJSON()
@@ -61,16 +69,39 @@ func (api *Api) AddNode(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(api.Cluster)
-	fmt.Println(api.Cluster.KVStore)
-
-	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
+	n.ConfChange = raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
 		NodeID:  n.NodeID,
 		Context: bytes,
 	}
 
+	api.Cluster.NodeConf <- *n
+
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node added", nil, bytes))
+}
+
+func (api *Api) RemoveNode(c *gin.Context) {
+	if !api.Cluster.Started {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("cluster is not started"), nil))
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("node"), 10, 64)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+	}
+
+	n := node.NewNode()
+	n.NodeID = id
+	n.ConfChange = raftpb.ConfChange{
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: id,
+	}
+
+	api.Cluster.NodeConf <- *n
+
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node deleted", nil, nil))
 }
 
 func (api *Api) GetNode(c *gin.Context) {
@@ -115,32 +146,12 @@ func (api *Api) GetNodeVersion(c *gin.Context) {
 		if n == nil {
 			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		} else {
-			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("https://%s/version", n.API), http.MethodGet, nil)
+			response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/version", n.API), http.MethodGet, nil)
 			c.JSON(response.HttpStatus, response)
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", nil, nil))
 	}
-}
-
-func (api *Api) RemoveNode(c *gin.Context) {
-	if !api.Cluster.Started {
-		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("cluster is not started"), nil))
-		return
-	}
-
-	id, err := strconv.ParseUint(c.Param("node"), 10, 64)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
-	}
-
-	api.Cluster.KVStore.ConfChangeC <- raftpb.ConfChange{
-		Type:   raftpb.ConfChangeRemoveNode,
-		NodeID: id,
-	}
-
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node deleted", nil, nil))
 }
 
 func (api *Api) ListenNode() {
@@ -152,17 +163,15 @@ func (api *Api) ListenNode() {
 				case raftpb.ConfChangeAddNode:
 					api.Cluster.Cluster.Add(&n)
 
-					api.Config.KVStore.Node = api.Cluster.Node
-					api.Config.KVStore.URL = api.Cluster.Node.URL
-					api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-
 					api.SaveClusterConfiguration()
 					startup.Save(api.Config)
 
 					api.Cluster.Regenerate(api.Config, api.Keys)
 					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+
+					api.Cluster.KVStore.ConfChangeC <- n.ConfChange
 
 					logger.Log.Info("added new node")
 					break
@@ -172,20 +181,39 @@ func (api *Api) ListenNode() {
 					if nodeID != api.Cluster.Node.NodeID {
 						api.Cluster.Cluster.Remove(&n)
 
-						api.Config.KVStore.Node = api.Cluster.Node
-						api.Config.KVStore.URL = api.Cluster.Node.URL
-						api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-
 						api.SaveClusterConfiguration()
 						startup.Save(api.Config)
 
 						api.Cluster.Regenerate(api.Config, api.Keys)
 						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+
+						api.Cluster.KVStore.ConfChangeC <- n.ConfChange
 
 						logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
 					} else {
+						if api.Cluster.RaftNode.IsLeader.Load() {
+							ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+							api.Cluster.RaftNode.TransferLeadership(ctx, api.Cluster.Peers().Nodes[0].NodeID)
+
+							ticker := time.NewTicker(5 * time.Millisecond)
+							defer ticker.Stop()
+
+							for {
+								if !api.Cluster.RaftNode.IsLeader.Load() {
+									break
+								}
+								select {
+								case <-ctx.Done():
+									panic("timed out transfering leadership")
+								case <-ticker.C:
+								}
+							}
+						}
+
+						api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+
 						api.Cluster.NodeFinalizer <- n
 						return
 					}

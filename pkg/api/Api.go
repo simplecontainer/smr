@@ -2,7 +2,6 @@ package api
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -86,12 +85,8 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *clust
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
-	for _, xn := range cluster.Cluster.Nodes {
-		fmt.Println(xn)
-	}
-
 	raftNode := &raft.RaftNode{}
-	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
+	rn, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
 
 	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Cluster.Node.NodeName, n)
 	api.Replication.EventsC = make(chan KV.KV)
@@ -106,6 +101,7 @@ func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *clust
 		return err
 	}
 
+	api.Cluster.RaftNode = rn
 	api.Cluster.KVStore.ConfChangeC = confChangeC
 	api.Cluster.KVStore.Node = n
 	api.Cluster.NodeConf = nodeUpdate

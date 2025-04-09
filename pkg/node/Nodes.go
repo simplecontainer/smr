@@ -23,7 +23,7 @@ func (nodes *Nodes) Add(node *Node) {
 	}
 
 	for _, n := range nodes.Nodes {
-		if n.NodeID == node.NodeID {
+		if n.NodeName == node.NodeName {
 			return
 		}
 	}
@@ -41,7 +41,7 @@ func (nodes *Nodes) AddOrUpdate(node *Node) {
 	}
 
 	for i, n := range nodes.Nodes {
-		if n.NodeID == node.NodeID {
+		if n.NodeName == node.NodeName {
 			nodes.Nodes[i] = node
 			return
 		}
