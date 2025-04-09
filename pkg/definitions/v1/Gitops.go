@@ -120,12 +120,12 @@ func (gitops *GitopsDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, gitops)
 }
 
-func (gitops *GitopsDefinition) ToJson() ([]byte, error) {
+func (gitops *GitopsDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(gitops)
 	return bytes, err
 }
 
-func (gitops *GitopsDefinition) ToJsonString() (string, error) {
+func (gitops *GitopsDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(gitops)
 	return string(bytes), err
 }

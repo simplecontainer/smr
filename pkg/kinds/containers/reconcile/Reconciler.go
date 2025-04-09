@@ -23,7 +23,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 	// Do not touch container on this node since it is active on another node
 	if containerObj.GetStatus().State.State != status.TRANSFERING {
-		if containerObj.GetStatus().State.State != newState {
+		if containerObj.GetStatus().State.State != newState && newState != "" {
 			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
 
 			if !transitioned {
@@ -43,11 +43,10 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		events.Dispatch(
 			events.NewKindEvent(events.EVENT_CHANGED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
-			shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+			shared, containerWatcher.Container.GetRuntime().Node.NodeID,
 		)
 
 		if newState == "" {
-			containerWatcher.Container.GetStatus().GetPending().Set(status.PENDING_DELETE)
 			containerWatcher.Cancel()
 
 			return
@@ -75,7 +74,10 @@ func GetState(containerWatcher *watcher.Container) state.State {
 	engine, err := containerWatcher.Container.GetState()
 
 	if err != nil {
-		return state.State{}
+		return state.State{
+			Error: err.Error(),
+			State: "",
+		}
 	}
 
 	return engine

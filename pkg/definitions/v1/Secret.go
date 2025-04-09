@@ -57,12 +57,12 @@ func (secret *SecretDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, secret)
 }
 
-func (secret *SecretDefinition) ToJson() ([]byte, error) {
+func (secret *SecretDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(secret)
 	return bytes, err
 }
 
-func (secret *SecretDefinition) ToJsonString() (string, error) {
+func (secret *SecretDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(secret)
 	return string(bytes), err
 }

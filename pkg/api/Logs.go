@@ -50,7 +50,7 @@ func (api *Api) Logs(c *gin.Context) {
 				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", static.KIND_CONTAINER)))
 				return
 			} else {
-				stream.StreamRemote(w, fmt.Sprintf("https://%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+				stream.StreamRemote(w, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
 			}
 		} else {
 			switch which {

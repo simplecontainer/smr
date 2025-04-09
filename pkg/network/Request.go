@@ -23,9 +23,6 @@ func Send(client *http.Client, URL string, method string, data []byte) *irespons
 		req, err = http.NewRequestWithContext(ctx, method, URL, nil)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "smr")
-
 	if err != nil {
 		return &iresponse.Response{
 			HttpStatus:       0,
@@ -36,6 +33,9 @@ func Send(client *http.Client, URL string, method string, data []byte) *irespons
 			Data:             nil,
 		}
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "smr")
 
 	resp, err := client.Do(req)
 

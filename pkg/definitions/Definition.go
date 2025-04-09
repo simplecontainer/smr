@@ -168,7 +168,7 @@ func (definition *Definition) Apply(format iformat.Format, obj iobjects.ObjectIn
 	}
 
 	var bytes []byte
-	bytes, err = definition.Definition.ToJson()
+	bytes, err = definition.Definition.ToJSON()
 
 	if err != nil {
 		return obj, err
@@ -202,7 +202,7 @@ func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectIn
 
 	if obj.Exists() {
 		var bytes []byte
-		bytes, err = definition.Definition.ToJson()
+		bytes, err = definition.Definition.ToJSON()
 
 		if err != nil {
 			return obj, err
@@ -219,7 +219,7 @@ func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectIn
 			existing.SetState(definition.GetState())
 		}
 
-		bytes, err = existing.ToJson()
+		bytes, err = existing.ToJSON()
 
 		if err != nil {
 			return obj, err
@@ -263,7 +263,7 @@ func (definition *Definition) Changed(format iformat.Format, obj iobjects.Object
 	}
 
 	var bytes []byte
-	bytes, err = definition.ToJson()
+	bytes, err = definition.ToJSON()
 
 	if err != nil {
 		return false, err
@@ -325,13 +325,13 @@ func (definition *Definition) Patch(compare idefinitions.IDefinition) error {
 	var modified []byte
 	var err error
 
-	b1, err = definition.Definition.ToJson()
+	b1, err = definition.Definition.ToJSON()
 
 	if err != nil {
 		return err
 	}
 
-	b2, err = compare.ToJson()
+	b2, err = compare.ToJSON()
 
 	if err != nil {
 		return err
@@ -389,12 +389,12 @@ func (definition *Definition) FromJson(bytes []byte) error {
 	return err
 }
 
-func (definition *Definition) ToJson() ([]byte, error) {
-	return definition.Definition.ToJson()
+func (definition *Definition) ToJSON() ([]byte, error) {
+	return definition.Definition.ToJSON()
 }
 
-func (definition *Definition) ToJsonForUser() ([]byte, error) {
-	bytes, err := definition.Definition.ToJson()
+func (definition *Definition) ToJSONForUser() ([]byte, error) {
+	bytes, err := definition.Definition.ToJSON()
 
 	if err != nil {
 		return nil, err
@@ -418,8 +418,8 @@ func (definition *Definition) ToJsonForUser() ([]byte, error) {
 	return modified, nil
 }
 
-func (definition *Definition) ToJsonString() (string, error) {
-	return definition.Definition.ToJsonString()
+func (definition *Definition) ToJSONString() (string, error) {
+	return definition.Definition.ToJSONString()
 }
 
 func (definition *Definition) Validate() (bool, error) {

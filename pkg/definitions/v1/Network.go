@@ -58,12 +58,12 @@ func (network *NetworkDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, network)
 }
 
-func (network *NetworkDefinition) ToJson() ([]byte, error) {
+func (network *NetworkDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(network)
 	return bytes, err
 }
 
-func (network *NetworkDefinition) ToJsonString() (string, error) {
+func (network *NetworkDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(network)
 	return string(bytes), err
 }

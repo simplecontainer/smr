@@ -120,7 +120,7 @@ func Start() {
 				}
 
 				// Cluster information is unknown, this only enables localhost to talk to itself via https
-				api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, nil)
+				api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, nil)
 
 				if err != nil {
 					panic(err)
@@ -190,7 +190,10 @@ func Start() {
 					{
 						cluster.GET("/", api.GetCluster)
 						cluster.POST("/start", api.StartCluster)
+						cluster.POST("/control", api.Control)
 						cluster.GET("/nodes", api.Nodes)
+						cluster.GET("/node/:id", api.GetNode)
+						cluster.GET("/node/version/:id", api.GetNodeVersion)
 						cluster.POST("/node", api.AddNode)
 						cluster.DELETE("/node/:node", api.RemoveNode)
 					}
@@ -215,7 +218,7 @@ func Start() {
 
 				router.GET("/metrics", api.MetricsHandle())
 				router.GET("/healthz", api.Health)
-				router.GET("/version", api.Version)
+				router.GET("/version", api.GetVersion)
 				router.GET("/events", api.Events)
 
 				//debug := routerHttp.Group("/debug", func(c *gin.Context) {
@@ -225,7 +228,7 @@ func Start() {
 
 				routerHttp.GET("/metrics", api.MetricsHandle())
 				routerHttp.GET("/healthz", api.Health)
-				routerHttp.GET("/version", api.Version)
+				routerHttp.GET("/version", api.GetVersion)
 
 				CAPool := x509.NewCertPool()
 				CAPool.AddCert(api.Keys.CA.Certificate)

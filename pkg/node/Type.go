@@ -1,15 +1,21 @@
 package node
 
+import (
+	"go.etcd.io/etcd/raft/v3/raftpb"
+)
+
 type Nodes struct {
 	Nodes []*Node
 }
 
 type Node struct {
-	NodeID   uint64
-	NodeName string
-	API      string
-	URL      string
-	State    State `json:"-"`
+	NodeID     uint64
+	NodeName   string
+	Version    string
+	API        string
+	URL        string
+	ConfChange raftpb.ConfChange `yaml:"-" json:"-"`
+	State      State
 }
 
 type State struct {
@@ -26,6 +32,7 @@ type Health struct {
 }
 
 type Control struct {
+	Upgrading  bool
 	Draining   bool
 	Recovering bool
 }

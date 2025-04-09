@@ -24,6 +24,9 @@ func Parse(name string, value string, client *client.Http, user *authentication.
 	}
 
 	t := New(name, value, variables, template.FuncMap{
+		"fqdn": func(name string) (string, error) {
+			return FQDN(name), nil
+		},
 		"lookup": func(placeholder string) (string, error) {
 			return Lookup(placeholder, client, user, runtime, dependencies, depth)
 		},

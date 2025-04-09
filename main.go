@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/version"
 	_ "net/http/pprof"
 	"os"
 )
@@ -29,7 +30,7 @@ func main() {
 	conf := configuration.NewConfig()
 
 	api := api.NewApi(conf)
-	api.VersionServer = SMR_VERSION
+	api.Version = version.New(SMR_VERSION)
 	api.Manager.LogLevel = helpers.GetLogLevel(logLevel)
 
 	// Run any commands before starting daemon

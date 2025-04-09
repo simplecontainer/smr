@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 func NewNode() *Node {
@@ -10,6 +11,7 @@ func NewNode() *Node {
 		NodeName: "",
 		API:      "",
 		URL:      "",
+		State:    NewState(),
 	}
 }
 
@@ -21,6 +23,7 @@ func NewNodeDefinition(cluster []*Node, nodeId uint64) *Node {
 				NodeName: n.NodeName,
 				API:      n.API,
 				URL:      n.URL,
+				State:    n.State,
 			}
 		}
 	}
@@ -28,6 +31,31 @@ func NewNodeDefinition(cluster []*Node, nodeId uint64) *Node {
 	return nil
 }
 
-func (node *Node) ToJson() ([]byte, error) {
+func (node *Node) Accepting() bool {
+	// If any of this status is true - node should not accept new objects
+	return !(node.State.Control.Draining || node.State.Control.Upgrading)
+}
+
+func (node *Node) SetDrain(drain bool) {
+	node.State.Control.Draining = drain
+}
+
+func (node *Node) SetUpgrade(upgrade bool) {
+	node.State.Control.Upgrading = upgrade
+}
+
+func (node *Node) Parse(change raftpb.ConfChange) error {
+	node.NodeID = change.NodeID
+	node.ConfChange = change
+
+	switch change.Type {
+	case raftpb.ConfChangeAddNode:
+		return json.Unmarshal(change.Context, node)
+	default:
+		return nil
+	}
+}
+
+func (node *Node) ToJSON() ([]byte, error) {
 	return json.Marshal(node)
 }

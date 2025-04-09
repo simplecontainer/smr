@@ -12,7 +12,7 @@ type Event interface {
 	GetData() []byte
 	GetNetworkId() string
 	GetContainerId() string
-	ToJson() ([]byte, error)
+	ToJSON() ([]byte, error)
 	Propose(proposeC *raft.KVStore, node uint64) error
 	IsManaged() bool
 }

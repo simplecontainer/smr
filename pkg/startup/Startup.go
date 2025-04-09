@@ -65,13 +65,14 @@ func SetFlags() {
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
 
+	flag.String("node", "", "Node container name")
+	flag.Int("id", 0, "Distributed KVStore Node ID")
+
 	flag.String("image", "", "Node image name")
 	flag.String("tag", "", "Node image tag")
-	flag.String("name", "", "Node container name")
 	flag.String("cluster", "", "SMR Cluster")
-	flag.Int("node", 0, "Distributed KVStore Node ID")
-	flag.Bool("join", false, "Join the cluster")
-	flag.Bool("restore", false, "Restore cluster")
+	flag.Bool("join", false, "Join the raft")
+	flag.String("peer", "", "Peer for entering cluster first time. Format: https://host:port")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()

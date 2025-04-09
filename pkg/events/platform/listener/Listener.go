@@ -40,8 +40,7 @@ func Listen(shared *shared.Shared, platform string) {
 			case err = <-cErr:
 				logger.Log.Error(err.Error())
 			case msg := <-cEvents:
-				// TODO: Do I want to do blocking here? Or go with gouroutine?
-				Handle(platform, shared, msg)
+				go Handle(platform, shared, msg)
 			}
 		}
 	}
@@ -141,7 +140,7 @@ func HandleDie(shared *shared.Shared, container platforms.IContainer, event ieve
 	if !reconcileIgnore(container.GetLabels()) {
 		containerW := shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName()))
 
-		if containerW.AllowPlatformEvents {
+		if containerW != nil && containerW.AllowPlatformEvents {
 			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", container.GetGeneratedName()))
 
 			container.GetStatus().GetPending().Clear()

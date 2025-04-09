@@ -23,9 +23,11 @@ type Container struct {
 	ContainerQueue      chan platforms.IContainer      `json:"-"`
 	ReadinessChan       chan *readiness.ReadinessState `json:"-"`
 	DependencyChan      chan *dependency.State         `json:"-"`
-	PauseC              chan platforms.IContainer      `json:"-"`
+	DeleteC             chan platforms.IContainer      `json:"-"`
 	Ctx                 context.Context                `json:"-" `
 	Cancel              context.CancelFunc             `json:"-"`
+	ReconcileCtx        context.Context                `json:"-" `
+	ReconcileCancel     context.CancelFunc             `json:"-"`
 	Ticker              *time.Ticker                   `json:"-"`
 	Retry               int                            `json:"-"`
 	Logger              *zap.Logger

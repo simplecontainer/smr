@@ -1,55 +1,20 @@
 package node
 
-import (
-	"encoding/json"
-	"github.com/docker/docker/client"
-	"io"
-)
+import "sort"
 
 func NewNodes() *Nodes {
 	return &Nodes{}
 }
 
 func (nodes *Nodes) NewNode(nodeName string, url string, API string) *Node {
-	return &Node{
-		NodeID:   nodes.generateID(uint64(0)),
-		NodeName: nodeName,
-		API:      API,
-		URL:      url,
-	}
-}
+	n := NewNode()
 
-func (nodes *Nodes) NewNodeRequest(body io.ReadCloser, id uint64) (*Node, error) {
-	var data []byte
-	var err error
+	n.NodeID = nodes.GenerateID()
+	n.NodeName = nodeName
+	n.API = API
+	n.URL = url
 
-	data, err = io.ReadAll(body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var request map[string]string
-	err = json.Unmarshal(data, &request)
-
-	if err != nil {
-		return nil, err
-	}
-
-	node := &Node{
-		NodeID:   nodes.generateID(id),
-		NodeName: request["nodeName"],
-		API:      request["API"],
-		URL:      request["node"],
-	}
-
-	_, err = client.ParseHostURL(node.URL)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return node, nil
+	return n
 }
 
 func (nodes *Nodes) Add(node *Node) {
@@ -58,12 +23,35 @@ func (nodes *Nodes) Add(node *Node) {
 	}
 
 	for _, n := range nodes.Nodes {
-		if n.URL == node.URL {
+		if n.NodeName == node.NodeName {
 			return
 		}
 	}
 
 	nodes.Nodes = append(nodes.Nodes, node)
+
+	sort.Slice(nodes.Nodes, func(i, j int) bool {
+		return nodes.Nodes[i].NodeID < nodes.Nodes[j].NodeID
+	})
+}
+
+func (nodes *Nodes) AddOrUpdate(node *Node) {
+	if node == nil {
+		return
+	}
+
+	for i, n := range nodes.Nodes {
+		if n.NodeName == node.NodeName {
+			nodes.Nodes[i] = node
+			return
+		}
+	}
+
+	nodes.Nodes = append(nodes.Nodes, node)
+
+	sort.Slice(nodes.Nodes, func(i, j int) bool {
+		return nodes.Nodes[i].NodeID < nodes.Nodes[j].NodeID
+	})
 }
 
 func (nodes *Nodes) Remove(node *Node) {
@@ -72,7 +60,7 @@ func (nodes *Nodes) Remove(node *Node) {
 	}
 
 	for i, n := range nodes.Nodes {
-		if n.URL == node.URL {
+		if n.NodeID == node.NodeID {
 			nodes.Nodes = append(nodes.Nodes[:i], nodes.Nodes[i+1:]...)
 		}
 	}
@@ -92,20 +80,32 @@ func (nodes *Nodes) Find(node *Node) *Node {
 	return nil
 }
 
-func (nodes *Nodes) generateID(currentNodeId uint64) uint64 {
-	maxID := uint64(0)
+func (nodes *Nodes) FindById(id uint64) *Node {
+	if id == 0 {
+		return nil
+	}
 
-	for _, node := range nodes.Nodes {
-		if node.NodeID > maxID {
-			maxID = node.NodeID
+	for _, n := range nodes.Nodes {
+		if n.NodeID == id {
+			return n
 		}
 	}
 
-	if currentNodeId > maxID {
-		maxID = currentNodeId
+	return nil
+}
+
+func (nodes *Nodes) GenerateID() uint64 {
+	usedIDs := make(map[uint64]struct{})
+
+	for _, node := range nodes.Nodes {
+		usedIDs[node.NodeID] = struct{}{}
 	}
 
-	return maxID + 1
+	for i := uint64(1); ; i++ {
+		if _, exists := usedIDs[i]; !exists {
+			return i
+		}
+	}
 }
 
 func (nodes *Nodes) ToString() []string {

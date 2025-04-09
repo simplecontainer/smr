@@ -58,12 +58,12 @@ func (resource *ResourceDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, resource)
 }
 
-func (resource *ResourceDefinition) ToJson() ([]byte, error) {
+func (resource *ResourceDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(resource)
 	return bytes, err
 }
 
-func (resource *ResourceDefinition) ToJsonString() (string, error) {
+func (resource *ResourceDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(resource)
 	return string(bytes), err
 }

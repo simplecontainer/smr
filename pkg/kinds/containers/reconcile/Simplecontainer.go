@@ -48,7 +48,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			return status.PENDING, true
 		} else {
 			go func() {
-				_, err = dependency.Ready(containerWatcher.Ctx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
+				_, err = dependency.Ready(containerWatcher.ReconcileCtx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
 
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
@@ -66,7 +66,8 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			return status.PENDING, false
 		} else {
 			go func() {
-				_, err = dependency.Ready(containerWatcher.Ctx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
+				_, err = dependency.Ready(containerWatcher.ReconcileCtx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
+
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
@@ -135,7 +136,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			containerWatcher.Logger.Info("container started")
 
 			go func() {
-				_, err = solver.Ready(containerWatcher.Ctx, shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
+				_, err = solver.Ready(containerWatcher.ReconcileCtx, shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
 
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
@@ -186,6 +187,8 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		return status.RUNNING, true
 	case status.READINESS_FAILED:
 		containerWatcher.Logger.Info("container readiness failed")
+		containerObj.GetStatus().LastReadiness = false
+		containerObj.GetStatus().LastReadinessTimestamp = time.Now()
 		return status.KILL, true
 
 	case status.RUNNING:

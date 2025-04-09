@@ -53,12 +53,12 @@ func (custom *CustomDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, custom)
 }
 
-func (custom *CustomDefinition) ToJson() ([]byte, error) {
+func (custom *CustomDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(custom)
 	return bytes, err
 }
 
-func (custom *CustomDefinition) ToJsonString() (string, error) {
+func (custom *CustomDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(custom)
 	return string(bytes), err
 }

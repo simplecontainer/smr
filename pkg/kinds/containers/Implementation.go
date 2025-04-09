@@ -9,16 +9,17 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/events/platform/listener"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/replicas"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/registry"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/wI2L/jsondiff"
 	"net/http"
@@ -81,12 +82,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 	}
 
 	if len(destroy) > 0 {
-		for _, containerObj := range destroy {
-			GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.PENDING_DELETE)
-			reconcile.Containers(containers.Shared, containers.Shared.Watchers.Find(GroupIdentifier))
-		}
+		containers.Destroy(destroy, obj.Exists())
 	}
 
 	if len(update) > 0 {
@@ -96,97 +92,40 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 			}
 		}
 
-		for _, containerObj := range update {
-			if obj.Exists() {
-				existingWatcher := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
-
-				if existingWatcher != nil {
-					existingWatcher.Logger.Info("container object modified, reusing watcher")
-					existingContainer := containers.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-					if existingContainer != nil {
-						existingWatcher.Ticker.Stop()
-
-						containerObj.GetStatus().SetState(status.CREATED)
-						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
-
-						existingWatcher.Container = containerObj
-						go reconcile.Containers(containers.Shared, existingWatcher)
-					}
-				} else {
-					existingWatcher.Logger.Info("no changes detected on the container object")
-				}
-			} else {
-				// forbiden update occured
-			}
-		}
+		containers.Update(update, obj.Exists())
 	}
 
 	if len(create) > 0 {
-		for _, containerObj := range create {
-			if obj.Exists() {
-				existingWatcher := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
-
-				if existingWatcher != nil {
-					// forbiden create occured
-				} else {
-					// container object holding multiple replicas existed but watcher was never born
-					// this means that replica landed on this node first time, could be that it comes from 2nd node
-					// implication:
-					// - create watcher
-					// - assing container to the wathcer
-					// - roll the reconciler
-
-					existingContainer := containers.Shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
-
-					if existingContainer != nil && existingContainer.IsGhost() {
-						w := watcher.New(containerObj, status.TRANSFERING, user)
-						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
-						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
-
-						w.Logger.Info("container object created")
-
-						go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
-							return nil
-						})
-
-						go reconcile.Containers(containers.Shared, w)
-					} else {
-						w := watcher.New(containerObj, status.CREATED, user)
-						containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
-						containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
-
-						w.Logger.Info("container object created")
-
-						go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
-							return nil
-						})
-						go reconcile.Containers(containers.Shared, w)
-					}
-				}
-			} else {
-				// container object holding multiple replicas never existed
-				// implication:
-				// - create watcher
-				// - assing container to the wathcer
-				// - roll the reconciler
-
-				w := watcher.New(containerObj, status.CREATED, user)
-				containers.Shared.Watchers.AddOrUpdate(containerObj.GetGroupIdentifier(), w)
-				containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
-
-				w.Logger.Info("container object created")
-
-				go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
-					return nil
-				})
-
-				go reconcile.Containers(containers.Shared, w)
-			}
-		}
+		containers.Create(create, obj.Exists(), user)
 	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
+}
+func (containers *Containers) Replay(user *authentication.User) (iresponse.Response, error) {
+	obj := objects.New(containers.Shared.Client.Clients[user.Username], user)
+
+	format := f.NewFromString(fmt.Sprintf("%s/kind/%s", static.SMR_PREFIX, static.KIND_CONTAINERS))
+	objs, _ := obj.FindMany(format)
+
+	for _, o := range objs {
+		request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, o.GetDefinitionByte())
+
+		if err != nil {
+			return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
+		}
+
+		create, _, _, err := GenerateContainers(containers.Shared, request.Definition.Definition.(*v1.ContainersDefinition), obj.GetDiff())
+
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
+		}
+
+		if len(create) > 0 {
+			containers.Create(create, false, user)
+		}
+	}
+
+	return common.Response(http.StatusOK, "containers replayed", nil, nil), nil
 }
 func (containers *Containers) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)
@@ -223,31 +162,34 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 		return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
 	}
 
-	if err == nil {
-		if len(destroy) > 0 {
-			for _, containerObj := range destroy {
-				go func() {
-					GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-					containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.DELETE)
+	if len(destroy) > 0 {
+		for _, containerObj := range destroy {
+			go func() {
+				GroupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
+				containerW := containers.Shared.Watchers.Find(GroupIdentifier)
 
-					containerW := containers.Shared.Watchers.Find(GroupIdentifier)
-
-					if containerW != nil && !containerW.Done {
-						containers.Shared.Watchers.Find(GroupIdentifier).ContainerQueue <- containerObj
-					}
-				}()
-			}
-
-			return common.Response(http.StatusOK, "object is deleted", nil, nil), nil
-		} else {
-			return common.Response(http.StatusNotFound, "object not found", errors.New("object not found"), nil), errors.New("object not found")
+				if containerW != nil && !containerW.Done {
+					containers.Shared.Watchers.Find(GroupIdentifier).DeleteC <- containerObj
+				}
+			}()
 		}
+
+		return common.Response(http.StatusOK, "object is deleted", nil, nil), nil
 	} else {
 		return common.Response(http.StatusNotFound, "object not found", errors.New("object not found"), nil), errors.New("object not found")
 	}
 }
 func (containers *Containers) Event(event ievents.Event) error {
 	switch event.GetType() {
+	case events.EVENT_DEPENDENCY:
+		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
+			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
+				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
+				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
+			}
+		}
+
+		return nil
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {

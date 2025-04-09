@@ -11,10 +11,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile/mock"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/node"
 	"go.uber.org/mock/gomock"
 	"testing"
 	"time"
@@ -77,6 +79,15 @@ func TestFromInitialStateToRunning(t *testing.T) {
 				containerMock.EXPECT().GetGeneratedName().Return("internal-testing-1").AnyTimes()
 				containerMock.EXPECT().GetDefinition().Return(mock.DefinitionTestInitial("internal-testing-1", "docker")).AnyTimes()
 				containerMock.EXPECT().GetInitDefinition().Return(v1.ContainersInternal{}).AnyTimes()
+				containerMock.EXPECT().GetRuntime().DoAndReturn(func() *types.Runtime {
+					n := node.NewNode()
+					n.NodeID = 1
+					n.NodeName = "node-1"
+
+					return &types.Runtime{
+						Node: n,
+					}
+				}).AnyTimes()
 				containerMock.EXPECT().GetStatus().DoAndReturn(func() *status.Status {
 					return statusT
 				}).AnyTimes()
@@ -146,7 +157,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 
 						if containerObj.GetStatus().State.State == status.CLEAN {
 							go func() {
-								containerObj.GetStatus().TransitionState("", "", status.PENDING_DELETE)
+								containerObj.GetStatus().TransitionState("", "", status.DELETE)
 							}()
 
 							time.Sleep(1 * time.Second)
@@ -161,8 +172,8 @@ func TestFromInitialStateToRunning(t *testing.T) {
 							w.ContainerQueue <- containerObj
 						}
 						break
-					case containerObj := <-w.PauseC:
-						w.PauseC <- containerObj
+					case containerObj := <-w.DeleteC:
+						w.DeleteC <- containerObj
 						return
 					}
 				}

@@ -36,7 +36,7 @@ func NewApi(config *configuration.Configuration) *Api {
 		Manager:       &manager.Manager{},
 	}
 
-	api.Manager.VersionServer = api.VersionServer
+	api.Manager.Version = api.Version
 	api.Manager.User = api.User
 	api.Manager.Config = api.Config
 	api.Manager.Kinds = api.Kinds
@@ -77,32 +77,37 @@ func (api *Api) SetupEtcd() {
 	}
 }
 
-func (api *Api) SetupCluster(TLSConfig *tls.Config, nodeID uint64, cluster *cluster.Cluster, join string) error {
+func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error {
 	proposeC := make(chan string)
+	insyncC := make(chan bool)
 	confChangeC := make(chan raftpb.ConfChange)
 	nodeUpdate := make(chan node.Node)
+	nodeFinalizer := make(chan node.Node)
 
 	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
 
 	raftNode := &raft.RaftNode{}
-	_, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, nodeID, cluster.Cluster, join != "", getSnapshot, proposeC, confChangeC, nodeUpdate)
+	rn, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
 
-	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Cluster.Node.NodeName, api.Cluster.Node.NodeID)
+	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Cluster.Node.NodeName, n)
 	api.Replication.EventsC = make(chan KV.KV)
 	api.Replication.DnsUpdatesC = api.DnsCache.Records
 
 	api.Manager.Replication = api.Replication
 
 	var err error
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, api.Replication.DataC)
+	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, api.Replication.DataC, insyncC, join, n)
 
 	if err != nil {
 		return err
 	}
 
+	api.Cluster.RaftNode = rn
 	api.Cluster.KVStore.ConfChangeC = confChangeC
-	api.Cluster.KVStore.Node = api.Config.KVStore.Node
+	api.Cluster.KVStore.Node = n
+	api.Cluster.InSync = insyncC
 	api.Cluster.NodeConf = nodeUpdate
+	api.Cluster.NodeFinalizer = nodeFinalizer
 
 	api.Manager.Cluster = api.Cluster
 

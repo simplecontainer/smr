@@ -10,16 +10,18 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/cluster"
+	"github.com/simplecontainer/smr/pkg/controler"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/flannel"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
-	"github.com/simplecontainer/smr/pkg/networking"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
@@ -47,8 +49,8 @@ func (api *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
-	var request map[string]string
-	err = json.Unmarshal(data, &request)
+	var control *controler.Control
+	err = json.Unmarshal(data, &control)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -56,59 +58,70 @@ func (api *Api) StartCluster(c *gin.Context) {
 	}
 
 	var parsed *url.URL
-	parsed, err = url.Parse(request["node"])
+	parsed, err = url.Parse(control.GetStart().NodeAPI)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 	}
 
 	api.Cluster, err = cluster.Restore(api.Config)
+	peers := node.NewNodes()
 
 	if err != nil {
 		api.Cluster = cluster.New()
-		thisNode := api.Cluster.Cluster.NewNode(api.Config.NodeName, request["node"], fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+		api.Cluster.Node = api.Cluster.Cluster.NewNode(api.Config.NodeName, control.GetStart().NodeAPI, fmt.Sprintf("https://%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+		api.Cluster.Cluster.Add(api.Cluster.Node)
 
-		if request["join"] != "" {
-			user := &authentication.User{}
+		if api.Config.KVStore.Peer != "" {
+			peerNode := node.NewNode()
+			peerNode.API = api.Config.KVStore.Peer
+			peers.Add(peerNode)
+		}
+	} else {
+		peers = api.Cluster.Peers()
+	}
 
+	user := &authentication.User{}
+
+	if api.Config.KVStore.Join {
+		for _, peer := range peers.Nodes {
 			// Find any valid certificate for the domain or ip
-			clientObj := api.Manager.Http.FindValidFor(request["join"])
+			clientObj := api.Manager.Http.FindValidFor(peer.API)
 
 			if clientObj != nil {
 				user = authentication.New(clientObj.Username, clientObj.API)
 			}
 
 			if user.Username == "" {
+				continue
+			}
+
+			data, err = json.Marshal(api.Cluster.Node)
+
+			if err != nil {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
 				return
 			}
 
-			data, _ := json.Marshal(map[string]string{
-				"node":     request["node"],
-				"nodeName": api.Config.NodeName,
-				"API":      fmt.Sprintf("%s:%s", parsed.Hostname(), api.Config.HostPort.Port),
-			})
-
-			response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", request["join"]), http.MethodPost, data)
+			response := network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", peer.API), http.MethodPost, data)
 
 			if response.Error {
 				c.JSON(http.StatusBadRequest, response)
 				return
 			}
 
-			err = json.Unmarshal(response.Data, &thisNode)
+			err = json.Unmarshal(response.Data, &api.Cluster.Node)
 
 			if err != nil {
 				c.JSON(http.StatusBadRequest, response)
 				return
 			}
 
-			// Ask join: what is the cluster?
-			response = network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster", request["join"]), http.MethodGet, nil)
+			response = network.Send(api.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/", peer.API), http.MethodGet, nil)
 
 			if response.Success {
 				var bytes []byte
-				var peers []*node.Node
+				var tmp []*node.Node
 
 				bytes, err = json.Marshal(response.Data)
 
@@ -117,19 +130,15 @@ func (api *Api) StartCluster(c *gin.Context) {
 					return
 				}
 
-				err = json.Unmarshal(bytes, &peers)
+				err = json.Unmarshal(bytes, &tmp)
 
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 					return
 				}
 
-				for _, n := range peers {
-					api.Cluster.Cluster.Add(n)
-
-					if n.URL == thisNode.URL {
-						api.Cluster.Node = n
-					}
+				for _, n := range tmp {
+					api.Cluster.Cluster.AddOrUpdate(n)
 				}
 			} else {
 				c.JSON(http.StatusBadRequest, response)
@@ -137,8 +146,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 			}
 		}
 
-		api.Cluster.Node = thisNode
-		api.Cluster.Cluster.Add(thisNode)
+		if user.Username == "" {
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
+			return
+		}
 	}
 
 	api.Manager.Cluster = api.Cluster
@@ -154,33 +165,47 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Cluster.Regenerate(api.Config, api.Keys)
 	api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-	api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Cluster)
+	api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
 
-	err = api.SetupCluster(tlsConfig, api.Cluster.Node.NodeID, api.Cluster, request["join"])
+	err = api.SetupCluster(tlsConfig, api.Cluster.Node, api.Cluster, api.Config.KVStore.Join)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
-
-	api.Config.KVStore.Node = api.Cluster.Node.NodeID
-	api.Config.KVStore.URL = api.Cluster.Node.URL
-	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
-	api.Config.KVStore.JoinCluster = request["join"] != ""
 
 	api.SaveClusterConfiguration()
 
-	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC, api.Replication.Informer, api.Wss)
+	go func() {
+		select {
+		case <-api.Cluster.InSync:
+			// Replay after RAFT synced with cluster
 
+			_, err = api.Manager.KindsRegistry[static.KIND_CONTAINERS].Replay(api.Manager.User)
+
+			if err != nil {
+				logger.Log.Error("failed to replay containers", zap.Error(err))
+			}
+
+			_, err = api.Manager.KindsRegistry[static.KIND_GITOPS].Replay(api.Manager.User)
+
+			if err != nil {
+				logger.Log.Error("failed to replay gitops", zap.Error(err))
+			}
+			break
+		}
+	}()
+
+	go events.Listen(api.Manager.KindsRegistry, api.Replication.EventsC, api.Replication.Informer, api.Wss)
 	go api.ListenNode()
 	go api.Replication.ListenData(api.Config.NodeName)
 
-	err = networking.Flannel(request["overlay"], request["backend"])
+	err = flannel.Setup(c, api.Etcd, control.GetStart().Overlay, control.GetStart().Backend)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New("flannel overlay network failed to start"), nil))
@@ -189,17 +214,23 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Cluster.Started = true
 
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJson(map[string]string{
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJSON(map[string]string{
 		"name": api.Config.NodeName,
 	})))
 	return
 }
 
 func (api *Api) GetCluster(c *gin.Context) {
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster starte", nil, network.ToJson(api.Cluster.Cluster.Nodes)))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started", nil, network.ToJSON(api.Cluster.Cluster.Nodes)))
 }
 
 func (api *Api) SaveClusterConfiguration() {
+	api.Config.KVStore.Node = api.Cluster.Node
+	api.Config.KVStore.URL = api.Cluster.Node.URL
+	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
+	api.Config.KVStore.API = api.Cluster.Node.API
+	api.Config.KVStore.Join = true
+
 	err := startup.Save(api.Config)
 	if err != nil {
 		logger.Log.Error(err.Error())

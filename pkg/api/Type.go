@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/relations"
+	"github.com/simplecontainer/smr/pkg/version"
 	"github.com/simplecontainer/smr/pkg/wss"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -31,7 +32,7 @@ type Api struct {
 	Kinds           *relations.RelationRegistry
 	KindsRegistry   map[string]ikinds.Kind
 	Manager         *manager.Manager
-	VersionServer   string
+	Version         *version.Version
 }
 
 type Kv struct {

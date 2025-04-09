@@ -26,10 +26,12 @@ type Environment struct {
 }
 
 type KVStore struct {
-	Cluster     []*node.Node `yaml:"cluster"`
-	Node        uint64       `yaml:"node"`
-	URL         string       `yaml:"url"`
-	JoinCluster bool         `yaml:"join"`
+	Cluster []*node.Node `yaml:"cluster"`
+	Node    *node.Node   `yaml:"node"`
+	URL     string       `yaml:"url"`
+	API     string       `yaml:"api"`
+	Join    bool         `yaml:"join"`
+	Peer    string       `yaml:"peer"`
 }
 
 type Certificates struct {

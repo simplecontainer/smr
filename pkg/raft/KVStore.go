@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/simplecontainer/smr/pkg/KV"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/node"
 	"log"
 	"strings"
 	"sync"
@@ -32,16 +34,24 @@ import (
 type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
 	DataC       chan KV.KV
-	EventsC     chan KV.KV
+	InSyncC     chan bool
+	JoinInSync  bool
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
-	Node        uint64
+	Node        *node.Node
 	mu          sync.RWMutex
-	kvStore     map[string]string
 	snapshotter *snap.Snapshotter
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV) (*KVStore, error) {
-	s := &KVStore{proposeC: proposeC, DataC: dataC, kvStore: make(map[string]string), snapshotter: snapshotter}
+func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, node *node.Node) (*KVStore, error) {
+	s := &KVStore{
+		proposeC:    proposeC,
+		DataC:       dataC,
+		InSyncC:     insyncC,
+		snapshotter: snapshotter,
+		JoinInSync:  join,
+		Node:        node,
+	}
+
 	snapshot, err := s.loadSnapshot()
 
 	if err != nil {
@@ -71,43 +81,53 @@ func (s *KVStore) Propose(k string, v []byte, node uint64) {
 }
 
 func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
-	for commit := range commitC {
-		if commit == nil {
-			// signaled to load snapshot
-			snapshot, err := s.loadSnapshot()
+	if s.Node.Accepting() {
+		for commit := range commitC {
+			if commit == nil {
+				// signaled to load snapshot
+				snapshot, err := s.loadSnapshot()
 
-			if err != nil {
-				log.Panic(err)
-			}
-
-			if snapshot != nil {
-				log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-				if err = s.recoverFromSnapshot(snapshot.Data); err != nil {
+				if err != nil {
 					log.Panic(err)
 				}
+
+				if snapshot != nil {
+					log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+					if err = s.recoverFromSnapshot(snapshot.Data); err != nil {
+						log.Panic(err)
+					}
+				}
+				continue
 			}
-			continue
+
+			s.mu.Lock()
+
+			for _, data := range commit.data {
+				s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node.NodeID)
+			}
+
+			if s.JoinInSync {
+				s.JoinInSync = false
+				s.InSyncC <- true
+			}
+
+			s.mu.Unlock()
+
+			close(commit.applyDoneC)
 		}
-
-		s.mu.Lock()
-
-		for _, data := range commit.data {
-			s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node)
+		if err, ok := <-errorC; ok {
+			log.Fatal(err)
 		}
-
-		s.mu.Unlock()
-
-		close(commit.applyDoneC)
-	}
-	if err, ok := <-errorC; ok {
-		log.Fatal(err)
+	} else {
+		logger.Log.Info("node not accepting new objects")
 	}
 }
 
 func (s *KVStore) GetSnapshot() ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return json.Marshal(s.kvStore)
+
+	return json.Marshal([]byte{})
 }
 
 func (s *KVStore) loadSnapshot() (*raftpb.Snapshot, error) {
@@ -130,7 +150,7 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 	s.mu.Lock()
 
 	for _, v := range store {
-		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node)
+		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node.NodeID)
 	}
 
 	s.mu.Unlock()

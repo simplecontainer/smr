@@ -42,7 +42,7 @@ func New(platform string, name string, config *configuration.Configuration, defi
 				Runtime: &types.Runtime{
 					Configuration:      smaps.New(),
 					ObjectDependencies: make([]f.Format, 0),
-					Node:               node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node),
+					Node:               node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node.NodeID),
 				},
 				Status: statusObj,
 			},
@@ -112,7 +112,7 @@ func (c *Container) SyncNetwork() error {
 
 func (c *Container) HasDependencyOn(kind string, group string, name string) bool {
 	for _, format := range c.GetRuntime().ObjectDependencies {
-		if format.GetName() == name && format.GetGroup() == group && format.GetKind() == kind {
+		if (format.GetName() == name || format.GetName() == "*") && format.GetGroup() == group && format.GetKind() == kind {
 			return true
 		}
 	}
@@ -226,11 +226,11 @@ func (c *Container) Clean() error {
 	return c.Platform.Clean()
 }
 
-func (c *Container) ToJson() ([]byte, error) {
+func (c *Container) ToJSON() ([]byte, error) {
 	var output = make(map[string]json.RawMessage)
 	var err error
 
-	output["Platform"], err = c.Platform.ToJson()
+	output["Platform"], err = c.Platform.ToJSON()
 
 	if err != nil {
 		return nil, err

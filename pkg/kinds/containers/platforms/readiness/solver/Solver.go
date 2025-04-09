@@ -18,22 +18,6 @@ import (
 )
 
 func Ready(ctx context.Context, client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *readiness.ReadinessState, logger *zap.Logger) (bool, error) {
-	var done bool
-	var expired chan bool
-	defer func(expired chan bool) { expired <- true }(expired)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				done = true
-				return
-			case <-expired:
-				return
-			}
-		}
-	}()
-
 	for _, r := range container.GetReadiness() {
 		r.Function = func() error {
 			container.GetStatus().LastReadinessStarted = time.Now()
@@ -46,13 +30,15 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 			return err
 		}
 
-		if done {
-			return false, errors.New("context expired")
+		err := r.Reset()
+
+		if err != nil {
+			return false, errors.New("readiness reset failed")
 		}
 
-		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), r.Ctx)
+		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
 
-		err := backoff.Retry(r.Function, backOff)
+		err = backoff.Retry(r.Function, backOff)
 		if err != nil {
 			channel <- &readiness.ReadinessState{
 				State: readiness.FAILED,
@@ -60,10 +46,6 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 
 			return false, err
 		}
-	}
-
-	if done {
-		return false, errors.New("context expired")
 	}
 
 	channel <- &readiness.ReadinessState{
@@ -139,10 +121,10 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 				r.Solved = true
 				return nil
 			} else {
-				return errors.New("readiness request failed")
+				return errors.New("readiness command failed")
 			}
 		} else {
-			return errors.New("readiness request failed - container not running")
+			return errors.New("readiness command failed - container not running")
 		}
 	default:
 		return nil

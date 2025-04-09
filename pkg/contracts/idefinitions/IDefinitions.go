@@ -15,7 +15,7 @@ type IDefinition interface {
 	SetState(*commonv1.State)
 	GetKind() string
 	ResolveReferences(iobjects.ObjectInterface) ([]IDefinition, error)
-	ToJson() ([]byte, error)
-	ToJsonString() (string, error)
+	ToJSON() ([]byte, error)
+	ToJSONString() (string, error)
 	Validate() (bool, error)
 }

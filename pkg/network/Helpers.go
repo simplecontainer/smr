@@ -6,7 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 )
 
-func ToJson(data interface{}) json.RawMessage {
+func ToJSON(data interface{}) json.RawMessage {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	var marshaled []byte
 

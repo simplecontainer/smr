@@ -15,6 +15,22 @@ func New() *Cluster {
 	}
 }
 
+func (cluster *Cluster) Peers() *node.Nodes {
+	var peers = node.NewNodes()
+
+	for _, n := range cluster.Cluster.Nodes {
+		if n.NodeID != cluster.Node.NodeID {
+			peers.Add(n)
+		}
+	}
+
+	if len(peers.Nodes) == 0 {
+		peers.Add(cluster.Node)
+	}
+
+	return peers
+}
+
 func Restore(config *configuration.Configuration) (*Cluster, error) {
 	cluster := node.NewNodes()
 
@@ -28,9 +44,10 @@ func Restore(config *configuration.Configuration) (*Cluster, error) {
 
 	return &Cluster{
 		Node: &node.Node{
-			NodeID:   config.KVStore.Node,
+			NodeID:   config.KVStore.Node.NodeID,
 			NodeName: config.NodeName,
 			URL:      config.KVStore.URL,
+			API:      config.KVStore.API,
 		},
 		Cluster: cluster,
 	}, nil

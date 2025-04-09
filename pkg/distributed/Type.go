@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"sync"
 )
@@ -12,8 +13,7 @@ import (
 type Replication struct {
 	Client      *client.Client
 	User        *authentication.User
-	NodeName    string
-	Node        uint64
+	Node        *node.Node
 	DataC       chan KV.KV
 	EventsC     chan KV.KV
 	Informer    *Informer

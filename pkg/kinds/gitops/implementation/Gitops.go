@@ -45,7 +45,7 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 		AutomaticSync:   definition.Spec.AutomaticSync,
 		Context:         definition.Spec.Context,
 		Pack:            packer.New(),
-		Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node),
+		Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node.NodeID),
 		Commit: &object.Commit{
 			Hash:         plumbing.Hash{},
 			Author:       object.Signature{},
@@ -296,6 +296,6 @@ func (gitops *Gitops) ShouldSync() bool {
 	return gitops.AutomaticSync || gitops.ForceSync
 }
 
-func (gitops *Gitops) ToJson() ([]byte, error) {
+func (gitops *Gitops) ToJSON() ([]byte, error) {
 	return json.Marshal(gitops)
 }

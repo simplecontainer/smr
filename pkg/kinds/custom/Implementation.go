@@ -38,6 +38,9 @@ func (custom *Custom) Apply(user *authentication.User, definition []byte, agent 
 		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 }
+func (custom *Custom) Replay(user *authentication.User) (iresponse.Response, error) {
+	return iresponse.Response{}, nil
+}
 func (custom *Custom) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CUSTOM, definition)
 

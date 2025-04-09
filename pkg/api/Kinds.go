@@ -38,7 +38,7 @@ func (api *Api) List(c *gin.Context) {
 			kinds = append(kinds, string(kv.Key))
 		}
 
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(kinds)))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(kinds)))
 	}
 }
 
@@ -71,7 +71,7 @@ func (api *Api) ListKind(c *gin.Context) {
 			kinds = append(kinds, kv.Value)
 		}
 
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(kinds)))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(kinds)))
 	}
 }
 
@@ -105,7 +105,7 @@ func (api *Api) ListKindGroup(c *gin.Context) {
 			kinds = append(kinds, kv.Value)
 		}
 
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJson(kinds)))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(kinds)))
 	}
 }
 
@@ -207,7 +207,7 @@ func (api *Api) SetKind(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		} else {
-			c.JSON(http.StatusOK, common.Response(http.StatusOK, "object stored", nil, network.ToJson(data)))
+			c.JSON(http.StatusOK, common.Response(http.StatusOK, "object stored", nil, network.ToJSON(data)))
 		}
 	}
 }

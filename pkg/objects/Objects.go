@@ -54,9 +54,9 @@ func (obj *Object) Propose(format iformat.Format, data []byte) error {
 	var URL string
 
 	if format.GetType() == f.TYPE_FORMATED {
-		URL = fmt.Sprintf("https://%s/api/v1/kind/propose/%s", obj.client.API, format.ToStringWithUUID())
+		URL = fmt.Sprintf("%s/api/v1/kind/propose/%s", obj.client.API, format.ToStringWithUUID())
 	} else {
-		URL = fmt.Sprintf("https://%s/api/v1/key/propose/%s", obj.client.API, format.ToStringWithUUID())
+		URL = fmt.Sprintf("%s/api/v1/key/propose/%s", obj.client.API, format.ToStringWithUUID())
 	}
 
 	response := network.Send(obj.client.Http, URL, "POST", data)
@@ -92,7 +92,7 @@ func (obj *Object) Wait(format iformat.Format, data []byte) error {
 }
 
 func (obj *Object) AddLocal(format iformat.Format, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
@@ -105,7 +105,7 @@ func (obj *Object) AddLocal(format iformat.Format, data []byte) error {
 }
 
 func (obj *Object) RemoveLocal(format iformat.Format) (bool, error) {
-	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
@@ -118,7 +118,7 @@ func (obj *Object) RemoveLocal(format iformat.Format) (bool, error) {
 }
 
 func (obj *Object) AddLocalKey(key string, data []byte) error {
-	URL := fmt.Sprintf("https://%s/api/v1/key/set/%s", obj.client.API, key)
+	URL := fmt.Sprintf("%s/api/v1/key/set/%s", obj.client.API, key)
 	response := network.Send(obj.client.Http, URL, "POST", data)
 
 	logger.Log.Debug("object add", zap.String("URL", URL), zap.String("data", string(data)))
@@ -131,7 +131,7 @@ func (obj *Object) AddLocalKey(key string, data []byte) error {
 }
 
 func (obj *Object) RemoveLocalKey(key string) (bool, error) {
-	URL := fmt.Sprintf("https://%s/api/v1/key/remove/%s", obj.client.API, key)
+	URL := fmt.Sprintf("%s/api/v1/key/remove/%s", obj.client.API, key)
 	response := network.Send(obj.client.Http, URL, "DELETE", nil)
 
 	logger.Log.Debug("object remove", zap.String("URL", URL))
@@ -144,7 +144,7 @@ func (obj *Object) RemoveLocalKey(key string) (bool, error) {
 }
 
 func (obj *Object) Find(format iformat.Format) error {
-	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find", zap.String("URL", URL))
@@ -168,7 +168,7 @@ func (obj *Object) Find(format iformat.Format) error {
 func (obj *Object) FindMany(format iformat.Format) ([]iobjects.ObjectInterface, error) {
 	var objects = make([]iobjects.ObjectInterface, 0)
 
-	URL := fmt.Sprintf("https://%s/api/v1/kind/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("%s/api/v1/kind/%s", obj.client.API, format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))

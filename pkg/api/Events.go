@@ -13,9 +13,12 @@ import (
 	"time"
 )
 
-var upgrader = websocket.Upgrader{
+var wssUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
+	},
+	Subprotocols: []string{
+		"Authorization",
 	},
 }
 
@@ -23,7 +26,7 @@ func (api *Api) Events(c *gin.Context) {
 	w, r := c.Writer, c.Request
 	lock := &sync.RWMutex{}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := wssUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Log.Error("Failed to upgrade WebSocket connection: ", zap.Error(err))
 		return
@@ -71,7 +74,6 @@ func (api *Api) Events(c *gin.Context) {
 					logger.Log.Warn("Failed to send ping: ", zap.Error(err))
 					cancel()
 					closeOnce.Do(func() { close(ch) })
-					lock.Unlock()
 
 					return
 				}
@@ -107,7 +109,7 @@ func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *
 	for {
 		select {
 		case data := <-wss.Channels[position]:
-			bytes, err := data.ToJson()
+			bytes, err := data.ToJSON()
 			if err != nil {
 				logger.Log.Error("Failed to serialize event: ", zap.Error(err))
 				continue

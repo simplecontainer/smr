@@ -22,6 +22,7 @@ type ContainersDefinition struct {
 type ContainersInternal struct {
 	Image          string                     `validate:"required" json:"image"`
 	Tag            string                     `validate:"required" json:"tag"`
+	RepositoryAuth string                     `json:"repositoryAuth"`
 	Envs           []string                   `json:"envs,omitempty"`
 	Entrypoint     []string                   `json:"entrypoint,omitempty"`
 	Args           []string                   `json:"args,omitempty"`
@@ -130,12 +131,12 @@ func (containers *ContainersDefinition) FromJson(bytes []byte) error {
 	return json.Unmarshal(bytes, containers)
 }
 
-func (containers *ContainersDefinition) ToJson() ([]byte, error) {
+func (containers *ContainersDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(containers)
 	return bytes, err
 }
 
-func (containers *ContainersDefinition) ToJsonString() (string, error) {
+func (containers *ContainersDefinition) ToJSONString() (string, error) {
 	bytes, err := json.Marshal(containers)
 	return string(bytes), err
 }

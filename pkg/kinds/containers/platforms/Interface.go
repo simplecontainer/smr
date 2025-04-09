@@ -65,7 +65,7 @@ type IContainer interface {
 	Logs(bool) (io.ReadCloser, error)
 	Clean() error
 
-	ToJson() ([]byte, error)
+	ToJSON() ([]byte, error)
 }
 
 type IPlatform interface {
@@ -87,6 +87,7 @@ type IPlatform interface {
 	GetGeneratedName() string
 	GetName() string
 	GetGroup() string
+	GetIndex() (uint64, error)
 	GetGroupIdentifier() string
 	GetDomain(networkName string) string
 	GetHeadlessDomain(networkName string) string
@@ -106,7 +107,7 @@ type IPlatform interface {
 	Wait(string) error
 	Clean() error
 
-	ToJson() ([]byte, error)
+	ToJSON() ([]byte, error)
 }
 
 type Registry interface {

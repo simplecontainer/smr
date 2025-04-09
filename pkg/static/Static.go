@@ -1,11 +1,17 @@
 package static
 
-const ROOTDIR string = "smr"
-const CONFIGDIR string = "config"
-const ROOTSMR = "smr"
+// Directory Constants
+const (
+	ROOTDIR      = "smr"
+	CONFIGDIR    = "config"
+	ROOTSMR      = "smr"
+	SMR_SSH_HOME = "/home/node/.ssh/simplecontainer"
+)
 
+// Default Log Level
 const DEFAULT_LOG_LEVEL = "info"
 
+// Structure Paths
 var STRUCTURE = []string{
 	"config",
 	"persistent",
@@ -13,48 +19,68 @@ var STRUCTURE = []string{
 	"persistent/etcd",
 }
 
-const SMR_SSH_HOME = "/home/node/.ssh/simplecontainer"
+// SMR Config Constants
+const (
+	SMR_PREFIX        = "simplecontainer.io/v1"
+	SMR_ENDPOINT_NAME = "node"
+	SMR_NODE_DOMAIN   = "node.private"
+	SMR_LOCAL_DOMAIN  = "private"
+)
 
-const SMR_PREFIX = "simplecontainer.io/v1"
-const SMR_ENDPOINT_NAME = "node"
-const SMR_NODE_DOMAIN = "node.private"
-const SMR_LOCAL_DOMAIN = "private"
+// Cluster Constants
+const CLUSTER_NETWORK = "cluster"
 
-const PLATFORM_DOCKER = "docker"
-const PLATFORM_MOCKER = "mocker"
+// Platform Constants
+const (
+	PLATFORM_DOCKER = "docker"
+	PLATFORM_MOCKER = "mocker"
+)
 
-const CATEGORY_KIND = "kind"
-const CATEGORY_STATE = "state"
-const CATEGORY_ETCD = "etcd"
-const CATEGORY_PLAIN = "plain"
-const CATEGORY_EVENT = "event"
-const CATEGORY_SECRET = "secret"
-const CATEGORY_DNS = "dns"
-const CATEGORY_INVALID = "invalid"
+// Category Constants
+const (
+	CATEGORY_KIND    = "kind"
+	CATEGORY_STATE   = "state"
+	CATEGORY_ETCD    = "etcd"
+	CATEGORY_PLAIN   = "plain"
+	CATEGORY_EVENT   = "event"
+	CATEGORY_SECRET  = "secret"
+	CATEGORY_DNS     = "dns"
+	CATEGORY_INVALID = "invalid"
+)
 
-const SIGTERM = "SIGTERM"
-const SIGKILL = "SIGKILL"
+// Signal Constants
+const (
+	SIGTERM = "SIGTERM"
+	SIGKILL = "SIGKILL"
+)
 
-const KIND_CONTAINER = "container"
-const KIND_CONTAINERS = "containers"
-const KIND_CONFIGURATION = "configuration"
-const KIND_RESOURCE = "resource"
-const KIND_CERTKEY = "certkey"
-const KIND_HTTPAUTH = "httpauth"
-const KIND_GITOPS = "gitops"
-const KIND_NETWORK = "network"
-const KIND_SECRET = "secret"
-const KIND_CUSTOM = "custom"
+// Kind Constants
+const (
+	KIND_CONTAINER     = "container"
+	KIND_CONTAINERS    = "containers"
+	KIND_CONFIGURATION = "configuration"
+	KIND_RESOURCE      = "resource"
+	KIND_CERTKEY       = "certkey"
+	KIND_HTTPAUTH      = "httpauth"
+	KIND_GITOPS        = "gitops"
+	KIND_NETWORK       = "network"
+	KIND_SECRET        = "secret"
+	KIND_CUSTOM        = "custom"
+)
 
+// State Constants
 const STATE_KIND = "state"
 const REMOVE_KIND = "remove"
 
-const RESPONSE_SCHEDULED = "action accepted and scheduled for action"
-const RESPONSE_APPLIED = "object is applied"
-const RESPONSE_BAD_REQUEST = "request sent is invalid"
-const RESPONSE_DELETED = "object is deleted"
-const RESPONSE_RESTART = "object is restarted"
-const RESPONSE_REFRESHED = "object is refreshed"
-const RESPONSE_SYNCED = "object is synced"
-const RESPONSE_NOT_FOUND = "object is not found"
-const RESPONSE_INTERNAL_ERROR = "object action errored on the server"
+// Response Constants
+const (
+	RESPONSE_SCHEDULED      = "action accepted and scheduled for action"
+	RESPONSE_APPLIED        = "object is applied"
+	RESPONSE_BAD_REQUEST    = "request sent is invalid"
+	RESPONSE_DELETED        = "object is deleted"
+	RESPONSE_RESTART        = "object is restarted"
+	RESPONSE_REFRESHED      = "object is refreshed"
+	RESPONSE_SYNCED         = "object is synced"
+	RESPONSE_NOT_FOUND      = "object is not found"
+	RESPONSE_INTERNAL_ERROR = "object action errored on the server"
+)

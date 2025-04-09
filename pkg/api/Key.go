@@ -60,7 +60,7 @@ func (api *Api) SetKey(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		} else {
-			c.JSON(http.StatusOK, common.Response(http.StatusOK, "key stored", nil, network.ToJson(data)))
+			c.JSON(http.StatusOK, common.Response(http.StatusOK, "key stored", nil, network.ToJSON(data)))
 		}
 	}
 }

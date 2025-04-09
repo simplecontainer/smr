@@ -74,6 +74,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		Group:          definition.(*v1.ContainersDefinition).Meta.Group,
 		Image:          definition.(*v1.ContainersDefinition).Spec.Image,
 		Tag:            definition.(*v1.ContainersDefinition).Spec.Tag,
+		Auth:           definition.(*v1.ContainersDefinition).Spec.RepositoryAuth,
 		Replicas:       definition.(*v1.ContainersDefinition).Spec.Replicas,
 		Lock:           sync.RWMutex{},
 		Env:            definition.(*v1.ContainersDefinition).Spec.Envs,
@@ -247,6 +248,16 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 
 	if err != nil {
 		return err
+	}
+
+	err = container.PrepareAuth(runtime)
+
+	if err != nil {
+		return err
+	}
+
+	for _, depends := range container.Definition.Spec.Dependencies {
+		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, depends.Group, depends.Name))
 	}
 
 	return err
@@ -487,8 +498,13 @@ func (container *Docker) Rename(newName string) error {
 			}
 		}(cli)
 
-		//container.GeneratedName = newName
-		return cli.ContainerRename(ctx, c.ID, newName)
+		err = cli.ContainerRename(ctx, c.ID, newName)
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	} else {
 		return errors.New("container is not found")
 	}
@@ -752,7 +768,7 @@ func (container *Docker) InitContainer(definition v1.ContainersInternal, config 
 	return nil
 }
 
-func (container *Docker) ToJson() ([]byte, error) {
+func (container *Docker) ToJSON() ([]byte, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	return json.Marshal(container)
 }
