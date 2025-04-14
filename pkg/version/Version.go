@@ -2,8 +2,9 @@ package version
 
 import "strings"
 
-func New(version string) *Version {
+func New(image string, version string) *Version {
 	return &Version{
-		Node: strings.TrimSpace(version),
+		Image: strings.TrimSpace(image),
+		Node:  strings.TrimSpace(version),
 	}
 }

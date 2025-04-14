@@ -51,6 +51,7 @@ func Start() {
 					Domain:   "localhost:1443",
 				}
 				api.Manager.User = api.User
+				api.Version.Image = api.Config.NodeImage
 
 				var found error
 

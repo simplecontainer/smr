@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/flannel"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/kinds/node/shared"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/node"
@@ -70,6 +71,8 @@ func (api *Api) StartCluster(c *gin.Context) {
 	if err != nil {
 		api.Cluster = cluster.New()
 		api.Cluster.Node = api.Cluster.Cluster.NewNode(api.Config.NodeName, control.GetStart().NodeAPI, fmt.Sprintf("https://%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+		api.Cluster.Node.Version = api.Version
+
 		api.Cluster.Cluster.Add(api.Cluster.Node)
 
 		if api.Config.KVStore.Peer != "" {
@@ -78,6 +81,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			peers.Add(peerNode)
 		}
 	} else {
+		api.Cluster.Node.Version = api.Version
 		peers = api.Cluster.Peers()
 	}
 
@@ -213,10 +217,21 @@ func (api *Api) StartCluster(c *gin.Context) {
 	}
 
 	api.Cluster.Started = true
+	api.Cluster.Node.Version = api.Version
+
+	event, err := events.NewNodeEvent(events.EVENT_CONTROL_SUCCESS, api.Cluster.Node)
+
+	if err != nil {
+		logger.Log.Error("failed to dispatch node event", zap.Error(err))
+	} else {
+		logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
+		events.Dispatch(event, api.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), api.Cluster.Node.NodeID)
+	}
 
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJSON(map[string]string{
 		"name": api.Config.NodeName,
 	})))
+
 	return
 }
 

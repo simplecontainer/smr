@@ -79,7 +79,6 @@ func (api *Api) AddNode(c *gin.Context) {
 
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node added", nil, bytes))
 }
-
 func (api *Api) RemoveNode(c *gin.Context) {
 	if !api.Cluster.Started {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("cluster is not started"), nil))
@@ -123,7 +122,7 @@ func (api *Api) GetNode(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, network.ToJSON(bytes)))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, bytes))
 }
 
 func (api *Api) GetNodeVersion(c *gin.Context) {
@@ -181,19 +180,42 @@ func (api *Api) ListenNode() {
 					nodeID := n.NodeID
 
 					if nodeID != api.Cluster.Node.NodeID {
-						api.Cluster.Cluster.Remove(&n)
+						timeout := 5 * time.Second
+						ticker := time.NewTicker(500 * time.Millisecond)
 
-						api.SaveClusterConfiguration()
-						startup.Save(api.Config)
+						timeoutChan := time.After(timeout)
+						pool := true
 
-						api.Cluster.Regenerate(api.Config, api.Keys)
-						api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+						for pool {
+							select {
+							case <-timeoutChan:
+								logger.Log.Error("timed out waiting for the peer to be removed from RAFT")
+								pool = false
+								break
+							case <-ticker.C:
+								if peer := api.Cluster.Cluster.FindById(nodeID); peer == nil {
+									api.Cluster.Cluster.Remove(&n)
 
-						api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+									api.SaveClusterConfiguration()
+									startup.Save(api.Config)
 
-						api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+									api.Cluster.Regenerate(api.Config, api.Keys)
+									api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-						logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
+									api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+
+									logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
+
+									pool = false
+									break
+								}
+
+								logger.Log.Info("wait for node to be removed from the cluster", zap.Uint64("nodeID", nodeID))
+							}
+						}
+
+						ticker.Stop()
+						break
 					} else {
 						if api.Cluster.RaftNode.IsLeader.Load() {
 							logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
@@ -224,6 +246,7 @@ func (api *Api) ListenNode() {
 							logger.Log.Info("raft is stopped")
 							api.Cluster.NodeFinalizer <- n
 
+							fmt.Println("SENT IT")
 							return
 						}()
 

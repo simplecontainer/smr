@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/static"
 )
@@ -18,6 +19,24 @@ func New(event string, target string, prefix string, kind string, group string, 
 		Name:   name,
 		Data:   data,
 	}
+}
+
+func NewNodeEvent(event string, n *node.Node) (Event, error) {
+	bytes, err := n.ToJSON()
+
+	if err != nil {
+		return Event{}, err
+	}
+
+	return Event{
+		Type:   event,
+		Target: static.KIND_NODE,
+		Prefix: static.SMR_PREFIX,
+		Kind:   static.KIND_NODE,
+		Group:  "",
+		Name:   n.NodeName,
+		Data:   bytes,
+	}, nil
 }
 
 func NewKindEvent(event string, definition idefinitions.IDefinition, data []byte) Event {
@@ -111,6 +130,10 @@ func (event Event) GetContainerId() string {
 
 func (event Event) IsManaged() bool {
 	return true
+}
+
+func (event Event) ToFormat() f.Format {
+	return f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
 }
 
 func (event Event) ToJSON() ([]byte, error) {

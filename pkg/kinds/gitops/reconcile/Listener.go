@@ -36,13 +36,11 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 							logger.Log.Error(err.Error())
 						}
 
-						for {
-							select {
-							case <-shared.Manager.Replication.Informer.GetCh(format.ToString()):
-								shared.Manager.Replication.Informer.RmCh(format.ToString())
-								wgChild.Done()
-								break
-							}
+						select {
+						case <-shared.Manager.Replication.Informer.GetCh(format.ToString()):
+							shared.Manager.Replication.Informer.RmCh(format.ToString())
+							wgChild.Done()
+							break
 						}
 					}()
 				}

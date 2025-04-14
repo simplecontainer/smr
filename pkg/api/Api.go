@@ -42,7 +42,6 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Manager.Kinds = api.Kinds
 	api.Manager.Keys = api.Keys
 	api.Manager.DnsCache = api.DnsCache
-	api.Manager.PluginsRegistry = []string{}
 	api.Manager.Http = client.NewHttpClients()
 	api.Manager.Wss = api.Wss
 

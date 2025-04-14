@@ -30,7 +30,7 @@ func main() {
 	conf := configuration.NewConfig()
 
 	api := api.NewApi(conf)
-	api.Version = version.New(SMR_VERSION)
+	api.Version = version.New("", SMR_VERSION)
 	api.Manager.LogLevel = helpers.GetLogLevel(logLevel)
 
 	// Run any commands before starting daemon

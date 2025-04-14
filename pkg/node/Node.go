@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"github.com/simplecontainer/smr/pkg/version"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -12,6 +13,7 @@ func NewNode() *Node {
 		API:      "",
 		URL:      "",
 		State:    NewState(),
+		Version:  version.New("", ""),
 	}
 }
 
@@ -24,6 +26,7 @@ func NewNodeDefinition(cluster []*Node, nodeId uint64) *Node {
 				API:      n.API,
 				URL:      n.URL,
 				State:    n.State,
+				Version:  n.Version,
 			}
 		}
 	}

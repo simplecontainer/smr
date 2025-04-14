@@ -24,8 +24,14 @@ func (api *Api) Propose(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		} else {
-			kind := data["kind"].(string)
-			_, ok := api.KindsRegistry[kind]
+			kind, ok := data["kind"].(string)
+
+			if !ok {
+				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
+				return
+			}
+
+			_, ok = api.KindsRegistry[kind]
 
 			if !ok {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))

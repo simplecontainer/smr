@@ -1,5 +1,6 @@
 package version
 
 type Version struct {
-	Node string
+	Image string
+	Node  string
 }
