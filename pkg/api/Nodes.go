@@ -217,27 +217,29 @@ func (api *Api) ListenNode() {
 						ticker.Stop()
 						break
 					} else {
-						if api.Cluster.RaftNode.IsLeader.Load() {
-							logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
+						if len(api.Cluster.Peers().Nodes) > 1 {
+							if api.Cluster.RaftNode.IsLeader.Load() {
+								logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
 
-							ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-							api.Cluster.RaftNode.TransferLeadership(ctx, api.Cluster.Peers().Nodes[0].NodeID)
+								ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+								api.Cluster.RaftNode.TransferLeadership(ctx, api.Cluster.Peers().Nodes[0].NodeID)
 
-							ticker := time.NewTicker(5 * time.Millisecond)
-							defer ticker.Stop()
+								ticker := time.NewTicker(5 * time.Millisecond)
+								defer ticker.Stop()
 
-							for {
-								if !api.Cluster.RaftNode.IsLeader.Load() {
-									break
+								for {
+									if !api.Cluster.RaftNode.IsLeader.Load() {
+										break
+									}
+									select {
+									case <-ctx.Done():
+										panic("timed out transfering leadership")
+									case <-ticker.C:
+									}
 								}
-								select {
-								case <-ctx.Done():
-									panic("timed out transfering leadership")
-								case <-ticker.C:
-								}
+
+								logger.Log.Info(fmt.Sprintf("transefered leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
 							}
-
-							logger.Log.Info(fmt.Sprintf("transefered leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
 						}
 
 						go func() {
