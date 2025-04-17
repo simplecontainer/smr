@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/simplecontainer/smr/pkg/version"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -11,11 +12,11 @@ type Nodes struct {
 type Node struct {
 	NodeID     uint64
 	NodeName   string
-	Version    string
 	API        string
 	URL        string
 	ConfChange raftpb.ConfChange `yaml:"-" json:"-"`
 	State      State
+	Version    *version.Version
 }
 
 type State struct {

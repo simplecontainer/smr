@@ -56,6 +56,7 @@ const (
 
 // Kind Constants
 const (
+	KIND_NODE          = "node"
 	KIND_CONTAINER     = "container"
 	KIND_CONTAINERS    = "containers"
 	KIND_CONFIGURATION = "configuration"

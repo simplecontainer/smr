@@ -14,8 +14,9 @@ func NewInformer() *Informer {
 
 func (i *Informer) AddCh(format string) {
 	i.Lock.Lock()
+	defer i.Lock.Unlock()
+
 	i.Chs[format] = make(chan ievents.Event)
-	i.Lock.Unlock()
 }
 
 func (i *Informer) GetCh(format string) chan ievents.Event {

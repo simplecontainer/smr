@@ -201,7 +201,7 @@ func (container *Docker) PrepareEnvs(runtime *types.Runtime) error {
 func (container *Docker) PrepareAuth(runtime *types.Runtime) error {
 	var err error
 
-	container.Auth, _, err = template.Parse(container.Auth, container.Auth, nil, nil, runtime.Configuration, 0)
+	container.RegistryAuth, _, err = template.Parse(container.RegistryAuth, container.RegistryAuth, nil, nil, runtime.Configuration, 0)
 
 	if err != nil {
 		return err

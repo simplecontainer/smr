@@ -192,7 +192,8 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 		return status.KILL, true
 
 	case status.RUNNING:
-		containerWatcher.Logger.Info("container is running - reconciler going to sleep")
+		shared.Registry.BackOffReset(containerObj.GetGroup(), containerObj.GetGeneratedName())
+		containerWatcher.Logger.Info("container is running, backoff is cleared - reconciler going to sleep")
 		return status.RUNNING, false
 
 	case status.KILL:

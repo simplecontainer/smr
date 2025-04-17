@@ -20,6 +20,7 @@ func (defRegistry *RelationRegistry) InTree() {
 	defRegistry.Register("httpauth", emptyDependencies)
 	defRegistry.Register("custom", emptyDependencies)
 	defRegistry.Register("secret", emptyDependencies)
+	defRegistry.Register("node", emptyDependencies)
 }
 
 func (defRegistry *RelationRegistry) Register(kind string, dependencies []string) {

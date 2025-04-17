@@ -11,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops"
 	"github.com/simplecontainer/smr/pkg/kinds/httpauth"
 	"github.com/simplecontainer/smr/pkg/kinds/network"
+	"github.com/simplecontainer/smr/pkg/kinds/node"
 	"github.com/simplecontainer/smr/pkg/kinds/resource"
 	"github.com/simplecontainer/smr/pkg/kinds/secret"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -19,6 +20,8 @@ import (
 
 func New(kind string, mgr *manager.Manager) (ikinds.Kind, error) {
 	switch kind {
+	case "node":
+		return node.New(mgr), nil
 	case "custom":
 		return custom.New(mgr), nil
 	case "certkey":
@@ -43,7 +46,7 @@ func New(kind string, mgr *manager.Manager) (ikinds.Kind, error) {
 }
 
 func BuildRegistry(mgr *manager.Manager) map[string]ikinds.Kind {
-	var kindsRegistry = make(map[string]ikinds.Kind, 0)
+	var kindsRegistry = make(map[string]ikinds.Kind)
 	var err error
 
 	for kind, _ := range mgr.Kinds.Relations {

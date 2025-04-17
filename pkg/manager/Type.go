@@ -16,17 +16,16 @@ import (
 )
 
 type Manager struct {
-	User            *authentication.User
-	Config          *configuration.Configuration
-	Cluster         *cluster.Cluster
-	Replication     *distributed.Replication
-	Keys            *keys.Keys
-	Kinds           *relations.RelationRegistry
-	KindsRegistry   map[string]ikinds.Kind
-	PluginsRegistry []string
-	Http            *client.Http
-	DnsCache        *dns.Records
-	Wss             *wss.WebSockets
-	LogLevel        zapcore.Level
-	Version         *version.Version
+	User          *authentication.User
+	Config        *configuration.Configuration
+	Cluster       *cluster.Cluster
+	Replication   *distributed.Replication
+	Keys          *keys.Keys
+	Kinds         *relations.RelationRegistry
+	KindsRegistry map[string]ikinds.Kind
+	Http          *client.Http
+	DnsCache      *dns.Records
+	Wss           *wss.WebSockets
+	LogLevel      zapcore.Level
+	Version       *version.Version
 }

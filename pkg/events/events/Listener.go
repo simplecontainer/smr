@@ -44,14 +44,12 @@ func Handle(kindRegistry map[string]ikinds.Kind, informer *distributed.Informer,
 		kind, ok := kindRegistry[event.Target]
 
 		if ok {
-			if event.GetType() == EVENT_DELETED {
-				format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
+			format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
 
-				ch := informer.GetCh(format.ToString())
+			ch := informer.GetCh(format.ToString())
 
-				if ch != nil {
-					ch <- event
-				}
+			if ch != nil {
+				ch <- event
 			}
 
 			err := kind.Event(event)

@@ -24,3 +24,7 @@ const EVENT_RECREATE = "recreate"
 const EVENT_SYNC = "sync"
 const EVENT_REFRESH = "refresh"
 const EVENT_DEPENDENCY = "refresh"
+
+const EVENT_CONTROL_START = "upgrade_start"
+const EVENT_CONTROL_FAILED = "upgrade_failed"
+const EVENT_CONTROL_SUCCESS = "upgrade_success"

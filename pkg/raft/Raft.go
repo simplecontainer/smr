@@ -207,10 +207,12 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				}
 
 				if cc.NodeID == uint64(rc.id) {
-					fmt.Println("abort node")
 					return nil, false
 				} else {
+					// Update back to api.Nodes so that node can be removed
+					rc.nodeUpdate <- *n
 					rc.transport.RemovePeer(types.ID(cc.NodeID))
+					rc.Peers.Remove(n)
 				}
 				break
 			}

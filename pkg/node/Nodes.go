@@ -1,6 +1,8 @@
 package node
 
-import "sort"
+import (
+	"sort"
+)
 
 func NewNodes() *Nodes {
 	return &Nodes{}
