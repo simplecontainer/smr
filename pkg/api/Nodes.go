@@ -194,6 +194,7 @@ func (api *Api) ListenNode() {
 								break
 							case <-ticker.C:
 								if peer := api.Cluster.Cluster.FindById(nodeID); peer == nil {
+									ticker.Stop()
 									api.Cluster.Cluster.Remove(&n)
 
 									api.SaveClusterConfiguration()
@@ -217,7 +218,7 @@ func (api *Api) ListenNode() {
 						ticker.Stop()
 						break
 					} else {
-						if len(api.Cluster.Peers().Nodes) > 1 {
+						if len(api.Cluster.Peers().Nodes) > 0 && api.Cluster.Node.NodeID != api.Cluster.Peers().Nodes[0].NodeID {
 							if api.Cluster.RaftNode.IsLeader.Load() {
 								logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
 
@@ -233,7 +234,8 @@ func (api *Api) ListenNode() {
 									}
 									select {
 									case <-ctx.Done():
-										panic("timed out transfering leadership")
+										logger.Log.Error("timed out waiting for the peer to transfer lead")
+										return
 									case <-ticker.C:
 									}
 								}
@@ -248,11 +250,14 @@ func (api *Api) ListenNode() {
 							logger.Log.Info("raft is stopped")
 							api.Cluster.NodeFinalizer <- n
 
-							fmt.Println("SENT IT")
 							return
 						}()
 
-						api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+						if len(api.Cluster.Peers().Nodes) > 0 && api.Cluster.Node.NodeID != api.Cluster.Peers().Nodes[0].NodeID {
+							api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+						} else {
+							api.Cluster.NodeFinalizer <- n
+						}
 					}
 				}
 			} else {

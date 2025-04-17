@@ -3,10 +3,12 @@ package docker
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"io"
@@ -16,7 +18,24 @@ import (
 
 func (container *Docker) PullImage(ctx context.Context, cli *client.Client) error {
 	if container.CheckIfImagePresent(ctx, cli) != nil {
-		reader, err := cli.ImagePull(ctx, container.Image+":"+container.Tag, container.GetDockerAuth())
+		pullOpts := image.PullOptions{
+			All:           false,
+			RegistryAuth:  "",
+			PrivilegeFunc: nil,
+			Platform:      "",
+		}
+
+		var err error
+
+		if container.RegistryAuth != "" {
+			pullOpts, err = container.GetDockerAuth()
+
+			if err != nil {
+				return err
+			}
+		}
+
+		reader, err := cli.ImagePull(ctx, container.Image+":"+container.Tag, pullOpts)
 		if err != nil {
 			return err
 		}
@@ -76,10 +95,44 @@ func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Cl
 	return errors.New("image not present")
 }
 
-func (container *Docker) GetDockerAuth() image.PullOptions {
-	return image.PullOptions{
-		RegistryAuth: container.Auth,
+func (container *Docker) GetDockerAuth() (image.PullOptions, error) {
+	auth, err := decodeAuth(container.RegistryAuth)
+
+	if err != nil {
+		return image.PullOptions{}, err
 	}
+
+	var encoded string
+	encoded, err = registry.EncodeAuthConfig(auth)
+
+	if err != nil {
+		return image.PullOptions{}, err
+	}
+
+	return image.PullOptions{
+		RegistryAuth: encoded,
+	}, nil
+}
+
+func decodeAuth(authStr string) (registry.AuthConfig, error) {
+	if authStr == "" {
+		return registry.AuthConfig{}, nil
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(authStr)
+	if err != nil {
+		return registry.AuthConfig{}, err
+	}
+
+	parts := strings.SplitN(string(decoded), ":", 2)
+	if len(parts) != 2 {
+		return registry.AuthConfig{}, fmt.Errorf("invalid auth format")
+	}
+
+	return registry.AuthConfig{
+		Username: parts[0],
+		Password: parts[1],
+	}, nil
 }
 
 func splitReposSearchTerm(reposName string) (string, string) {

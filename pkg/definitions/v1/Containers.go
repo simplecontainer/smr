@@ -22,7 +22,7 @@ type ContainersDefinition struct {
 type ContainersInternal struct {
 	Image          string                     `validate:"required" json:"image"`
 	Tag            string                     `validate:"required" json:"tag"`
-	RepositoryAuth string                     `json:"repositoryAuth"`
+	RegistryAuth   string                     `json:"registryAuth"`
 	Envs           []string                   `json:"envs,omitempty"`
 	Entrypoint     []string                   `json:"entrypoint,omitempty"`
 	Args           []string                   `json:"args,omitempty"`
@@ -41,6 +41,11 @@ type ContainersInternal struct {
 	Spread         ContainersSpread           `json:"spread,omitempty"`
 	Nodes          []string                   `json:"nodes,omitempty"`
 	Dns            []string                   `json:"dns,omitempty"`
+}
+
+type ContainersRegistryAuth struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type ContainersDependsOn struct {

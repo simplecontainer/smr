@@ -74,7 +74,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		Group:          definition.(*v1.ContainersDefinition).Meta.Group,
 		Image:          definition.(*v1.ContainersDefinition).Spec.Image,
 		Tag:            definition.(*v1.ContainersDefinition).Spec.Tag,
-		Auth:           definition.(*v1.ContainersDefinition).Spec.RepositoryAuth,
+		RegistryAuth:   definition.(*v1.ContainersDefinition).Spec.RegistryAuth,
 		Replicas:       definition.(*v1.ContainersDefinition).Spec.Replicas,
 		Lock:           sync.RWMutex{},
 		Env:            definition.(*v1.ContainersDefinition).Spec.Envs,
@@ -470,17 +470,25 @@ func (container *Docker) Wait(condition string) error {
 	}
 }
 func (container *Docker) Clean() error {
-	state, err := container.GetState()
+	if c, _ := container.Get(); c != nil {
+		state, err := container.GetState()
 
-	if err != nil || state.State == "exited" {
+		if err != nil || state.State == "exited" || state.State == "created" {
+			if !errors.Is(errors.New("container not found"), err) {
+				return container.Delete()
+			} else {
+				return nil
+			}
+		}
+
+		if err = container.Stop(static.SIGTERM); err != nil {
+			return err
+		}
+
 		return container.Delete()
+	} else {
+		return nil
 	}
-
-	if err = container.Stop(static.SIGTERM); err != nil {
-		return err
-	}
-
-	return container.Delete()
 }
 
 func (container *Docker) Rename(newName string) error {

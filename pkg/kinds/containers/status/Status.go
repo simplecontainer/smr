@@ -65,6 +65,7 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(clean, prepare)
 	status.StateMachine.AddEdge(clean, pendingDelete)
+	status.StateMachine.AddEdge(clean, daemonFailure)
 
 	status.StateMachine.AddEdge(restart, clean)
 

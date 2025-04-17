@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -64,7 +63,6 @@ func (nodes *Nodes) Remove(node *Node) {
 
 	for i, n := range nodes.Nodes {
 		if n.NodeID == node.NodeID {
-			fmt.Println("Removed node", node)
 			nodes.Nodes = append(nodes.Nodes[:i], nodes.Nodes[i+1:]...)
 		}
 	}

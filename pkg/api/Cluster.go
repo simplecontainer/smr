@@ -240,9 +240,9 @@ func (api *Api) GetCluster(c *gin.Context) {
 }
 
 func (api *Api) SaveClusterConfiguration() {
+	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 	api.Config.KVStore.Node = api.Cluster.Node
 	api.Config.KVStore.URL = api.Cluster.Node.URL
-	api.Config.KVStore.Cluster = api.Cluster.Cluster.Nodes
 	api.Config.KVStore.API = api.Cluster.Node.API
 	api.Config.KVStore.Join = true
 
@@ -251,15 +251,18 @@ func (api *Api) SaveClusterConfiguration() {
 		logger.Log.Error(err.Error())
 	}
 
-	format := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
-	obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
+	if api.Cluster.Node != nil {
+		format := f.New(static.SMR_PREFIX, static.CATEGORY_PLAIN, "cluster", "internal", "cluster")
+		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
-	var bytes []byte
-	bytes, err = json.Marshal(api.Cluster.Cluster.Nodes)
+		var bytes []byte
+		var err error
+		bytes, err = json.Marshal(api.Cluster.Cluster.Nodes)
 
-	if err == nil {
-		obj.Propose(format, bytes)
-	} else {
-		logger.Log.Error(err.Error())
+		if err == nil {
+			obj.Propose(format, bytes)
+		} else {
+			logger.Log.Error(err.Error())
+		}
 	}
 }

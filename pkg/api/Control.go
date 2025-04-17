@@ -46,6 +46,11 @@ func (api *Api) Control(c *gin.Context) {
 		return
 	}
 
+	if !api.Cluster.Started {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "cluster is not started yet", err, nil))
+		return
+	}
+
 	if api.Cluster.Node.NodeID == control.Drain.NodeID {
 		api.Manager.KindsRegistry[static.KIND_GITOPS].GetShared().(*shared.Shared).Watchers.Drain()
 		api.Manager.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*cshared.Shared).Watchers.Drain()
