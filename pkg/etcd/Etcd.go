@@ -1,4 +1,4 @@
-package networking
+package etcd
 
 import (
 	"fmt"
@@ -15,17 +15,20 @@ func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 
 	cfg.AdvertiseClientUrls = []url.URL{*URLC}
 	cfg.ListenClientUrls = []url.URL{*URLC}
-	cfg.SnapshotCount = 1000
-	cfg.MaxSnapFiles = 10
-	cfg.MaxWalFiles = 10
 
-	cfg.AutoCompactionMode = "revision"
-	cfg.AutoCompactionRetention = "1m"
+	cfg.SnapshotCount = config.Etcd.SnapshotCount
+	cfg.MaxSnapFiles = config.Etcd.MaxSnapFiles
+	cfg.MaxWalFiles = config.Etcd.MaxWalFiles
 
-	cfg.QuotaBackendBytes = 8 * 1024 * 1024
-	cfg.MaxTxnOps = 64
-	cfg.EnableV2 = false
-	cfg.EnableGRPCGateway = false
+	cfg.AutoCompactionMode = config.Etcd.AutoCompactionMode
+	cfg.AutoCompactionRetention = config.Etcd.AutoCompactionRetention
+
+	cfg.QuotaBackendBytes = config.Etcd.QuotaBackendBytes
+	cfg.MaxTxnOps = config.Etcd.MaxTxnOps
+
+	cfg.EnableV2 = config.Etcd.EnableV2
+	cfg.EnableGRPCGateway = config.Etcd.EnableGRPCGateway
+
 	cfg.Logger = "zap"
 	cfg.LogOutputs = []string{fmt.Sprintf("/tmp/etcd-%s.log", config.NodeName)}
 

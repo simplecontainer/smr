@@ -9,9 +9,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/dns"
+	"github.com/simplecontainer/smr/pkg/etcd"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/manager"
-	"github.com/simplecontainer/smr/pkg/networking"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
@@ -53,7 +53,7 @@ func NewApi(config *configuration.Configuration) *Api {
 func (api *Api) SetupEtcd() {
 	var err error
 
-	api.Server, err = networking.StartEtcd(api.Config)
+	api.Server, err = etcd.StartEtcd(api.Config)
 
 	if err != nil {
 		panic(err)

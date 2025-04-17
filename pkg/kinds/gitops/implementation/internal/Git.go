@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ErrPoolingInterval = errors.New("sleep interval didn't pass")
+	ErrPollingInterval = errors.New("sleep interval didn't pass")
 )
 
 type Git struct {

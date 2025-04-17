@@ -5,13 +5,14 @@ import (
 )
 
 type Configuration struct {
-	Platform     string        `yaml:"platform"`
-	NodeImage    string        `yaml:"nodeImage"`
-	NodeName     string        `yaml:"nodeName"`
-	HostPort     HostPort      `yaml:"hostport"`
-	KVStore      *KVStore      `yaml:"kvstore"`
-	Certificates *Certificates `yaml:"certificates"`
-	Environment  *Environment  `yaml:"-"`
+	Platform     string             `yaml:"platform"`
+	NodeImage    string             `yaml:"nodeImage"`
+	NodeName     string             `yaml:"nodeName"`
+	HostPort     HostPort           `yaml:"hostport"`
+	KVStore      *KVStore           `yaml:"kvstore"`
+	Certificates *Certificates      `yaml:"certificates"`
+	Environment  *Environment       `yaml:"-"`
+	Etcd         *EtcdConfiguration `yaml:"etcd"`
 }
 
 type HostPort struct {
@@ -45,4 +46,24 @@ type IPs struct {
 
 type Domains struct {
 	Members []string `yaml:"members"`
+}
+
+type EtcdConfiguration struct {
+	DataDir           string
+	QuotaBackendBytes int64
+
+	SnapshotCount uint64
+	MaxSnapFiles  uint
+	MaxWalFiles   uint
+
+	AutoCompactionMode      string
+	AutoCompactionRetention string
+
+	MaxTxnOps uint
+
+	EnableV2          bool
+	EnableGRPCGateway bool
+
+	LoggerType string
+	LogOutputs []string
 }
