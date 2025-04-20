@@ -30,5 +30,5 @@ sleep 5
 CLUSTER_DOMAIN_2="$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-agent-2):1444"
 
 #sleep 5
-#
-#../production/smrmgr.sh start -a smr-agent-3 -d localhost -c https://localhost:1445 -p 9214 -m cluster -j -x '--static.hostport 1445 --static.etcdport 2381 --static.overlayport 0.0.0.0:9214' -r smr -t $TAG
+#../production/smrmgr.sh start -a smr-agent-3 -d localhost -c https://localhost:1445 -p 9214 -m cluster -x '--static.hostport 1445 --static.etcdport 2381 --static.overlayport 0.0.0.0:9214' -r smr -t $TAG -j -z $CLUSTER_DOMAIN_1
+#CLUSTER_DOMAIN_2="$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-agent-2):1444"

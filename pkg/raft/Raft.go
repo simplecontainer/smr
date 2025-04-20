@@ -354,6 +354,8 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 		ErrorC:             make(chan error, 1),
 		TLSInfo: transport.TLSInfo{
 			ClientCertAuth: true,
+			KeyFile:        keys.Server.PrivateKeyPath,
+			CertFile:       keys.Server.CertificatePath,
 			TrustedCAFile:  keys.CA.CertificatePath,
 			HandshakeFailure: func(conn *tls.Conn, err error) {
 				fmt.Println(err.Error())
@@ -589,11 +591,9 @@ func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
 	}
 
 	server := &http.Server{
-		Handler: rc.transport.Handler(),
+		Handler:   rc.transport.Handler(),
+		TLSConfig: tlsConfig,
 	}
-
-	server.TLSConfig = &tls.Config{}
-	server.TLSConfig.GetCertificate = tlsConfig.GetCertificate
 
 	err = server.ServeTLS(ln, "", "")
 
