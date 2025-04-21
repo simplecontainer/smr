@@ -318,32 +318,33 @@ func (definition *Definition) IsOf(compare idefinitions.IDefinition) bool {
 	}
 }
 
-func (definition *Definition) Patch(compare idefinitions.IDefinition) error {
-	var b1 []byte
-	var b2 []byte
+// Patch is reversed -> compare is patched with definition
+func (definition *Definition) Patch(current idefinitions.IDefinition) error {
+	var newDefinition []byte
+	var currentDefinition []byte
 	var patch []byte
 	var modified []byte
 	var err error
 
-	b1, err = definition.Definition.ToJSON()
+	newDefinition, err = definition.Definition.ToJSON()
 
 	if err != nil {
 		return err
 	}
 
-	b2, err = compare.ToJSON()
+	currentDefinition, err = current.ToJSON()
 
 	if err != nil {
 		return err
 	}
 
-	patch, err = jsonpatch.CreateMergePatch(b1, b2)
+	patch, err = jsonpatch.CreateMergePatch(currentDefinition, newDefinition)
 
 	if err != nil {
 		return err
 	}
 
-	modified, err = jsonpatch.MergePatch(b1, patch)
+	modified, err = jsonpatch.MergePatch(currentDefinition, patch)
 
 	if err != nil {
 		return err

@@ -55,9 +55,13 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 		}
 	}
 
-	channel <- &State{
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err() // avoid sending
+	case channel <- &State{
 		State: SUCCESS,
 		Error: nil,
+	}:
 	}
 
 	return true, nil

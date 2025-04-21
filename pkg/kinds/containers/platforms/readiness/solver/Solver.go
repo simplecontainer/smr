@@ -48,8 +48,10 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 		}
 	}
 
-	channel <- &readiness.ReadinessState{
-		State: readiness.SUCCESS,
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err() // avoid sending
+	case channel <- &readiness.ReadinessState{State: readiness.SUCCESS}:
 	}
 
 	return true, nil

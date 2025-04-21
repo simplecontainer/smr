@@ -85,7 +85,7 @@ func (container *Docker) GetGroup() string {
 
 func (container *Docker) GetIndex() (uint64, error) {
 	tmp := strings.Split(container.GetGeneratedName(), "-")
-	return strconv.ParseUint(tmp[2], 10, 64)
+	return strconv.ParseUint(tmp[len(tmp)-1], 10, 64)
 }
 
 func (container *Docker) GetGroupIdentifier() string {
