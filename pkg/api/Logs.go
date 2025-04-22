@@ -1,17 +1,20 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
-	"github.com/simplecontainer/smr/pkg/network"
-	"github.com/simplecontainer/smr/pkg/static"
-	"github.com/simplecontainer/smr/pkg/stream"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"io"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
+	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/simplecontainer/smr/pkg/stream"
 )
 
 func (api *Api) Logs(c *gin.Context) {
@@ -24,7 +27,6 @@ func (api *Api) Logs(c *gin.Context) {
 	which := c.Param("which")
 
 	follow, err := strconv.ParseBool(c.Param("follow"))
-
 	if err != nil {
 		follow = false
 	}
@@ -37,54 +39,73 @@ func (api *Api) Logs(c *gin.Context) {
 	header.Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Minute)
+	defer cancel()
 
-	if container == nil {
-		stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", static.KIND_CONTAINER)))
+	c.Request = c.Request.WithContext(ctx)
+
+	containerShared, ok := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared)
+	if !ok {
+		stream.Bye(w, errors.New("container registry not available"))
 		return
-	} else {
-		if container.IsGhost() {
-			client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
+	}
 
-			if !ok {
-				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", static.KIND_CONTAINER)))
-				return
-			} else {
-				stream.StreamRemote(w, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
-			}
-		} else {
-			switch which {
-			case "main":
-				var reader io.ReadCloser
-				reader, err = container.Logs(follow)
+	container := containerShared.Registry.Find(static.SMR_PREFIX, group, name)
+	if container == nil {
+		stream.Bye(w, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+		return
+	}
 
-				if err != nil {
-					network.StreamByte([]byte(err.Error()), w)
-				}
-
-				err = stream.Stream(w, reader)
-
-				if err != nil {
-					stream.Bye(w, err)
-				}
-				break
-			case "init":
-				var reader io.ReadCloser
-				reader, err = container.GetInit().Logs(follow)
-
-				if err != nil {
-					network.StreamByte([]byte(err.Error()), w)
-				}
-
-				err = stream.Stream(w, reader)
-
-				if err != nil {
-					stream.Bye(w, err)
-				}
-				break
-			default:
-				stream.Bye(w, errors.New("container can be only main or init"))
-			}
+	if container.IsGhost() {
+		client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
+		if !ok {
+			stream.Bye(w, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+			return
 		}
+
+		err := stream.StreamRemote(c, w, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+
+		if err != nil {
+			stream.Bye(w, err)
+		}
+
+		return
+	}
+
+	switch which {
+	case "main":
+		handleContainerLogs(w, container, follow, false)
+	case "init":
+		handleContainerLogs(w, container, follow, true)
+	default:
+		stream.Bye(w, errors.New("container can be only main or init"))
+	}
+}
+
+func handleContainerLogs(w gin.ResponseWriter, container platforms.IContainer, follow bool, isInit bool) {
+	var reader io.ReadCloser
+	var err error
+
+	if isInit {
+		reader, err = container.GetInit().Logs(follow)
+	} else {
+		reader, err = container.Logs(follow)
+	}
+
+	if err != nil {
+		stream.Bye(w, err)
+		return
+	}
+
+	if reader == nil {
+		stream.Bye(w, errors.New("no logs available"))
+		return
+	}
+
+	defer reader.Close()
+
+	err = stream.Stream(w, reader)
+	if err != nil {
+		stream.Bye(w, err)
 	}
 }

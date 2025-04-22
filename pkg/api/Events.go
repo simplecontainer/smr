@@ -8,19 +8,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/wss"
 	"go.uber.org/zap"
-	"net/http"
 	"sync"
 	"time"
 )
-
-var wssUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-	Subprotocols: []string{
-		"Authorization",
-	},
-}
 
 func (api *Api) Events(c *gin.Context) {
 	w, r := c.Writer, c.Request

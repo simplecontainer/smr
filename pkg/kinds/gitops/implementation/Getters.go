@@ -23,5 +23,5 @@ func (gitops *Gitops) GetStatus() *status.Status {
 }
 
 func (gitops *Gitops) GetGroupIdentifier() string {
-	return fmt.Sprintf("%s.%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+	return fmt.Sprintf("%s/%s", gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
 }

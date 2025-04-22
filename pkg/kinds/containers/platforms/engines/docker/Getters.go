@@ -89,7 +89,7 @@ func (container *Docker) GetIndex() (uint64, error) {
 }
 
 func (container *Docker) GetGroupIdentifier() string {
-	return fmt.Sprintf("%s.%s", container.Group, container.GeneratedName)
+	return fmt.Sprintf("%s/%s", container.Group, container.GeneratedName)
 }
 
 func (container *Docker) GetDomain(network string) string {

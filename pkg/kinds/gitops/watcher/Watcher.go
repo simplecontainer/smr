@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
+	"go.uber.org/zap"
 	"os"
 	"time"
 )
@@ -13,6 +14,11 @@ import (
 func New(gitopsObj *implementation.Gitops, mgr *manager.Manager, user *authentication.User) *Gitops {
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
+
+	err := logger.CreateOrRotate(gitopsObj.LogPath)
+	if err != nil {
+		logger.Log.Error("failed to create log file for container", zap.String("gitops", gitopsObj.GetGroupIdentifier()))
+	}
 
 	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{gitopsObj.LogPath}, []string{gitopsObj.LogPath})
 

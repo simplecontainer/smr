@@ -47,15 +47,20 @@ func (api *Api) Debug(c *gin.Context) {
 		} else {
 			if container.IsGhost() {
 				client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
-
 				if !ok {
-					stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
+					stream.Bye(w, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
 					return
-				} else {
-					stream.StreamRemote(w, fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
 				}
+
+				err := stream.StreamRemote(c, w, fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+
+				if err != nil {
+					stream.Bye(w, err)
+				}
+
+				return
 			} else {
-				stream.StreamTail(w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+				stream.StreamTail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
 			}
 		}
 	} else {
@@ -85,10 +90,18 @@ func (api *Api) Debug(c *gin.Context) {
 				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
 				return
 			} else {
-				stream.StreamRemote(w, fmt.Sprintf("%s/api/v1/debug/%s/%s", client.API, format.ToString(), c.Param("follow")), client)
+				err = stream.StreamRemote(c, w, fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+
+				if err != nil {
+					stream.Bye(w, err)
+				}
 			}
 		} else {
-			stream.StreamTail(w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+			err = stream.StreamTail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+
+			if err != nil {
+				stream.Bye(w, err)
+			}
 		}
 	}
 }

@@ -1,8 +1,12 @@
 package logger
 
 import (
+	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 var Log *zap.Logger
@@ -32,4 +36,40 @@ func NewLogger(logLevel string, outputStdout []string, outputStderr []string) *z
 	}
 
 	return zap.Must(config.Build())
+}
+
+func CreateOrRotate(path string) error {
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		file, err := os.Create(path)
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+		defer file.Close()
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error checking file: %w", err)
+	}
+
+	dir := filepath.Dir(path)
+	filename := filepath.Base(path)
+	ext := filepath.Ext(filename)
+	nameWithoutExt := filename[:len(filename)-len(ext)]
+
+	timestamp := time.Now().Format("20060102_150405")
+	newPath := filepath.Join(dir, fmt.Sprintf("%s_%s%s", nameWithoutExt, timestamp, ext))
+
+	err = os.Rename(path, newPath)
+	if err != nil {
+		return fmt.Errorf("failed to rotate file: %w", err)
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create new file after rotation: %w", err)
+	}
+	defer file.Close()
+
+	return nil
 }

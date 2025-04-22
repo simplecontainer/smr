@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"os"
 	"strings"
 	"time"
@@ -22,6 +23,11 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 
 	format := f.New(containerObj.GetDefinition().GetPrefix(), "kind", static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName())
 	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+
+	err := logger.CreateOrRotate(path)
+	if err != nil {
+		logger.Log.Error("failed to create log file for container", zap.String("container", containerObj.GetGeneratedName()))
+	}
 
 	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
 

@@ -11,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/wss"
 	"go.uber.org/zap"
+	"time"
 )
 
 func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, informer *distributed.Informer, wss *wss.WebSockets) {
@@ -40,25 +41,28 @@ func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, informer *distrib
 }
 
 func Handle(kindRegistry map[string]ikinds.Kind, informer *distributed.Informer, event Event, node uint64) {
-	go func() {
-		kind, ok := kindRegistry[event.Target]
+	kind, ok := kindRegistry[event.Target]
 
-		if ok {
-			format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
+	if ok {
+		format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
 
-			ch := informer.GetCh(format.ToString())
+		ch := informer.GetCh(format.ToString())
 
-			if ch != nil {
-				ch <- event
-			}
-
-			err := kind.Event(event)
-
-			if err != nil {
-				logger.Log.Error(err.Error(), zap.String("event", fmt.Sprintf("%s", event)))
+		if ch != nil {
+			select {
+			case ch <- event:
+			case <-time.After(60 * time.Second):
+				informer.RmCh(format.ToString())
+				logger.Log.Error("informer channel timed out", zap.String("event", fmt.Sprintf("%s", event)))
 			}
 		}
 
-		return
-	}()
+		err := kind.Event(event)
+
+		if err != nil {
+			logger.Log.Error(err.Error(), zap.String("event", fmt.Sprintf("%s", event)))
+		}
+	}
+
+	return
 }
