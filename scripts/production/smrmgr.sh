@@ -146,6 +146,16 @@ Manager(){
       smr node run --node "${NODE}" "${CONTROL_PLANE}" $CLIENT_ARGS --image "${REPOSITORY}" --tag "${TAG}" --image "${REPOSITORY}" --tag "${TAG}" --args="create --node ${NODE} --domain ${DOMAIN} --ip ${IP}" --wait exited
       smr node run --node "$NODE" --args="start"
 
+      while :
+      do
+        if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --y; then
+          break
+        else
+          echo "Failed to connect to siplecontainer, trying again in 1 second"
+          sleep 1
+        fi
+      done
+
       sudo nohup smr node cluster join --node "$NODE" --api "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
 
       echo "The simplecontainer is started in single mode."
