@@ -1,7 +1,6 @@
 package containers
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile"
@@ -62,8 +61,7 @@ func (containers *Containers) Update(cs []platforms.IContainer, exists bool) {
 
 func (containers *Containers) Destroy(cs []platforms.IContainer, exists bool) {
 	for _, containerObj := range cs {
-		groupIdentifier := fmt.Sprintf("%s.%s", containerObj.GetGroup(), containerObj.GetGeneratedName())
-		containerW := containers.Shared.Watchers.Find(groupIdentifier)
+		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
 
 		if containerW != nil && !containerW.Done {
 			select {

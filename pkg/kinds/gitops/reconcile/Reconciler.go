@@ -17,8 +17,8 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	gitopsObj := gitopsWatcher.Gitops
 
-	if gitopsObj.ForcePoll {
-		gitopsObj.ForcePoll = false
+	if gitopsObj.ForceClone {
+		gitopsObj.ForceClone = false
 		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 	}
 

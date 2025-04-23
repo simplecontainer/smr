@@ -29,7 +29,6 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 		return status.CLONING_GIT, true
 	case status.CLONING_GIT:
 		headRemote, err := gitopsObj.Git.RemoteHead()
-		gitopsObj.ForcePoll = false
 
 		if err != nil {
 			gitopsWatcher.Logger.Error(err.Error())
@@ -46,7 +45,21 @@ func Reconcile(shared *shared.Shared, gitopsWatcher *watcher.Gitops) (string, bo
 					return status.CLONED_GIT, true
 				}
 			} else {
-				return status.CLONED_GIT, true
+				if gitopsObj.ForceClone {
+					gitopsObj.ForceClone = false
+
+					gitopsWatcher.Logger.Info(fmt.Sprintf("fetch is forced - attempt to fetch new commits"))
+					gitopsObj.Commit, err = gitopsWatcher.Gitops.Git.Fetch()
+
+					if err != nil {
+						gitopsWatcher.Logger.Error(err.Error())
+						return status.INVALID_GIT, true
+					} else {
+						return status.CLONED_GIT, true
+					}
+				} else {
+					return status.CLONED_GIT, true
+				}
 			}
 		}
 	case status.CLONED_GIT:

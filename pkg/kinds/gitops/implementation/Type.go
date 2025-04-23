@@ -17,7 +17,7 @@ type Gitops struct {
 	DirectoryPath   string
 	PoolingInterval time.Duration
 	LastPoll        time.Time
-	ForcePoll       bool
+	ForceClone      bool
 	AutomaticSync   bool
 	ForceSync       bool
 	Commit          *object.Commit

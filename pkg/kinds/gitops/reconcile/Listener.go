@@ -52,7 +52,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 				logger.Log.Error(err.Error())
 			}
 
-			shared.Watchers.Remove(fmt.Sprintf("%s.%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
+			shared.Watchers.Remove(fmt.Sprintf("%s/%s", gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name))
 
 			events.DispatchGroup([]events.Event{
 				events.NewKindEvent(events.EVENT_DELETED, gitopsWatcher.Gitops.GetDefinition(), nil),
@@ -81,7 +81,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			}()
 			break
 		case <-gitopsWatcher.Poller.C:
-			gitopsWatcher.Gitops.ForcePoll = true
+			gitopsWatcher.Gitops.ForceClone = true
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
 			break
 		}

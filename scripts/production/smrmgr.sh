@@ -160,20 +160,20 @@ Manager(){
         RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
       fi
 
-      echo "Trying to connect to $NODE_DOMAIN"
+      echo "Attemp to connect to the simplecontainer node and save context."
 
       while :
       do
         if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --y; then
           break
         else
-          echo "Failed to connect to siplecontainer, trying again in 1 second"
+          echo "Failed to connect to simplecontainer node, trying again in 1 second..."
           sleep 1
         fi
       done
 
       sudo nohup smr node cluster join --node "$NODE" --raft $RAFT_URL </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
-      echo "The simplecontainer is started in cluster mode."
+      echo "The simplecontainer node is started."
     fi
   else
     HelpStart

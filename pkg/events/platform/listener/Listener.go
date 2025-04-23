@@ -138,7 +138,7 @@ func HandleStop(shared *shared.Shared, container platforms.IContainer, event iev
 
 func HandleDie(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
 	if !reconcileIgnore(container.GetLabels()) {
-		containerW := shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName()))
+		containerW := shared.Watchers.Find(container.GetGroupIdentifier())
 
 		if containerW != nil && containerW.AllowPlatformEvents {
 			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", container.GetGeneratedName()))
@@ -146,7 +146,7 @@ func HandleDie(shared *shared.Shared, container platforms.IContainer, event ieve
 			container.GetStatus().GetPending().Clear()
 			container.GetStatus().SetState(status.DEAD)
 
-			shared.Watchers.Find(fmt.Sprintf("%s.%s", container.GetGroup(), container.GetGeneratedName())).ContainerQueue <- container
+			shared.Watchers.Find(container.GetGroupIdentifier()).ContainerQueue <- container
 		} else {
 			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile will be ignored since it is not allowed %s", container.GetGeneratedName()))
 		}

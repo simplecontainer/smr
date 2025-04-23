@@ -41,7 +41,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
 
-	GroupIdentifier := fmt.Sprintf("%s.%s", request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+	GroupIdentifier := fmt.Sprintf("%s/%s", request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 	existingWatcher := gitops.Shared.Watchers.Find(GroupIdentifier)
 
 	if request.Definition.GetRuntime().GetNode() != gitops.Shared.Manager.Cluster.Node.NodeID {
@@ -156,7 +156,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 				return nil
 			}
 
-			gitopsObj.ForcePoll = true
+			gitopsObj.ForceClone = true
 			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
