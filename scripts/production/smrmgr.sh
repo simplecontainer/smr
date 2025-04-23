@@ -164,7 +164,7 @@ Manager(){
 
       while :
       do
-        if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --y; then
+        if smr context connect "${CONN_STRING}" "${HOME}/smr/.ssh/${NODE}.pem" --context "${NODE}" --y; then
           break
         else
           echo "Failed to connect to simplecontainer node, trying again in 1 second..."
