@@ -40,7 +40,7 @@ Manager(){
   NODE_PORT="1443"
   RAFT_PORT="9212"
   CONN_STRING="https://localhost:1443"
-  NODE_ARGS="--port 0.0.0.0:1443 --overlayport 0.0.0.0:9212)"
+  NODE_ARGS="--port 0.0.0.0:1443"
   CLIENT_ARGS="--dynamic.hostport 0.0.0.0:1443 --dynamic.overlayport 0.0.0.0:9212"
   MODE="cluster"
   JOIN=false
@@ -113,8 +113,6 @@ Manager(){
   echo "....Tag:                  $TAG"
   echo "....Mode:                 $MODE"
   echo "....Additional args:      $CLIENT_ARGS"
-  echo "....Restart:              $RESTART"
-  echo "....Upgrade:              $UPGRADE"
 
   if [[ $JOIN == "true" ]]; then
     echo "....Join:                 $JOIN"
