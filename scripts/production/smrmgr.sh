@@ -16,18 +16,35 @@ HelpStart(){
 """
 }
 
+extract_flag_value() {
+  local input="$1"
+  local flag="$2"
+
+  # Extract value for the given flag using regex
+  if [[ "$input" =~ ($flag)[=[:space:]]([^[:space:]]+) ]]; then
+    echo "${BASH_REMATCH[2]}"
+  else
+    echo ""
+  fi
+}
+
+#
+#
+# smrmgr
+
 Manager(){
   NODE=""
   DOMAIN=""
   IP=""
   NODE_DOMAIN=""
-  NODE_PORT="9212"
+  NODE_PORT="1443"
+  RAFT_PORT="9212"
   CONN_STRING="https://localhost:1443"
-  CLIENT_ARGS="--static.overlayport 0.0.0.0:9212"
+  NODE_ARGS="--port 0.0.0.0:1443 --overlayport 0.0.0.0:9212)"
+  CLIENT_ARGS="--dynamic.hostport 0.0.0.0:1443 --dynamic.overlayport 0.0.0.0:9212"
   MODE="cluster"
   JOIN=false
   PEER=""
-  CONTROL_PLANE="0.0.0.0:1443"
   REPOSITORY="quay.io/simplecontainer/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
   ALLYES=false
@@ -43,7 +60,7 @@ Manager(){
       d) # Set domain
          DOMAIN=$OPTARG; ;;
       e) # Expose control plane
-         CONTROL_PLANE=$OPTARG; ;;
+         NODE_ARGS=$OPTARG; ;;
       h) # Display help
          HelpStart && exit; ;;
       i) # Set ip
@@ -81,15 +98,29 @@ Manager(){
     NODE_DOMAIN="localhost"
   fi
 
+  # Domain not known at the top so append it here!
+
+  if [[ ${JOIN} == true ]]; then
+    NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS} --domains ${DOMAIN} --ips ${IP} --join --peer ${PEER}"
+  else
+    NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS} --domains ${DOMAIN} --ips ${IP}"
+  fi
+
   echo "..Node info....................................................................................................."
   echo "....Agent name:           $NODE"
   echo "....Node:                 $NODE_DOMAIN"
+  echo "....Repository:           $REPOSITORY"
+  echo "....Tag:                  $TAG"
+  echo "....Mode:                 $MODE"
   echo "....Additional args:      $CLIENT_ARGS"
   echo "....Restart:              $RESTART"
   echo "....Upgrade:              $UPGRADE"
 
   if [[ $JOIN == "true" ]]; then
-  echo "....Join:                 true"
+    echo "....Join:                 $JOIN"
+    echo "....Peer:                 $PEER"
+  else
+    echo "....Join:                 false"
   fi
 
   echo "....cli version:          $(smr version)"
@@ -105,11 +136,13 @@ Manager(){
 
   if [[ ${NODE} != "" ]]; then
     if [[ ${MODE} == "cluster" ]]; then
-      if [[ ${JOIN} == true ]]; then
-        ID=$(smr node create --node "${NODE}" --static.image "${REPOSITORY}" --static.tag "${TAG}" $CLIENT_ARGS --args="create --image ${REPOSITORY} --tag ${TAG} --join --peer ${PEER} --node ${NODE}  --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --w exited)
-      else
-        ID=$(smr node create --node "${NODE}" --static.image "${REPOSITORY}" --static.tag "${TAG}" $CLIENT_ARGS --args="create --image ${REPOSITORY} --tag ${TAG} --node ${NODE}  --port ${CONTROL_PLANE} --domains ${DOMAIN} --ips ${IP}" --w exited)
-      fi
+      ID=$(smr node create \
+        --node "${NODE}" \
+        --static.image "${REPOSITORY}" \
+        --static.tag "${TAG}" \
+        $CLIENT_ARGS \
+        --args="create ${NODE_ARGS}" \
+        --w exited)
 
       EXIT_CODE=${?}
 
@@ -124,11 +157,13 @@ Manager(){
       smr node run --node "${NODE}" --args="start" --w running
 
       if [[ $NODE_DOMAIN == "localhost" ]]; then
-        NODE_DOMAIN="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${NODE_PORT}"
+        RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${RAFT_PORT}"
       else
-        NODE_DOMAIN="https://${NODE_DOMAIN}:${NODE_PORT}"
+        RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
       fi
 
+      echo "Trying to connect to $NODE_DOMAIN"
+
       while :
       do
         if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --y; then
@@ -139,26 +174,8 @@ Manager(){
         fi
       done
 
-      sudo nohup smr node cluster join --node "$NODE" --api "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
-
+      sudo nohup smr node cluster join --node "$NODE" --raft $RAFT_URL </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
       echo "The simplecontainer is started in cluster mode."
-    else
-      smr node run --node "${NODE}" "${CONTROL_PLANE}" $CLIENT_ARGS --image "${REPOSITORY}" --tag "${TAG}" --image "${REPOSITORY}" --tag "${TAG}" --args="create --node ${NODE} --domain ${DOMAIN} --ip ${IP}" --wait exited
-      smr node run --node "$NODE" --args="start"
-
-      while :
-      do
-        if smr context connect "${CONN_STRING}" "${HOME}/.ssh/simplecontainer/${NODE}.pem" --context "${NODE}" --y; then
-          break
-        else
-          echo "Failed to connect to siplecontainer, trying again in 1 second"
-          sleep 1
-        fi
-      done
-
-      sudo nohup smr node cluster join --node "$NODE" --api "${NODE_DOMAIN}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
-
-      echo "The simplecontainer is started in single mode."
     fi
   else
     HelpStart

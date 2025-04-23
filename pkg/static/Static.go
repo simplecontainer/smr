@@ -5,7 +5,7 @@ const (
 	ROOTDIR      = "smr"
 	CONFIGDIR    = "config"
 	ROOTSMR      = "smr"
-	SMR_SSH_HOME = "/home/node/.ssh/simplecontainer"
+	SMR_SSH_HOME = "/home/node/.ssh"
 )
 
 // Default Log Level

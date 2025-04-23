@@ -55,9 +55,9 @@ func NewDrain(nodeID uint64) *Drain {
 }
 func NewStart(nodeAPI string, overlay string, backend string) *Start {
 	return &Start{
-		NodeAPI: nodeAPI,
-		Overlay: overlay,
-		Backend: backend,
+		NodeRaftAPI: nodeAPI,
+		Overlay:     overlay,
+		Backend:     backend,
 	}
 }
 

@@ -207,6 +207,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			}
 		}
 
+		// TODO: Test when container dies quickly
 		return status.DEAD, false
 	case status.DEAD:
 		if err := shared.Registry.BackOff(containerObj.GetGroup(), containerObj.GetGeneratedName()); err != nil {

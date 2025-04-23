@@ -60,7 +60,7 @@ func Save(configObj *configuration.Configuration) error {
 }
 
 func SetFlags() {
-	flag.String("port", "0.0.0.0:1443", "Simplecontainer TLS listening interface and port")
+	flag.String("port", "0.0.0.0:1443", "Simplecontainer mTLS listening interface and port")
 	flag.String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
 	flag.String("domains", "", "Domains that TLS certificates are valid for")
 	flag.String("ips", "", "IP addresses that TLS certificates are valid for")

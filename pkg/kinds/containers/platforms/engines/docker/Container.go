@@ -651,7 +651,7 @@ func (container *Docker) ExecClose(ID string) (int, error) {
 }
 
 func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
-	if c, _ := container.Get(); c != nil && c.State == "running" {
+	if c, _ := container.Get(); c != nil && (c.State == "running" || c.State == "exited") {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
 			return nil, err
@@ -671,7 +671,7 @@ func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
 
 		return logs, nil
 	} else {
-		return nil, errors.New("container is not running")
+		return nil, errors.New("container is not found")
 	}
 }
 

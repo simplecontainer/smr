@@ -19,7 +19,7 @@ type Upgrade struct {
 }
 
 type Start struct {
-	NodeAPI string `validate:"required" json:"node_api"`
-	Overlay string `validate:"required" json:"overlay"`
-	Backend string `validate:"required" json:"backend"`
+	NodeRaftAPI string `json:"node_raft_api" validate:"required"`
+	Overlay     string `json:"overlay" validate:"required"`
+	Backend     string `json:"backend" validate:"required"`
 }

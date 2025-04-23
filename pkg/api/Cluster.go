@@ -59,7 +59,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	}
 
 	var parsed *url.URL
-	parsed, err = url.Parse(control.GetStart().NodeAPI)
+	parsed, err = url.Parse(control.GetStart().NodeRaftAPI)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
@@ -70,7 +70,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	if err != nil {
 		api.Cluster = cluster.New()
-		api.Cluster.Node = api.Cluster.Cluster.NewNode(api.Config.NodeName, control.GetStart().NodeAPI, fmt.Sprintf("https://%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+		api.Cluster.Node = api.Cluster.Cluster.NewNode(api.Config.NodeName, control.GetStart().NodeRaftAPI, fmt.Sprintf("https://%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
 		api.Cluster.Node.Version = api.Version
 
 		api.Cluster.Cluster.Add(api.Cluster.Node)
