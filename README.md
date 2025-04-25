@@ -27,8 +27,6 @@ Make VMs, On-prem servers, or trifty VMs stable resources for serverless with si
 
 To explore more dive into this README.md.
 ## Architecture
-![simplecontainer manager](.github/resources/architecture.drawio.png)
-
 Simplecontainer relies on etcd, RAFT and flannel to enable cluster of docker daemons.
 
 The etcd is started in the single instance mode, embedded in the simplecontainer itself. RAFT protocol is used to enable multi
@@ -81,7 +79,7 @@ sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
 ```
 
-### Using smr
+### OR Using smr (optional)
 The smr is client used to communicate to the local/external simplecontainer agents running on nodes.
 The smrmgr automatically downloads the client and places it under `/usr/local/bin/smr`.
 
@@ -120,7 +118,7 @@ The control plane can be exposed:
 - On the localhost only to prevent control plane communication from being done outside localhost
 - On the 0.0.0.0:1443 which means all interfaces that include all endpoints localhost or from another network.
 
-#### How to run it? (Control plane exposed to all networks)
+#### How to run it? (Control plane exposed to all interfaces)
 Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
 ```bash
 smrmgr start -a smr-agent-1 -d smr.example.com
@@ -140,7 +138,7 @@ smr ps
 Exposing the control plane only to the localhost:
 
 ```bash
-smrmgr start -a smr-agent-1 -e localhost:1443
+smrmgr start -a smr-node -x "--dynamic.hostport=127.0.0.1:1443 --dynamic.overlayport=127.0.0.1:9212"
 ```
 
 Now the contorl plane is accesible from the localhost.
@@ -355,7 +353,7 @@ Traefik and nginx will wait till mysql is ready because of the dependency defini
 
 Important links
 ---------------------------
-- https://simplecontainer.io
+- https://app.simplecontainer.io
 - https://docs.simplecontainer.io
 - https://blog.simplecontainer.io
 - https://quay.io/repository/simplecontainer/smr
