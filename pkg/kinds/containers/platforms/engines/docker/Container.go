@@ -571,14 +571,14 @@ func (container *Docker) ExecClose(ID string) (int, error) {
 	return res.ExitCode, nil
 }
 
-func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
+func (container *Docker) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {
 	if c, _ := container.Get(); c != nil && (c.State == "running" || c.State == "exited") {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
 			return nil, err
 		}
 
-		logs, err := cli.ContainerLogs(context.Background(), container.DockerID, TDContainer.LogsOptions{
+		logs, err := cli.ContainerLogs(ctx, container.DockerID, TDContainer.LogsOptions{
 			ShowStderr: true,
 			ShowStdout: true,
 			Timestamps: false,

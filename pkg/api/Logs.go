@@ -4,17 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
-	"io"
-	"net/http"
-	"strconv"
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
+	"github.com/simplecontainer/smr/pkg/proxy/plain"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/stream"
+	"io"
+	"net/http"
+	"strconv"
 )
 
 func (api *Api) Logs(c *gin.Context) {
@@ -37,75 +35,77 @@ func (api *Api) Logs(c *gin.Context) {
 	header := w.Header()
 	header.Set("Transfer-Encoding", "chunked")
 	header.Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Minute)
-	defer cancel()
-
-	c.Request = c.Request.WithContext(ctx)
+	header.Set("Connection", "keep-alive")
 
 	containerShared, ok := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared)
 	if !ok {
-		stream.Bye(w, errors.New("container registry not available"))
+		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New("container registry not available"))
 		return
 	}
 
 	container := containerShared.Registry.Find(static.SMR_PREFIX, group, name)
 	if container == nil {
-		stream.Bye(w, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
 		return
 	}
+
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
 
 	if container.IsGhost() {
 		client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 		if !ok {
-			stream.Bye(w, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
 			return
 		}
 
-		err := stream.StreamRemote(c, w, fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+		URL := fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
+
+		var remote io.ReadCloser
+		remote, err = plain.Dial(ctx, cancel, client.Http, URL)
 
 		if err != nil {
-			stream.Bye(w, err)
+			stream.ByeWithStatus(w, http.StatusBadRequest, err)
 		}
 
-		return
-	}
+		proxy := plain.Create(ctx, cancel, c.Writer, remote)
 
-	switch which {
-	case "main":
-		handleContainerLogs(w, container, follow, false)
-	case "init":
-		handleContainerLogs(w, container, follow, true)
-	default:
-		stream.Bye(w, errors.New("container can be only main or init"))
-	}
-}
+		w.WriteHeader(http.StatusOK)
+		err = proxy.Proxy()
 
-func handleContainerLogs(w gin.ResponseWriter, container platforms.IContainer, follow bool, isInit bool) {
-	var reader io.ReadCloser
-	var err error
-
-	if isInit {
-		reader, err = container.GetInit().Logs(follow)
+		if err != nil {
+			stream.Bye(w, nil)
+		}
 	} else {
-		reader, err = container.Logs(follow)
-	}
+		switch which {
+		case "main", "init":
+			var reader io.ReadCloser
 
-	if err != nil {
-		stream.Bye(w, err)
-		return
-	}
+			if which == "init" {
+				reader, err = container.GetInit().Logs(c.Request.Context(), follow)
+			} else {
+				reader, err = container.Logs(c.Request.Context(), follow)
+			}
 
-	if reader == nil {
-		stream.Bye(w, errors.New("no logs available"))
-		return
-	}
+			if err != nil {
+				stream.ByeWithStatus(w, http.StatusBadRequest, err)
+				return
+			}
 
-	defer reader.Close()
+			proxy := plain.Create(ctx, cancel, c.Writer, reader)
 
-	err = stream.Stream(w, reader)
-	if err != nil {
-		stream.Bye(w, err)
+			// Say hello back to open connection
+			c.Writer.WriteHeader(http.StatusOK)
+			c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+			c.Writer.Flush()
+
+			err = proxy.Proxy()
+
+			if err != nil {
+				stream.Bye(w, nil)
+			}
+		default:
+			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New("container can be only main or init"))
+		}
 	}
 }

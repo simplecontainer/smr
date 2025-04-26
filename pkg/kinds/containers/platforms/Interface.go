@@ -62,7 +62,7 @@ type IContainer interface {
 	Rename(newName string) error
 	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
 	ExecInspect(string) (int, error)
-	Logs(bool) (io.ReadCloser, error)
+	Logs(context.Context, bool) (io.ReadCloser, error)
 	Clean() error
 
 	ToJSON() ([]byte, error)
@@ -102,7 +102,7 @@ type IPlatform interface {
 	Rename(newName string) error
 	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
 	ExecClose(string) (int, error)
-	Logs(bool) (io.ReadCloser, error)
+	Logs(context.Context, bool) (io.ReadCloser, error)
 	Wait(string) error
 	Clean() error
 

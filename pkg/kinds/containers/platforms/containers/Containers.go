@@ -214,8 +214,8 @@ func (c *Container) Exec(ctx context.Context, command []string, interactive bool
 func (c *Container) ExecInspect(ID string) (int, error) {
 	return c.Platform.ExecClose(ID)
 }
-func (c *Container) Logs(follow bool) (io.ReadCloser, error) {
-	return c.Platform.Logs(follow)
+func (c *Container) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {
+	return c.Platform.Logs(ctx, follow)
 }
 func (c *Container) Wait(condition string) error {
 	return c.Platform.Wait(condition)

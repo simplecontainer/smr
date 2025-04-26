@@ -7,7 +7,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
-	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/stream"
@@ -37,13 +36,15 @@ func (api *Api) Debug(c *gin.Context) {
 	header := w.Header()
 	header.Set("Transfer-Encoding", "chunked")
 	header.Set("Content-Type", "application/json")
+	header.Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
 
 	if kind == static.KIND_CONTAINERS {
 		container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 
 		if container == nil {
-			network.StreamByte([]byte("container is not found"), w)
+			stream.Bye(w, errors.New("container is not found"))
+			return
 		} else {
 			if container.IsGhost() {
 				client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
@@ -52,7 +53,8 @@ func (api *Api) Debug(c *gin.Context) {
 					return
 				}
 
-				err := stream.StreamRemote(c, w, fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+				URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
+				err = stream.Remote(c, URL, client)
 
 				if err != nil {
 					stream.Bye(w, err)
@@ -60,13 +62,18 @@ func (api *Api) Debug(c *gin.Context) {
 
 				return
 			} else {
-				stream.StreamTail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+				err = stream.Tail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+
+				if err != nil {
+					stream.Bye(w, err)
+					return
+				}
 			}
 		}
 	} else {
-		format := f.New(prefix, version, "kind", kind, group, name)
-		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
+		format = f.New(prefix, version, "kind", kind, group, name)
 
+		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 		obj.Find(format)
 
 		if !obj.Exists() {
@@ -74,7 +81,8 @@ func (api *Api) Debug(c *gin.Context) {
 			return
 		}
 
-		request, err := common.NewRequest(kind)
+		var request *common.Request
+		request, err = common.NewRequest(kind)
 
 		if err != nil {
 			stream.Bye(w, err)
@@ -90,14 +98,15 @@ func (api *Api) Debug(c *gin.Context) {
 				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
 				return
 			} else {
-				err = stream.StreamRemote(c, w, fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow")), client)
+				URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
+				err = stream.Remote(c, URL, client)
 
 				if err != nil {
 					stream.Bye(w, err)
 				}
 			}
 		} else {
-			err = stream.StreamTail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+			err = stream.Tail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
 
 			if err != nil {
 				stream.Bye(w, err)

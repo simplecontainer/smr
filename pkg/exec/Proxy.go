@@ -14,17 +14,6 @@ import (
 	"time"
 )
 
-type Session struct {
-	ID         string
-	Reader     *bufio.Reader
-	Conn       *net.Conn
-	ClientConn *websocket.Conn
-	context    context.Context
-	cancel     context.CancelFunc
-	engine     chan error
-	client     chan error
-}
-
 func Create(c context.Context, cancel context.CancelFunc, clientConn *websocket.Conn, container platforms.IContainer, command []string, interactive bool) (*Session, error) {
 	execID, reader, execConn, err := container.Exec(c, command, interactive)
 

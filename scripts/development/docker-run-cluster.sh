@@ -13,6 +13,8 @@ TAG="$(git rev-parse --short "$BRANCH")"
 docker stop smr-development-node1-1 smr-development-node-2 smr-development-node-3 || echo
 docker rm smr-development-node-1 smr-development-node-2 smr-development-node-3 || echo
 
+rm -rf ~/smr/.ssh || echo
+
 rm -rf ~/.smr-development-node-1  || echo
 rm -rf ~/.smr-development-node-2  || echo
 rm -rf ~/.smr-development-node-3  || echo
