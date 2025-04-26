@@ -2,6 +2,7 @@ package containers
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	jsoniter "github.com/json-iterator/go"
@@ -207,11 +208,8 @@ func (c *Container) Delete() error {
 func (c *Container) Rename(newName string) error {
 	return c.Platform.Rename(newName)
 }
-func (c *Container) Exec(command []string) (types.ExecResult, error) {
-	return c.Platform.Exec(command)
-}
-func (c *Container) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
-	return c.Platform.ExecTTY(command, interactive)
+func (c *Container) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
+	return c.Platform.Exec(ctx, command, interactive)
 }
 func (c *Container) ExecInspect(ID string) (int, error) {
 	return c.Platform.ExecClose(ID)

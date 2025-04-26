@@ -2,6 +2,7 @@ package platforms
 
 import (
 	"bufio"
+	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -59,8 +60,7 @@ type IContainer interface {
 	Delete() error
 	Wait(string) error
 	Rename(newName string) error
-	Exec(command []string) (types.ExecResult, error)
-	ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
+	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
 	ExecInspect(string) (int, error)
 	Logs(bool) (io.ReadCloser, error)
 	Clean() error
@@ -100,8 +100,7 @@ type IPlatform interface {
 	Restart() error
 	Delete() error
 	Rename(newName string) error
-	Exec(command []string) (types.ExecResult, error)
-	ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
+	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
 	ExecClose(string) (int, error)
 	Logs(bool) (io.ReadCloser, error)
 	Wait(string) error

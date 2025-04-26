@@ -8,6 +8,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/exec"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -112,11 +113,19 @@ func SolveReadiness(client *client.Http, user *authentication.User, container pl
 	case readiness.TYPE_COMMAND:
 		c, err := container.GetState()
 		if err == nil && c.State == "running" {
+			var session *exec.Session
 			var result types.ExecResult
-			result, err = container.Exec(r.Command)
+
+			session, err = exec.Create(r.Ctx, r.Cancel, nil, container, r.Command, false)
 
 			if err != nil {
-				return err
+				return errors.New("readiness command failed")
+			}
+
+			result, err = session.Output(container)
+
+			if err != nil {
+				return errors.New("readiness command failed")
 			}
 
 			if result.Exit == 0 {
