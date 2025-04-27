@@ -1,7 +1,6 @@
 package replicas
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -70,7 +69,6 @@ func (replicas *Replicas) GenerateContainers(registry platforms.Registry, defini
 
 func (replicas *Replicas) RemoveContainers(registry platforms.Registry, definition *v1.ContainersDefinition) ([]platforms.IContainer, error) {
 	indexes, err := registry.GetIndexes(definition.Prefix, definition.Meta.Group, definition.Meta.Name)
-	fmt.Println(indexes)
 
 	if err != nil {
 		return nil, err
@@ -81,8 +79,6 @@ func (replicas *Replicas) RemoveContainers(registry platforms.Registry, definiti
 	for _, index := range indexes {
 		generatedName := registry.NameReplica(definition.Meta.Group, definition.Meta.Name, index)
 		existing := registry.FindLocal(definition.Meta.Group, generatedName)
-
-		fmt.Println(generatedName)
 
 		if existing != nil {
 			destroyContainers = append(destroyContainers, existing)

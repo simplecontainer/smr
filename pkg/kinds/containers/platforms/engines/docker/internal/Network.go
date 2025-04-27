@@ -100,6 +100,10 @@ func (networks *Networks) Remove(containerId string, networkId string) error {
 
 func (networks *Networks) Find(networkId string) *Network {
 	for i, n := range networks.Networks {
+		if n == nil {
+			continue
+		}
+
 		if n.Docker.NetworkId == networkId {
 			return networks.Networks[i]
 		}

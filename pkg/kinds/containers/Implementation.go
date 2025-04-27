@@ -182,8 +182,6 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 func (containers *Containers) Event(event ievents.Event) error {
 	switch event.GetType() {
 	case events.EVENT_DEPENDENCY:
-		fmt.Println("EVENT DEPENDENCY!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
 				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
@@ -193,7 +191,6 @@ func (containers *Containers) Event(event ievents.Event) error {
 
 		return nil
 	case events.EVENT_CHANGE:
-		fmt.Println("EVENT RESTART!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
 				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
@@ -203,7 +200,6 @@ func (containers *Containers) Event(event ievents.Event) error {
 
 		return nil
 	case events.EVENT_RESTART:
-		fmt.Println("EVENT RESTART!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		containerObj := containers.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
 		if containerObj == nil {

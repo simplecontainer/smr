@@ -10,7 +10,6 @@ import (
 	TDContainer "github.com/docker/docker/api/types/container"
 	TDVolume "github.com/docker/docker/api/types/volume"
 	IDClient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mholt/archives"
 	"github.com/simplecontainer/smr/pkg/authentication"
@@ -26,7 +25,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
 	"io"
-	"io/ioutil"
 	"net"
 	"strconv"
 	"sync"
@@ -517,85 +515,8 @@ func (container *Docker) Rename(newName string) error {
 		return errors.New("container is not found")
 	}
 }
-func (container *Docker) Exec(command []string) (types.ExecResult, error) {
+func (container *Docker) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
-		var result types.ExecResult
-
-		ctx := context.Background()
-		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
-		if err != nil {
-			return types.ExecResult{}, err
-		}
-
-		defer func(cli *IDClient.Client) {
-			err = cli.Close()
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-		}(cli)
-
-		config := TDTypes.ExecConfig{
-			AttachStderr: true,
-			AttachStdout: true,
-			Cmd:          command,
-		}
-
-		exec, err := cli.ContainerExecCreate(ctx, container.GeneratedName, config)
-		if err != nil {
-			panic(err)
-		}
-
-		resp, err := cli.ContainerExecAttach(context.Background(), exec.ID, TDTypes.ExecStartCheck{})
-		if err != nil {
-			panic(err)
-		}
-
-		var stdoutBuffer, stderrBuffer bytes.Buffer
-		outputDone := make(chan error)
-
-		go func() {
-			_, err = stdcopy.StdCopy(&stdoutBuffer, &stderrBuffer, resp.Reader)
-			outputDone <- err
-		}()
-
-		select {
-		case err = <-outputDone:
-			if err != nil {
-				return result, nil
-			}
-			break
-
-		case <-ctx.Done():
-			return result, nil
-		}
-
-		stdout, err := ioutil.ReadAll(&stdoutBuffer)
-		if err != nil {
-			return result, nil
-		}
-
-		stderr, err := ioutil.ReadAll(&stderrBuffer)
-		if err != nil {
-			return result, nil
-		}
-
-		res, err := cli.ContainerExecInspect(ctx, exec.ID)
-		if err != nil {
-			return result, nil
-		}
-
-		result.Exit = res.ExitCode
-		result.Stdout = string(stdout)
-		result.Stderr = string(stderr)
-
-		return result, nil
-	} else {
-		return types.ExecResult{}, errors.New("container is not running")
-	}
-}
-func (container *Docker) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
-	if c, _ := container.Get(); c != nil && c.State == "running" {
-		ctx := context.Background()
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 		if err != nil {
@@ -650,19 +571,18 @@ func (container *Docker) ExecClose(ID string) (int, error) {
 	return res.ExitCode, nil
 }
 
-func (container *Docker) Logs(follow bool) (io.ReadCloser, error) {
+func (container *Docker) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {
 	if c, _ := container.Get(); c != nil && (c.State == "running" || c.State == "exited") {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 		if err != nil {
 			return nil, err
 		}
 
-		logs, err := cli.ContainerLogs(context.Background(), container.DockerID, TDContainer.LogsOptions{
+		logs, err := cli.ContainerLogs(ctx, container.DockerID, TDContainer.LogsOptions{
 			ShowStderr: true,
 			ShowStdout: true,
 			Timestamps: false,
 			Follow:     follow,
-			Tail:       "30",
 		})
 
 		if err != nil {

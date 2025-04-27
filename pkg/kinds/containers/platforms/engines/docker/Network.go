@@ -81,8 +81,10 @@ func (container *Docker) BuildNetwork() *TDNetwork.NetworkingConfig {
 
 	if container.NetworkMode != "host" {
 		for _, netw := range container.Networks.Networks {
-			networks.EndpointsConfig[netw.Reference.Name] = &TDNetwork.EndpointSettings{
-				NetworkID: netw.Docker.NetworkId,
+			if netw != nil {
+				networks.EndpointsConfig[netw.Reference.Name] = &TDNetwork.EndpointSettings{
+					NetworkID: netw.Docker.NetworkId,
+				}
 			}
 		}
 	}
