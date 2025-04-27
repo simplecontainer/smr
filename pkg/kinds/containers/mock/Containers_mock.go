@@ -11,6 +11,7 @@ package mock_platforms
 
 import (
 	bufio "bufio"
+	context "context"
 	io "io"
 	net "net"
 	reflect "reflect"
@@ -83,18 +84,20 @@ func (mr *MockIContainerMockRecorder) Delete() *gomock.Call {
 }
 
 // Exec mocks base method.
-func (m *MockIContainer) Exec(command []string) (types.ExecResult, error) {
+func (m *MockIContainer) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exec", command)
-	ret0, _ := ret[0].(types.ExecResult)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "Exec", ctx, command, interactive)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(*bufio.Reader)
+	ret2, _ := ret[2].(net.Conn)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
 }
 
 // Exec indicates an expected call of Exec.
-func (mr *MockIContainerMockRecorder) Exec(command any) *gomock.Call {
+func (mr *MockIContainerMockRecorder) Exec(ctx, command, interactive any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIContainer)(nil).Exec), command)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIContainer)(nil).Exec), ctx, command, interactive)
 }
 
 // ExecInspect mocks base method.
@@ -110,23 +113,6 @@ func (m *MockIContainer) ExecInspect(arg0 string) (int, error) {
 func (mr *MockIContainerMockRecorder) ExecInspect(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecInspect", reflect.TypeOf((*MockIContainer)(nil).ExecInspect), arg0)
-}
-
-// ExecTTY mocks base method.
-func (m *MockIContainer) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecTTY", command, interactive)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(*bufio.Reader)
-	ret2, _ := ret[2].(net.Conn)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
-}
-
-// ExecTTY indicates an expected call of ExecTTY.
-func (mr *MockIContainerMockRecorder) ExecTTY(command, interactive any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecTTY", reflect.TypeOf((*MockIContainer)(nil).ExecTTY), command, interactive)
 }
 
 // GetDefinition mocks base method.
@@ -439,18 +425,18 @@ func (mr *MockIContainerMockRecorder) Kill(signal any) *gomock.Call {
 }
 
 // Logs mocks base method.
-func (m *MockIContainer) Logs(arg0 bool) (io.ReadCloser, error) {
+func (m *MockIContainer) Logs(arg0 context.Context, arg1 bool) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Logs", arg0)
+	ret := m.ctrl.Call(m, "Logs", arg0, arg1)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Logs indicates an expected call of Logs.
-func (mr *MockIContainerMockRecorder) Logs(arg0 any) *gomock.Call {
+func (mr *MockIContainerMockRecorder) Logs(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockIContainer)(nil).Logs), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockIContainer)(nil).Logs), arg0, arg1)
 }
 
 // MountResources mocks base method.
@@ -701,18 +687,20 @@ func (mr *MockIPlatformMockRecorder) Delete() *gomock.Call {
 }
 
 // Exec mocks base method.
-func (m *MockIPlatform) Exec(command []string) (types.ExecResult, error) {
+func (m *MockIPlatform) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exec", command)
-	ret0, _ := ret[0].(types.ExecResult)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "Exec", ctx, command, interactive)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(*bufio.Reader)
+	ret2, _ := ret[2].(net.Conn)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
 }
 
 // Exec indicates an expected call of Exec.
-func (mr *MockIPlatformMockRecorder) Exec(command any) *gomock.Call {
+func (mr *MockIPlatformMockRecorder) Exec(ctx, command, interactive any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIPlatform)(nil).Exec), command)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIPlatform)(nil).Exec), ctx, command, interactive)
 }
 
 // ExecClose mocks base method.
@@ -728,23 +716,6 @@ func (m *MockIPlatform) ExecClose(arg0 string) (int, error) {
 func (mr *MockIPlatformMockRecorder) ExecClose(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecClose", reflect.TypeOf((*MockIPlatform)(nil).ExecClose), arg0)
-}
-
-// ExecTTY mocks base method.
-func (m *MockIPlatform) ExecTTY(command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecTTY", command, interactive)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(*bufio.Reader)
-	ret2, _ := ret[2].(net.Conn)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
-}
-
-// ExecTTY indicates an expected call of ExecTTY.
-func (mr *MockIPlatformMockRecorder) ExecTTY(command, interactive any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecTTY", reflect.TypeOf((*MockIPlatform)(nil).ExecTTY), command, interactive)
 }
 
 // GetDefinition mocks base method.
@@ -960,18 +931,18 @@ func (mr *MockIPlatformMockRecorder) Kill(signal any) *gomock.Call {
 }
 
 // Logs mocks base method.
-func (m *MockIPlatform) Logs(arg0 bool) (io.ReadCloser, error) {
+func (m *MockIPlatform) Logs(arg0 context.Context, arg1 bool) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Logs", arg0)
+	ret := m.ctrl.Call(m, "Logs", arg0, arg1)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Logs indicates an expected call of Logs.
-func (mr *MockIPlatformMockRecorder) Logs(arg0 any) *gomock.Call {
+func (mr *MockIPlatformMockRecorder) Logs(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockIPlatform)(nil).Logs), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logs", reflect.TypeOf((*MockIPlatform)(nil).Logs), arg0, arg1)
 }
 
 // MountResources mocks base method.
