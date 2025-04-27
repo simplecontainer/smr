@@ -1,15 +1,21 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
+	"github.com/simplecontainer/smr/pkg/proxy/plain"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/stream"
+	"github.com/simplecontainer/smr/pkg/tail"
+	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -39,6 +45,9 @@ func (api *Api) Debug(c *gin.Context) {
 	header.Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
 
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	if kind == static.KIND_CONTAINERS {
 		container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 
@@ -48,26 +57,57 @@ func (api *Api) Debug(c *gin.Context) {
 		} else {
 			if container.IsGhost() {
 				client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
+
 				if !ok {
 					stream.Bye(w, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
 					return
 				}
 
 				URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
-				err = stream.Remote(c, URL, client)
+
+				var remote io.ReadCloser
+				remote, err = plain.Dial(ctx, cancel, client.Http, URL)
 
 				if err != nil {
-					stream.Bye(w, err)
-				}
-
-				return
-			} else {
-				err = stream.Tail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
-
-				if err != nil {
-					stream.Bye(w, err)
+					stream.ByeWithStatus(w, http.StatusBadRequest, err)
 					return
 				}
+
+				proxy := plain.Create(ctx, cancel, c.Writer, remote)
+
+				w.WriteHeader(http.StatusOK)
+				err = proxy.Proxy()
+
+				if err != nil {
+					logger.Log.Error("proxy returned error", zap.Error(err))
+				}
+
+				stream.Bye(w, nil)
+			} else {
+				var reader io.ReadCloser
+
+				PATH := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+				reader, err = tail.File(c.Request.Context(), PATH, follow)
+
+				if err != nil {
+					stream.ByeWithStatus(w, http.StatusBadRequest, err)
+					return
+				}
+
+				proxy := plain.Create(ctx, cancel, c.Writer, reader)
+
+				// Say hello back to open connection
+				c.Writer.WriteHeader(http.StatusOK)
+				c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+				c.Writer.Flush()
+
+				err = proxy.Proxy()
+
+				if err != nil {
+					logger.Log.Error("proxy returned error", zap.Error(err))
+				}
+
+				stream.Bye(w, nil)
 			}
 		}
 	} else {
@@ -99,18 +139,51 @@ func (api *Api) Debug(c *gin.Context) {
 				return
 			} else {
 				URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
-				err = stream.Remote(c, URL, client)
+
+				var remote io.ReadCloser
+				remote, err = plain.Dial(ctx, cancel, client.Http, URL)
 
 				if err != nil {
-					stream.Bye(w, err)
+					stream.ByeWithStatus(w, http.StatusBadRequest, err)
+					return
 				}
+
+				proxy := plain.Create(ctx, cancel, c.Writer, remote)
+
+				w.WriteHeader(http.StatusOK)
+				err = proxy.Proxy()
+
+				if err != nil {
+					logger.Log.Error("proxy returned error", zap.Error(err))
+				}
+
+				stream.Bye(w, nil)
 			}
 		} else {
-			err = stream.Tail(c, w, fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1)), follow)
+			var reader io.ReadCloser
+
+			PATH := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+			reader, err = tail.File(c.Request.Context(), PATH, follow)
 
 			if err != nil {
-				stream.Bye(w, err)
+				stream.ByeWithStatus(w, http.StatusBadRequest, err)
+				return
 			}
+
+			proxy := plain.Create(ctx, cancel, c.Writer, reader)
+
+			// Say hello back to open connection
+			c.Writer.WriteHeader(http.StatusOK)
+			c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+			c.Writer.Flush()
+
+			err = proxy.Proxy()
+
+			if err != nil {
+				logger.Log.Error("proxy returned error", zap.Error(err))
+			}
+
+			stream.Bye(w, nil)
 		}
 	}
 }

@@ -7,9 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/proxy/plain"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/stream"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strconv"
@@ -66,6 +68,7 @@ func (api *Api) Logs(c *gin.Context) {
 
 		if err != nil {
 			stream.ByeWithStatus(w, http.StatusBadRequest, err)
+			return
 		}
 
 		proxy := plain.Create(ctx, cancel, c.Writer, remote)
@@ -74,8 +77,10 @@ func (api *Api) Logs(c *gin.Context) {
 		err = proxy.Proxy()
 
 		if err != nil {
-			stream.Bye(w, nil)
+			logger.Log.Error("proxy returned error", zap.Error(err))
 		}
+
+		stream.Bye(w, nil)
 	} else {
 		switch which {
 		case "main", "init":
@@ -102,8 +107,10 @@ func (api *Api) Logs(c *gin.Context) {
 			err = proxy.Proxy()
 
 			if err != nil {
-				stream.Bye(w, nil)
+				logger.Log.Error("proxy returned error", zap.Error(err))
 			}
+
+			stream.Bye(w, nil)
 		default:
 			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New("container can be only main or init"))
 		}
