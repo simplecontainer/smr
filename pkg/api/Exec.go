@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/mattn/go-shellwords"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/exec"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -111,7 +112,14 @@ func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *cl
 
 func localExec(c *gin.Context, clientConn *websocket.Conn, container platforms.IContainer, command string, interactive bool) error {
 	ctx, fn := context.WithCancel(c)
-	proxy, err := exec.Create(ctx, fn, clientConn, container, strings.Split(command, " "), interactive)
+
+	parsed := strings.TrimPrefix(command, "/")
+	execArgs, err := shellwords.Parse(parsed)
+	if err != nil {
+		panic(err)
+	}
+
+	proxy, err := exec.Create(ctx, fn, clientConn, container, execArgs, interactive)
 
 	if err != nil {
 		return errors.New("failed to create proxy to exec session")
