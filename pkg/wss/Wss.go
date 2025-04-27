@@ -15,7 +15,7 @@ func New() *WebSockets {
 	}
 }
 
-func Request(client *http.Client, url string) (*websocket.Conn, error) {
+func Request(client *http.Client, headers http.Header, url string) (*websocket.Conn, error) {
 	wsURL := strings.Replace(url, "https://", "wss://", 1)
 
 	dialer := websocket.DefaultDialer
@@ -24,7 +24,7 @@ func Request(client *http.Client, url string) (*websocket.Conn, error) {
 	dialer.Proxy = nil
 	dialer.TLSClientConfig = client.Transport.(*http.Transport).TLSClientConfig
 
-	conn, _, err := dialer.Dial(wsURL, nil)
+	conn, _, err := dialer.Dial(wsURL, headers)
 	if err != nil {
 		return nil, err
 	}

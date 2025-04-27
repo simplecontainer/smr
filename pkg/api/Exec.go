@@ -37,7 +37,7 @@ func (api *Api) Exec(c *gin.Context) {
 	kind := c.Param("containers")
 	group := c.Param("group")
 	name := c.Param("name")
-	command := c.Param("command")
+	command := c.Request.Header.Get("command")
 
 	interactive, err := strconv.ParseBool(c.Param("interactive"))
 	if err != nil {
@@ -73,7 +73,7 @@ func (api *Api) Exec(c *gin.Context) {
 			return
 		}
 
-		url := fmt.Sprintf("%s/api/v1/exec/%s/%v%s", httpClient.API, format.ToString(), interactive, command)
+		url := fmt.Sprintf("%s/api/v1/exec/%s/%v", httpClient.API, format.ToString(), interactive)
 
 		err = remoteExec(c, conn, url, httpClient)
 
@@ -95,7 +95,7 @@ func (api *Api) Exec(c *gin.Context) {
 
 func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *client.Client) error {
 	ctx, fn := context.WithCancel(c)
-	proxy, err := wss.New(ctx, fn, httpClient.Http, conn, url)
+	proxy, err := wss.New(ctx, fn, httpClient.Http, c.Request.Header, conn, url)
 
 	if err != nil {
 		return errors.New("failed to create proxy to remote node")

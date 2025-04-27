@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func New(ctx context.Context, cancel context.CancelFunc, client *http.Client, clientConn *websocket.Conn, url string) (*Proxy, error) {
+func New(ctx context.Context, cancel context.CancelFunc, client *http.Client, requestHeader http.Header, clientConn *websocket.Conn, url string) (*Proxy, error) {
 	wsURL := url
 
 	if strings.HasPrefix(wsURL, "http://") {
@@ -27,14 +27,24 @@ func New(ctx context.Context, cancel context.CancelFunc, client *http.Client, cl
 		HandshakeTimeout: 10 * time.Second,
 	}
 
-	requestHeader := http.Header{}
-	requestHeader.Add("User-Agent", "smr-wss-proxy")
+	headers := http.Header{}
 
-	logger.Log.Debug("dialing remote WebSocket", zap.String("url", wsURL))
+	for k, v := range requestHeader {
+		if k == "User-Agent" || k == "Connection" || k == "Upgrade" || strings.Contains(strings.ToLower(k), "sec-websocket") {
+			continue
+		}
 
-	serverConn, _, err := dialer.Dial(wsURL, requestHeader)
+		headers[k] = v
+	}
+
+	headers.Add("User-Agent", "smr-wss-proxy")
+
+	logger.Log.Info("dialing remote WebSocket", zap.String("url", wsURL))
+
+	serverConn, _, err := dialer.Dial(wsURL, headers)
 
 	if err != nil {
+		logger.Log.Info("failed to dial websocket", zap.Error(err))
 		clientConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, err.Error()))
 		return nil, err
 	}
