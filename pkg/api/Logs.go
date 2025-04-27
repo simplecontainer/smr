@@ -71,16 +71,7 @@ func (api *Api) Logs(c *gin.Context) {
 			return
 		}
 
-		proxy := plain.Create(ctx, cancel, c.Writer, remote)
-
-		w.WriteHeader(http.StatusOK)
-		err = proxy.Proxy()
-
-		if err != nil {
-			logger.Log.Error("proxy returned error", zap.Error(err))
-		}
-
-		stream.Bye(w, nil)
+		proxy(ctx, cancel, c, remote)
 	} else {
 		switch which {
 		case "main", "init":
@@ -97,22 +88,33 @@ func (api *Api) Logs(c *gin.Context) {
 				return
 			}
 
-			proxy := plain.Create(ctx, cancel, c.Writer, reader)
-
-			// Say hello back to open connection
-			c.Writer.WriteHeader(http.StatusOK)
-			c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
-			c.Writer.Flush()
-
-			err = proxy.Proxy()
-
-			if err != nil {
-				logger.Log.Error("proxy returned error", zap.Error(err))
-			}
-
-			stream.Bye(w, nil)
+			proxy(ctx, cancel, c, reader)
 		default:
 			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New("container can be only main or init"))
 		}
 	}
+}
+
+func proxy(ctx context.Context, cancel context.CancelFunc, c *gin.Context, remote io.ReadCloser) {
+	proxy := plain.Create(ctx, cancel, c.Writer, remote)
+
+	c.Writer.WriteHeader(http.StatusOK)
+	err := proxy.Proxy()
+
+	if err != nil {
+		logger.Log.Error("proxy returned error", zap.Error(err))
+	}
+
+	// Say hello back to open connection
+	c.Writer.WriteHeader(http.StatusOK)
+	c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+	c.Writer.Flush()
+
+	err = proxy.Proxy()
+
+	if err != nil {
+		logger.Log.Error("proxy returned error", zap.Error(err))
+	}
+
+	stream.Bye(c.Writer, nil)
 }

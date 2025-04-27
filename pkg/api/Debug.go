@@ -48,6 +48,9 @@ func (api *Api) Debug(c *gin.Context) {
 	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
 
+	isRemote := false
+	nodeName := ""
+
 	if kind == static.KIND_CONTAINERS {
 		container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 
@@ -56,58 +59,8 @@ func (api *Api) Debug(c *gin.Context) {
 			return
 		} else {
 			if container.IsGhost() {
-				client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
-
-				if !ok {
-					stream.Bye(w, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
-					return
-				}
-
-				URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
-
-				var remote io.ReadCloser
-				remote, err = plain.Dial(ctx, cancel, client.Http, URL)
-
-				if err != nil {
-					stream.ByeWithStatus(w, http.StatusBadRequest, err)
-					return
-				}
-
-				proxy := plain.Create(ctx, cancel, c.Writer, remote)
-
-				w.WriteHeader(http.StatusOK)
-				err = proxy.Proxy()
-
-				if err != nil {
-					logger.Log.Error("proxy returned error", zap.Error(err))
-				}
-
-				stream.Bye(w, nil)
-			} else {
-				var reader io.ReadCloser
-
-				PATH := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
-				reader, err = tail.File(c.Request.Context(), PATH, follow)
-
-				if err != nil {
-					stream.ByeWithStatus(w, http.StatusBadRequest, err)
-					return
-				}
-
-				proxy := plain.Create(ctx, cancel, c.Writer, reader)
-
-				// Say hello back to open connection
-				c.Writer.WriteHeader(http.StatusOK)
-				c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
-				c.Writer.Flush()
-
-				err = proxy.Proxy()
-
-				if err != nil {
-					logger.Log.Error("proxy returned error", zap.Error(err))
-				}
-
-				stream.Bye(w, nil)
+				isRemote = true
+				nodeName = container.GetRuntime().Node.NodeName
 			}
 		}
 	} else {
@@ -132,58 +85,63 @@ func (api *Api) Debug(c *gin.Context) {
 		err = request.Definition.FromJson(obj.GetDefinitionByte())
 
 		if request.Definition.GetRuntime().GetNode() != api.Cluster.Node.NodeID {
-			client, ok := api.Manager.Http.Clients[request.Definition.GetRuntime().GetNodeName()]
-
-			if !ok {
-				stream.Bye(w, errors.New(fmt.Sprintf("%s is not found", kind)))
-				return
-			} else {
-				URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
-
-				var remote io.ReadCloser
-				remote, err = plain.Dial(ctx, cancel, client.Http, URL)
-
-				if err != nil {
-					stream.ByeWithStatus(w, http.StatusBadRequest, err)
-					return
-				}
-
-				proxy := plain.Create(ctx, cancel, c.Writer, remote)
-
-				w.WriteHeader(http.StatusOK)
-				err = proxy.Proxy()
-
-				if err != nil {
-					logger.Log.Error("proxy returned error", zap.Error(err))
-				}
-
-				stream.Bye(w, nil)
-			}
-		} else {
-			var reader io.ReadCloser
-
-			PATH := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
-			reader, err = tail.File(c.Request.Context(), PATH, follow)
-
-			if err != nil {
-				stream.ByeWithStatus(w, http.StatusBadRequest, err)
-				return
-			}
-
-			proxy := plain.Create(ctx, cancel, c.Writer, reader)
-
-			// Say hello back to open connection
-			c.Writer.WriteHeader(http.StatusOK)
-			c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
-			c.Writer.Flush()
-
-			err = proxy.Proxy()
-
-			if err != nil {
-				logger.Log.Error("proxy returned error", zap.Error(err))
-			}
-
-			stream.Bye(w, nil)
+			isRemote = true
+			nodeName = request.Definition.GetRuntime().NodeName
 		}
+	}
+
+	if isRemote {
+		client, ok := api.Manager.Http.Clients[nodeName]
+
+		if !ok {
+			stream.Bye(w, errors.New(fmt.Sprintf("node %s not found", nodeName)))
+			return
+		}
+
+		URL := fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", client.API, format.ToString(), which, c.Param("follow"))
+
+		var remote io.ReadCloser
+		remote, err = plain.Dial(ctx, cancel, client.Http, URL)
+
+		if err != nil {
+			stream.ByeWithStatus(w, http.StatusBadRequest, err)
+			return
+		}
+
+		proxy := plain.Create(ctx, cancel, c.Writer, remote)
+
+		w.WriteHeader(http.StatusOK)
+		err = proxy.Proxy()
+
+		if err != nil {
+			logger.Log.Error("proxy returned error", zap.Error(err))
+		}
+
+		stream.Bye(w, nil)
+	} else {
+		var reader io.ReadCloser
+
+		PATH := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
+		reader, err = tail.File(c.Request.Context(), PATH, follow)
+
+		if err != nil {
+			stream.ByeWithStatus(w, http.StatusBadRequest, err)
+			return
+		}
+
+		proxy := plain.Create(ctx, cancel, c.Writer, reader)
+
+		// Say hello back to open connection
+		c.Writer.WriteHeader(http.StatusOK)
+		c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+		c.Writer.Flush()
+
+		err = proxy.Proxy()
+
+		if err != nil {
+			logger.Log.Error("proxy returned error", zap.Error(err))
+		}
+
+		stream.Bye(w, nil)
 	}
 }

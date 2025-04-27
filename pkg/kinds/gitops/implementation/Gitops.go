@@ -172,11 +172,14 @@ func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (boo
 					}
 
 					if !c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
-						request.Definition.GetState().Gitops.Set(commonv1.GITOPS_NOTOWNER, true)
+						// Take ownership if no owner is defined: gitops > empty owner
+						if !c.GetRuntime().GetOwner().IsEmpty() {
+							request.Definition.GetState().Gitops.Set(commonv1.GITOPS_NOTOWNER, true)
 
-						err = errors.New(fmt.Sprintf("owner of the object is %s", request.Definition.GetRuntime().GetOwner()))
-						request.Definition.GetState().Gitops.AddError(err)
-						errs = append(errs, err)
+							err = errors.New(fmt.Sprintf("owner of the object is %s", request.Definition.GetRuntime().GetOwner()))
+							request.Definition.GetState().Gitops.AddError(err)
+							errs = append(errs, err)
+						}
 					}
 				} else {
 					if strings.HasPrefix(change.Path, "/meta/runtime/") || strings.HasPrefix(change.Path, "/state/") {
