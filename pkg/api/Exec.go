@@ -119,10 +119,11 @@ func localExec(c *gin.Context, clientConn *websocket.Conn, container platforms.I
 		panic(err)
 	}
 
-	proxy, err := exec.Create(ctx, fn, clientConn, container, execArgs, interactive)
+	var proxy *exec.Session
+	proxy, err = exec.Create(ctx, fn, clientConn, container, execArgs, interactive)
 
 	if err != nil {
-		return errors.New("failed to create proxy to exec session")
+		return err
 	} else {
 		err = proxy.Exec()
 

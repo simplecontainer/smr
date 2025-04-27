@@ -38,7 +38,7 @@ func Create(c context.Context, cancel context.CancelFunc, clientConn *websocket.
 }
 
 func (s *Session) Exec() error {
-	logger.Log.Debug("interactive session started", zap.String("execID", s.ID))
+	logger.Log.Debug("exec session started", zap.String("execID", s.ID))
 
 	var wg sync.WaitGroup
 	wg.Add(2)

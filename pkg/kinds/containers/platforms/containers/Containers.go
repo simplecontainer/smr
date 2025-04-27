@@ -211,8 +211,8 @@ func (c *Container) Rename(newName string) error {
 func (c *Container) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
 	return c.Platform.Exec(ctx, command, interactive)
 }
-func (c *Container) ExecInspect(ID string) (int, error) {
-	return c.Platform.ExecClose(ID)
+func (c *Container) ExecInspect(ID string) (bool, int, error) {
+	return c.Platform.ExecInspect(ID)
 }
 func (c *Container) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(ctx, follow)

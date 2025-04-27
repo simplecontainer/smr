@@ -61,7 +61,7 @@ type IContainer interface {
 	Wait(string) error
 	Rename(newName string) error
 	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
-	ExecInspect(string) (int, error)
+	ExecInspect(string) (bool, int, error)
 	Logs(context.Context, bool) (io.ReadCloser, error)
 	Clean() error
 
@@ -101,7 +101,7 @@ type IPlatform interface {
 	Delete() error
 	Rename(newName string) error
 	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
-	ExecClose(string) (int, error)
+	ExecInspect(string) (bool, int, error)
 	Logs(context.Context, bool) (io.ReadCloser, error)
 	Wait(string) error
 	Clean() error

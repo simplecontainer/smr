@@ -531,9 +531,9 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 		}(cli)
 
 		config := TDContainer.ExecOptions{
-			AttachStderr: true,
-			AttachStdout: true,
-			AttachStdin:  true,
+			AttachStderr: interactive,
+			AttachStdout: interactive,
+			AttachStdin:  interactive,
 			Tty:          interactive,
 			Cmd:          command,
 		}
@@ -554,21 +554,21 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 	}
 }
 
-func (container *Docker) ExecClose(ID string) (int, error) {
+func (container *Docker) ExecInspect(ID string) (bool, int, error) {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 	if err != nil {
-		return 1, err
+		return false, 1, err
 	}
 
 	res, err := cli.ContainerExecInspect(ctx, ID)
 
 	if err != nil {
-		return 1, err
+		return false, 1, err
 	}
 
-	return res.ExitCode, nil
+	return res.Running, res.ExitCode, nil
 }
 
 func (container *Docker) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {

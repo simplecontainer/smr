@@ -15,6 +15,8 @@ func (s *Session) Output(container platforms.IContainer) (types.ExecResult, erro
 
 	outputDone := make(chan error)
 
+	// TOOD: Refactor this
+
 	go func() {
 		// TODO: Here is used docker stdcopy handle this in general way
 		_, err = stdcopy.StdCopy(&stdoutBuffer, &stderrBuffer, s.Reader)
@@ -42,7 +44,7 @@ func (s *Session) Output(container platforms.IContainer) (types.ExecResult, erro
 		return result, nil
 	}
 
-	res, err := container.ExecInspect(s.ID)
+	_, res, err := container.ExecInspect(s.ID)
 	if err != nil {
 		return result, nil
 	}
