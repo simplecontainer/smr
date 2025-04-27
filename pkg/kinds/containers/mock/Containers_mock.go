@@ -101,12 +101,13 @@ func (mr *MockIContainerMockRecorder) Exec(ctx, command, interactive any) *gomoc
 }
 
 // ExecInspect mocks base method.
-func (m *MockIContainer) ExecInspect(arg0 string) (int, error) {
+func (m *MockIContainer) ExecInspect(arg0 string) (bool, int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecInspect", arg0)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ExecInspect indicates an expected call of ExecInspect.
@@ -703,19 +704,20 @@ func (mr *MockIPlatformMockRecorder) Exec(ctx, command, interactive any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockIPlatform)(nil).Exec), ctx, command, interactive)
 }
 
-// ExecClose mocks base method.
-func (m *MockIPlatform) ExecClose(arg0 string) (int, error) {
+// ExecInspect mocks base method.
+func (m *MockIPlatform) ExecInspect(arg0 string) (bool, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecClose", arg0)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "ExecInspect", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
-// ExecClose indicates an expected call of ExecClose.
-func (mr *MockIPlatformMockRecorder) ExecClose(arg0 any) *gomock.Call {
+// ExecInspect indicates an expected call of ExecInspect.
+func (mr *MockIPlatformMockRecorder) ExecInspect(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecClose", reflect.TypeOf((*MockIPlatform)(nil).ExecClose), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecInspect", reflect.TypeOf((*MockIPlatform)(nil).ExecInspect), arg0)
 }
 
 // GetDefinition mocks base method.
