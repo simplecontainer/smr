@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -20,9 +20,9 @@ import (
 
 type IContainer interface {
 	Run() error
-	PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User) error
+	PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
-	InitContainer(definitions v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User) error
+	InitContainer(definitions v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User) error
 	MountResources() error
 
 	UpdateDns(dnsCache *dns.Records) error
@@ -70,9 +70,9 @@ type IContainer interface {
 
 type IPlatform interface {
 	Run() error
-	PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error
+	PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
-	InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error
+	InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error
 	MountResources() error
 
 	UpdateDns(dnsCache *dns.Records) error
@@ -117,7 +117,7 @@ type Registry interface {
 	FindLocal(group string, name string) IContainer
 	Find(prefix string, group string, name string) IContainer
 	FindGroup(prefix string, group string) []IContainer
-	Name(client *client.Http, prefix string, group string, name string) (string, []uint64, error)
+	Name(client *clients.Http, prefix string, group string, name string) (string, []uint64, error)
 	NameReplica(group string, name string, index uint64) string
 	BackOff(group string, name string) error
 	BackOffReset(group string, name string)

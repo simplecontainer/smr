@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/contracts/ishared"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
@@ -25,7 +26,7 @@ func (gitops *Gitops) Start() error {
 
 	return nil
 }
-func (gitops *Gitops) GetShared() interface{} {
+func (gitops *Gitops) GetShared() ishared.Shared {
 	return gitops.Shared
 }
 func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {

@@ -8,13 +8,11 @@ import (
 	"os"
 )
 
-func CreateProject(node string, configObj *configuration.Configuration) ([]string, error) {
+func CreateProject(node string, environment *configuration.Environment) ([]string, error) {
 	if node == "" {
 		return nil, errors.New("project name cannot be empty")
 	}
-
-	projectDir := fmt.Sprintf("%s/%s", configObj.Environment.Home, node)
-	return CreateDirectoryTree(projectDir)
+	return CreateDirectoryTree(environment.NodeDirectory)
 }
 
 func CreateDirectoryTree(projectDir string) ([]string, error) {

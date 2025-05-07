@@ -25,7 +25,7 @@ func GetShared(registryMock *mock_platforms.MockRegistry) *shared.Shared {
 	node.NodeID = 1
 	node.NodeName = "node-1"
 
-	httpClient, _ := client.GenerateHttpClients("node-1", keys, configuration.HostPort{
+	httpClient, _ := clients.GenerateHttpClients("node-1", keys, configuration.HostPort{
 		Host: "",
 		Port: "1443",
 	}, &cluster.Cluster{Node: node})

@@ -28,3 +28,7 @@ const EVENT_DEPENDENCY = "refresh"
 const EVENT_CONTROL_START = "upgrade_start"
 const EVENT_CONTROL_FAILED = "upgrade_failed"
 const EVENT_CONTROL_SUCCESS = "upgrade_success"
+
+const EVENT_DRAIN_STARTED = "drain_started"
+const EVENT_DRAIN_FAILED = "drain_failed"
+const EVENT_DRAIN_SUCCESS = "drain_success"

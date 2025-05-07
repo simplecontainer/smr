@@ -1,19 +1,27 @@
 package client
 
 import (
-	"net"
+	"bytes"
+	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/version"
 	"net/http"
 )
 
-type Http struct {
-	Clients map[string]*Client
-	Nodes   map[uint64]string
+type Client struct {
+	Config  *configuration.Configuration
+	Context *Context
+	Version *version.VersionClient
 }
 
-type Client struct {
-	Http     *http.Client
-	Username string
-	API      string
-	IPs      []net.IP
-	Domains  []string
+type Context struct {
+	Directory     string
+	ApiURL        string
+	Name          string
+	CertBundle    string
+	PKCS12        string
+	Ca            *bytes.Buffer `json:"-"`
+	Cert          *bytes.Buffer `json:"-"`
+	PrivateKey    *bytes.Buffer `json:"-"`
+	Client        *http.Client  `json:"-"`
+	ActiveContext string        `json:"-"`
 }

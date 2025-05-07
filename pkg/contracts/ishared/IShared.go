@@ -1,7 +1,11 @@
 package ishared
 
-import "github.com/simplecontainer/smr/pkg/manager"
+import (
+	"github.com/simplecontainer/smr/pkg/cluster"
+)
 
 type Shared interface {
-	GetManager() *manager.Manager
+	GetCluster() *cluster.Cluster
+	Drain()
+	IsDrained() bool
 }

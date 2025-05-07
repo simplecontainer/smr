@@ -104,7 +104,7 @@ func TestFromInitialStateToRunning(t *testing.T) {
 					return "testing"
 				}).AnyTimes()
 
-				containerMock.EXPECT().PreRun(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+				containerMock.EXPECT().PreRun(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(config *configuration.Configuration, client *clients.Http, user *authentication.User) error {
 					return nil
 				}).AnyTimes()
 

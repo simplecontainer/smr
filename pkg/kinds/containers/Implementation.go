@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/contracts/ishared"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/events/platform/listener"
@@ -51,7 +52,7 @@ func (containers *Containers) Start() error {
 
 	return nil
 }
-func (containers *Containers) GetShared() interface{} {
+func (containers *Containers) GetShared() ishared.Shared {
 	return containers.Shared
 }
 func (containers *Containers) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
@@ -223,7 +224,6 @@ func GenerateContainers(shared *shared.Shared, definition *v1.ContainersDefiniti
 	r := replicas.New(shared.Manager.Cluster.Node.NodeID, shared.Manager.Cluster.Cluster.Nodes)
 	return r.GenerateContainers(shared.Registry, definition, shared.Manager.Config)
 }
-
 func GetContainers(shared *shared.Shared, definition *v1.ContainersDefinition) ([]platforms.IContainer, error) {
 	r := replicas.New(shared.Manager.Cluster.Node.NodeID, shared.Manager.Cluster.Cluster.Nodes)
 	return r.RemoveContainers(shared.Registry, definition)

@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/definitions"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
@@ -68,7 +68,7 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 	return gitops
 }
 
-func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authentication.User) ([]*common.Request, []error) {
+func (gitops *Gitops) Sync(logger *zap.Logger, client *clients.Http, user *authentication.User) ([]*common.Request, []error) {
 	var requests = make([]*common.Request, 0)
 	var errs = make([]error, 0)
 
@@ -101,7 +101,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *client.Http, user *authen
 	return requests, errs
 }
 
-func (gitops *Gitops) SyncState(logger *zap.Logger, client *client.Http, user *authentication.User) ([]*common.Request, []error) {
+func (gitops *Gitops) SyncState(logger *zap.Logger, client *clients.Http, user *authentication.User) ([]*common.Request, []error) {
 	var requests = make([]*common.Request, 0)
 	var errs = make([]error, 0)
 
@@ -124,7 +124,7 @@ func (gitops *Gitops) SyncState(logger *zap.Logger, client *client.Http, user *a
 	return requests, errs
 }
 
-func (gitops *Gitops) Drift(client *client.Http, user *authentication.User) (bool, []error) {
+func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bool, []error) {
 	var flagDrift bool
 	var flagError bool
 	var errs = make([]error, 0)

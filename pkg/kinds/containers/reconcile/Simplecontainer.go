@@ -112,6 +112,7 @@ func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, exist
 			return status.START, true
 		}
 	case status.INIT:
+		// Still not implemented fully
 		err := containerObj.InitContainer(containerObj.GetInitDefinition(), shared.Manager.Config, shared.Client, containerWatcher.User)
 
 		if err != nil {

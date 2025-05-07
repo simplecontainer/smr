@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/cluster"
-	"github.com/simplecontainer/smr/pkg/controler"
+	"github.com/simplecontainer/smr/pkg/control"
+	"github.com/simplecontainer/smr/pkg/control/controls"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/flannel"
@@ -26,23 +27,21 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"syscall"
 )
 
-var starting = false
+var lock = &sync.RWMutex{}
 
 func (api *Api) StartCluster(c *gin.Context) {
-	if starting {
-		c.JSON(http.StatusConflict, common.Response(http.StatusConflict, "", errors.New("cluster is in the process of starting on this node"), nil))
+	lock.Lock()
+	defer lock.Unlock()
+
+	if api.Cluster != nil && api.Cluster.Started {
+		c.JSON(http.StatusConflict, common.Response(http.StatusConflict, "", errors.New(static.CLUSTER_STARTED), nil))
 		return
-	} else {
-		if api.Cluster != nil && api.Cluster.Started {
-			c.JSON(http.StatusConflict, common.Response(http.StatusConflict, "", errors.New("cluster already started"), nil))
-			return
-		}
 	}
 
-	starting = true
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -50,19 +49,29 @@ func (api *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
-	var control *controler.Control
-	err = json.Unmarshal(data, &control)
+	var batch control.CommandBatch
+
+	err = json.Unmarshal(data, &batch)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		return
 	}
 
-	var parsed *url.URL
-	parsed, err = url.Parse(control.GetStart().NodeRaftAPI)
+	var cmd controls.Command
+	cmd, err = batch.GetCommand("start")
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+		return
+	}
+
+	var parsed *url.URL
+	parsed, err = url.Parse(cmd.Data()["raft"])
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
+		return
 	}
 
 	api.Cluster, err = cluster.Restore(api.Config)
@@ -70,7 +79,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	if err != nil {
 		api.Cluster = cluster.New()
-		api.Cluster.Node = api.Cluster.Cluster.NewNode(api.Config.NodeName, control.GetStart().NodeRaftAPI, fmt.Sprintf("https://%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
+		api.Cluster.Node = api.Cluster.Cluster.NewNode(api.Config.NodeName, parsed.String(), fmt.Sprintf("https://%s:%s", parsed.Hostname(), api.Config.HostPort.Port))
 		api.Cluster.Node.Version = api.Version
 
 		api.Cluster.Cluster.Add(api.Cluster.Node)
@@ -103,7 +112,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 			data, err = json.Marshal(api.Cluster.Node)
 
 			if err != nil {
-				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
+				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New(static.USER_NOT_FOUND), nil))
 				return
 			}
 
@@ -151,7 +160,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		}
 
 		if user.Username == "" {
-			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("user not found for remote agent"), nil))
+			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New(static.USER_NOT_FOUND), nil))
 			return
 		}
 	}
@@ -169,7 +178,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 
 	api.Cluster.Regenerate(api.Config, api.Keys)
 	api.Keys.Reloader.ReloadC <- syscall.SIGHUP
-	api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+	api.Manager.Http, err = clients.GenerateHttpClients(api.Keys, api.Config.HostPort, api.Cluster)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -190,16 +199,12 @@ func (api *Api) StartCluster(c *gin.Context) {
 		case <-api.Cluster.InSync:
 			// Replay after RAFT synced with cluster
 
-			_, err = api.Manager.KindsRegistry[static.KIND_CONTAINERS].Replay(api.Manager.User)
+			for _, kind := range api.KindsRegistry {
+				_, err = kind.Replay(api.Manager.User)
 
-			if err != nil {
-				logger.Log.Error("failed to replay containers", zap.Error(err))
-			}
-
-			_, err = api.Manager.KindsRegistry[static.KIND_GITOPS].Replay(api.Manager.User)
-
-			if err != nil {
-				logger.Log.Error("failed to replay gitops", zap.Error(err))
+				if err != nil {
+					logger.Log.Error("failed to replay", zap.Error(err))
+				}
 			}
 			break
 		}
@@ -209,10 +214,10 @@ func (api *Api) StartCluster(c *gin.Context) {
 	go api.ListenNode()
 	go api.Replication.ListenData(api.Config.NodeName)
 
-	err = flannel.Setup(c, api.Etcd, control.GetStart().Overlay, control.GetStart().Backend)
+	err = flannel.Setup(c, api.Etcd, cmd.Data()["cidr"], cmd.Data()["backend"])
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New("flannel overlay network failed to start"), nil))
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", errors.New(static.FLANNEL_START_FAILED), nil))
 		return
 	}
 
@@ -228,7 +233,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 		events.Dispatch(event, api.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), api.Cluster.Node.NodeID)
 	}
 
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started on this node", nil, network.ToJSON(map[string]string{
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, static.CLUSTER_STARTED_OK, nil, network.ToJSON(map[string]string{
 		"name": api.Config.NodeName,
 	})))
 
@@ -236,7 +241,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 }
 
 func (api *Api) GetCluster(c *gin.Context) {
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "cluster started", nil, network.ToJSON(api.Cluster.Cluster.Nodes)))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, static.CLUSTER_STARTED_OK, nil, network.ToJSON(api.Cluster.Cluster.Nodes)))
 }
 
 func (api *Api) SaveClusterConfiguration() {
@@ -246,7 +251,7 @@ func (api *Api) SaveClusterConfiguration() {
 	api.Config.KVStore.API = api.Cluster.Node.API
 	api.Config.KVStore.Join = true
 
-	err := startup.Save(api.Config)
+	err := startup.Save(api.Config, api.Config.Environment.Container)
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}
@@ -256,7 +261,6 @@ func (api *Api) SaveClusterConfiguration() {
 		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
 
 		var bytes []byte
-		var err error
 		bytes, err = json.Marshal(api.Cluster.Cluster.Nodes)
 
 		if err == nil {

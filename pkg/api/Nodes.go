@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -165,12 +165,12 @@ func (api *Api) ListenNode() {
 					api.Cluster.Cluster.Add(&n)
 
 					api.SaveClusterConfiguration()
-					startup.Save(api.Config)
+					startup.Save(api.Config, api.Config.Environment.Container)
 
 					api.Cluster.Regenerate(api.Config, api.Keys)
 					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+					api.Manager.Http, _ = clients.GenerateHttpClients(api.Keys, api.Config.HostPort, api.Cluster)
 
 					api.Cluster.KVStore.ConfChangeC <- n.ConfChange
 
@@ -198,12 +198,12 @@ func (api *Api) ListenNode() {
 									api.Cluster.Cluster.Remove(&n)
 
 									api.SaveClusterConfiguration()
-									startup.Save(api.Config)
+									startup.Save(api.Config, api.Config.Environment.Container)
 
 									api.Cluster.Regenerate(api.Config, api.Keys)
 									api.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-									api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+									api.Manager.Http, _ = clients.GenerateHttpClients(api.Keys, api.Config.HostPort, api.Cluster)
 
 									logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
 

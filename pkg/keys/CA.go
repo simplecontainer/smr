@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"time"
@@ -139,4 +140,17 @@ func (ca *CA) Read(directory string) error {
 	}
 
 	return nil
+}
+
+func IsCA(block *pem.Block) (bool, error) {
+	if block == nil || block.Type != "CERTIFICATE" {
+		return false, fmt.Errorf("not a certificate PEM block")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	return cert.IsCA, nil
 }

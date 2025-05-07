@@ -4,6 +4,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/contracts/ishared"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"net/http"
 )
@@ -12,7 +13,7 @@ func (node *Node) Start() error {
 	node.Started = true
 	return nil
 }
-func (node *Node) GetShared() interface{} {
+func (node *Node) GetShared() ishared.Shared {
 	return node.Shared
 }
 

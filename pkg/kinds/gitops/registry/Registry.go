@@ -3,7 +3,7 @@ package registry
 import (
 	"errors"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
@@ -11,7 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func New(client *client.Http, user *authentication.User) *Registry {
+func New(client *clients.Http, user *authentication.User) *Registry {
 	return &Registry{
 		Gitops: make(map[string]*implementation.Gitops),
 		Client: client,

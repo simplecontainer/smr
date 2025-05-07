@@ -8,3 +8,9 @@ func New(image string, version string) *Version {
 		Node:  strings.TrimSpace(version),
 	}
 }
+
+func NewClient(version string) *VersionClient {
+	return &VersionClient{
+		Version: strings.TrimSpace(version),
+	}
+}

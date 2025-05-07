@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/distributed"
@@ -42,7 +42,7 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Manager.Kinds = api.Kinds
 	api.Manager.Keys = api.Keys
 	api.Manager.DnsCache = api.DnsCache
-	api.Manager.Http = client.NewHttpClients()
+	api.Manager.Http = clients.NewHttpClients()
 	api.Manager.Wss = api.Wss
 
 	api.Kinds.InTree()

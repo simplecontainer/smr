@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/contracts/ishared"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -16,7 +17,7 @@ func (resource *Resource) Start() error {
 	return nil
 }
 
-func (resource *Resource) GetShared() interface{} {
+func (resource *Resource) GetShared() ishared.Shared {
 	return resource.Shared
 }
 

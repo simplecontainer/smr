@@ -160,7 +160,7 @@ Manager(){
         RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
       fi
 
-      echo "Attemp to connect to the simplecontainer node and save context."
+      echo "Attempt to connect to the simplecontainer node and save context."
 
       while :
       do

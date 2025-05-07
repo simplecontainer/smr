@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/mattn/go-shellwords"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/exec"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -93,7 +93,7 @@ func (api *Api) Exec(c *gin.Context) {
 	}
 }
 
-func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *client.Client) error {
+func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *clients.Client) error {
 	ctx, fn := context.WithCancel(c)
 	proxy, err := wss.New(ctx, fn, httpClient.Http, c.Request.Header, conn, url)
 

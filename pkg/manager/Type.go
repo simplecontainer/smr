@@ -2,7 +2,7 @@ package manager
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/ikinds"
@@ -23,7 +23,7 @@ type Manager struct {
 	Keys          *keys.Keys
 	Kinds         *relations.RelationRegistry
 	KindsRegistry map[string]ikinds.Kind
-	Http          *client.Http
+	Http          *clients.Http
 	DnsCache      *dns.Records
 	Wss           *wss.WebSockets
 	LogLevel      zapcore.Level

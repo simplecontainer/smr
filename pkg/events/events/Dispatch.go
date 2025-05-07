@@ -6,9 +6,9 @@ import (
 )
 
 func Dispatch(event Event, shared ishared.Shared, node uint64) {
-	if shared.GetManager().Cluster != nil {
+	if shared.GetCluster() != nil {
 		if !event.IsEmpty() {
-			err := event.Propose(shared.GetManager().Cluster.KVStore, node)
+			err := event.Propose(shared.GetCluster().KVStore, node)
 
 			if err != nil {
 				logger.Log.Error(err.Error())

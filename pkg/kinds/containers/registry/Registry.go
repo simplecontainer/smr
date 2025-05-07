@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -14,7 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func New(client *client.Http, user *authentication.User) platforms.Registry {
+func New(client *clients.Http, user *authentication.User) platforms.Registry {
 	return &Registry{
 		Containers:     make(map[string]platforms.IContainer),
 		BackOffTracker: make(map[string]map[string]uint64),

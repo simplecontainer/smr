@@ -4,6 +4,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/contracts/ishared"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -14,7 +15,7 @@ func (config *Config) Start() error {
 	config.Started = true
 	return nil
 }
-func (config *Config) GetShared() interface{} {
+func (config *Config) GetShared() ishared.Shared {
 	return config.Shared
 }
 

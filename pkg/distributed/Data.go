@@ -2,13 +2,13 @@ package distributed
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/f"
-	"github.com/simplecontainer/smr/pkg/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-func New(client *client.Client, user *authentication.User, nodeName string, node *node.Node) *Replication {
+func New(client *clients.Client, user *authentication.User, nodeName string, node *node.Node) *Replication {
 	return &Replication{
 		Client:     client,
 		Node:       node,

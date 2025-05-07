@@ -13,7 +13,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mholt/archives"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -195,11 +195,11 @@ func (container *Docker) Run() error {
 		return errors.New("container is already running")
 	}
 }
-func (container *Docker) PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+func (container *Docker) PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
 	var DNS []string
 
-	if config.Environment.NodeIP != "" {
-		DNS = []string{config.Environment.NodeIP, "127.0.0.1"}
+	if config.Environment.Container.NodeIP != "" {
+		DNS = []string{config.Environment.Container.NodeIP, "127.0.0.1"}
 	} else {
 		DNS = []string{"127.0.0.1"}
 	}
@@ -636,7 +636,7 @@ func (container *Docker) MountResources() error {
 	return nil
 }
 
-func (container *Docker) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+func (container *Docker) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

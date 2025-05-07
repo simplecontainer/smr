@@ -9,7 +9,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/api/middlewares"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
+	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -17,6 +18,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
+	"github.com/spf13/cobra"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,17 +26,18 @@ import (
 )
 
 func Start() {
-	Commands = append(Commands, Command{
-		name: "start",
-		condition: func(*api.Api) bool {
+	Commands = append(Commands, command.Engine{
+		Parent: "smr",
+		Name:   "start",
+		Condition: func(*api.Api) bool {
 			return true
 		},
-		functions: []func(*api.Api, []string){
+		Functions: []func(*api.Api, []string){
 			func(api *api.Api, args []string) {
 				var conf = configuration.NewConfig()
 				var err error
 
-				conf, err = startup.Load(api.Config.Environment)
+				conf, err = startup.Load(api.Config.Environment.Container)
 
 				if err != nil {
 					panic(err)
@@ -121,7 +124,7 @@ func Start() {
 				}
 
 				// Cluster information is unknown, this only enables localhost to talk to itself via https
-				api.Manager.Http, err = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, nil)
+				api.Manager.Http, err = clients.GenerateHttpClients(api.Keys, api.Config.HostPort, nil)
 
 				if err != nil {
 					panic(err)
@@ -252,7 +255,7 @@ func Start() {
 				}
 
 				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
-				_, err = api.DnsCache.AddARecord(static.SMR_NODE_DOMAIN, api.Config.Environment.NodeIP)
+				_, err = api.DnsCache.AddARecord(static.SMR_NODE_DOMAIN, api.Config.Environment.Container.NodeIP)
 
 				if err != nil {
 					panic(err)
@@ -285,8 +288,13 @@ func Start() {
 				}
 			},
 		},
-		depends_on: []func(*api.Api, []string){
+		DependsOn: []func(*api.Api, []string){
 			func(mgr *api.Api, args []string) {},
+		},
+		Flags: func(cmd *cobra.Command) {
+			cmd.Flags().String("flannel.backend", "wireguard", "Flannel backend: vxlan, wireguard")
+			cmd.Flags().String("flannel.cidr", "10.10.0.0/16", "Flannel overlay network CIDR")
+			cmd.Flags().String("flannel.iface", "", "Network interface for flannel to use, if ommited default gateway will be used")
 		},
 	})
 }

@@ -19,10 +19,14 @@ type Node struct {
 	Version    *version.Version
 }
 
-type State struct {
-	Health  Health
-	Control Control
-}
+type ControlStatus string
+
+const (
+	StatusNotStarted ControlStatus = "not_started"
+	StatusInProgress ControlStatus = "in_progress"
+	StatusFailed     ControlStatus = "failed"
+	StatusSuccess    ControlStatus = "success"
+)
 
 type Health struct {
 	Cluster        bool
@@ -33,7 +37,13 @@ type Health struct {
 }
 
 type Control struct {
-	Upgrading  bool
-	Draining   bool
-	Recovering bool
+	Starting   ControlStatus
+	Upgrading  ControlStatus
+	Draining   ControlStatus
+	Recovering ControlStatus
+}
+
+type State struct {
+	Health  Health
+	Control Control
 }

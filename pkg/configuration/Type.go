@@ -5,19 +5,28 @@ import (
 )
 
 type Configuration struct {
-	Platform     string             `yaml:"platform"`
-	NodeImage    string             `yaml:"nodeImage"`
-	NodeName     string             `yaml:"nodeName"`
-	HostPort     HostPort           `yaml:"hostport"`
-	KVStore      *KVStore           `yaml:"kvstore"`
-	Certificates *Certificates      `yaml:"certificates"`
-	Environment  *Environment       `yaml:"-"`
-	Etcd         *EtcdConfiguration `yaml:"etcd"`
+	Environment  *EnvironmentDual      `yaml:"-"`
+	Home         string                `yaml:"home"`
+	Platform     string                `yaml:"platform"`
+	NodeImage    string                `yaml:"nodeImage"`
+	NodeTag      string                `yaml:"nodeTag"`
+	NodeName     string                `yaml:"nodeName"`
+	HostPort     HostPort              `yaml:"hostport"`
+	KVStore      *KVStore              `yaml:"kvstore"`
+	Certificates *Certificates         `yaml:"certificates"`
+	Ports        *Ports                `yaml:"ports"`
+	Etcd         *EtcdConfiguration    `yaml:"etcd"`
+	Flannel      *FlannelConfiguration `yaml:"flannel"`
 }
 
 type HostPort struct {
 	Host string `yaml:"host"`
 	Port string `yaml:"port"`
+}
+
+type EnvironmentDual struct {
+	Container *Environment
+	Host      *Environment
 }
 
 type Environment struct {
@@ -35,15 +44,19 @@ type KVStore struct {
 	Peer    string       `yaml:"peer"`
 }
 
+type Ports struct {
+	Control string
+	Overlay string
+	Etcd    string
+}
+
 type Certificates struct {
 	Domains *Domains `yaml:"domains"`
 	IPs     *IPs     `yaml:"ips"`
 }
-
 type IPs struct {
 	Members []string `yaml:"members"`
 }
-
 type Domains struct {
 	Members []string `yaml:"members"`
 }
@@ -66,4 +79,13 @@ type EtcdConfiguration struct {
 
 	LoggerType string
 	LogOutputs []string
+}
+
+type FlannelConfiguration struct {
+	Backend            string
+	CIDR               string
+	InterfaceSpecified string
+	EnableIPv4         bool
+	EnableIPv6         bool
+	IPv6Masq           bool
 }

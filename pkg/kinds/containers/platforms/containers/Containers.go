@@ -7,7 +7,7 @@ import (
 	"errors"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -89,13 +89,13 @@ func NewGhost(state map[string]interface{}) (platforms.IContainer, error) {
 func (c *Container) Run() error {
 	return c.Platform.Run()
 }
-func (c *Container) PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+func (c *Container) PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User) error {
 	return c.Platform.PreRun(config, client, user, c.General.Runtime)
 }
 func (c *Container) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
 	return c.Platform.PostRun(config, dnsCache)
 }
-func (c *Container) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User) error {
+func (c *Container) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User) error {
 	return c.Platform.InitContainer(definition, config, client, user, c.General.Runtime)
 }
 func (c *Container) MountResources() error {

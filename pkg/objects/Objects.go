@@ -7,7 +7,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/acks"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -26,7 +26,7 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func New(client *client.Client, user *authentication.User) iobjects.ObjectInterface {
+func New(client *clients.Client, user *authentication.User) iobjects.ObjectInterface {
 	return &Object{
 		Changelog: jsondiff.Patch{},
 		client:    client,

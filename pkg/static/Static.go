@@ -4,6 +4,9 @@ package static
 const (
 	ROOTDIR      = "smr"
 	CONFIGDIR    = "config"
+	CONTEXTDIR   = "contexts"
+	LOGDIR       = "logs"
+	SSHDIR       = ".ssh"
 	ROOTSMR      = "smr"
 	SMR_SSH_HOME = "/home/node/.ssh"
 )
@@ -17,6 +20,15 @@ var STRUCTURE = []string{
 	"persistent",
 	"persistent/smr",
 	"persistent/etcd",
+	SSHDIR,
+	LOGDIR,
+}
+
+var STRUCTURE_CLIENT = []string{
+	CONFIGDIR,
+	CONTEXTDIR,
+	LOGDIR,
+	SSHDIR,
 }
 
 // SMR Config Constants
@@ -84,4 +96,8 @@ const (
 	RESPONSE_SYNCED         = "object is synced"
 	RESPONSE_NOT_FOUND      = "object is not found"
 	RESPONSE_INTERNAL_ERROR = "object action errored on the server"
+	CLUSTER_STARTED         = "cluster already started"
+	CLUSTER_STARTED_OK      = "cluster started"
+	USER_NOT_FOUND          = "user not found for remote agent"
+	FLANNEL_START_FAILED    = "flannel overlay network failed to start"
 )
