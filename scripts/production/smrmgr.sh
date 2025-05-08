@@ -4,15 +4,11 @@ HelpStart(){
   echo """Usage:
 
  Eg:
- ./start.sh -a https://localhost:1443 -d example.com -i 1 -n https://node1.example.com -o 0.0.0.0:9212 -c https://node1.example.com:9212,https:node2.example.com:9212
+ ./start.sh -a smr-node-1 -d example.com -i 1 -n https://node1.example.com -o 0.0.0.0:9212 -c https://node1.example.com:9212,https:node2.example.com:9212
 
  Options:
- -a: Agent domain
- -m: Mode: standalone or cluster
+ -a: Node domain
  -d: Domain of agent
- -n: Node URL - if node URL is different than domain of agent
- -c: Cluster URLs
- -o: Overlay port default is 0.0.0.0:9212
 """
 }
 
@@ -111,7 +107,6 @@ Manager(){
   echo "....Node:                 $NODE_DOMAIN"
   echo "....Repository:           $REPOSITORY"
   echo "....Tag:                  $TAG"
-  echo "....Mode:                 $MODE"
   echo "....Additional args:      $CLIENT_ARGS"
 
   if [[ $JOIN == "true" ]]; then
@@ -121,11 +116,12 @@ Manager(){
     echo "....Join:                 false"
   fi
 
-  echo "....cli version:          $(smr version)"
-  echo "....node logs path:       ~/smr/logs/flannel-${NODE}.log"
+  echo "....smr version:          $(smr version)"
+  echo "....ctl version:          $(smrctl version)"
+  #echo "....node logs path:       ~/smr/logs/flannel-${NODE}.log"
   echo "................................................................................................................"
 
-  touch ~/smr/logs/flannel-${NODE}.log || (echo "Failed to create log file: ~/smr/logs/flannel-${NODE}.log" && exit 2)
+  touch ~/smr/logs/flannel-${NODE}.log || (echo "failed to create log file: ~/smr/logs/flannel-${NODE}.log" && exit 2)
 
   if ! dpkg -s curl &>/dev/null; then
     echo 'please install curl manually'
@@ -133,48 +129,19 @@ Manager(){
   fi
 
   if [[ ${NODE} != "" ]]; then
-    if [[ ${MODE} == "cluster" ]]; then
-      ID=$(smr node create \
-        --node "${NODE}" \
-        --static.image "${REPOSITORY}" \
-        --static.tag "${TAG}" \
-        $CLIENT_ARGS \
-        --args="create ${NODE_ARGS}" \
-        --w exited)
+    smr node create --node "${NODE}" --image "${REPOSITORY}" --tag "${TAG}"
+    smr node start --node "${NODE}"
 
-      EXIT_CODE=${?}
-
-      if [[ ${EXIT_CODE} != 0 ]]; then
-        echo $ID
-        exit ${EXIT_CODE}
-      fi
-
-      echo "Configuration created with success - configuration container id: $ID"
-
-      smr node rename --node "${NODE}" "${NODE}-create-${ID}" || exit 3
-      smr node run --node "${NODE}" --args="start" --w running
-
-      if [[ $NODE_DOMAIN == "localhost" ]]; then
-        RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${RAFT_PORT}"
-      else
-        RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
-      fi
-
-      echo "Attempt to connect to the simplecontainer node and save context."
-
-      while :
-      do
-        if smr context connect "${CONN_STRING}" "${HOME}/smr/.ssh/${NODE}.pem" --context "${NODE}" --y; then
-          break
-        else
-          echo "Failed to connect to simplecontainer node, trying again in 1 second..."
-          sleep 1
-        fi
-      done
-
-      sudo nohup smr node cluster join --node "$NODE" --raft $RAFT_URL </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
-      echo "The simplecontainer node is started."
+    if [[ $NODE_DOMAIN == "localhost" ]]; then
+      RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${RAFT_PORT}"
+    else
+      RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
     fi
+
+    smr agent start --node "${NODE}" --raft "${RAFT_URL}"
+
+    #sudo nohup smr node cluster join --node "$NODE" --raft $RAFT_URL </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
+    #echo "The simplecontainer node is started."
   else
     HelpStart
   fi

@@ -55,6 +55,7 @@ func WithHostConfig() EnvOption {
 
 		env.Home = realHome
 		env.NodeDirectory = fmt.Sprintf("%s/nodes/%s", helpers.GetRealHome(), viper.GetString("node"))
+		env.ClientDirectory = fmt.Sprintf("%s/.smrctl", helpers.GetRealHome())
 	}
 }
 

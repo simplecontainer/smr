@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/simplecontainer/smr/pkg/version"
+	"github.com/spf13/cobra"
 	"os"
 )
 
@@ -21,7 +22,10 @@ func main() {
 	}
 
 	logger.Log = logger.NewLogger(logLevel, []string{"stdout"}, []string{"stderr"})
-	fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable)", logLevel))
+
+	if logLevel == "debug" {
+		fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable or --log flag)", logLevel))
+	}
 
 	// Create configuration for the commands
 	conf := configuration.NewConfig()
@@ -30,6 +34,11 @@ func main() {
 	c := client.New(conf)
 	c.Version = version.NewClient(SMR_VERSION)
 
+	cmd := &cobra.Command{
+		Use:   "smrctl",
+		Short: "SMR CLI",
+	}
+
 	commands.PreloadCommands()
-	commands.Run(c)
+	commands.Run(c, cmd)
 }

@@ -51,14 +51,16 @@ func Node() {
 			},
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
-					conf, err := startup.Load(configuration.NewEnvironment(configuration.WithHostConfig()))
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+					conf, err := startup.Load(environment)
 
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
 
-					fmt.Println(conf.Environment.Host)
+					fmt.Println(environment)
+					fmt.Println(conf)
 
 					definition, err := definitions.Node(conf.NodeName, conf)
 

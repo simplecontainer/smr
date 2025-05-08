@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/api"
@@ -36,6 +37,7 @@ func Agent() {
 			Condition: func(*api.Api) bool {
 				return true
 			},
+			Args: cobra.NoArgs,
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {},
 			},
@@ -52,6 +54,7 @@ func Agent() {
 			Condition: func(*api.Api) bool {
 				return true
 			},
+			Args: cobra.NoArgs,
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -77,8 +80,14 @@ func Agent() {
 
 					cli := client.New(conf)
 
-					cli.Context.ApiURL = fmt.Sprintf("https://localhost:%s", port)
-					err = cli.Context.GenerateHttpClient(bundle)
+					manager := client.NewManager(client.DefaultConfig(environment.NodeDirectory))
+					ctx, err := manager.CreateContext(conf.NodeName, fmt.Sprintf("https://localhost:%s", port), bundle)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					parsed, err := helpers.EnforceHTTPS(viper.GetString("raft"))
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -88,7 +97,7 @@ func Agent() {
 
 					// Flag raft holds api of the raft
 					batch.AddCommand(start.NewStartCommand(map[string]string{
-						"raft":    viper.GetString("raft"),
+						"raft":    parsed.String(),
 						"cidr":    conf.Flannel.CIDR,
 						"backend": conf.Flannel.Backend,
 					}))
@@ -100,7 +109,7 @@ func Agent() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					response := network.Send(cli.Context.Client, fmt.Sprintf("%s/api/v1/cluster/start", fmt.Sprintf("https://localhost:%s", port)), http.MethodPost, data)
+					response := network.Send(ctx.GetClient(), fmt.Sprintf("%s/api/v1/cluster/start", fmt.Sprintf("https://localhost:%s", port)), http.MethodPost, data)
 
 					if response.HttpStatus == http.StatusOK || response.ErrorExplanation == static.CLUSTER_STARTED {
 						if response.HttpStatus == http.StatusOK {
@@ -109,6 +118,14 @@ func Agent() {
 							fmt.Println(response.ErrorExplanation)
 							fmt.Println("trying to run flannel if not running")
 						}
+
+						err = manager.SetActiveContext(ctx.Name)
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						fmt.Println("context saved")
 
 						err = helpers.AcquireLock("/var/run/flannel/flannel.lock")
 
@@ -167,8 +184,91 @@ func Agent() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("raft", "", "raft endpoint")
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
 
 				viper.BindPFlag("raft", cmd.Flags().Lookup("raft"))
+				viper.BindPFlag("node", cmd.Flags().Lookup("node"))
+			},
+		},
+		command.Engine{
+			Parent: "agent",
+			Name:   "export",
+			Condition: func(*api.Api) bool {
+				return true
+			},
+			Args: cobra.NoArgs,
+			Functions: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+
+					activeCtx, err := client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					var encrypted, key string
+					encrypted, key, err = activeCtx.Export()
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					fmt.Println(key, encrypted)
+				},
+			},
+			DependsOn: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
+
+				viper.BindPFlag("api", cmd.Flags().Lookup("api"))
+			},
+		},
+		command.Engine{
+			Parent: "agent",
+			Name:   "import",
+			Condition: func(*api.Api) bool {
+				return true
+			},
+			Args: cobra.ExactArgs(2),
+			Functions: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+
+					importedCtx, err := client.Import(client.DefaultConfig(environment.NodeDirectory), args[0], args[1])
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					if importedCtx.APIURL == "" {
+						helpers.PrintAndExit(errors.New("imported context has no API URL"), 1)
+					}
+
+					connCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+
+					if err := importedCtx.Connect(connCtx, true); err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					if importedCtx.Name == "" {
+						importedCtx.WithName(fmt.Sprintf("imported-%d", time.Now().Unix()))
+					}
+
+					if err := importedCtx.Save(); err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					fmt.Printf("context '%s' successfully imported and set as active\n", importedCtx.Name)
+				},
+			},
+			DependsOn: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
 			},
 		},
 		command.Engine{

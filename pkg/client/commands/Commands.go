@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/api"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -11,13 +11,15 @@ import (
 	"strings"
 )
 
-var Commands []command.Engine
+var Commands []command.Client
 
 func PreloadCommands() {
-
+	Context()
+	Resources()
+	Version()
 }
 
-func Run(api *api.Api, c *cobra.Command) {
+func Run(cli *client.Client, c *cobra.Command) {
 	c.SetHelpCommand(&cobra.Command{
 		Use:    "help",
 		Hidden: true,
@@ -42,33 +44,21 @@ func Run(api *api.Api, c *cobra.Command) {
 		cobraCmd := &cobra.Command{
 			Use:   cmd.Name,
 			Short: fmt.Sprintf("%s %s", cmd.Parent, cmd.Name),
-			Args: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					return nil
-				}
-
-				for _, sub := range cmd.Commands() {
-					if sub.Name() == args[0] {
-						return nil // valid subcommand
-					}
-				}
-
-				return fmt.Errorf("unknown subcommand: %s", args[0])
-			},
+			Args:  cmd.Args,
 			PreRunE: func(c *cobra.Command, args []string) error {
-				if !cmd.Condition(api) {
+				if !cmd.Condition(cli) {
 					return fmt.Errorf("condition failed for command %s", c.Use)
 				}
 
 				for _, dep := range cmd.DependsOn {
-					dep(api, args)
+					dep(cli, args)
 				}
 
 				return nil
 			},
 			Run: func(c *cobra.Command, args []string) {
 				for _, fn := range cmd.Functions {
-					fn(api, args)
+					fn(cli, args)
 				}
 			},
 		}

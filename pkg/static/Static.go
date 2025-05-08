@@ -22,12 +22,12 @@ var STRUCTURE = []string{
 	"persistent/etcd",
 	SSHDIR,
 	LOGDIR,
+	CONTEXTDIR,
 }
 
 var STRUCTURE_CLIENT = []string{
 	CONFIGDIR,
 	CONTEXTDIR,
-	LOGDIR,
 	SSHDIR,
 }
 

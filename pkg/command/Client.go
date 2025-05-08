@@ -2,6 +2,7 @@ package command
 
 import (
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/spf13/cobra"
 )
 
 func (command Client) GetName() string {
@@ -18,4 +19,8 @@ func (command Client) GetFunctions() []func(*client.Client, []string) {
 
 func (command Client) GetDependsOn() []func(*client.Client, []string) {
 	return command.DependsOn
+}
+
+func (command Client) SetFlags(cmd *cobra.Command) {
+	command.Flags(cmd)
 }

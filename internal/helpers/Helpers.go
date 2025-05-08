@@ -5,6 +5,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"strings"
 )
 
 func GetLogLevel(level string) zapcore.Level {
@@ -39,4 +40,17 @@ func Confirm(message string) bool {
 	}
 
 	return result == "y"
+}
+
+func CliMask(condition bool, textTrue string, textFalse string) string {
+	if condition {
+		return textTrue
+	} else {
+		return textFalse
+	}
+}
+
+func CliRemoveComa(text string) string {
+	str, _ := strings.CutSuffix(text, ", ")
+	return str
 }

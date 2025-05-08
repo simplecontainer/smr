@@ -30,9 +30,10 @@ type EnvironmentDual struct {
 }
 
 type Environment struct {
-	Home          string
-	NodeIP        string
-	NodeDirectory string
+	Home            string
+	NodeIP          string
+	NodeDirectory   string
+	ClientDirectory string
 }
 
 type KVStore struct {

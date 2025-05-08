@@ -1,5 +1,8 @@
 build-engine:
-	./development/build_engine.sh
+	./development/build-engine.sh
+
+build-ctl:
+	./development/build-ctl.sh
 
 build-docker:
 	./development/docker-build.sh
@@ -16,7 +19,10 @@ run-cluster:
 run-cluster-debug:
 	./development/docker-run-cluster-debug.sh
 
+install:
+	./development/install.sh
+
 docker: build-docker
-standalone: build-engine build-docker run-standalone
-cluster: build-engine build-docker run-cluster
+standalone: build-engine build-ctl install build-docker run-standalone
+cluster: build-engine  build-ctl install build-docker run-cluster
 cluster-debug: build-docker-debug run-cluster-debug

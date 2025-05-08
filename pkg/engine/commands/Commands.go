@@ -47,19 +47,7 @@ func Run(api *api.Api, c *cobra.Command) {
 		cobraCmd := &cobra.Command{
 			Use:   cmd.Name,
 			Short: fmt.Sprintf("%s %s", cmd.Parent, cmd.Name),
-			Args: func(cmd *cobra.Command, args []string) error {
-				if len(args) == 0 {
-					return nil
-				}
-
-				for _, sub := range cmd.Commands() {
-					if sub.Name() == args[0] {
-						return nil // valid subcommand
-					}
-				}
-
-				return fmt.Errorf("unknown subcommand: %s", args[0])
-			},
+			Args:  cmd.Args,
 			PreRunE: func(c *cobra.Command, args []string) error {
 				if !cmd.Condition(api) {
 					return fmt.Errorf("condition failed for command %s", c.Use)

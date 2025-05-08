@@ -142,7 +142,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, c *client.Client, confi
 											break
 										}
 
-										err = req.ProposeApply(c.Context.Client, c.Context.ApiURL)
+										err = req.ProposeApply(c.Context.GetClient(), c.Context.APIURL)
 
 										if err != nil {
 											fmt.Println(err)
@@ -172,7 +172,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, c *client.Client, confi
 											break
 										}
 
-										err = req.ProposeApply(c.Context.Client, c.Context.ApiURL)
+										err = req.ProposeApply(c.Context.GetClient(), c.Context.APIURL)
 
 										if err != nil {
 											fmt.Println(err)
@@ -190,7 +190,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, c *client.Client, confi
 								}
 
 								recursion[string(event.Kv.Key)] = string(event.Kv.Value)
-								response := network.Send(c.Context.Client, fmt.Sprintf("%s/api/v1/key/propose/%s", c.Context.ApiURL, event.Kv.Key), http.MethodPost, event.Kv.Value)
+								response := network.Send(c.Context.GetClient(), fmt.Sprintf("%s/api/v1/key/propose/%s", c.Context.APIURL, event.Kv.Key), http.MethodPost, event.Kv.Value)
 
 								if response.Success {
 									go func() {

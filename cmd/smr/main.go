@@ -24,7 +24,10 @@ func main() {
 	}
 
 	logger.Log = logger.NewLogger(logLevel, []string{"stdout"}, []string{"stderr"})
-	fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable or --log flag)", logLevel))
+
+	if logLevel == "debug" {
+		fmt.Println(fmt.Sprintf("logging level set to %s (override with LOG_LEVEL env variable or --log flag)", logLevel))
+	}
 
 	// Create configuration for the commands
 	conf := configuration.NewConfig()
