@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -23,6 +24,14 @@ func PreloadCommands() {
 }
 
 func Run(cli *client.Client, c *cobra.Command) {
+	var err error
+	cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
+
+	if err != nil {
+		fmt.Println("no active context found - try using smr context switch")
+		os.Exit(1)
+	}
+
 	c.SetHelpCommand(&cobra.Command{
 		Use:    "help",
 		Hidden: true,

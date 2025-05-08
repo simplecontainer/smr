@@ -88,9 +88,7 @@ func (c *ClientContext) GetClient() *http.Client {
 			logger.Log.Error("failed to set up TLS client", zap.Error(err))
 		}
 	} else {
-		c.client = &http.Client{
-			Timeout: c.config.APITimeout,
-		}
+		logger.Log.Error("failed to set up TLS client: empty CertBundle")
 	}
 
 	return c.client
