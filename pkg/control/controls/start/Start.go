@@ -1,9 +1,9 @@
 package start
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/control/controls"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 )
 
@@ -18,11 +18,10 @@ func NewStartCommand(options map[string]string) *Command {
 }
 
 func (c *Command) Node(mgr *manager.Manager, params map[string]string) error {
-	fmt.Println("Executing start on node")
 	return nil
 }
 
 func (c *Command) Agent(cli *client.Client, params map[string]string) error {
-	fmt.Println("Executing start on agent")
+	logger.Log.Info("cluster started with success")
 	return nil
 }

@@ -233,6 +233,12 @@ func (api *Api) StartCluster(c *gin.Context) {
 		events.Dispatch(event, api.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), api.Cluster.Node.NodeID)
 	}
 
+	err = batch.Apply(c.Request.Context(), api.Etcd)
+
+	if err != nil {
+		logger.Log.Error("failed to inform client about control status", zap.Error(err))
+	}
+
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, static.CLUSTER_STARTED_OK, nil, network.ToJSON(map[string]string{
 		"name": api.Config.NodeName,
 	})))

@@ -214,7 +214,7 @@ func Resources() {
 						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
 						formaters.Gitops(objects)
 						break
-					case static.KIND_CONTAINER:
+					case static.KIND_CONTAINERS:
 						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
 						formaters.Container(objects)
 						break

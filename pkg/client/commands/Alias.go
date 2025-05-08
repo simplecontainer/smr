@@ -28,9 +28,9 @@ func Alias() {
 					}
 
 					switch args[0] {
-					case "containers":
+					case static.KIND_CONTAINERS:
 						break
-					case "gitops":
+					case static.KIND_GITOPS:
 						break
 					default:
 						helpers.PrintAndExit(errors.New("ps works only for containers and gitops resources"), 1)
@@ -49,7 +49,7 @@ func Alias() {
 						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
 						formaters.Gitops(objects)
 						break
-					case static.KIND_CONTAINER:
+					case static.KIND_CONTAINERS:
 						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
 						formaters.Container(objects)
 						break
@@ -63,7 +63,9 @@ func Alias() {
 			DependsOn: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {},
 			},
-			Flags: func(cmd *cobra.Command) {},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("output", "full", "output format: full, short")
+			},
 		},
 	)
 }

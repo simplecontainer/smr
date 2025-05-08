@@ -66,7 +66,10 @@ func Streams() {
 			DependsOn: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {},
 			},
-			Flags: func(cmd *cobra.Command) {},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("container", "main", "Logs from main or init")
+				cmd.Flags().Bool("f", false, "Follow logs")
+			},
 		},
 		command.Client{
 			Parent: "smrctl",
@@ -118,7 +121,10 @@ func Streams() {
 			DependsOn: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {},
 			},
-			Flags: func(cmd *cobra.Command) {},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("container", "main", "Logs from main or init")
+				cmd.Flags().Bool("f", false, "Follow logs")
+			},
 		},
 		command.Client{
 			Parent: "smrctl",
@@ -126,7 +132,7 @@ func Streams() {
 			Condition: func(*client.Client) bool {
 				return true
 			},
-			Args: cobra.NoArgs,
+			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := helpers.BuildFormat(args[0], cli.Group)
@@ -165,7 +171,10 @@ func Streams() {
 			DependsOn: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {},
 			},
-			Flags: func(cmd *cobra.Command) {},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("c", "/bin/sh", "Command to execute in container")
+				cmd.Flags().Bool("it", false, "Interactive session")
+			},
 		},
 	)
 }

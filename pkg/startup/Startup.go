@@ -1,7 +1,6 @@
 package startup
 
 import (
-	"flag"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -64,28 +63,18 @@ func EngineFlags() {
 
 	earlyFlags.String("home", "/home/node", "Root directory for all actions - keep default inside container")
 	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
+	earlyFlags.Bool("y", false, "Say yes to everything")
 
 	viper.BindPFlag("home", earlyFlags.Lookup("home"))
 	viper.BindPFlag("log", earlyFlags.Lookup("log"))
 }
 
 func ClientFlags() {
-	// Dynamic configuration (Not preserved in client config.yaml)
-	flag.String("context", "", "Context")
-	flag.String("container", "main", "Which container to stream main or init?")
+	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
-	// Dynamic - Cli flags
-	flag.String("w", "", "Wait for container to be in defined state")
-	flag.Bool("f", false, "Follow logs")
-	flag.String("o", "d", "Output type: d(efault),s(hort)")
-	flag.Bool("y", false, "Say yes to everything")
-	flag.Bool("it", false, "Interactive exec")
-	flag.String("c", "", "Command for exec")
+	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
+	earlyFlags.String("g", "", "Group")
 
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	pflag.Parse()
-
-	viper.BindPFlags(pflag.CommandLine)
-
-	os.Args = append([]string{os.Args[0]}, pflag.Args()...)
+	viper.BindPFlag("log", earlyFlags.Lookup("log"))
+	viper.BindPFlag("g", earlyFlags.Lookup("g"))
 }

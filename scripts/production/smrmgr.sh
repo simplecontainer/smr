@@ -36,8 +36,8 @@ Manager(){
   NODE_PORT="1443"
   RAFT_PORT="9212"
   CONN_STRING="https://localhost:1443"
-  NODE_ARGS="--port 0.0.0.0:1443"
-  CLIENT_ARGS="--dynamic.hostport 0.0.0.0:1443 --dynamic.overlayport 0.0.0.0:9212"
+  NODE_ARGS="--listen 0.0.0.0:1443"
+  CLIENT_ARGS="--port.control 0.0.0.0:1443 --port.overlay 0.0.0.0:9212"
   MODE="cluster"
   JOIN=false
   PEER=""
@@ -45,7 +45,7 @@ Manager(){
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
   ALLYES=false
 
-  echo "All arguments: $@"
+  echo "All arguments: $*"
 
   while getopts ":a:c:d:e:h:i:m:n:p:r:t:x:z:sujy" option; do
     case $option in
@@ -94,20 +94,19 @@ Manager(){
     NODE_DOMAIN="localhost"
   fi
 
-  # Domain not known at the top so append it here!
+  NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS}"
 
-  if [[ ${JOIN} == true ]]; then
-    NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS} --domains ${DOMAIN} --ips ${IP} --join --peer ${PEER}"
-  else
-    NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS} --domains ${DOMAIN} --ips ${IP}"
-  fi
+  [[ -n "$DOMAIN" ]] && NODE_ARGS+=" --domains ${DOMAIN}"
+  [[ -n "$IP" ]] && NODE_ARGS+=" --ips ${IP}"
+  [[ -n "$PEER" && "$JOIN" == true ]] && NODE_ARGS+=" --join --peer ${PEER}"
 
   echo "..Node info....................................................................................................."
   echo "....Agent name:           $NODE"
   echo "....Node:                 $NODE_DOMAIN"
   echo "....Repository:           $REPOSITORY"
   echo "....Tag:                  $TAG"
-  echo "....Additional args:      $CLIENT_ARGS"
+  echo "....Node args:            $NODE_ARGS"
+  echo "....Client args:          $CLIENT_ARGS"
 
   if [[ $JOIN == "true" ]]; then
     echo "....Join:                 $JOIN"
@@ -116,12 +115,10 @@ Manager(){
     echo "....Join:                 false"
   fi
 
-  echo "....smr version:          $(smr version)"
+  #echo "....smr version:          $(smr version)"
   echo "....ctl version:          $(smrctl version)"
   #echo "....node logs path:       ~/smr/logs/flannel-${NODE}.log"
   echo "................................................................................................................"
-
-  touch ~/smr/logs/flannel-${NODE}.log || (echo "failed to create log file: ~/smr/logs/flannel-${NODE}.log" && exit 2)
 
   if ! dpkg -s curl &>/dev/null; then
     echo 'please install curl manually'
@@ -129,7 +126,14 @@ Manager(){
   fi
 
   if [[ ${NODE} != "" ]]; then
-    smr node create --node "${NODE}" --image "${REPOSITORY}" --tag "${TAG}"
+    if [[ ! $(smr node create --node "${NODE}" --image "${REPOSITORY}" --tag "${TAG}" $NODE_ARGS $CLIENT_ARGS) ]]; then
+      echo "failed to create node configuration"
+      exit 2
+    fi
+
+    touch ~/nodes/${NODE}/logs/cluster.log || (echo "failed to create log file: ~/smr/logs/cluster.log" && exit 2)
+    touch ~/nodes/${NODE}/logs/control.log || (echo "failed to create log file: ~/smr/logs/control.log" && exit 2)
+
     smr node start --node "${NODE}"
 
     if [[ $NODE_DOMAIN == "localhost" ]]; then
@@ -138,10 +142,15 @@ Manager(){
       RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
     fi
 
-    smr agent start --node "${NODE}" --raft "${RAFT_URL}"
+    sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" --y </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
+    sudo nohup smr agent control --node "${NODE}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/control.log &
 
-    #sudo nohup smr node cluster join --node "$NODE" --raft $RAFT_URL </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
-    #echo "The simplecontainer node is started."
+    echo "tail flannel logs at: tail -f ~/nodes/${NODE}/logs/cluster.log"
+    echo "tail control logs at: tail -f ~/nodes/${NODE}/logs/control.log"
+    echo "waiting for cluster to be ready..."
+
+    while [ ! -f "$HOME/nodes/${NODE}/logs/control.log" ]; do sleep 0.1; done
+    (tail -F "$HOME/nodes/${NODE}/logs/control.log" | grep --line-buffered "cluster started with success" | { read line; echo "cluster started with success"; killall tail; })
   else
     HelpStart
   fi

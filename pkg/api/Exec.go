@@ -69,7 +69,7 @@ func (api *Api) Exec(c *gin.Context) {
 	if container.IsGhost() {
 		httpClient, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 		if !ok {
-			sendWebSocketTextAndClose(conn, fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name))
+			sendWebSocketTextAndClose(conn, fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINERS, group, name))
 			return
 		}
 

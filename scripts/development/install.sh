@@ -1,4 +1,4 @@
 #!/bin/bash
 
-sudo cp ../cmd/smrctl/smrctl /usr/local/bin/smrctl
-sudo cp ../cmd/smr/smr /usr/local/bin/smr
+sudo cp -f ../cmd/smrctl/smrctl /usr/local/bin/smrctl
+sudo cp -f ../cmd/smr/smr /usr/local/bin/smr

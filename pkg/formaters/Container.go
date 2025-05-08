@@ -117,8 +117,8 @@ func Container(objects []json.RawMessage) {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
-	switch viper.GetString("o") {
-	case "d":
+	switch viper.GetString("output") {
+	case "full":
 		tbl := table.New("NODE", "RESOURCE", "IMAGE", "PORTS", "ENGINE STATE", "SMR STATE")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
@@ -135,7 +135,7 @@ func Container(objects []json.RawMessage) {
 
 		tbl.Print()
 		break
-	case "s":
+	case "short":
 		tbl := table.New("NODE", "RESOURCE", "ENGINE STATE", "SMR STATE")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 

@@ -17,7 +17,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"net"
-	"os"
 	"strings"
 )
 
@@ -38,9 +37,6 @@ func Node() {
 				func(api *api.Api, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("flannel.backend", "wireguard", "Flannel backend: vxlan, wireguard")
-				cmd.Flags().String("flannel.cidr", "10.10.0.0/16", "Flannel overlay network CIDR")
-				cmd.Flags().String("flannel.iface", "", "Network interface for flannel to use, if ommited default gateway will be used")
 			},
 		},
 		command.Engine{
@@ -49,24 +45,20 @@ func Node() {
 			Condition: func(*api.Api) bool {
 				return true
 			},
+			Args: cobra.NoArgs,
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
 					conf, err := startup.Load(environment)
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						helpers.PrintAndExit(err, 1)
 					}
-
-					fmt.Println(environment)
-					fmt.Println(conf)
 
 					definition, err := definitions.Node(conf.NodeName, conf)
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						helpers.PrintAndExit(err, 1)
 					}
 
 					var container platforms.IPlatform
@@ -74,8 +66,7 @@ func Node() {
 					switch conf.Platform {
 					case static.PLATFORM_DOCKER:
 						if err = docker.IsDaemonRunning(); err != nil {
-							fmt.Println(err)
-							os.Exit(1)
+							helpers.PrintAndExit(err, 1)
 						}
 
 						container, err = docker.New(conf.NodeName, definition)
@@ -112,7 +103,8 @@ func Node() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
-				viper.BindPFlag("node", cmd.Flags().Lookup("node"))
+				cmd.Flags().String("entrypoint", "/opt/smr/smr", "Entrypoint")
+				cmd.Flags().String("args", "start", "Args")
 			},
 		},
 		command.Engine{
@@ -121,20 +113,19 @@ func Node() {
 			Condition: func(*api.Api) bool {
 				return true
 			},
+			Args: cobra.NoArgs,
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					conf, err := startup.Load(configuration.NewEnvironment(configuration.WithHostConfig()))
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						helpers.PrintAndExit(err, 1)
 					}
 
 					definition, err := definitions.Node(conf.NodeName, conf)
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						helpers.PrintAndExit(err, 1)
 					}
 
 					var container platforms.IPlatform
@@ -142,8 +133,7 @@ func Node() {
 					switch api.Config.Platform {
 					case static.PLATFORM_DOCKER:
 						if err = docker.IsDaemonRunning(); err != nil {
-							fmt.Println(err)
-							os.Exit(1)
+							helpers.PrintAndExit(err, 1)
 						}
 
 						container, err = docker.New(conf.NodeName, definition)
@@ -155,8 +145,7 @@ func Node() {
 					err = container.Stop(static.SIGTERM)
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+						helpers.PrintAndExit(err, 1)
 					}
 
 					fmt.Println("node started")
@@ -167,7 +156,6 @@ func Node() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
-				viper.BindPFlag("node", cmd.Flags().Lookup("node"))
 			},
 		},
 		command.Engine{
@@ -176,9 +164,9 @@ func Node() {
 			Condition: func(*api.Api) bool {
 				return true
 			},
+			Args: cobra.NoArgs,
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
-					// Override home when creating configuration for specific node
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
 					_, err := bootstrap.CreateProject(static.ROOTSMR, environment)
 
@@ -187,7 +175,7 @@ func Node() {
 					}
 
 					api.Config.Platform = viper.GetString("platform")
-					api.Config.HostPort.Host, api.Config.HostPort.Port, err = net.SplitHostPort(viper.GetString("port"))
+					api.Config.HostPort.Host, api.Config.HostPort.Port, err = net.SplitHostPort(viper.GetString("listen"))
 
 					if err != nil {
 						panic(err)
@@ -247,31 +235,13 @@ func Node() {
 				cmd.Flags().String("peer", "", "Peer for entering cluster first time. Format: https://host:port")
 				cmd.Flags().Bool("join", false, "Join the raft")
 
-				cmd.Flags().String("port", "0.0.0.0:1443", "Simplecontainer mTLS listening interface and port combo")
+				cmd.Flags().String("listen", "0.0.0.0:1443", "Simplecontainer mTLS listening interface and port combo")
 				cmd.Flags().String("domains", "", "Domains that TLS certificates are valid for")
 				cmd.Flags().String("ips", "", "IP addresses that TLS certificates are valid for")
 
 				cmd.Flags().String("port.control", ":1443", "Port mapping of node control plane -> Default 0.0.0.0:1443")
 				cmd.Flags().String("port.overlay", ":9212", "Port mapping of node overlay raft port  -> Default 0.0.0.0:9212")
 				cmd.Flags().String("port.etcd", "2379", "Port mapping of node overlay raft port  -> Default 127.0.0.1:2379 (Cant be exposed to outside!)")
-
-				viper.BindPFlag("platform", cmd.Flags().Lookup("platform"))
-				viper.BindPFlag("node", cmd.Flags().Lookup("node"))
-				viper.BindPFlag("image", cmd.Flags().Lookup("image"))
-				viper.BindPFlag("tag", cmd.Flags().Lookup("tag"))
-				viper.BindPFlag("entrypoint", cmd.Flags().Lookup("entrypoint"))
-				viper.BindPFlag("args", cmd.Flags().Lookup("args"))
-				viper.BindPFlag("raft", cmd.Flags().Lookup("raft"))
-				viper.BindPFlag("peer", cmd.Flags().Lookup("peer"))
-				viper.BindPFlag("join", cmd.Flags().Lookup("join"))
-
-				viper.BindPFlag("port", cmd.Flags().Lookup("port"))
-				viper.BindPFlag("domains", cmd.Flags().Lookup("domains"))
-				viper.BindPFlag("ips", cmd.Flags().Lookup("ips"))
-
-				viper.BindPFlag("port.control", cmd.Flags().Lookup("port.control"))
-				viper.BindPFlag("port.overlay", cmd.Flags().Lookup("port.overlay"))
-				viper.BindPFlag("port.etcd", cmd.Flags().Lookup("port.etcd"))
 			},
 		},
 	)

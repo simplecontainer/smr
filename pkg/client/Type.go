@@ -33,7 +33,7 @@ type Credentials struct {
 type ClientContext struct {
 	Name       string `json:"name"`
 	APIURL     string `json:"api_url"`
-	Directory  string `json:"directory"`
+	Directory  string `json:"-"`
 	ActivePath string `json:"active_path,omitempty"`
 
 	Credentials *Credentials `json:"credentials"`

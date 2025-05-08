@@ -259,9 +259,6 @@ func (c *ClientContext) Save() error {
 		return fmt.Errorf("failed to create context directory: %w", err)
 	}
 
-	fmt.Println(c.Directory, c.Name)
-	fmt.Println(c.Directory, ".active")
-
 	contextPath := filepath.Join(c.Directory, c.Name)
 	activeContextPath := filepath.Join(c.Directory, ".active")
 

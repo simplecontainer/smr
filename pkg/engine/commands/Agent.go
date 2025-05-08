@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -45,7 +46,6 @@ func Agent() {
 				func(api *api.Api, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("log", "info", "Log level")
 			},
 		},
 		command.Engine{
@@ -164,6 +164,10 @@ func Agent() {
 							done <- err
 						}()
 
+						go func() {
+
+						}()
+
 						select {
 						case <-ctx.Done():
 							logger.Log.Info("agent exited: context canceled")
@@ -185,9 +189,7 @@ func Agent() {
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("raft", "", "raft endpoint")
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
-
-				viper.BindPFlag("raft", cmd.Flags().Lookup("raft"))
-				viper.BindPFlag("node", cmd.Flags().Lookup("node"))
+				cmd.Flags().Bool("y", false, "Say yes to context overwrite")
 			},
 		},
 		command.Engine{
@@ -214,7 +216,7 @@ func Agent() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					fmt.Println(key, encrypted)
+					fmt.Println(encrypted, key)
 				},
 			},
 			DependsOn: []func(*api.Api, []string){
@@ -222,8 +224,7 @@ func Agent() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
-
-				viper.BindPFlag("api", cmd.Flags().Lookup("api"))
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 			},
 		},
 		command.Engine{
@@ -250,7 +251,7 @@ func Agent() {
 					connCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
 
-					if err := importedCtx.Connect(connCtx, true); err != nil {
+					if err = importedCtx.Connect(connCtx, true); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
@@ -258,7 +259,11 @@ func Agent() {
 						importedCtx.WithName(fmt.Sprintf("imported-%d", time.Now().Unix()))
 					}
 
-					if err := importedCtx.Save(); err != nil {
+					if err = importedCtx.Save(); err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					if err := importedCtx.ImportCertificates(context.Background(), filepath.Join(environment.NodeDirectory, static.SSHDIR)); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
@@ -269,6 +274,8 @@ func Agent() {
 				func(api *api.Api, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+				cmd.Flags().Bool("y", false, "Say yes to context overwrite")
 			},
 		},
 		command.Engine{
@@ -312,7 +319,6 @@ func Agent() {
 				func(api *api.Api, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("log", "info", "Log level")
 			},
 		},
 		command.Engine{
@@ -323,8 +329,16 @@ func Agent() {
 			},
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+
+					conf, err := startup.Load(environment)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
 					cli, err := clientv3.New(clientv3.Config{
-						Endpoints:   []string{fmt.Sprintf("localhost:%s", api.Config.Ports.Etcd)},
+						Endpoints:   []string{fmt.Sprintf("localhost:%s", conf.Ports.Etcd)},
 						DialTimeout: 5 * time.Second,
 					})
 
@@ -336,7 +350,7 @@ func Agent() {
 					logger.Log.Info("listening for control events...")
 					watchCh := cli.Watch(context.Background(), "/smr/control/", clientv3.WithPrefix())
 
-					c := client.New(api.Config)
+					c := client.New(conf)
 
 					for watchResp := range watchCh {
 						for _, event := range watchResp.Events {
@@ -359,7 +373,7 @@ func Agent() {
 								err = cmd.Agent(c, cmd.Data())
 
 								if err != nil {
-									logger.Log.Error("error executing control", zap.Error(err))
+									logger.Log.Error("error executing control on agent side", zap.Error(err))
 								}
 							}
 						}
@@ -370,7 +384,7 @@ func Agent() {
 				func(api *api.Api, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("log", "info", "Log level")
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 			},
 		},
 	)

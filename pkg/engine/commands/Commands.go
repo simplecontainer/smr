@@ -60,6 +60,13 @@ func Run(api *api.Api, c *cobra.Command) {
 				return nil
 			},
 			Run: func(c *cobra.Command, args []string) {
+				c.Flags().VisitAll(func(flag *pflag.Flag) {
+					if err := viper.BindPFlag(flag.Name, flag); err != nil {
+						fmt.Printf("warning: failed to bind flag '%s': %s\n", flag.Name, err)
+						os.Exit(1)
+					}
+				})
+
 				for _, fn := range cmd.Functions {
 					fn(api, args)
 				}
@@ -67,7 +74,6 @@ func Run(api *api.Api, c *cobra.Command) {
 		}
 
 		cmd.SetFlags(cobraCmd)
-		BindCommandFlags(cobraCmd)
 
 		if cmd.Parent == "smr" || cmd.Parent == "" {
 			c.AddCommand(cobraCmd)
@@ -93,16 +99,6 @@ func SetupGlobalFlags(rootCmd *cobra.Command) {
 	// Bind global flags to viper
 	viper.BindPFlag("home", rootCmd.PersistentFlags().Lookup("home"))
 	viper.BindPFlag("log", rootCmd.PersistentFlags().Lookup("log"))
-}
-
-// BindCommandFlags helps bind all flags from a command to viper
-func BindCommandFlags(cmd *cobra.Command) {
-	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		// Bind each flag to viper
-		if err := viper.BindPFlag(flag.Name, flag); err != nil {
-			fmt.Printf("warning: failed to bind flag '%s': %s\n", flag.Name, err)
-		}
-	})
 }
 
 func findCommand(cmd *cobra.Command, name string) *cobra.Command {

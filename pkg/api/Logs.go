@@ -47,7 +47,7 @@ func (api *Api) Logs(c *gin.Context) {
 
 	container := containerShared.Registry.Find(static.SMR_PREFIX, group, name)
 	if container == nil {
-		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINERS, group, name)))
 		return
 	}
 
@@ -57,7 +57,7 @@ func (api *Api) Logs(c *gin.Context) {
 	if container.IsGhost() {
 		client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 		if !ok {
-			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINERS, group, name)))
 			return
 		}
 

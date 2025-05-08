@@ -17,6 +17,9 @@ func PreloadCommands() {
 	Context()
 	Resources()
 	Version()
+	Alias()
+	Streams()
+	Events()
 }
 
 func Run(cli *client.Client, c *cobra.Command) {

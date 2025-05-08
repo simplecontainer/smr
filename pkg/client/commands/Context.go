@@ -128,8 +128,6 @@ func Context() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
-
-				viper.BindPFlag("api", cmd.Flags().Lookup("api"))
 			},
 		},
 		command.Client{
