@@ -224,7 +224,7 @@ func (api *Api) StartCluster(c *gin.Context) {
 	api.Cluster.Started = true
 	api.Cluster.Node.Version = api.Version
 
-	event, err := events.NewNodeEvent(events.EVENT_CONTROL_SUCCESS, api.Cluster.Node)
+	event, err := events.NewNodeEvent(events.EVENT_CLUSTER_STARTED, api.Cluster.Node)
 
 	if err != nil {
 		logger.Log.Error("failed to dispatch node event", zap.Error(err))
@@ -255,6 +255,8 @@ func (api *Api) SaveClusterConfiguration() {
 	api.Config.KVStore.Node = api.Cluster.Node
 	api.Config.KVStore.URL = api.Cluster.Node.URL
 	api.Config.KVStore.API = api.Cluster.Node.API
+
+	// After later restarts/upgrades node needs to join the cluster
 	api.Config.KVStore.Join = true
 
 	err := startup.Save(api.Config, api.Config.Environment.Container)

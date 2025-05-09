@@ -24,14 +24,6 @@ func PreloadCommands() {
 }
 
 func Run(cli *client.Client, c *cobra.Command) {
-	var err error
-	cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
-
-	if err != nil {
-		fmt.Println("no active context found - try using smr context switch")
-		os.Exit(1)
-	}
-
 	c.SetHelpCommand(&cobra.Command{
 		Use:    "help",
 		Hidden: true,
@@ -58,6 +50,16 @@ func Run(cli *client.Client, c *cobra.Command) {
 			Short: fmt.Sprintf("%s %s", cmd.Parent, cmd.Name),
 			Args:  cmd.Args,
 			PreRunE: func(c *cobra.Command, args []string) error {
+				var err error
+				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
+
+				if err != nil {
+					if c.Name() != "import" {
+						fmt.Println("no active context found - try using smr context switch")
+						os.Exit(1)
+					}
+				}
+
 				if !cmd.Condition(cli) {
 					return fmt.Errorf("condition failed for command %s", c.Use)
 				}
@@ -69,6 +71,16 @@ func Run(cli *client.Client, c *cobra.Command) {
 				return nil
 			},
 			Run: func(c *cobra.Command, args []string) {
+				var err error
+				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
+
+				if err != nil {
+					if c.Name() != "import" {
+						fmt.Println("no active context found - try using smr context switch")
+						os.Exit(1)
+					}
+				}
+
 				c.Flags().VisitAll(func(flag *pflag.Flag) {
 					if err := viper.BindPFlag(flag.Name, flag); err != nil {
 						fmt.Printf("warning: failed to bind flag '%s': %s\n", flag.Name, err)

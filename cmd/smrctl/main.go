@@ -29,9 +29,10 @@ func main() {
 
 	// Create configuration for the commands
 	conf := configuration.NewConfig()
+	environment := configuration.NewEnvironment(configuration.WithHostConfig())
 
 	// Init the client
-	c := client.New(conf)
+	c := client.New(conf, environment.ClientDirectory)
 	c.Version = version.NewClient(SMR_VERSION)
 
 	cmd := &cobra.Command{

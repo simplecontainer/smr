@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/go-playground/assert/v2"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	mock_platforms "github.com/simplecontainer/smr/pkg/kinds/containers/mock"

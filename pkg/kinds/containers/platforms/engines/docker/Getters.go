@@ -10,9 +10,20 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/static"
+	"net"
 	"strconv"
 	"strings"
 )
+
+func (container *Docker) GetNetwork() map[string]net.IP {
+	ips := make(map[string]net.IP)
+
+	for _, network := range container.Networks.Networks {
+		ips[network.Reference.Name] = net.ParseIP(network.Docker.IP)
+	}
+
+	return ips
+}
 
 func (container *Docker) GetReadiness() []*readiness.Readiness {
 	return container.Readiness.Readinesses

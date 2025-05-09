@@ -11,8 +11,27 @@ import (
 type Client struct {
 	Config  *configuration.Configuration
 	Group   string
+	Manager *Manager
 	Context *ClientContext
 	Version *version.VersionClient
+}
+
+type Storage interface {
+	Save(ctx *ClientContext) error
+	Load(name string) (*ClientContext, error)
+	GetActive() (string, error)
+	SetActive(name string) error
+	Delete(name string) error
+	List() ([]string, error)
+}
+
+type FileStorage struct {
+	contextDir string // Base directory for contexts
+}
+
+type MemoryStorage struct {
+	contexts      map[string]*ClientContext // Map of context name to context
+	activeContext string                    // Name of active context
 }
 
 type Config struct {
@@ -21,26 +40,26 @@ type Config struct {
 	MaxRetries  int
 	RetryDelay  time.Duration
 	UseInsecure bool
+	InMemory    bool
 }
 
 type Credentials struct {
-	PrivateKey *bytes.Buffer `json:"-"`
-	Cert       *bytes.Buffer `json:"-"`
-	Ca         *bytes.Buffer `json:"-"`
-	CertBundle string        `json:"cert_bundle"`
+	PrivateKey *bytes.Buffer
+	Cert       *bytes.Buffer
+	Ca         *bytes.Buffer
+	CertBundle string
 }
 
 type ClientContext struct {
-	Name       string `json:"name"`
-	APIURL     string `json:"api_url"`
-	Directory  string `json:"-"`
-	ActivePath string `json:"active_path,omitempty"`
-
-	Credentials *Credentials `json:"credentials"`
-	client      *http.Client `json:"-"`
-	config      *Config      `json:"-"`
+	Name        string
+	Directory   string `json:"-"`
+	APIURL      string
+	Credentials *Credentials
+	client      *http.Client
+	config      *Config
 }
 
 type Manager struct {
 	config *Config
+	store  Storage
 }

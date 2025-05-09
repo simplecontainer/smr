@@ -9,3 +9,4 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 LATEST_SMR_COMMIT="$(git rev-parse --short $BRANCH)"
 
 docker build . --file docker/Dockerfile --no-cache --build-arg TARGETOS=linux --build-arg TARGETARCH=amd64 --tag smr:$LATEST_SMR_COMMIT
+docker tag smr:$LATEST_SMR_COMMIT smr:latest

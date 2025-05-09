@@ -169,6 +169,9 @@ func (c *Container) GetGroupIdentifier() string {
 	return c.Platform.GetGroupIdentifier()
 }
 
+func (c *Container) GetNetwork() map[string]net.IP {
+	return c.GetNetwork()
+}
 func (c *Container) GetDomain(network string) string {
 	return c.Platform.GetDomain(network)
 }

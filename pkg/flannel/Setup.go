@@ -183,6 +183,8 @@ func Run(ctx context.Context, cancel context.CancelFunc, c *client.Client, confi
 									break
 								case ipv4 | ipv6:
 									break
+								default:
+									panic("unhandled default case")
 								}
 
 								if recursion[string(event.Kv.Key)] == string(event.Kv.Value) {
@@ -204,7 +206,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, c *client.Client, confi
 													logger.Log.Info(fmt.Sprintf("keep alived: %s", data.String()))
 													break
 												} else {
-													logger.Log.Info(fmt.Sprintf("closed keep alive channel for lease: %s", event.Kv.Lease))
+													logger.Log.Info(fmt.Sprintf("closed keep alive channel for lease: %d", event.Kv.Lease))
 													return
 												}
 											}

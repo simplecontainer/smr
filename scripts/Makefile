@@ -29,8 +29,11 @@ install-ctl:
 install-engine:
 	./development/install-engine.sh
 
-docker: build-docker
-standalone: build-engine build-ctl install build-docker run-standalone
+nuke:
+	./development/nuke.sh
+
 ctl: build-ctl install-ctl
-cluster: build-engine  build-ctl install build-docker run-cluster
-cluster-debug: build-docker-debug run-cluster-debug
+docker: nuke build-engine build-ctl install build-docker
+standalone: nuke build-engine build-ctl install build-docker run-standalone
+cluster: nuke build-engine build-ctl install build-docker run-cluster
+cluster-debug: nuke build-docker-debug run-cluster-debug

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -12,6 +13,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/control"
 	"github.com/simplecontainer/smr/pkg/control/controls/start"
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/flannel"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -61,27 +63,12 @@ func Agent() {
 					conf, err := startup.Load(environment)
 
 					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
-					}
-
-					var bundle []byte
-					bundle, err = os.ReadFile(fmt.Sprintf("%s/.ssh/%s.pem", environment.NodeDirectory, conf.NodeName))
-
-					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					_, port, err := net.SplitHostPort(conf.Ports.Control)
+					cli := client.New(conf, environment.NodeDirectory)
 
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					cli := client.New(conf)
-
-					manager := client.NewManager(client.DefaultConfig(environment.NodeDirectory))
-					ctx, err := manager.CreateContext(conf.NodeName, fmt.Sprintf("https://localhost:%s", port), bundle)
+					cli.Context, err = client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -109,7 +96,13 @@ func Agent() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					response := network.Send(ctx.GetClient(), fmt.Sprintf("%s/api/v1/cluster/start", fmt.Sprintf("https://localhost:%s", port)), http.MethodPost, data)
+					_, port, err := net.SplitHostPort(conf.Ports.Control)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					response := network.Send(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/cluster/start", fmt.Sprintf("https://localhost:%s", port)), http.MethodPost, data)
 
 					if response.HttpStatus == http.StatusOK || response.ErrorExplanation == static.CLUSTER_STARTED {
 						if response.HttpStatus == http.StatusOK {
@@ -118,14 +111,6 @@ func Agent() {
 							fmt.Println(response.ErrorExplanation)
 							fmt.Println("trying to run flannel if not running")
 						}
-
-						err = manager.SetActiveContext(ctx.Name)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-
-						fmt.Println("context saved")
 
 						err = helpers.AcquireLock("/var/run/flannel/flannel.lock")
 
@@ -164,10 +149,6 @@ func Agent() {
 							done <- err
 						}()
 
-						go func() {
-
-						}()
-
 						select {
 						case <-ctx.Done():
 							logger.Log.Info("agent exited: context canceled")
@@ -189,7 +170,6 @@ func Agent() {
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("raft", "", "raft endpoint")
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
-				cmd.Flags().Bool("y", false, "Say yes to context overwrite")
 			},
 		},
 		command.Engine{
@@ -202,16 +182,15 @@ func Agent() {
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
-
-					activeCtx, err := client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
+					conf, err := startup.Load(environment)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					var encrypted, key string
-					encrypted, key, err = activeCtx.Export()
+					cli := client.New(conf, environment.NodeDirectory)
 
+					encrypted, key, err := cli.Manager.ExportContext("")
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
@@ -237,37 +216,38 @@ func Agent() {
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+					cli := client.New(nil, environment.NodeDirectory)
 
-					importedCtx, err := client.Import(client.DefaultConfig(environment.NodeDirectory), args[0], args[1])
-
+					var err error
+					cli.Context, err = cli.Manager.ImportContext(args[0], args[1])
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					if importedCtx.APIURL == "" {
+					if cli.Context.APIURL == "" {
 						helpers.PrintAndExit(errors.New("imported context has no API URL"), 1)
 					}
 
 					connCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
 
-					if err = importedCtx.Connect(connCtx, true); err != nil {
+					if err = cli.Context.Connect(connCtx, true); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					if importedCtx.Name == "" {
-						importedCtx.WithName(fmt.Sprintf("imported-%d", time.Now().Unix()))
-					}
-
-					if err = importedCtx.Save(); err != nil {
+					if err = cli.Context.Save(); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					if err := importedCtx.ImportCertificates(context.Background(), filepath.Join(environment.NodeDirectory, static.SSHDIR)); err != nil {
+					if err = cli.Manager.SetActive(cli.Context.Name); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					fmt.Printf("context '%s' successfully imported and set as active\n", importedCtx.Name)
+					if err := cli.Context.ImportCertificates(context.Background(), filepath.Join(environment.NodeDirectory, static.SSHDIR)); err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					fmt.Printf("context '%s' successfully imported and set as active\n", cli.Context.Name)
 				},
 			},
 			DependsOn: []func(*api.Api, []string){
@@ -275,7 +255,7 @@ func Agent() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
-				cmd.Flags().Bool("y", false, "Say yes to context overwrite")
+				cmd.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 			},
 		},
 		command.Engine{
@@ -330,7 +310,6 @@ func Agent() {
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
-
 					conf, err := startup.Load(environment)
 
 					if err != nil {
@@ -350,7 +329,7 @@ func Agent() {
 					logger.Log.Info("listening for control events...")
 					watchCh := cli.Watch(context.Background(), "/smr/control/", clientv3.WithPrefix())
 
-					c := client.New(conf)
+					c := client.New(conf, environment.NodeDirectory)
 
 					for watchResp := range watchCh {
 						for _, event := range watchResp.Events {
@@ -385,6 +364,95 @@ func Agent() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+			},
+		},
+		command.Engine{
+			Parent: "agent",
+			Name:   "events",
+			Condition: func(*api.Api) bool {
+				return true
+			},
+			Functions: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+					conf, err := startup.Load(environment)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					cli := client.New(conf, environment.NodeDirectory)
+					cli.Context, err = client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					ctx, cancel := context.WithCancel(context.Background())
+
+					err = cli.Events(ctx, cancel, func(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn) error {
+						defer cancel()
+						msgChannel := make(chan []byte)
+
+						go func() {
+							err := cli.ReadEvents(ctx, conn, msgChannel)
+
+							if err != nil {
+								fmt.Println("error reading events:", err)
+							}
+
+							close(msgChannel)
+							return
+						}()
+
+						if viper.GetString("wait") != "" {
+							for msg := range msgChannel {
+								var event events.Event
+
+								err = json.Unmarshal(msg, &event)
+
+								if err != nil {
+									fmt.Println(err)
+									continue
+								}
+
+								if event.Type == viper.GetString("wait") {
+									msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "context canceled")
+
+									if err != nil {
+										conn.Close()
+									}
+
+									err = conn.WriteMessage(websocket.CloseMessage, msg)
+
+									if err != nil {
+										conn.Close()
+									}
+
+									cancel()
+									return nil
+								}
+							}
+						} else {
+							for msg := range msgChannel {
+								fmt.Printf("event: %s\n", msg)
+							}
+						}
+
+						return nil
+					})
+
+					if err != nil {
+						return
+					}
+				},
+			},
+			DependsOn: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+				cmd.Flags().String("wait", "", "Node")
 			},
 		},
 	)

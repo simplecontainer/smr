@@ -134,7 +134,7 @@ Manager(){
     touch ~/nodes/${NODE}/logs/cluster.log || (echo "failed to create log file: ~/smr/logs/cluster.log" && exit 2)
     touch ~/nodes/${NODE}/logs/control.log || (echo "failed to create log file: ~/smr/logs/control.log" && exit 2)
 
-    smr node start --node "${NODE}"
+    smr node start --node "${NODE}" -y
 
     if [[ $NODE_DOMAIN == "localhost" ]]; then
       RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${RAFT_PORT}"
@@ -142,7 +142,7 @@ Manager(){
       RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
     fi
 
-    sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" --y </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
+    sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
     sudo nohup smr agent control --node "${NODE}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/control.log &
 
     echo "tail flannel logs at: tail -f ~/nodes/${NODE}/logs/cluster.log"

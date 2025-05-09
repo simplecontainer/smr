@@ -9,7 +9,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"time"
 )
 
@@ -42,80 +41,25 @@ func Context() {
 		},
 		command.Client{
 			Parent: "context",
-			Name:   "connect",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					environment := configuration.NewEnvironment(configuration.WithHostConfig())
-
-					parsed, err := helpers.EnforceHTTPS(viper.GetString("api"))
-
-					manager := client.NewManager(client.DefaultConfig(environment.ClientDirectory))
-					ctx, err := manager.CreateContext(viper.GetString("name"), parsed.String(), []byte(viper.GetString("bundle")))
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					err = ctx.Connect(context.Background(), viper.GetBool("retry"))
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					err = ctx.Save()
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					err = manager.SetActiveContext(viper.GetString("name"))
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("name", "localhost", "Context name")
-				cmd.Flags().String("api", "https://localhost:1443", "Node control endpoint")
-				cmd.Flags().String("bundle", "", "Path to .pem bundle")
-				cmd.Flags().Bool("retry", false, "Retry connect on fail with backoff")
-				cmd.Flags().BoolP("yes", "y", false, "Say yes to overwrite of context")
-			},
-		},
-		command.Client{
-			Parent: "context",
 			Name:   "export",
 			Condition: func(*client.Client) bool {
 				return true
 			},
-			Args: cobra.NoArgs,
+			Args: cobra.MaximumNArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+					name := ""
 
-					activeCtx, err := client.LoadActive(client.DefaultConfig(environment.ClientDirectory))
+					if len(args) == 1 {
+						name = args[0]
+					}
 
+					encrypted, key, err := cli.Manager.ExportContext(name)
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					var encrypted, key string
-					encrypted, key, err = activeCtx.Export()
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					fmt.Println(key, encrypted)
+					fmt.Println(encrypted, key)
 				},
 			},
 			DependsOn: []func(*client.Client, []string){
@@ -136,34 +80,32 @@ func Context() {
 			Args: cobra.ExactArgs(2),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					environment := configuration.NewEnvironment(configuration.WithHostConfig())
-
-					importedCtx, err := client.Import(client.DefaultConfig(environment.ClientDirectory), args[0], args[1])
-
+					var err error
+					cli.Context, err = cli.Manager.ImportContext(args[0], args[1])
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					if importedCtx.APIURL == "" {
+					if cli.Context.APIURL == "" {
 						helpers.PrintAndExit(errors.New("imported context has no API URL"), 1)
 					}
 
 					connCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
 
-					if err := importedCtx.Connect(connCtx, true); err != nil {
+					if err = cli.Context.Connect(connCtx, true); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					if importedCtx.Name == "" {
-						importedCtx.WithName(fmt.Sprintf("imported-%d", time.Now().Unix()))
-					}
-
-					if err := importedCtx.Save(); err != nil {
+					if err = cli.Context.Save(); err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					fmt.Printf("context '%s' successfully imported and set as active\n", importedCtx.Name)
+					if err = cli.Manager.SetActive(cli.Context.Name); err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					fmt.Printf("context '%s' successfully imported and set as active\n", cli.Context.Name)
 				},
 			},
 			DependsOn: []func(*client.Client, []string){

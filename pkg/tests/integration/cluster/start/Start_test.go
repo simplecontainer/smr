@@ -2,10 +2,8 @@ package start_test
 
 import (
 	"flag"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/tests/integration/node"
 	"testing"
-	"time"
 )
 
 var image string
@@ -21,12 +19,13 @@ func TestStart(t *testing.T) {
 	err := testingNode1.Start(t)
 
 	if err != nil {
-		fmt.Println(err)
 		testingNode1.Clean(t)
 	}
 
-	time.Sleep(5 * time.Second)
+	testingNode2 := node.New("testing-node", 1, image, tag)
+	err = testingNode2.Start(t)
 
-	fmt.Println("all testing done go to sleep now")
-	testingNode1.Clean(t)
+	if err != nil {
+		testingNode2.Clean(t)
+	}
 }

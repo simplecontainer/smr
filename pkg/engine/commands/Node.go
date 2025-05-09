@@ -1,12 +1,14 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/internal/definitions"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
+	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -17,7 +19,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"net"
+	"os"
 	"strings"
+	"time"
 )
 
 func Node() {
@@ -95,7 +99,61 @@ func Node() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					fmt.Println("node started - waiting to be ready...")
+					fmt.Println("node started")
+
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+
+					err = helpers.WaitForFileToAppear(ctx, fmt.Sprintf("%s/.ssh/%s.pem", environment.NodeDirectory, conf.NodeName), 500*time.Millisecond)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					var bundle []byte
+					bundle, err = os.ReadFile(fmt.Sprintf("%s/.ssh/%s.pem", environment.NodeDirectory, conf.NodeName))
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					_, port, err := net.SplitHostPort(conf.Ports.Control)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					var credentials *client.Credentials
+					credentials, err = client.BundleToCredentials(bundle)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					cli := client.New(conf, environment.NodeDirectory)
+					cli.Context, err = cli.Manager.CreateContext(conf.NodeName, fmt.Sprintf("https://localhost:%s", port), credentials)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					err = cli.Context.Connect(context.Background(), true)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					if err = cli.Context.Save(); err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					err = cli.Manager.SetActive(cli.Context.Name)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					fmt.Println("context saved")
 				},
 			},
 			DependsOn: []func(*api.Api, []string){
@@ -105,11 +163,12 @@ func Node() {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
 				cmd.Flags().String("entrypoint", "/opt/smr/smr", "Entrypoint")
 				cmd.Flags().String("args", "start", "Args")
+				cmd.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 			},
 		},
 		command.Engine{
 			Parent: "node",
-			Name:   "stop",
+			Name:   "clean",
 			Condition: func(*api.Api) bool {
 				return true
 			},
@@ -130,7 +189,7 @@ func Node() {
 
 					var container platforms.IPlatform
 
-					switch api.Config.Platform {
+					switch conf.Platform {
 					case static.PLATFORM_DOCKER:
 						if err = docker.IsDaemonRunning(); err != nil {
 							helpers.PrintAndExit(err, 1)
@@ -139,7 +198,7 @@ func Node() {
 						container, err = docker.New(conf.NodeName, definition)
 						break
 					default:
-						helpers.PrintAndExit(errors.New("container is already running"), 1)
+						helpers.PrintAndExit(errors.New("platform unknown"), 1)
 					}
 
 					err = container.Stop(static.SIGTERM)
@@ -148,7 +207,15 @@ func Node() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					fmt.Println("node started")
+					fmt.Println("node stopped")
+
+					err = container.Delete()
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					fmt.Println("node deleted")
 				},
 			},
 			DependsOn: []func(*api.Api, []string){
@@ -242,6 +309,60 @@ func Node() {
 				cmd.Flags().String("port.control", ":1443", "Port mapping of node control plane -> Default 0.0.0.0:1443")
 				cmd.Flags().String("port.overlay", ":9212", "Port mapping of node overlay raft port  -> Default 0.0.0.0:9212")
 				cmd.Flags().String("port.etcd", "2379", "Port mapping of node overlay raft port  -> Default 127.0.0.1:2379 (Cant be exposed to outside!)")
+			},
+		},
+		command.Engine{
+			Parent: "node",
+			Name:   "networks",
+			Condition: func(*api.Api) bool {
+				return true
+			},
+			Functions: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {
+					conf, err := startup.Load(configuration.NewEnvironment(configuration.WithHostConfig()))
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					definition, err := definitions.Node(conf.NodeName, conf)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					var container platforms.IPlatform
+
+					switch conf.Platform {
+					case static.PLATFORM_DOCKER:
+						if err = docker.IsDaemonRunning(); err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						container, err = docker.New(conf.NodeName, definition)
+						break
+					default:
+						helpers.PrintAndExit(errors.New("platform unknown"), 1)
+					}
+
+					_, err = container.GetState()
+					err = container.SyncNetwork()
+
+					networks := container.GetNetwork()
+
+					val, ok := networks[viper.GetString("network")]
+
+					if ok {
+						fmt.Println(val)
+					}
+				},
+			},
+			DependsOn: []func(*api.Api, []string){
+				func(api *api.Api, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+				cmd.Flags().String("network", "bridge", "Network name")
 			},
 		},
 	)
