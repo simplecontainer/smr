@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -24,6 +25,8 @@ func Create(c context.Context, cancel context.CancelFunc, clientConn *websocket.
 		}
 		return nil, err
 	}
+
+	fmt.Println("exec created", execID, reader)
 
 	return &Session{
 		ID:         execID,
@@ -159,6 +162,7 @@ func output(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Co
 			}
 
 			if n > 0 {
+				fmt.Println(buf[:n])
 				err = websocketConn.WriteMessage(websocket.BinaryMessage, buf[:n])
 
 				if err != nil {

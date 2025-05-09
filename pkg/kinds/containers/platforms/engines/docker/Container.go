@@ -531,8 +531,8 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 		}(cli)
 
 		config := TDContainer.ExecOptions{
-			AttachStderr: interactive,
-			AttachStdout: interactive,
+			AttachStderr: true,
+			AttachStdout: true,
 			AttachStdin:  interactive,
 			Tty:          interactive,
 			Cmd:          command,
@@ -543,7 +543,7 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 			return "", nil, nil, err
 		}
 
-		resp, err := cli.ContainerExecAttach(context.Background(), exec.ID, TDTypes.ExecStartCheck{})
+		resp, err := cli.ContainerExecAttach(ctx, exec.ID, TDTypes.ExecStartCheck{})
 		if err != nil {
 			return "", nil, nil, err
 		}

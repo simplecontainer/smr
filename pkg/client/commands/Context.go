@@ -37,7 +37,8 @@ func Context() {
 			DependsOn: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {},
 			},
-			Flags: func(cmd *cobra.Command) {},
+			Flags: func(cmd *cobra.Command) {
+			},
 		},
 		command.Client{
 			Parent: "context",
@@ -87,11 +88,7 @@ func Context() {
 				cmd.Flags().String("api", "https://localhost:1443", "Node control endpoint")
 				cmd.Flags().String("bundle", "", "Path to .pem bundle")
 				cmd.Flags().Bool("retry", false, "Retry connect on fail with backoff")
-
-				viper.BindPFlag("name", cmd.Flags().Lookup("name"))
-				viper.BindPFlag("api", cmd.Flags().Lookup("api"))
-				viper.BindPFlag("bundle", cmd.Flags().Lookup("bundle"))
-				viper.BindPFlag("retry", cmd.Flags().Lookup("retry"))
+				cmd.Flags().BoolP("yes", "y", false, "Say yes to overwrite of context")
 			},
 		},
 		command.Client{
@@ -139,11 +136,6 @@ func Context() {
 			Args: cobra.ExactArgs(2),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
 
 					importedCtx, err := client.Import(client.DefaultConfig(environment.ClientDirectory), args[0], args[1])
@@ -174,8 +166,12 @@ func Context() {
 					fmt.Printf("context '%s' successfully imported and set as active\n", importedCtx.Name)
 				},
 			},
+			DependsOn: []func(*client.Client, []string){
+				func(cli *client.Client, args []string) {
+				},
+			},
 			Flags: func(cmd *cobra.Command) {
-
+				cmd.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 			},
 		},
 	)

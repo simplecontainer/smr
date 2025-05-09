@@ -6,6 +6,15 @@ Introduction
 > [!IMPORTANT]
 > The project is alpha.
 
+## Quickstart
+
+To run the simplecontainer node
+
+```cgo
+
+```
+
+
 Introducing Kubernetes alike features for docker. Deploy to docker daemons with ease using the simplecontainer. Works as an overlay over docker daemon and
 providing API for orchestrating containers and additional resources like configuration, secret, etc. 
 

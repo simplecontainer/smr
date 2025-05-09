@@ -50,11 +50,21 @@ func (t *FileTailer) tailLoop() {
 
 	buf := make([]byte, 4096)
 	var offset int64 = 0
+	keepAliveTicker := time.NewTicker(10 * time.Second)
+	defer keepAliveTicker.Stop()
 
 	for {
 		select {
 		case <-t.ctx.Done():
 			return
+		case <-keepAliveTicker.C:
+			if t.follow {
+				_, writeErr := t.writer.Write([]byte{})
+				if writeErr != nil {
+					t.writer.CloseWithError(fmt.Errorf("error writing keepalive: %w", writeErr))
+					return
+				}
+			}
 		default:
 			// Continue processing
 		}
@@ -80,33 +90,38 @@ func (t *FileTailer) tailLoop() {
 			offset += int64(written)
 		}
 
-		if err == io.EOF && !t.follow {
-			return
-		}
-
-		if err == io.EOF && t.follow {
-			stat, err := os.Stat(t.path)
-			if err != nil {
-				if os.IsNotExist(err) && t.follow {
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				t.writer.CloseWithError(fmt.Errorf("error checking file stats: %w", err))
+		if err == io.EOF {
+			if !t.follow {
 				return
-			}
+			} else {
+				stat, statErr := os.Stat(t.path)
+				if statErr != nil {
+					if os.IsNotExist(statErr) {
+						time.Sleep(100 * time.Millisecond)
+						continue
+					}
 
-			if stat.Size() < offset {
-				offset = 0
-				file.Close()
-
-				file, err = os.Open(t.path)
-				if err != nil {
-					t.writer.CloseWithError(fmt.Errorf("error reopening file: %w", err))
+					t.writer.CloseWithError(fmt.Errorf("error checking file stats: %w", statErr))
 					return
 				}
-			}
 
-			time.Sleep(100 * time.Millisecond)
+				if stat.Size() < offset {
+					offset = 0
+					file.Close()
+
+					file, err = os.Open(t.path)
+					if err != nil {
+						t.writer.CloseWithError(fmt.Errorf("error reopening file: %w", err))
+						return
+					}
+				} else {
+					time.Sleep(100 * time.Millisecond)
+				}
+				continue
+			}
+		} else if err != nil {
+			t.writer.CloseWithError(fmt.Errorf("error reading file: %w", err))
+			return
 		}
 	}
 }

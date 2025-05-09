@@ -39,7 +39,7 @@ func Streams() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("f"))), http.MethodGet, nil)
+					resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -68,7 +68,7 @@ func Streams() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("container", "main", "Logs from main or init")
-				cmd.Flags().Bool("f", false, "Follow logs")
+				cmd.Flags().BoolP("follow", "f", false, "Follow logs")
 			},
 		},
 		command.Client{
@@ -77,7 +77,7 @@ func Streams() {
 			Condition: func(*client.Client) bool {
 				return true
 			},
-			Args: cobra.NoArgs,
+			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := helpers.BuildFormat(args[0], cli.Group)
@@ -86,7 +86,7 @@ func Streams() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("f"))), http.MethodGet, nil)
+					resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -123,7 +123,7 @@ func Streams() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("container", "main", "Logs from main or init")
-				cmd.Flags().Bool("f", false, "Follow logs")
+				cmd.Flags().BoolP("--follow", "f", false, "Follow logs")
 			},
 		},
 		command.Client{
@@ -172,8 +172,8 @@ func Streams() {
 				func(cli *client.Client, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("c", "/bin/sh", "Command to execute in container")
-				cmd.Flags().Bool("it", false, "Interactive session")
+				cmd.Flags().StringP("c", "c", "/bin/sh", "Command to execute in container")
+				cmd.Flags().BoolP("it", "i", false, "Interactive session")
 			},
 		},
 	)
@@ -220,6 +220,7 @@ func handle(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn
 
 	select {
 	case err := <-client:
+		fmt.Println(err)
 		conn.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "client terminated connection"))
 
