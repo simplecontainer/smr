@@ -4,6 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/pkg/errors"
 	"github.com/simplecontainer/smr/internal/definitions"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -14,216 +20,214 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"strings"
-	"time"
-
-	"github.com/pkg/errors"
 )
 
 const (
 	emptyIPv6Network = "::/0"
+	etcdDialTimeout  = 5 * time.Second
+	etcdWatchPrefix  = "/coreos.com/network/subnets"
+)
 
-	ipv4 = iota
+const (
+	ipv4 = 1 << iota
 	ipv6
 )
 
 func Run(ctx context.Context, cancel context.CancelFunc, c *client.Client, config *configuration.Configuration) error {
 	logger.Log.Info("starting flannel with backend", zap.String("backend", config.Flannel.Backend))
 
+	f, err := initializeFlannel(config)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize flannel")
+	}
+
+	go func() {
+		err := flannel(ctx, f, f.InterfaceSpecified, f.IPv6Masq, f.NetMode)
+		if err != nil {
+			logger.Log.Error("flannel exited", zap.Error(err))
+		}
+		cancel()
+	}()
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{fmt.Sprintf("localhost:%s", config.Ports.Etcd)},
+		DialTimeout: etcdDialTimeout,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to connect to etcd")
+	}
+	defer cli.Close()
+
+	return watchSubnets(ctx, cli, c, f)
+}
+
+func initializeFlannel(config *configuration.Configuration) (*Flannel, error) {
 	f := New(subnetFile)
-	err := f.Clear()
 
-	if err != nil {
-		return err
+	if err := f.Clear(); err != nil {
+		return nil, errors.Wrap(err, "failed to clear subnet file")
 	}
 
-	err = f.SetBackend(config.Flannel.Backend)
-
-	if err != nil {
-		return err
+	if err := f.SetBackend(config.Flannel.Backend); err != nil {
+		return nil, errors.Wrap(err, "failed to set backend")
 	}
 
-	err = f.EnableIPv4(config.Flannel.EnableIPv4)
-
-	if err != nil {
-		return err
+	if err := f.EnableIPv4(config.Flannel.EnableIPv4); err != nil {
+		return nil, errors.Wrap(err, "failed to enable IPv4")
 	}
 
-	err = f.EnableIPv6(config.Flannel.EnableIPv6)
-
-	if err != nil {
-		return err
+	if err := f.EnableIPv6(config.Flannel.EnableIPv6); err != nil {
+		return nil, errors.Wrap(err, "failed to enable IPv6")
 	}
 
 	f.MaskIPv6(config.Flannel.IPv6Masq)
 
-	err = f.SetCIDR(config.Flannel.CIDR)
-
-	if err != nil {
-		return err
+	if err := f.SetCIDR(config.Flannel.CIDR); err != nil {
+		return nil, errors.Wrap(err, "failed to set CIDR")
 	}
 
-	err = f.SetInterface(config.Flannel.InterfaceSpecified)
-
-	if err != nil {
-		return err
+	if err := f.SetInterface(config.Flannel.InterfaceSpecified); err != nil {
+		return nil, errors.Wrap(err, "failed to set interface")
 	}
 
 	netMode, err := findNetMode(f.CIDR)
 	if err != nil {
-		return errors.Wrap(err, "failed to check netMode for flannel")
+		return nil, errors.Wrap(err, "failed to check netMode for flannel")
 	}
 
-	go func() {
-		err = flannel(ctx, f, f.InterfaceSpecified, f.IPv6Masq, f.NetMode)
-		if err != nil {
-			logger.Log.Error("flannel exited: %v", zap.Error(err))
-		}
+	f.NetMode = netMode
 
-		cancel()
-	}()
+	return f, nil
+}
 
-	var cli *clientv3.Client
-	cli, err = clientv3.New(clientv3.Config{
-		Endpoints:   []string{fmt.Sprintf("localhost:%s", config.Ports.Etcd)},
-		DialTimeout: 5 * time.Second,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	watcher := cli.Watch(ctx, "/coreos.com/network/subnets", clientv3.WithPrefix())
+func watchSubnets(ctx context.Context, cli *clientv3.Client, c *client.Client, f *Flannel) error {
+	watcher := cli.Watch(ctx, etcdWatchPrefix, clientv3.WithPrefix())
 	logger.Log.Info("client will wait for flannel to return subnet range")
 
-	recursion := make(map[string]string)
+	// Store processed events to prevent duplicates
+	processedEvents := make(map[string]string)
 
 	for {
 		select {
 		case watchResp, ok := <-watcher:
-			if ok {
-				for _, event := range watchResp.Events {
-					switch event.Type {
-					case mvccpb.PUT:
-						if strings.Contains(string(event.Kv.Key), "subnet") {
-							if event.Kv.Lease != 0 {
-								var subnet = Subnet{}
-								err = json.Unmarshal(event.Kv.Value, &subnet)
+			if !ok {
+				return errors.New("watcher channel closed unexpectedly")
+			}
 
-								if err != nil {
-									return err
-								}
+			for _, event := range watchResp.Events {
+				if event.Type != mvccpb.PUT || !strings.Contains(string(event.Kv.Key), "subnet") || event.Kv.Lease == 0 {
+					continue
+				}
 
-								logger.Log.Info("got subnet ", zap.Any("subnet", subnet))
-
-								switch netMode {
-								case ipv4:
-									if f.Interface.ExtAddr.String() == subnet.PublicIP {
-										logger.Log.Info("adding it as my own subnet", zap.String("subnet", string(event.Kv.Key)))
-
-										split := strings.Split(string(event.Kv.Key), "/")
-										CIDR := strings.Replace(split[len(split)-1], "-", "/", 1)
-
-										NetworkDefinition, _ := definitions.ClusterNetwork(CIDR).ToJSON()
-
-										req, err := common.NewRequest(static.KIND_NETWORK)
-
-										if err != nil {
-											fmt.Println(err)
-											break
-										}
-
-										err = req.Definition.FromJson(NetworkDefinition)
-
-										if err != nil {
-											fmt.Println(err)
-											break
-										}
-
-										err = req.ProposeApply(c.Context.GetClient(), c.Context.APIURL)
-
-										if err != nil {
-											fmt.Println(err)
-										} else {
-											fmt.Println("network object applied")
-										}
-									}
-									break
-								case ipv6:
-									if f.Interface.ExtV6Addr.String() == subnet.PublicIPv6 {
-										split := strings.Split(string(event.Kv.Key), "/")
-										CIDR := strings.Replace(split[len(split)-1], "-", "/", 1)
-
-										NetworkDefinition, _ := definitions.ClusterNetwork(CIDR).ToJSON()
-
-										req, err := common.NewRequest(static.KIND_NETWORK)
-
-										if err != nil {
-											fmt.Println(err)
-											break
-										}
-
-										err = req.Definition.FromJson(NetworkDefinition)
-
-										if err != nil {
-											fmt.Println(err)
-											break
-										}
-
-										err = req.ProposeApply(c.Context.GetClient(), c.Context.APIURL)
-
-										if err != nil {
-											fmt.Println(err)
-										} else {
-											fmt.Println("network object applied")
-										}
-									}
-									break
-								case ipv4 | ipv6:
-									break
-								default:
-									panic("unhandled default case")
-								}
-
-								if recursion[string(event.Kv.Key)] == string(event.Kv.Value) {
-									continue
-								}
-
-								recursion[string(event.Kv.Key)] = string(event.Kv.Value)
-								response := network.Send(c.Context.GetClient(), fmt.Sprintf("%s/api/v1/key/propose/%s", c.Context.APIURL, event.Kv.Key), http.MethodPost, event.Kv.Value)
-
-								if response.Success {
-									go func() {
-										var kach <-chan *clientv3.LeaseKeepAliveResponse
-										kach, err = cli.KeepAlive(ctx, clientv3.LeaseID(event.Kv.Lease))
-
-										for {
-											select {
-											case data, ok := <-kach:
-												if ok {
-													logger.Log.Info(fmt.Sprintf("keep alived: %s", data.String()))
-													break
-												} else {
-													logger.Log.Info(fmt.Sprintf("closed keep alive channel for lease: %d", event.Kv.Lease))
-													return
-												}
-											}
-										}
-									}()
-								} else {
-									logger.Log.Error("flannel failed to inform members about subnet decision - abort startup")
-									os.Exit(1)
-								}
-							}
-						}
-
-					}
+				// Process subnet event
+				if err := processSubnetEvent(ctx, cli, c, f, event, processedEvents); err != nil {
+					logger.Log.Error("failed to process subnet event", zap.Error(err), zap.String("key", string(event.Kv.Key)))
 				}
 			}
+
 		case <-ctx.Done():
-			return errors.New("closed watcher channel - should not block")
+			return errors.New("context canceled - shutting down flannel watcher")
+		}
+	}
+}
+
+func processSubnetEvent(ctx context.Context, cli *clientv3.Client, c *client.Client, f *Flannel,
+	event *clientv3.Event, processedEvents map[string]string) error {
+
+	var subnet Subnet
+	if err := json.Unmarshal(event.Kv.Value, &subnet); err != nil {
+		return errors.Wrap(err, "failed to unmarshal subnet data")
+	}
+
+	logger.Log.Info("got subnet", zap.Any("subnet", subnet))
+
+	if shouldCreateNetworkObject(f, subnet) {
+		if err := createNetworkObject(c, event.Kv.Key); err != nil {
+			return errors.Wrap(err, "failed to create network object")
+		}
+	}
+
+	eventKey := string(event.Kv.Key)
+	eventValue := string(event.Kv.Value)
+	if processedEvents[eventKey] == eventValue {
+		return nil
+	}
+
+	processedEvents[eventKey] = eventValue
+
+	response := network.Send(
+		c.Context.GetClient(),
+		fmt.Sprintf("%s/api/v1/key/propose/%s", c.Context.APIURL, event.Kv.Key),
+		http.MethodPost,
+		event.Kv.Value,
+	)
+
+	if !response.Success {
+		logger.Log.Error("flannel failed to inform members about subnet decision - abort startup")
+		os.Exit(1)
+	}
+
+	go keepAliveSubnet(ctx, cli, event.Kv.Lease)
+
+	return nil
+}
+
+func shouldCreateNetworkObject(f *Flannel, subnet Subnet) bool {
+	switch {
+	case f.NetMode == ipv4 && f.Interface.ExtAddr.String() == subnet.PublicIP:
+		return true
+	case f.NetMode == ipv6 && f.Interface.ExtV6Addr.String() == subnet.PublicIPv6:
+		return true
+	default:
+		return false
+	}
+}
+
+func createNetworkObject(c *client.Client, subnetKey []byte) error {
+	split := strings.Split(string(subnetKey), "/")
+	cidr := strings.Replace(split[len(split)-1], "-", "/", 1)
+
+	networkDefinition, err := definitions.ClusterNetwork(cidr).ToJSON()
+	if err != nil {
+		return errors.Wrap(err, "failed to create network definition")
+	}
+
+	req, err := common.NewRequest(static.KIND_NETWORK)
+	if err != nil {
+		return errors.Wrap(err, "failed to create network request")
+	}
+
+	if err := req.Definition.FromJson(networkDefinition); err != nil {
+		return errors.Wrap(err, "failed to parse network definition")
+	}
+
+	if err := req.ProposeApply(c.Context.GetClient(), c.Context.APIURL); err != nil {
+		return errors.Wrap(err, "failed to apply network object")
+	}
+
+	logger.Log.Info("network object applied successfully")
+	return nil
+}
+
+func keepAliveSubnet(ctx context.Context, cli *clientv3.Client, leaseID int64) {
+	kach, err := cli.KeepAlive(ctx, clientv3.LeaseID(leaseID))
+	if err != nil {
+		logger.Log.Error("failed to start keepalive", zap.Error(err), zap.Int64("leaseID", leaseID))
+		return
+	}
+
+	for {
+		select {
+		case resp, ok := <-kach:
+			if !ok {
+				logger.Log.Info("closed keep alive channel for lease", zap.Int64("leaseID", leaseID))
+				return
+			}
+			logger.Log.Debug("keep alive response received", zap.String("response", resp.String()))
+
+		case <-ctx.Done():
+			logger.Log.Info("context canceled, stopping keepalive", zap.Int64("leaseID", leaseID))
+			return
 		}
 	}
 }

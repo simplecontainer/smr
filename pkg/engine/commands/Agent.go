@@ -390,7 +390,7 @@ func Agent() {
 
 					ctx, cancel := context.WithCancel(context.Background())
 
-					err = cli.Events(ctx, cancel, func(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn) error {
+					err = cli.Events(ctx, cancel, func(ctx context.Context, cancel context.CancelFunc, cancelWSS func() error, conn *websocket.Conn) error {
 						defer cancel()
 						msgChannel := make(chan []byte)
 
@@ -398,7 +398,7 @@ func Agent() {
 							err := cli.ReadEvents(ctx, conn, msgChannel)
 
 							if err != nil {
-								fmt.Println("error reading events:", err)
+								fmt.Println(err)
 							}
 
 							close(msgChannel)
@@ -417,20 +417,11 @@ func Agent() {
 								}
 
 								if event.Type == viper.GetString("wait") {
-									msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "context canceled")
+									err = cancelWSS()
 
 									if err != nil {
-										conn.Close()
+										fmt.Println(err)
 									}
-
-									err = conn.WriteMessage(websocket.CloseMessage, msg)
-
-									if err != nil {
-										conn.Close()
-									}
-
-									cancel()
-									return nil
 								}
 							}
 						} else {

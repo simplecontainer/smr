@@ -148,21 +148,24 @@ func Streams() {
 					requestHeaders := http.Header{}
 					requestHeaders.Add("command", command)
 
-					conn, err := wss.Request(cli.Context.GetClient(), requestHeaders, url)
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+
+					conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetClient(), requestHeaders, url)
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
 					defer conn.Close()
 
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
-
 					sigChan := make(chan os.Signal, 1)
 					signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 					go func() {
 						<-sigChan
-						logger.Log.Debug("received termination signal")
-						cancel()
+						err := cancelWSS()
+
+						if err != nil {
+							fmt.Println(err)
+						}
 					}()
 
 					handle(ctx, cancel, conn, interactive)

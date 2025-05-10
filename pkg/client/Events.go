@@ -14,10 +14,10 @@ import (
 	"syscall"
 )
 
-func (c *Client) Events(ctx context.Context, cancel context.CancelFunc, handle func(context.Context, context.CancelFunc, *websocket.Conn) error) error {
+func (c *Client) Events(ctx context.Context, cancel context.CancelFunc, handle func(context.Context, context.CancelFunc, func() error, *websocket.Conn) error) error {
 	url := fmt.Sprintf("%s/events", c.Context.APIURL)
 
-	conn, err := wss.Request(c.Context.GetClient(), nil, url)
+	conn, cancelWSS, err := wss.Request(ctx, c.Context.GetClient(), nil, url)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -25,25 +25,18 @@ func (c *Client) Events(ctx context.Context, cancel context.CancelFunc, handle f
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
 		<-sigChan
-		msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "context canceled")
+
+		err = cancelWSS()
 
 		if err != nil {
-			conn.Close()
+			fmt.Println(err)
 		}
-
-		err = conn.WriteMessage(websocket.CloseMessage, msg)
-
-		if err != nil {
-			conn.Close()
-		}
-
-		fmt.Println("context canceled")
-		return
 	}()
 
-	return handle(ctx, cancel, conn)
+	return handle(ctx, cancel, cancelWSS, conn)
 }
 
 func (c *Client) ReadEvents(ctx context.Context, conn *websocket.Conn, msgChannel chan<- []byte) error {
@@ -54,27 +47,26 @@ func (c *Client) ReadEvents(ctx context.Context, conn *websocket.Conn, msgChanne
 		default:
 			_, msg, err := conn.ReadMessage()
 
-			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-					return err
-				} else {
-					var closeErr *websocket.CloseError
+			if err == nil {
+				msgChannel <- msg
+				continue
+			}
 
-					if errors.As(err, &closeErr) {
-						text := strings.TrimSpace(closeErr.Text)
-
-						if text == io.EOF.Error() || closeErr.Code == websocket.CloseNormalClosure {
-							return nil
-						} else {
-							return err
-						}
-					}
-				}
-
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 				return err
 			}
 
-			msgChannel <- msg
+			var closeErr *websocket.CloseError
+			if !errors.As(err, &closeErr) {
+				return err // Not a close error, return original error
+			}
+
+			text := strings.TrimSpace(closeErr.Text)
+			if text == io.EOF.Error() || closeErr.Code == websocket.CloseNormalClosure {
+				return nil // Normal closure, no error
+			}
+
+			return err
 		}
 	}
 }

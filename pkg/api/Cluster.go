@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -29,6 +30,7 @@ import (
 	"net/url"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var lock = &sync.RWMutex{}
@@ -224,24 +226,29 @@ func (api *Api) StartCluster(c *gin.Context) {
 	api.Cluster.Started = true
 	api.Cluster.Node.Version = api.Version
 
-	event, err := events.NewNodeEvent(events.EVENT_CLUSTER_STARTED, api.Cluster.Node)
-
-	if err != nil {
-		logger.Log.Error("failed to dispatch node event", zap.Error(err))
-	} else {
-		logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
-		events.Dispatch(event, api.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), api.Cluster.Node.NodeID)
-	}
-
-	err = batch.Apply(c.Request.Context(), api.Etcd)
-
-	if err != nil {
-		logger.Log.Error("failed to inform client about control status", zap.Error(err))
-	}
-
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, static.CLUSTER_STARTED_OK, nil, network.ToJSON(map[string]string{
 		"name": api.Config.NodeName,
 	})))
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err = batch.Apply(ctx, api.Etcd)
+
+		if err != nil {
+			logger.Log.Error("failed to inform client about control status", zap.Error(err))
+		}
+
+		event, err := events.NewNodeEvent(events.EVENT_CLUSTER_STARTED, api.Cluster.Node)
+
+		if err != nil {
+			logger.Log.Error("failed to dispatch node event", zap.Error(err))
+		} else {
+			logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
+			events.Dispatch(event, api.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), api.Cluster.Node.NodeID)
+		}
+	}()
 
 	return
 }
