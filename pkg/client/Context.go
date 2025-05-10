@@ -66,6 +66,14 @@ func NewContext(cfg *Config) (*ClientContext, error) {
 			return nil, fmt.Errorf("failed to create context directory: %w", err)
 		}
 		ctx.Directory = contextDir
+
+		if helpers.IsRunningAsSudo() {
+			sudoUser := helpers.GetRealUser()
+
+			if err := helpers.Chown(contextDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+				return nil, fmt.Errorf("failed to change owner of context directory: %w", err)
+			}
+		}
 	}
 
 	return ctx, nil
@@ -332,6 +340,22 @@ func (c *ClientContext) Save() error {
 		return fmt.Errorf("failed to write active context file: %w", err)
 	}
 
+	if helpers.IsRunningAsSudo() {
+		sudoUser := helpers.GetRealUser()
+
+		if err := helpers.Chown(c.Directory, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of context directory: %w", err)
+		}
+
+		if err := helpers.Chown(contextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of context file: %w", err)
+		}
+
+		if err := helpers.Chown(activeContextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of active context file: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -460,6 +484,14 @@ func (c *ClientContext) ImportCertificates(ctx context.Context, sshDir string) e
 		return fmt.Errorf("failed to create SSH directory: %w", err)
 	}
 
+	if helpers.IsRunningAsSudo() {
+		sudoUser := helpers.GetRealUser()
+
+		if err := helpers.Chown(sshDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of context directory: %w", err)
+		}
+	}
+
 	if err = importedKeys.CA.Write(sshDir); err != nil {
 		return fmt.Errorf("failed to write CA: %w", err)
 	}
@@ -540,8 +572,17 @@ func (c *ClientContext) Export() (string, string, error) {
 
 	if !c.config.InMemory && c.Directory != "" && c.Name != "" {
 		keyPath := filepath.Join(c.Directory, c.Name+".key")
+
 		if err = os.WriteFile(keyPath, []byte(key), 0600); err != nil {
 			return "", "", fmt.Errorf("failed to write key file: %w", err)
+		}
+
+		if helpers.IsRunningAsSudo() {
+			sudoUser := helpers.GetRealUser()
+
+			if err := helpers.Chown(keyPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+				return "", "", fmt.Errorf("failed to change owner of context directory: %w", err)
+			}
 		}
 	}
 
@@ -614,6 +655,18 @@ func NewManager(cfg *Config) (*Manager, error) {
 			return nil, fmt.Errorf("failed to create context directory: %w", err)
 		}
 		manager.store = NewFileStorage(contextDir)
+
+		if helpers.IsRunningAsSudo() {
+			sudoUser := helpers.GetRealUser()
+
+			if err := helpers.Chown(cfg.RootDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+				return nil, fmt.Errorf("failed to change owner of context directory: %w", err)
+			}
+
+			if err := helpers.Chown(contextDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+				return nil, fmt.Errorf("failed to change owner of context directory: %w", err)
+			}
+		}
 	}
 
 	return manager, nil
@@ -638,6 +691,14 @@ func (fs *FileStorage) Save(ctx *ClientContext) error {
 
 	if err := os.WriteFile(contextPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write context file: %w", err)
+	}
+
+	if helpers.IsRunningAsSudo() {
+		sudoUser := helpers.GetRealUser()
+
+		if err := helpers.Chown(contextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of context directory: %w", err)
+		}
 	}
 
 	return nil
@@ -698,6 +759,18 @@ func (fs *FileStorage) SetActive(name string) error {
 	activeContextPath := filepath.Join(fs.contextDir, ".active")
 	if err := os.WriteFile(activeContextPath, []byte(name), 0600); err != nil {
 		return fmt.Errorf("failed to write active context file: %w", err)
+	}
+
+	if helpers.IsRunningAsSudo() {
+		sudoUser := helpers.GetRealUser()
+
+		if err := helpers.Chown(contextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of context directory: %w", err)
+		}
+
+		if err := helpers.Chown(activeContextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+			return fmt.Errorf("failed to change owner of context directory: %w", err)
+		}
 	}
 
 	return nil

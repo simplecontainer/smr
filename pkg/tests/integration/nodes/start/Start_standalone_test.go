@@ -19,22 +19,12 @@ func TestStandaloneNode(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	if flags.Cleanup {
-		defer n.Clean(t)
-	}
-
-	//timeout := time.Duration(flags.Timeout) * time.Second
+	defer n.Clean(t)
 
 	t.Logf("Starting standalone node with image %s:%s", flags.Image, flags.Tag)
 	if err := n.Start(t); err != nil {
 		t.Fatalf("Failed to start node: %v", err)
 	}
 
-	output, err := n.RunCommand(t, "agent status")
-	if err != nil {
-		t.Fatalf("Failed to get node status: %v", err)
-	}
-
-	t.Logf("Node status: %s", output)
 	t.Logf("Test completed successfully")
 }

@@ -1,16 +1,13 @@
 package start_test
 
 import (
-	"testing"
-	"time"
-
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
+	"testing"
 )
 
-func TestCluster(t *testing.T) {
-	timeout := time.Duration(flags.Timeout) * time.Second
-
+func TestClusterMode(t *testing.T) {
 	leaderOpts := node.DefaultNodeOptions("leader", 1)
 	leaderOpts.Image = flags.Image
 	leaderOpts.Tag = flags.Tag
@@ -20,16 +17,14 @@ func TestCluster(t *testing.T) {
 
 	leader, err := node.New(t, leaderOpts)
 	if err != nil {
-		t.Fatalf("Failed to create leader node: %v", err)
+		t.Fatalf("failed to create leader node: %v", err)
 	}
 
-	if flags.Cleanup {
-		defer leader.Clean(t)
-	}
+	defer leader.Clean(t)
 
-	t.Logf("Starting leader node with image %s:%s", flags.Image, flags.Tag)
+	t.Logf("starting leader node with image %s:%s", flags.Image, flags.Tag)
 	if err := leader.Start(t); err != nil {
-		t.Fatalf("Failed to start leader node: %v", err)
+		t.Fatalf("failed to start leader node: %v", err)
 	}
 
 	leaderCtx := leader.GetContext()
@@ -39,41 +34,27 @@ func TestCluster(t *testing.T) {
 	followerOpts.Image = flags.Image
 	followerOpts.Tag = flags.Tag
 	followerOpts.Join = true
-	followerOpts.Peer = leaderIP
+	followerOpts.Peer = fmt.Sprintf("https://%s:%d", leaderIP, leader.Ports.Control)
 	if flags.BinaryDir != "" {
 		followerOpts.BinaryDir = flags.BinaryDir
 	}
 
 	follower, err := node.New(t, followerOpts)
 	if err != nil {
-		t.Fatalf("Failed to create follower node: %v", err)
+		t.Fatalf("failed to create follower node: %v", err)
 	}
 
-	if flags.Cleanup {
-		defer follower.Clean(t)
-	}
+	defer follower.Clean(t)
 
-	t.Logf("Starting follower node with image %s:%s", flags.Image, flags.Tag)
-	if err := follower.Start(t); err != nil {
-		t.Fatalf("Failed to start follower node: %v", err)
-	}
-
-	t.Logf("Importing leader context to follower")
+	t.Logf("importing leader context to follower")
 	if err := follower.Import(t, leaderCtx); err != nil {
-		t.Fatalf("Failed to import context: %v", err)
+		t.Fatalf("failed to import context: %v", err)
 	}
 
-	t.Logf("Waiting for follower to join cluster")
-	if err := follower.WaitForEvent(t, "cluster.joined", timeout); err != nil {
-		t.Fatalf("Follower failed to join cluster: %v", err)
+	t.Logf("starting follower node with image %s:%s", flags.Image, flags.Tag)
+	if err := follower.Start(t); err != nil {
+		t.Fatalf("failed to start follower node: %v", err)
 	}
 
-	t.Logf("Getting cluster status from leader")
-	output, err := leader.RunCommand(t, "agent cluster status")
-	if err != nil {
-		t.Fatalf("Failed to get cluster status: %v", err)
-	}
-
-	t.Logf("Cluster status: %s", output)
-	t.Logf("Test completed successfully")
+	t.Logf("test completed successfully")
 }

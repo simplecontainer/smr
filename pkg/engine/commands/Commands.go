@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"os"
-	"strings"
 )
 
 var Commands []command.Engine
@@ -27,21 +26,6 @@ func Run(api *api.Api, c *cobra.Command) {
 		Use:    "help",
 		Hidden: true,
 	})
-
-	c.SetFlagErrorFunc(func(c *cobra.Command, err error) error {
-		fmt.Printf("error: %s\n\n", err)
-		_ = c.Usage()
-		return nil
-	})
-
-	c.SetArgs(os.Args[1:])
-
-	c.Run = func(cmd *cobra.Command, args []string) {
-		if len(args) > 0 {
-			fmt.Printf("unknown command: %s\n", strings.Join(args, " "))
-		}
-		_ = cmd.Usage()
-	}
 
 	for _, cmd := range Commands {
 		cobraCmd := &cobra.Command{
@@ -88,7 +72,9 @@ func Run(api *api.Api, c *cobra.Command) {
 		}
 	}
 
-	_ = c.Execute()
+	if err := c.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
 
 func SetupGlobalFlags(rootCmd *cobra.Command) {

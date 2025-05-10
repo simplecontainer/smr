@@ -136,7 +136,7 @@ func (n *Node) Start(t *testing.T) error {
 	}
 	t.Logf("[NODE] Node IP: %s", n.IP)
 
-	contextCmd := fmt.Sprintf("agent export --api localhost:%d", n.Ports.Control)
+	contextCmd := fmt.Sprintf("agent export --node %s --api %s:%d", n.Name, n.IP, n.Ports.Control)
 	output, err = n.sudoSmr.RunAndCaptureString(t, contextCmd)
 	if err != nil {
 		return fmt.Errorf("failed to export agent context: %w", err)
@@ -196,7 +196,7 @@ func (n *Node) Import(t *testing.T, context string) error {
 	}
 
 	t.Logf("[NODE] Importing agent context for node %s", n.Name)
-	cmd := fmt.Sprintf("agent import --node %s %s", n.Name, context)
+	cmd := fmt.Sprintf("agent import --node %s -y %s", n.Name, context)
 	if err := n.sudoSmr.RunString(t, cmd); err != nil {
 		return fmt.Errorf("failed to import agent context: %w", err)
 	}
@@ -216,6 +216,19 @@ func (n *Node) Clean(t *testing.T) {
 	cmd := fmt.Sprintf("node clean --node %s", n.Name)
 	if err := n.smr.RunString(t, cmd); err != nil {
 		t.Logf("[NODE] Error cleaning node %s: %v", n.Name, err)
+	}
+
+	home, err := os.UserHomeDir()
+
+	if err != nil {
+		t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+		return
+	}
+
+	err = os.RemoveAll(fmt.Sprintf("%s/nodes/%s", home, n.Name))
+
+	if err != nil {
+		t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
 	}
 }
 
