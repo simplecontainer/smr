@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -99,9 +100,30 @@ func Node() {
 						helpers.PrintAndExit(err, 1)
 					}
 
+					go func() {
+						ctx, _ := context.WithCancel(context.Background())
+						logs, err := container.Logs(ctx, true)
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						defer logs.Close()
+
+						scanner := bufio.NewScanner(logs)
+						for scanner.Scan() {
+							line := scanner.Text()
+							fmt.Println(line)
+						}
+
+						if err := scanner.Err(); err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+					}()
+
 					fmt.Println("node started")
 
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 					defer cancel()
 
 					err = helpers.WaitForFileToAppear(ctx, fmt.Sprintf("%s/.ssh/%s.pem", environment.NodeDirectory, conf.NodeName), 500*time.Millisecond)
