@@ -110,13 +110,13 @@ jobs:
           uses: actions/upload-artifact@v4
           with:
             name: smr-${{ matrix.os}}-${{ matrix.platform }}
-            path: cmd/smr
+            path: cmd/smr/smr-${{ matrix.os }}-${{ matrix.platform }}
         - name: Upload smrctl artifacts
           if: matrix.component == 'smrctl' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
           uses: actions/upload-artifact@v4
           with:
             name: smrctl-${{ matrix.os}}-${{ matrix.platform }}
-            path: cmd/smrctl
+            path: cmd/smrctl/smrctl-${{ matrix.os }}-${{ matrix.platform }}
 
   containerize:
     runs-on: ubuntu-latest
