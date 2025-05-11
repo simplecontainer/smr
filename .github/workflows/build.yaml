@@ -83,13 +83,13 @@ jobs:
             
             mv cmd/smr/version.tmp cmd/smr/version
             mv cmd/smrctl/version.tmp cmd/smrctl/version
-        - name: Build smr
+        - name: Build ${{ matrix.component }} for ${{ matrix.os }} on ${{ matrix.platform }}
           if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
-          working-directory: "cmd/smr"
+          working-directory: "cmd/${{matrix.component}}"
           run: |
             VERSION=$(cat version)
-            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smr-${{ matrix.os }}-${{ matrix.platform }}
-            chmod +x smr-${{ matrix.os }}-${{ matrix.platform }}
+            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o ${{matrix.component}}-${{ matrix.os }}-${{ matrix.platform }}
+            chmod +x ${{ matrix.platform }}-${{ matrix.os }}-${{ matrix.platform }}
   
             if echo ${{ matrix.os }} | grep -qv darwin; then
               upx -9 smr-${{ matrix.os }}-${{ matrix.platform }}
@@ -98,8 +98,8 @@ jobs:
           if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
           uses: actions/upload-artifact@v4
           with:
-            name: smr-${{ matrix.os}}-${{ matrix.platform }}
-            path: cmd/smr/smr-${{ matrix.os }}-${{ matrix.platform }}
+            name: ${{ matrix.component }}-${{ matrix.os}}-${{ matrix.platform }}
+            path: cmd/${{ matrix.component }}/${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
   containerize:
     runs-on: ubuntu-latest
     needs: [ build ]
