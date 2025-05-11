@@ -30,6 +30,7 @@ type EnvironmentDual struct {
 }
 
 type Environment struct {
+	User            string
 	Home            string
 	NodeIP          string
 	NodeDirectory   string

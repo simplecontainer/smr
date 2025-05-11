@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ips "github.com/simplecontainer/smr/pkg/network/ip"
 	"github.com/spf13/viper"
+	"os"
 )
 
 func NewConfig() *Configuration {
@@ -50,6 +51,7 @@ func WithContainerConfig() EnvOption {
 
 func WithHostConfig() EnvOption {
 	return func(env *Environment) {
+		env.User = fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
 		env.Home = viper.GetString("home")
 		env.NodeDirectory = fmt.Sprintf("%s/nodes/%s", viper.GetString("home"), viper.GetString("node"))
 		env.ClientDirectory = fmt.Sprintf("%s/.smrctl", viper.GetString("home"))

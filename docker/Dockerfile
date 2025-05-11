@@ -5,17 +5,14 @@ ARG BUILDPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG UID=1000
-ARG GID=1000
-
-RUN addgroup -g ${GID} nodegroup && \
-    adduser -D -u ${UID} -G nodegroup node && \
+RUN adduser -D node && \
     mkdir -p /opt/smr /home/node/smr /home/node/.ssh && \
-    chown -R node:nodegroup /home/node /opt/smr && \
+    chown -R node /home/node /opt/smr && \
     touch /home/node/.ssh/known_hosts
 
 COPY smr-${TARGETOS}-${TARGETARCH}/smr /opt/smr/smr
 RUN chmod +x /opt/smr/smr && \
+    # Install necessary packages
     apk add --no-cache busybox-extras ca-certificates tzdata
 
 FROM alpine:latest
@@ -28,15 +25,11 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 
 RUN apk add --no-cache ca-certificates tzdata
 
-# Set working directory
 WORKDIR /home/node/smr
 
-# Set user to 'node'
 USER node
 
-# Expose port 1443
 EXPOSE 1443
 
-# Set entrypoint and command
 ENTRYPOINT ["/opt/smr/smr"]
 CMD ["start"]

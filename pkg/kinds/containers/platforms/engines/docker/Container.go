@@ -88,6 +88,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		Volumes:        volumes,
 		VolumeInternal: TDVolume.Volume{},
 		Capabilities:   definition.(*v1.ContainersDefinition).Spec.Capabilities,
+		User:           definition.(*v1.ContainersDefinition).Spec.User,
 		Privileged:     definition.(*v1.ContainersDefinition).Spec.Privileged,
 		Definition:     definitionCopy,
 	}
@@ -156,6 +157,7 @@ func (container *Docker) Run() error {
 			Entrypoint:   container.Entrypoint,
 			Cmd:          container.Args,
 			Tty:          false,
+			User:         container.User,
 			ExposedPorts: container.Ports.ToPortExposed(),
 		}, &TDContainer.HostConfig{
 			DNS:          container.Docker.DNS,
