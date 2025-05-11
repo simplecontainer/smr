@@ -27,6 +27,8 @@ func Run(api *api.Api, c *cobra.Command) {
 		Hidden: true,
 	})
 
+	SetupGlobalFlags(c)
+
 	for _, cmd := range Commands {
 		cobraCmd := &cobra.Command{
 			Use:   cmd.Name,

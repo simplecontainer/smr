@@ -119,11 +119,6 @@ jobs:
           token: ${{ secrets.BOT_USER_PAT }}
           show-progress: false
 
-      - name: Create user and add to runner group
-        run: |
-          sudo useradd -m -u 1000 node
-          sudo usermod -aG runner node 
-
       - name: Verify user and group
         run: id myuser
 
@@ -169,7 +164,7 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Test code
         run: |
-          go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -root $(pwd)
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}

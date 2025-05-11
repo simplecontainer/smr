@@ -47,6 +47,7 @@ func (s SliceCmd) String() string {
 
 type EngineOptions struct {
 	FailOnError bool
+	Suffix      string
 }
 
 func DefaultEngineOptions() EngineOptions {
@@ -122,6 +123,16 @@ func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
 
 	fullCmd := append(append([]string{}, e.command...), args...)
 
+	if e.options.Suffix != "" {
+		suffixParsed, err := shellwords.Parse(e.options.Suffix)
+
+		if err != nil {
+			return err
+		}
+
+		fullCmd = append(fullCmd, suffixParsed...)
+	}
+
 	executable := fullCmd[0]
 	var execArgs []string
 	if len(fullCmd) > 1 {
@@ -175,6 +186,16 @@ func (e *Engine) RunAndCapture(t *testing.T, command ...CmdSource) (string, erro
 	e.stderr.Reset()
 
 	fullCmd := append(append([]string{}, e.command...), args...)
+
+	if e.options.Suffix != "" {
+		suffixParsed, err := shellwords.Parse(e.options.Suffix)
+
+		if err != nil {
+			return "", err
+		}
+
+		fullCmd = append(fullCmd, suffixParsed...)
+	}
 
 	executable := fullCmd[0]
 	var execArgs []string
@@ -233,6 +254,16 @@ func (e *Engine) RunBackground(t *testing.T, command ...CmdSource) error {
 		e.stderr.Reset()
 
 		fullCmd := append(append([]string{}, e.command...), args...)
+
+		if e.options.Suffix != "" {
+			suffixParsed, err := shellwords.Parse(e.options.Suffix)
+
+			if err != nil {
+				return err
+			}
+
+			fullCmd = append(fullCmd, suffixParsed...)
+		}
 
 		executable := fullCmd[0]
 		var execArgs []string

@@ -307,9 +307,7 @@ func Node() {
 				},
 			},
 			DependsOn: []func(*api.Api, []string){
-				func(api *api.Api, args []string) {
-
-				},
+				func(api *api.Api, args []string) {},
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
