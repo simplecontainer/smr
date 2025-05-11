@@ -175,18 +175,12 @@ jobs:
       - name: Prepare binaries
         run: |
           chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
-          ls ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
-          ls /home/runner/work/smr/smr/smr-linux-amd64/
-          ls /home/runner/work/smr/
-          ls /home/runner/work/smr/smr
-          ls ./
-          ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
       - name: Test code
-        run: go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS --binary smr-${{ matrix.os }}-${{ matrix.platform }}
+        run: go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS --binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr
         env:
           IMAGE: ${{ needs.containerize.outputs.image_name }}
           TAG: ${{ needs.containerize.outputs.image_tag }}
