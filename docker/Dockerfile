@@ -1,28 +1,42 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} alpine:latest as initial
+FROM --platform=${BUILDPLATFORM:-linux/amd64} alpine:latest as builder
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN adduser -D node && \
-    mkdir -p /opt/smr /home/node/smr /home/node/.ssh/simplecontainer && \
-    chown -R node:node /home/node /opt/smr && \
+ARG UID=1000
+ARG GID=1000
+
+RUN addgroup -g ${GID} nodegroup && \
+    adduser -D -u ${UID} -G nodegroup node && \
+    mkdir -p /opt/smr /home/node/smr /home/node/.ssh && \
+    chown -R node:nodegroup /home/node /opt/smr && \
     touch /home/node/.ssh/known_hosts
 
-COPY smr-$TARGETOS-$TARGETARCH/smr /opt/smr/smr
-RUN chmod +x /opt/smr/smr
+COPY smr-${TARGETOS}-${TARGETARCH}/smr /opt/smr/smr
+RUN chmod +x /opt/smr/smr && \
+    apk add --no-cache busybox-extras ca-certificates tzdata
 
-RUN apk add --no-cache busybox-extras
+FROM alpine:latest
 
-FROM scratch
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+COPY --from=builder /home/node /home/node
+COPY --from=builder /opt/smr /opt/smr
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 
-COPY --from=initial / /
+RUN apk add --no-cache ca-certificates tzdata
 
-# Set user to 'node' and specify entrypoint and command
+# Set working directory
+WORKDIR /home/node/smr
+
+# Set user to 'node'
 USER node
-ENTRYPOINT ["/opt/smr/smr"]
-CMD ["start"]
 
 # Expose port 1443
 EXPOSE 1443
+
+# Set entrypoint and command
+ENTRYPOINT ["/opt/smr/smr"]
+CMD ["start"]
