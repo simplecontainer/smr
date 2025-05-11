@@ -11,8 +11,6 @@ import (
 )
 
 func TestClusterMode(t *testing.T) {
-	flags.Parse()
-
 	leaderOpts := node.DefaultNodeOptions("leader", 1)
 	leaderOpts.Image = flags.Image
 	leaderOpts.Tag = flags.Tag

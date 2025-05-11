@@ -21,7 +21,7 @@ type CmdSource interface {
 type StringCmd string
 
 func NewStringCmd(command string, args ...any) StringCmd {
-	return StringCmd(fmt.Sprintf(command, args))
+	return StringCmd(fmt.Sprintf(command, args...))
 }
 
 func (s StringCmd) ToCmdArgs() ([]string, error) {
