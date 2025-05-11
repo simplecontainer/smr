@@ -257,15 +257,8 @@ func Node() {
 			Functions: []func(*api.Api, []string){
 				func(api *api.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
-					var permissions os.FileMode
 
-					if viper.GetBool("CI") {
-						permissions = 0777
-					} else {
-						permissions = 0750
-					}
-
-					_, err := bootstrap.CreateProject(static.ROOTSMR, environment, permissions)
+					_, err := bootstrap.CreateProject(static.ROOTSMR, environment, 0750)
 
 					if err != nil {
 						panic(err)
@@ -305,7 +298,7 @@ func Node() {
 						Etcd:    viper.GetString("port.etcd"),
 					}
 
-					err = startup.Save(api.Config, environment, permissions)
+					err = startup.Save(api.Config, environment, 0750)
 
 					if err != nil {
 						panic(err)

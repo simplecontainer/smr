@@ -1,6 +1,5 @@
 .PHONY: test clean
 
-CI ?=
 HOME ?=
 IMAGE ?= smr
 TAG ?= latest
@@ -18,10 +17,6 @@ endif
 
 ifneq ($(HOME),)
 TEST_FLAGS += -root=$(HOME)
-endif
-
-ifneq ($(CI),)
-TEST_FLAGS += -CI=true
 endif
 
 build-engine:

@@ -161,6 +161,12 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Test code
         run: |
+          mkdir ./tests
+          chown runner ./tests
+          chmod 777 ./tests
+          chmod +x ./tests
+          cat /etc/passwd
+          
           go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -CI=true
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}

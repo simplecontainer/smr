@@ -9,14 +9,12 @@ var (
 	Home      string
 	Image     string
 	Tag       string
-	CI        bool
 	BinaryDir string
 	Timeout   int
 )
 
 func init() {
 	flag.StringVar(&Home, "root", helpers.GetRealHome(), "Root directory of all file I/O - should be the home of the user")
-	flag.BoolVar(&CI, "CI", false, "Loosen up rules for CI")
 	flag.StringVar(&BinaryDir, "binary", "smr-linux-amd64/smr", "Path to where smr binary to use - path needs to have smr binary with same name")
 	flag.StringVar(&Image, "image", "smr", "SMR image name to use")
 	flag.StringVar(&Tag, "tag", "latest", "SMR image tag to use")
