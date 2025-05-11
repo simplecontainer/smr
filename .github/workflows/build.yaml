@@ -89,10 +89,10 @@ jobs:
           run: |
             VERSION=$(cat version)
             CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o ${{matrix.component}}-${{ matrix.os }}-${{ matrix.platform }}
-            chmod +x ${{ matrix.platform }}-${{ matrix.os }}-${{ matrix.platform }}
+            chmod +x ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
   
             if echo ${{ matrix.os }} | grep -qv darwin; then
-              upx -9 smr-${{ matrix.os }}-${{ matrix.platform }}
+              upx -9 ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
             fi
         - name: Upload smr artifacts
           if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
