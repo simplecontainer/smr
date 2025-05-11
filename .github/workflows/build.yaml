@@ -163,9 +163,9 @@ jobs:
         run: go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
-          TAG: ${{ steps.image_info.containerizenerize.outputs.image_tag }}
-          TEST_NAME: ${{ steps.image_info.event.inputs.test_name || '' }}
-          TEST_FLAGS: ${{ github.event.inputs.testgithub.event_flags || '' }}
+          TAG: ${{ steps.image_info.outputs.image_tag }}
+          TEST_NAME: ${{ github.event.inputs.test_name || '' }}
+          TEST_FLAGS: ${{ github.event.inputs.test_flags || '' }}
 
   prepare-release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
