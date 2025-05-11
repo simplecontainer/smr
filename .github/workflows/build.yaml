@@ -137,7 +137,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
-          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
 
       - name: Prepare binaries
         run: |
@@ -175,10 +175,12 @@ jobs:
       - name: Prepare binaries
         run: |
           chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
-          ls /home/runner/work/smr/smr/smr-linux-amd64/ || 
+          ls ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          ls /home/runner/work/smr/smr/smr-linux-amd64/
           ls /home/runner/work/smr/
           ls /home/runner/work/smr/smr
           ls ./
+          ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
