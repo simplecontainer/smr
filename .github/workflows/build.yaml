@@ -137,7 +137,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
-          path: ./bin/smr-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}
 
       - name: Prepare binaries
         run: |
