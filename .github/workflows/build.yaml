@@ -102,12 +102,17 @@ jobs:
             path: cmd/${{ matrix.component }}/${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
   containerize:
     runs-on: ubuntu-latest
-    needs: [ build ]
+    needs: [ test, build ]
     if: github.event.inputs.component != 'smrctl' || github.event_name != 'workflow_dispatch'
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
       image_tag: ${{ steps.image_info.outputs.image_tag }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
