@@ -62,7 +62,8 @@ func NewContext(cfg *Config) (*ClientContext, error) {
 
 	if !cfg.InMemory && cfg.RootDir != "" {
 		contextDir := filepath.Join(cfg.RootDir, static.CONTEXTDIR)
-		if err := os.MkdirAll(contextDir, 0755); err != nil {
+
+		if err := os.MkdirAll(contextDir, permissions(0755)); err != nil {
 			return nil, fmt.Errorf("failed to create context directory: %w", err)
 		}
 		ctx.Directory = contextDir
@@ -314,7 +315,7 @@ func (c *ClientContext) Save() error {
 		return errors.New("context directory not set")
 	}
 
-	if err := os.MkdirAll(c.Directory, 0755); err != nil {
+	if err := os.MkdirAll(c.Directory, permissions(0755)); err != nil {
 		return fmt.Errorf("failed to create context directory: %w", err)
 	}
 
@@ -480,7 +481,7 @@ func (c *ClientContext) ImportCertificates(ctx context.Context, sshDir string) e
 		return fmt.Errorf("failed to unmarshal keys: %w", err)
 	}
 
-	if err = os.MkdirAll(sshDir, 0700); err != nil {
+	if err = os.MkdirAll(sshDir, permissions(0700)); err != nil {
 		return fmt.Errorf("failed to create SSH directory: %w", err)
 	}
 
@@ -651,7 +652,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 		manager.store = NewMemoryStorage()
 	} else {
 		contextDir := filepath.Join(cfg.RootDir, static.CONTEXTDIR)
-		if err := os.MkdirAll(contextDir, 0755); err != nil {
+		if err := os.MkdirAll(contextDir, permissions(0755)); err != nil {
 			return nil, fmt.Errorf("failed to create context directory: %w", err)
 		}
 		manager.store = NewFileStorage(contextDir)
@@ -1065,4 +1066,13 @@ func BundleToCredentials(bundle interface{}) (*Credentials, error) {
 	}
 
 	return creds, nil
+}
+
+func permissions(permissions os.FileMode) os.FileMode {
+	if viper.GetBool("CI") {
+		return 0777
+	} else {
+		return permissions
+	}
+
 }
