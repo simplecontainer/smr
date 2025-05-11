@@ -42,7 +42,7 @@ func Load(environment *configuration.Environment) (*configuration.Configuration,
 	return configObj, err
 }
 
-func Save(config *configuration.Configuration, environment *configuration.Environment) error {
+func Save(config *configuration.Configuration, environment *configuration.Environment, permissions os.FileMode) error {
 	yamlObj, err := yaml.Marshal(*config)
 
 	if err != nil {
@@ -51,7 +51,7 @@ func Save(config *configuration.Configuration, environment *configuration.Enviro
 
 	path := fmt.Sprintf("%s/%s/config.yaml", environment.NodeDirectory, static.CONFIGDIR)
 
-	err = os.WriteFile(path, yamlObj, 0644)
+	err = os.WriteFile(path, yamlObj, permissions)
 	if err != nil {
 		return err
 	}

@@ -165,7 +165,7 @@ func (api *Api) ListenNode() {
 					api.Cluster.Cluster.Add(&n)
 
 					api.SaveClusterConfiguration()
-					startup.Save(api.Config, api.Config.Environment.Container)
+					startup.Save(api.Config, api.Config.Environment.Container, 0777)
 
 					api.Cluster.Regenerate(api.Config, api.Keys)
 					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
@@ -198,7 +198,7 @@ func (api *Api) ListenNode() {
 									api.Cluster.Cluster.Remove(&n)
 
 									api.SaveClusterConfiguration()
-									startup.Save(api.Config, api.Config.Environment.Container)
+									startup.Save(api.Config, api.Config.Environment.Container, 0777)
 
 									api.Cluster.Regenerate(api.Config, api.Keys)
 									api.Keys.Reloader.ReloadC <- syscall.SIGHUP

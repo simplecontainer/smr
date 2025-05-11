@@ -297,7 +297,7 @@ func Node() {
 						Etcd:    viper.GetString("port.etcd"),
 					}
 
-					err = startup.Save(api.Config, environment)
+					err = startup.Save(api.Config, environment, 0777)
 
 					if err != nil {
 						panic(err)
