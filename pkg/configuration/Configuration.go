@@ -2,7 +2,6 @@ package configuration
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/internal/helpers"
 	ips "github.com/simplecontainer/smr/pkg/network/ip"
 	"github.com/spf13/viper"
 )
@@ -51,11 +50,9 @@ func WithContainerConfig() EnvOption {
 
 func WithHostConfig() EnvOption {
 	return func(env *Environment) {
-		realHome := helpers.GetRealHome()
-
-		env.Home = realHome
-		env.NodeDirectory = fmt.Sprintf("%s/nodes/%s", helpers.GetRealHome(), viper.GetString("node"))
-		env.ClientDirectory = fmt.Sprintf("%s/.smrctl", helpers.GetRealHome())
+		env.Home = viper.GetString("home")
+		env.NodeDirectory = fmt.Sprintf("%s/nodes/%s", viper.GetString("home"), viper.GetString("node"))
+		env.ClientDirectory = fmt.Sprintf("%s/.smrctl", viper.GetString("home"))
 	}
 }
 

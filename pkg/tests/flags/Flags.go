@@ -1,16 +1,20 @@
 package flags
 
-import "flag"
+import (
+	"flag"
+	"github.com/simplecontainer/smr/internal/helpers"
+)
 
 var (
+	Home      string
 	Image     string
 	Tag       string
 	BinaryDir string
-	Cleanup   bool
 	Timeout   int
 )
 
 func init() {
+	flag.StringVar(&Home, "root", helpers.GetRealHome(), "Root directory of all file I/O - should be the home of the user")
 	flag.StringVar(&BinaryDir, "binary", "smr-linux-amd64/smr", "Path to where smr binary to use - path needs to have smr binary with same name")
 	flag.StringVar(&Image, "image", "smr", "SMR image name to use")
 	flag.StringVar(&Tag, "tag", "latest", "SMR image tag to use")

@@ -119,6 +119,14 @@ jobs:
           token: ${{ secrets.BOT_USER_PAT }}
           show-progress: false
 
+      - name: Create user and add to runner group
+        run: |
+          sudo useradd -m -u 1000 node
+          sudo usermod -aG runner node 
+
+      - name: Verify user and group
+        run: id myuser
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:

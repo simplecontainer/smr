@@ -1,5 +1,6 @@
 .PHONY: test clean
 
+HOME ?=
 IMAGE ?= smr
 TAG ?= latest
 BINARY_DIR ?=
@@ -12,6 +13,10 @@ TEST_DIR ?= ./tests/integration/... # Will run all integration tests if not spec
 TEST_FLAGS = -image=$(IMAGE) -tag=$(TAG) -timeout=$(TIMEOUT)
 ifneq ($(BINARY_DIR),)
 TEST_FLAGS += -binary=$(BINARY_DIR)
+endif
+
+ifneq ($(HOME),)
+TEST_FLAGS += -root=$(HOME)
 endif
 
 build-engine:

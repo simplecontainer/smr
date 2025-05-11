@@ -2,6 +2,7 @@ package startup
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/pflag"
@@ -61,7 +62,7 @@ func Save(config *configuration.Configuration, environment *configuration.Enviro
 func EngineFlags() {
 	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
-	earlyFlags.String("home", "/home/node", "Root directory for all actions - keep default inside container")
+	earlyFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
 	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
 	earlyFlags.Bool("y", false, "Say yes to everything")
 

@@ -123,7 +123,7 @@ func Node() {
 
 					fmt.Println("node started")
 
-					ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+					ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 					defer cancel()
 
 					err = helpers.WaitForFileToAppear(ctx, fmt.Sprintf("%s/.ssh/%s.pem", environment.NodeDirectory, conf.NodeName), 500*time.Millisecond)
