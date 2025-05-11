@@ -113,11 +113,33 @@ jobs:
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
       image_tag: ${{ steps.image_info.outputs.image_tag }}
+    services:
+      docker:
+        image: docker:dind
+        privileged: true
+        options: >-
+          --privileged
+          -e DOCKER_TLS_CERTDIR=
+          -p 2375:2375
+    env:
+      DOCKER_HOST: tcp://localhost:2375
+      DOCKER_TLS_CERTDIR: ""
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.BOT_USER_PAT }}
           show-progress: false
+
+      - name: Wait for Docker Daemon
+        run: |
+          timeout=60
+          until docker info >/dev/null 2>&1; do
+            sleep 1
+            ((timeout--)) || {
+              echo "Docker daemon not available in time"
+              exit 1
+            }
+          done
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -127,10 +149,8 @@ jobs:
       - name: Generate image info
         id: image_info
         run: |
-          # Set local image name and tag for tests
           IMAGE_NAME="simplecontainer/smr"
           IMAGE_TAG="build-${{ github.run_id }}"
-          
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
@@ -155,12 +175,15 @@ jobs:
           build-args: |
             TARGETOS=${{ matrix.os }}
             TARGETARCH=${{ matrix.platform }}
+
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
+
       - name: Test code
-        run: go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+        run: |
+          go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
