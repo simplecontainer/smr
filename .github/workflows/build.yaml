@@ -137,11 +137,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
-          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
 
       - name: Prepare binaries
         run: |
-          chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}
+          chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
 
       - name: Build Docker image for testing
         uses: docker/build-push-action@v5
@@ -173,10 +173,10 @@ jobs:
       - name: Test code
         run: go test -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS
         env:
+          IMAGE: ${{ needs.containerize.outputs.image_name }}
+          TAG: ${{ needs.containerize.outputs.image_tag }}
           TEST_NAME: ${{ github.event.inputs.test_name || '' }}
           TEST_FLAGS: ${{ github.event.inputs.test_flags || '' }}
-          # Pass the image name and tag to tests
-          SMR_IMAGE: ${{ needs.containerize.outputs.image_name }}:${{ needs.containerize.outputs.image_tag }}
 
   prepare-release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -230,12 +230,20 @@ jobs:
           show-progress: false
       - name: Bump versions and commit
         run: |
-          VERSION_SMR=$(cat cmd/smr/version)
-          VERSION_SMRCTL=$(cat cmd/smrctl/version)
-          
-          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-          VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
-          
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "smr" ]]; then
+            VERSION_SMR=$(cat cmd/smr/version)
+            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "smrctl" ]]; then
+            VERSION_SMRCTL=$(cat cmd/smrctl/version)
+            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          else
+            VERSION_SMR=$(cat cmd/smr/version)
+            VERSION_SMRCTL=$(cat cmd/smrctl/version)
+            
+            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          fi
+                    
           echo "$VERSION_SMR" > cmd/smr/version
           echo "$VERSION_SMRCTL" > cmd/smrctl/version
       - uses: stefanzweifel/git-auto-commit-action@v5
@@ -299,31 +307,31 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: smr-linux-amd64
-          path: ./bin/amd64
+          path: ./smr-linux-amd64/smr
 
       - name: Download smr arm64
         uses: actions/download-artifact@v4
         with:
           name: smr-linux-arm64
-          path: ./bin/arm64
+          path: ./smr-linux-arm64/smr
 
       - name: Prepare binaries
         run: |
-          chmod +x ./bin/amd64/smr
-          chmod +x ./bin/arm64/smr
+          chmod +x ./smr-linux-amd64/smr
+          chmod +x ./smr-linux-arm64/smr
 
       - name: Login to Docker Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.DOCKER_REGISTRY || 'docker.io' }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: "quay.io"
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
 
       - name: Prepare Docker tags
         id: docker_meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_REGISTRY != '' && format('{0}/smr', secrets.DOCKER_REGISTRY) || 'simplecontainer/smr' }}
+          images: 'quay.io/simplecontainer/smr'
           tags: |
             type=ref,event=tag
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
