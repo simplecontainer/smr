@@ -55,7 +55,7 @@ jobs:
         platform: [ 'amd64', 'arm64' ]
         os: [ 'linux' ]
         component: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.component != 'all') && fromJSON(format('["{}"]', github.event.inputs.component)) || fromJSON('["smr", "smrctl"]') }}
-        steps:
+    steps:
         - uses: actions/checkout@v4
           with:
             token: ${{ secrets.BOT_USER_PAT }}
