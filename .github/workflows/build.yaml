@@ -88,22 +88,22 @@ jobs:
           working-directory: "cmd/smr"
           run: |
             VERSION=$(cat version)
-            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smr
+            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smr-${{ matrix.os }}-${{ matrix.platform }}
             chmod +x smr
   
             if echo ${{ matrix.os }} | grep -qv darwin; then
-              upx -9 smr
+              upx -9 smr-${{ matrix.os }}-${{ matrix.platform }}
             fi
         - name: Build smrctl
           if: matrix.component == 'smrctl' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
           working-directory: "cmd/smrctl"
           run: |
             VERSION=$(cat version)
-            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smrctl
-            chmod +x smrctl
+            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smrctl-${{ matrix.os }}-${{ matrix.platform }}
+            chmod +x smrctl-${{ matrix.os }}-${{ matrix.platform }}
   
             if echo ${{ matrix.os }} | grep -qv darwin; then
-              upx -9 smrctl
+              upx -9 smrctl-${{ matrix.os }}-${{ matrix.platform }}
             fi
         - name: Upload smr artifacts
           if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
@@ -141,7 +141,6 @@ jobs:
           
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-
       - name: Download smr amd64
         uses: actions/download-artifact@v4
         with:
