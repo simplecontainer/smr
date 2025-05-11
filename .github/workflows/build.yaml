@@ -137,8 +137,8 @@ jobs:
 
       - name: Prepare binaries
         run: |
-          chmod +x ./bin/amd64/smr
-          chmod +x ./bin/arm64/smr
+          chmod +x ./bin/amd64/smr-linux-amd64
+          chmod +x ./bin/arm64/smr-linux-arm64
 
       # Build image for local use in tests
       - name: Build Docker image for testing
@@ -147,7 +147,6 @@ jobs:
           context: .
           file: docker/Dockerfile
           tags: ${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag }}
-          # Important: load the image into the local Docker daemon for use in integration tests
           load: true
 
   test-integration:
