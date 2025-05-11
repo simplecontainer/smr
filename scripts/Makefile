@@ -51,15 +51,10 @@ nuke:
 test-integration:
 	@echo "Running test(s): $(if $(TEST_NAME),$(TEST_NAME),all tests)"
 ifneq ($(TEST_NAME),)
-	go test -v ../pkg/tests/integration/$(TEST_DIR) -run $(TEST_NAME) $(TEST_FLAGS)
+	go test -v -tags=integration ../pkg/tests/integration/$(TEST_DIR) -run $(TEST_NAME) $(TEST_FLAGS)
 else
-	go test -v ../pkg/tests/integration/$(TEST_DIR) $(TEST_FLAGS)
+	go test -v -tags=integration ../pkg/tests/integration/$(TEST_DIR) $(TEST_FLAGS)
 endif
-
-# Clean up resources
-clean:
-	@echo "Cleaning up resources..."
-	go test -v ./nodes/start -run TestCleanup
 
 ctl: build-ctl install-ctl
 docker: nuke build-engine build-ctl install build-docker

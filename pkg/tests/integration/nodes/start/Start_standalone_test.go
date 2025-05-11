@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package start_test
 
 import (
@@ -7,6 +10,8 @@ import (
 )
 
 func TestStandaloneNode(t *testing.T) {
+	flags.Parse()
+
 	opts := node.DefaultNodeOptions("test", 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
