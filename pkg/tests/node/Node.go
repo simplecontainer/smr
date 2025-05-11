@@ -95,7 +95,7 @@ func New(t *testing.T, opts NodeOptions) (*Node, error) {
 	}
 
 	var err error
-	node.BinaryPath, err = filepath.Abs(filepath.Join(binaryDir, "smr"))
+	node.BinaryPath, err = filepath.Abs(binaryDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute path to binary: %w", err)
 	}

@@ -175,6 +175,9 @@ jobs:
       - name: Prepare binaries
         run: |
           chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          ls -lah  ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          echo "break"
+          ls -lah ./smr-${{ matrix.os }}-${{ matrix.platform }}
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
