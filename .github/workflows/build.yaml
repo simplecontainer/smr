@@ -89,7 +89,7 @@ jobs:
           run: |
             VERSION=$(cat version)
             CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smr-${{ matrix.os }}-${{ matrix.platform }}
-            chmod +x smr
+            chmod +x smr-${{ matrix.os }}-${{ matrix.platform }}
   
             if echo ${{ matrix.os }} | grep -qv darwin; then
               upx -9 smr-${{ matrix.os }}-${{ matrix.platform }}
