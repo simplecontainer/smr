@@ -172,6 +172,9 @@ jobs:
         with:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
           path: ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+      - name: Prepare binaries
+        run: |
+          chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
