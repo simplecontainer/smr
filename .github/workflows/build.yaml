@@ -141,7 +141,7 @@ jobs:
 
       - name: Prepare binaries
         run: |
-          chmod +x ./bin/amd64/smr-${{ matrix.os }}-${{ matrix.platform }}
+          chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}
 
       # Build image for local use in tests
       - name: Build Docker image for testing
