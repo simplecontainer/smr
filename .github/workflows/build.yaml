@@ -166,6 +166,11 @@ jobs:
         with:
           token: ${{ secrets.BOT_USER_PAT }}
           show-progress: false
+      - name: Download smr-${{ matrix.os }}-${{ matrix.platform }}
+        uses: actions/download-artifact@v4
+        with:
+          name: smr-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
@@ -269,7 +274,11 @@ jobs:
             COMPONENTS="${{ github.event.inputs.component }}"
           else
             COMPONENTS="smr smrctl"
-          fi
+          fi  VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+            
+            echo "$VERSION_SMR" > cmd/smr/version.tmp
+            echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
           
           # Copy artifacts based on selected components
           for component in $COMPONENTS; do
