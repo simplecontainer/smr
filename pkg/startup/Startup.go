@@ -56,18 +56,27 @@ func Save(config *configuration.Configuration, environment *configuration.Enviro
 		return err
 	}
 
+	info, statErr := os.Stat(path)
+	if statErr == nil {
+		err = os.WriteFile(path, yamlObj, info.Mode().Perm())
+	} else if os.IsNotExist(statErr) {
+		err = os.WriteFile(path, yamlObj, permissions)
+	} else {
+		return statErr
+	}
+
 	return nil
 }
 
 func EngineFlags() {
-	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
+	// These are only available in the container - not in the cobra commands!
+	containerFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
-	earlyFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
-	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
-	earlyFlags.Bool("y", false, "Say yes to everything")
+	containerFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
+	containerFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
 
-	viper.BindPFlag("home", earlyFlags.Lookup("home"))
-	viper.BindPFlag("log", earlyFlags.Lookup("log"))
+	viper.BindPFlag("home", containerFlags.Lookup("home"))
+	viper.BindPFlag("log", containerFlags.Lookup("log"))
 }
 
 func ClientFlags() {

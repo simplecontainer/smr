@@ -266,7 +266,7 @@ func (api *Api) SaveClusterConfiguration() {
 	// After later restarts/upgrades node needs to join the cluster
 	api.Config.KVStore.Join = true
 
-	err := startup.Save(api.Config, api.Config.Environment.Container, 06444)
+	err := startup.Save(api.Config, api.Config.Environment.Container, 0)
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}

@@ -104,6 +104,10 @@ func New(t *testing.T, opts NodeOptions) (*Node, error) {
 	engineOptions := engine.DefaultEngineOptions()
 	engineOptions.Suffix = fmt.Sprintf("--home %s", flags.Home)
 
+	if flags.CI {
+		engineOptions.Suffix = fmt.Sprintf("--home %s --CI", flags.Home)
+	}
+
 	node.smr = engine.NewEngineWithOptions(node.BinaryPath, engineOptions)
 	node.sudoSmr = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
 

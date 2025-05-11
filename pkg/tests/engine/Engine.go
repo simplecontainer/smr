@@ -133,6 +133,8 @@ func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
 		fullCmd = append(fullCmd, suffixParsed...)
 	}
 
+	fmt.Println(fullCmd)
+
 	executable := fullCmd[0]
 	var execArgs []string
 	if len(fullCmd) > 1 {
@@ -148,7 +150,7 @@ func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
 	if len(command) > 0 {
 		cmdStr = command[0].String()
 	}
-	t.Logf("[ENGINE] Running command: %s %s", strings.Join(e.command, " "), cmdStr)
+	t.Logf("[ENGINE] Running command: %s %s %s", strings.Join(e.command, " "), cmdStr, e.options.Suffix)
 
 	err = cmd.Run()
 	if err != nil {
@@ -210,10 +212,10 @@ func (e *Engine) RunAndCapture(t *testing.T, command ...CmdSource) (string, erro
 		cmdStr = command[0].String()
 	}
 
-	writers := []io.Writer{e.stdout, testLogWriter{t: t, prefix: fmt.Sprintf("STDOUT %s", cmdStr)}}
+	writers := []io.Writer{e.stdout, testLogWriter{t: t, prefix: fmt.Sprintf("STDOUT %s %s\n", cmdStr, e.options.Suffix)}}
 	cmd.Stdout = io.MultiWriter(writers...)
 
-	writers = []io.Writer{e.stderr, testLogWriter{t: t, prefix: fmt.Sprintf("STDERR %s", cmdStr)}}
+	writers = []io.Writer{e.stderr, testLogWriter{t: t, prefix: fmt.Sprintf("STDERR %s %s\n", cmdStr, e.options.Suffix)}}
 	cmd.Stderr = io.MultiWriter(writers...)
 
 	t.Logf("[ENGINE] Running command with capture: %s %s", strings.Join(e.command, " "), cmdStr)
@@ -273,8 +275,8 @@ func (e *Engine) RunBackground(t *testing.T, command ...CmdSource) error {
 
 		cmd := exec.Command(executable, execArgs...)
 
-		cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: "STDOUT"})
-		cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: "STDERR"})
+		cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: fmt.Sprintf("STDOUT %s %s\n", cmd.String(), e.options.Suffix)})
+		cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: fmt.Sprintf("STDERR %s %s\n", cmd.String(), e.options.Suffix)})
 
 		cmdStr := ""
 		if len(command) > 0 {
