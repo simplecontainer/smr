@@ -11,6 +11,7 @@ var (
 )
 
 func init() {
+	flag.StringVar(&BinaryDir, "binary", "smr-linux-amd64", "Path to where smr binary to use - path needs to have smr binary with same name")
 	flag.StringVar(&Image, "image", "smr", "SMR image name to use")
 	flag.StringVar(&Tag, "tag", "latest", "SMR image tag to use")
 	flag.IntVar(&Timeout, "timeout", 60, "Timeout in seconds for operations")

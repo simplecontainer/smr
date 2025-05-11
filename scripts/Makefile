@@ -11,7 +11,7 @@ TEST_DIR ?= ./tests/integration/... # Will run all integration tests if not spec
 # Common test flags
 TEST_FLAGS = -image=$(IMAGE) -tag=$(TAG) -timeout=$(TIMEOUT)
 ifneq ($(BINARY_DIR),)
-TEST_FLAGS += -binary-dir=$(BINARY_DIR)
+TEST_FLAGS += -binary=$(BINARY_DIR)
 endif
 
 build-engine:
