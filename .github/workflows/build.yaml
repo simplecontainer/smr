@@ -137,13 +137,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
-          path: ./bin/${{ matrix.platform }}
+          path: ./bin/smr-${{ matrix.os }}-${{ matrix.platform }}
 
       - name: Prepare binaries
         run: |
           chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}
 
-      # Build image for local use in tests
       - name: Build Docker image for testing
         uses: docker/build-push-action@v5
         with:
