@@ -28,7 +28,11 @@ func GetRealHome() string {
 		return ""
 	}
 
-	return u.HomeDir
+	if u.HomeDir != "" {
+		return u.HomeDir
+	} else {
+		return os.Getenv("HOME")
+	}
 }
 
 func GetRealUser() (*user.User, error) {
