@@ -46,6 +46,7 @@ func Node(name string, config *configuration.Configuration) (*v1.ContainersDefin
 			Tag:   config.NodeTag,
 			Envs: []string{
 				fmt.Sprintf("LOG_LEVEL=%s", viper.GetString("log")),
+				fmt.Sprintf("HOME=/home/node"),
 			},
 			Entrypoint: entrypoint,
 			Args:       args,
