@@ -18,7 +18,7 @@ func TestClusterMode(t *testing.T) {
 	leaderOpts.Image = flags.Image
 	leaderOpts.Tag = flags.Tag
 	if flags.BinaryPath != "" {
-		leaderOpts.BinaryDir = flags.BinaryPath
+		leaderOpts.BinaryPath = flags.BinaryPath
 	}
 
 	leader, err := node.New(t, leaderOpts)
