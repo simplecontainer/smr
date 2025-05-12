@@ -68,6 +68,8 @@ github.com/bodgit/sevenzip v1.6.0 h1:a4R0Wu6/P1o1pP/3VV++aEOcyeBxeO/xE2Y9NSTrr6A
 github.com/bodgit/sevenzip v1.6.0/go.mod h1:zOBh9nJUof7tcrlqJFv1koWRrhz3LbDbUNngkuZxLMc=
 github.com/bodgit/windows v1.0.1 h1:tF7K6KOluPYygXa3Z2594zxlkbKPAOvqr97etrGNIz4=
 github.com/bodgit/windows v1.0.1/go.mod h1:a6JLwrB4KrTR5hBpp8FI9/9W9jJfeQ2h4XDXU74ZCdM=
+github.com/brianvoe/gofakeit/v6 v6.28.0 h1:Xib46XXuQfmlLS2EXRuJpqcw8St6qSZz75OUo0tgAW4=
+github.com/brianvoe/gofakeit/v6 v6.28.0/go.mod h1:Xj58BMSnFqcn/fAQeSK+/PLtC5kSb7FJIq4JyGa8vEs=
 github.com/bronze1man/goStrongswanVici v0.0.0-20231128135937-211cef3b0b20 h1:JMoL5xJSYxo1QVJ3c+4FutWQnks3gZX9DYkgAnvg+5g=
 github.com/bronze1man/goStrongswanVici v0.0.0-20231128135937-211cef3b0b20/go.mod h1:fWUtBEPt2yjrr3WFhOqvajM8JSEU8bEeBcoeSCsKRpc=
 github.com/bytedance/sonic v1.12.6 h1:/isNmCUF2x3Sh8RAp/4mh4ZGkcFAX/hLrzrK3AvpRzk=

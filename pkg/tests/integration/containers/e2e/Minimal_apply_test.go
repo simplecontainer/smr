@@ -15,7 +15,8 @@ import (
 )
 
 func TestStandaloneNodeMinimalContainer(t *testing.T) {
-	opts := node.DefaultNodeOptions("test", 1)
+	gofakeit.Seed(0)
+	opts := node.DefaultNodeOptions(gofakeit.Username(), 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
 	if flags.BinaryPath != "" {

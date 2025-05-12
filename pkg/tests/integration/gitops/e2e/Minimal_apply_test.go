@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/tests/cli"
@@ -15,7 +16,9 @@ import (
 )
 
 func TestStandaloneNodeMinimalContainer(t *testing.T) {
-	opts := node.DefaultNodeOptions("test", 1)
+	gofakeit.Seed(0)
+
+	opts := node.DefaultNodeOptions(gofakeit.Username(), 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
 	if flags.BinaryPath != "" {
