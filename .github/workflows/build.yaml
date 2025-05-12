@@ -170,6 +170,12 @@ jobs:
           repository: simplecontainer/examples
           path: examples
 
+      - name: Test code
+        run: |
+          ls
+          ls examples
+          pwd
+
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
         with:
