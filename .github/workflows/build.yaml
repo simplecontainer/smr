@@ -140,7 +140,7 @@ jobs:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
           path: ./smr-${{ matrix.os }}-${{ matrix.platform }}
 
-      - name: Download smr-${{ matrix.os }}-${{ matrix.platform }}
+      - name: Download smrctl-${{ matrix.os }}-${{ matrix.platform }}
         uses: actions/download-artifact@v4
         with:
           name: smrctl-${{ matrix.os }}-${{ matrix.platform }}
@@ -149,7 +149,7 @@ jobs:
       - name: Prepare binary
         run: |
           mv ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr-${{ matrix.os }}-${{ matrix.platform }} ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
-          mv ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl-${{ matrix.os }}-${{ matrix.platform }} ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smr
+          mv ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl-${{ matrix.os }}-${{ matrix.platform }} ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
           chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
           chmod +x ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
 
