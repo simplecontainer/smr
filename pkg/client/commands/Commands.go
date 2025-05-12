@@ -37,8 +37,6 @@ func Run(cli *client.Client, c *cobra.Command) {
 			Short: fmt.Sprintf("%s %s", cmd.Parent, cmd.Name),
 			Args:  cmd.Args,
 			PreRunE: func(c *cobra.Command, args []string) error {
-				fmt.Println(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory)
-
 				var err error
 				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
 

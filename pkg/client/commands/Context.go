@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/manifoldco/promptui"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
@@ -31,6 +32,66 @@ func Context() {
 					}
 
 					fmt.Println(activeCtx.Name)
+				},
+			},
+			DependsOn: []func(*client.Client, []string){
+				func(cli *client.Client, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+			},
+		},
+		command.Client{
+			Parent: "context",
+			Name:   "switch",
+			Condition: func(*client.Client) bool {
+				return true
+			},
+			Args: cobra.MaximumNArgs(1),
+			Functions: []func(*client.Client, []string){
+				func(cli *client.Client, args []string) {
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+					contexts, err := cli.Manager.ListContexts()
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					if len(args) > 0 {
+						var activeCtx *client.ClientContext
+						activeCtx, err = client.LoadByName(args[0], client.DefaultConfig(environment.ClientDirectory))
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						err = cli.Manager.SetActive(activeCtx.Name)
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						fmt.Println(fmt.Sprintf("active context is %s", activeCtx.Name))
+					} else {
+						prompt := promptui.Select{
+							Label: "Select a context",
+							Items: contexts,
+						}
+
+						var result string
+						_, result, err = prompt.Run()
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						err = cli.Manager.SetActive(result)
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						fmt.Println(fmt.Sprintf("active context is %s", result))
+					}
 				},
 			},
 			DependsOn: []func(*client.Client, []string){

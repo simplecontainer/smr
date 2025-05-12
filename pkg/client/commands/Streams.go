@@ -124,7 +124,7 @@ func Streams() {
 			},
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("container", "main", "Logs from main or init")
-				cmd.Flags().BoolP("--follow", "f", false, "Follow logs")
+				cmd.Flags().BoolP("follow", "f", false, "Follow logs")
 			},
 		},
 		command.Client{
