@@ -2,7 +2,6 @@ package network
 
 import (
 	"errors"
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
@@ -69,7 +68,6 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
 	}
 
-	fmt.Println(networkObj)
 	if networkObj.Name == "cluster" {
 		event, err := events.NewNodeEvent(events.EVENT_CLUSTER_READY, network.Shared.Manager.Cluster.Node)
 

@@ -155,14 +155,12 @@ jobs:
           build-args: |
             TARGETOS=${{ matrix.os }}
             TARGETARCH=${{ matrix.platform }}
-            UID=1001
-            GID=118
 
       - name: Clone examples repository for tests
         uses: actions/checkout@v4
         with:
           repository: simplecontainer/examples
-          path: external-repo
+          path: examples
 
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
