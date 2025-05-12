@@ -42,7 +42,7 @@ func TestClusterMode(t *testing.T) {
 	followerOpts.Join = true
 	followerOpts.Peer = fmt.Sprintf("https://%s:%d", leaderIP, leader.Ports.Control)
 	if flags.BinaryPath != "" {
-		followerOpts.BinaryDir = flags.BinaryPath
+		followerOpts.BinaryPath = flags.BinaryPath
 	}
 
 	follower, err := node.New(t, followerOpts)
