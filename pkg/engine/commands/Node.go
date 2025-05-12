@@ -94,6 +94,7 @@ func Node() {
 						}
 					}
 
+					fmt.Println(fmt.Sprintf("starting node with the user: %s", definition.Spec.User))
 					err = container.Run()
 
 					if err != nil {
