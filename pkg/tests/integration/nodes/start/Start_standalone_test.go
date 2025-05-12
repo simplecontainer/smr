@@ -4,6 +4,7 @@
 package start_test
 
 import (
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 func TestStandaloneNode(t *testing.T) {
 	gofakeit.Seed(0)
+
 	opts := node.DefaultNodeOptions(gofakeit.Username(), 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
