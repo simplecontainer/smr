@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/client/resources"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/formaters"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ func Alias() {
 						helpers.PrintAndExit(errors.New("ps works only for containers and gitops resources"), 1)
 					}
 
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)

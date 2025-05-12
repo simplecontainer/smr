@@ -7,18 +7,16 @@ import (
 	"time"
 )
 
-// ClusterOptions defines configuration for creating a cluster
 type ClusterOptions struct {
 	BaseName      string
 	Image         string
 	Tag           string
 	LeaderCount   int
 	FollowerCount int
-	BinaryDir     string
+	BinaryPath    string
 	StartTimeout  time.Duration
 }
 
-// DefaultClusterOptions returns sensible defaults for ClusterOptions
 func DefaultClusterOptions() ClusterOptions {
 	return ClusterOptions{
 		BaseName:      "node",
@@ -30,7 +28,6 @@ func DefaultClusterOptions() ClusterOptions {
 	}
 }
 
-// Cluster manages a collection of nodes
 type Cluster struct {
 	Options   ClusterOptions
 	Leaders   []*Node
@@ -39,7 +36,6 @@ type Cluster struct {
 	mutex sync.RWMutex
 }
 
-// NewCluster creates a new cluster manager
 func NewCluster(opts ClusterOptions) *Cluster {
 	if opts.StartTimeout == 0 {
 		opts.StartTimeout = 60 * time.Second
@@ -52,7 +48,6 @@ func NewCluster(opts ClusterOptions) *Cluster {
 	}
 }
 
-// Setup initializes the cluster with the specified number of leader and follower nodes
 func (c *Cluster) Setup(t *testing.T) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -60,15 +55,14 @@ func (c *Cluster) Setup(t *testing.T) error {
 	t.Logf("[CLUSTER] Setting up cluster with %d leaders and %d followers",
 		c.Options.LeaderCount, c.Options.FollowerCount)
 
-	// First create and start leader nodes
 	for i := 0; i < c.Options.LeaderCount; i++ {
-		nodeOpts := NodeOptions{
-			Name:      fmt.Sprintf("%s-leader", c.Options.BaseName),
-			Index:     i + 1,
-			Image:     c.Options.Image,
-			Tag:       c.Options.Tag,
-			Join:      i > 0, // First node doesn't join, others do
-			BinaryDir: c.Options.BinaryDir,
+		nodeOpts := Options{
+			Name:       fmt.Sprintf("%s-leader", c.Options.BaseName),
+			Index:      i + 1,
+			Image:      c.Options.Image,
+			Tag:        c.Options.Tag,
+			Join:       i > 0, // First node doesn't join, others do
+			BinaryPath: c.Options.BinaryPath,
 		}
 
 		// If this is not the first leader, set peer to first leader
@@ -102,14 +96,14 @@ func (c *Cluster) Setup(t *testing.T) error {
 	firstLeaderCtx := c.Leaders[0].GetContext()
 
 	for i := 0; i < c.Options.FollowerCount; i++ {
-		nodeOpts := NodeOptions{
-			Name:      fmt.Sprintf("%s-follower", c.Options.BaseName),
-			Index:     i + 1,
-			Image:     c.Options.Image,
-			Tag:       c.Options.Tag,
-			Join:      true,
-			Peer:      firstLeaderIP,
-			BinaryDir: c.Options.BinaryDir,
+		nodeOpts := Options{
+			Name:       fmt.Sprintf("%s-follower", c.Options.BaseName),
+			Index:      i + 1,
+			Image:      c.Options.Image,
+			Tag:        c.Options.Tag,
+			Join:       true,
+			Peer:       firstLeaderIP,
+			BinaryPath: c.Options.BinaryPath,
 		}
 
 		node, err := New(t, nodeOpts)
@@ -202,7 +196,6 @@ func (c *Cluster) GetAllNodes() []*Node {
 	return allNodes
 }
 
-// GetLeader returns the primary leader node
 func (c *Cluster) GetLeader() *Node {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()

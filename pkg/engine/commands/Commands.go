@@ -81,14 +81,12 @@ func Run(api *api.Api, c *cobra.Command) {
 
 func SetupGlobalFlags(rootCmd *cobra.Command) {
 	// Global flags
-	rootCmd.PersistentFlags().Bool("CI", false, "Loosen up rules for CI")
 	rootCmd.PersistentFlags().String("home", "/home/node", "Root directory for all actions - keep default inside container")
 	rootCmd.PersistentFlags().String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
 
 	// Bind global flags to viper
 	viper.BindPFlag("home", rootCmd.PersistentFlags().Lookup("home"))
 	viper.BindPFlag("log", rootCmd.PersistentFlags().Lookup("log"))
-	viper.BindPFlag("CI", rootCmd.PersistentFlags().Lookup("CI"))
 }
 
 func findCommand(cmd *cobra.Command, name string) *cobra.Command {

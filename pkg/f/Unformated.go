@@ -41,7 +41,7 @@ func (format Unformated) GetName() string {
 	return ""
 }
 
-func (format Unformated) Inverse() iformat.Format {
+func (format Unformated) Shift() iformat.Format {
 	return format
 }
 
@@ -58,6 +58,10 @@ func (format Unformated) Compliant() bool {
 }
 
 func (format Unformated) ToString() string {
+	return fmt.Sprintf("%s%s", format.Prefix, format.Key)
+}
+
+func (format Unformated) ToStringWithOpts(opts *iformat.ToStringOpts) string {
 	return fmt.Sprintf("%s%s", format.Prefix, format.Key)
 }
 

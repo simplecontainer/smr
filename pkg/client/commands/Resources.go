@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client/resources"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/formaters"
 	"github.com/simplecontainer/smr/pkg/packer"
 	"github.com/simplecontainer/smr/pkg/relations"
@@ -98,7 +99,7 @@ func Resources() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
@@ -203,7 +204,7 @@ func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, ifor
 
 		if os.IsNotExist(err) {
 			// File path doesn't exist - then it is format
-			format, err = helpers.BuildFormat(entity, cli.Group)
+			format, err = f.Build(entity, cli.Group)
 
 			if err != nil {
 				// It is not format - error out
@@ -253,7 +254,7 @@ func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, ifor
 }
 
 func action(cli *client.Client, args []string, action string) {
-	format, err := helpers.BuildFormat(args[1], cli.Group)
+	format, err := f.Build(args[1], cli.Group)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

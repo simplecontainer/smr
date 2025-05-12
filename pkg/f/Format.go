@@ -6,9 +6,13 @@ package f
 */
 
 import (
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
+	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"strings"
 )
 
@@ -27,7 +31,7 @@ func New(elements ...string) Format {
 func NewFromString(data string) Format {
 	UUID, f := parseUUID(data)
 
-	elements, nonEmptyCount := buildElements(strings.SplitN(f, "/", 6))
+	elements, nonEmptyCount, err := buildElements(strings.SplitN(f, "/", 6))
 	format := Format{
 		Elements: elements,
 		Elems:    nonEmptyCount,
@@ -35,14 +39,63 @@ func NewFromString(data string) Format {
 		Type:     TYPE_FORMATED,
 	}
 
-	if format.IsValid() {
+	if err == nil && format.IsValid() {
 		return format
 	} else {
+		if err != nil {
+			logger.Log.Info("invalid format", zap.String("format", data), zap.Error(err))
+		}
+
 		return Format{}
 	}
 }
 
-func buildElements(splitted []string) ([]string, int) {
+func Build(arg string, group string) (iformat.Format, error) {
+	// Build proper format from arg based on info provided
+	// Default to prefix=simplecontainer.io, category=kind if missing
+
+	var format iformat.Format
+	var err error = nil
+
+	split := strings.Split(arg, "/")
+
+	switch len(split) {
+	case 1:
+		// kind
+		format = NewFromString(fmt.Sprintf("%s/%s/%s", static.SMR_PREFIX, "kind", split[0]))
+		break
+	case 2:
+		// kind/name -> read group from flag!
+		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s", static.SMR_PREFIX, "kind", split[0], group, split[1]))
+		break
+	case 3:
+		// kind/group/name -> read group from arg
+		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s", static.SMR_PREFIX, "kind", split[0], split[1], split[2]))
+		break
+	case 4:
+		// category/kind/group/name
+		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s", static.SMR_PREFIX, split[0], split[1], split[2], split[3]))
+		break
+	case 5:
+		// version/category/kind/group/name
+		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s", split[0], split[1], split[2], split[3], split[4]))
+		break
+	case 6:
+		// prefix/category/kind/group/name
+		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s/%s", split[0], split[1], split[2], split[3], split[4], split[5]))
+		break
+	default:
+		err = errors.New("valid formats are: [prefix/category/kind/group/name, category/kind/group/name, kind/group/name, kind/name, kind]")
+	}
+
+	if arg == "" {
+		err = errors.New("empty input")
+	}
+
+	return format, err
+}
+
+func buildElements(splitted []string) ([]string, int, error) {
 	var size = 6
 
 	elements := make([]string, size)
@@ -53,11 +106,23 @@ func buildElements(splitted []string) ([]string, int) {
 			elements[k] = v
 			nonempty++
 		} else {
+			if k+1 <= len(splitted)-1 {
+				if elements[k+1] != "" {
+					return nil, 0, errors.New("invalid format")
+				}
+			}
+
+			if k-1 >= 0 && k != len(splitted)-1 {
+				if elements[k-1] != "" {
+					return nil, 0, errors.New("invalid format")
+				}
+			}
+
 			elements[k] = ""
 		}
 	}
 
-	return elements, nonempty
+	return elements, nonempty, nil
 }
 
 func parseUUID(f string) (uuid.UUID, string) {
@@ -105,7 +170,7 @@ func (format Format) GetType() string {
 	return format.Type
 }
 
-func (format Format) Inverse() iformat.Format {
+func (format Format) Shift() iformat.Format {
 	size := len(format.Elements)
 
 	count := 0
@@ -165,6 +230,32 @@ func (format Format) ToString() string {
 		}
 
 		output += fmt.Sprintf("%s/", s)
+	}
+
+	return strings.TrimSuffix(output, "/")
+}
+
+func DefaultToStringOpts() *iformat.ToStringOpts {
+	return &iformat.ToStringOpts{}
+}
+
+func (format Format) ToStringWithOpts(opts *iformat.ToStringOpts) string {
+	output := ""
+
+	for k, s := range format.Elements {
+		if s == "" {
+			continue
+		}
+
+		if k == 2 && opts.ExcludeCategory {
+			continue
+		}
+
+		output += fmt.Sprintf("%s/", s)
+	}
+
+	if opts.IncludeUUID {
+		return fmt.Sprintf("%s%s", format.UUID, strings.TrimSuffix(output, "/"))
 	}
 
 	return strings.TrimSuffix(output, "/")

@@ -13,8 +13,8 @@ func TestStandaloneNode(t *testing.T) {
 	opts := node.DefaultNodeOptions("test", 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
-	if flags.BinaryDir != "" {
-		opts.BinaryDir = flags.BinaryDir
+	if flags.BinaryPath != "" {
+		opts.BinaryDir = flags.BinaryPath
 	}
 
 	n, err := node.New(t, opts)

@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/client/exec"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/wss"
@@ -33,7 +34,7 @@ func Streams() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -80,7 +81,7 @@ func Streams() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -135,7 +136,7 @@ func Streams() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}

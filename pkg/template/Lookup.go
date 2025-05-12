@@ -22,7 +22,7 @@ func Lookup(placeholder string, client *clients.Http, user *authentication.User,
 	format := f.NewFromString(placeholder)
 
 	if !format.Compliant() {
-		format = format.Inverse().(f.Format)
+		format = format.Shift().(f.Format)
 	}
 
 	// Handle case when format is specified in kind compliant format

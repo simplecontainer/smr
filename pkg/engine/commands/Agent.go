@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
@@ -13,7 +12,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/control"
 	"github.com/simplecontainer/smr/pkg/control/controls/start"
-	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/flannel"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -390,48 +388,7 @@ func Agent() {
 
 					ctx, cancel := context.WithCancel(context.Background())
 
-					err = cli.Events(ctx, cancel, func(ctx context.Context, cancel context.CancelFunc, cancelWSS func() error, conn *websocket.Conn) error {
-						defer cancel()
-						msgChannel := make(chan []byte)
-
-						go func() {
-							err := cli.ReadEvents(ctx, conn, msgChannel)
-
-							if err != nil {
-								fmt.Println(err)
-							}
-
-							close(msgChannel)
-							return
-						}()
-
-						if viper.GetString("wait") != "" {
-							for msg := range msgChannel {
-								var event events.Event
-
-								err = json.Unmarshal(msg, &event)
-
-								if err != nil {
-									fmt.Println(err)
-									continue
-								}
-
-								if event.Type == viper.GetString("wait") {
-									err = cancelWSS()
-
-									if err != nil {
-										fmt.Println(err)
-									}
-								}
-							}
-						} else {
-							for msg := range msgChannel {
-								fmt.Printf("event: %s\n", msg)
-							}
-						}
-
-						return nil
-					})
+					err = cli.Events(ctx, cancel, viper.GetString("wait"), "", cli.Tracker)
 
 					if err != nil {
 						return

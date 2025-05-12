@@ -42,6 +42,11 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		}
 
 		events.Dispatch(
+			events.NewKindEvent(containerObj.GetStatus().State.State, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
+			shared, containerWatcher.Container.GetRuntime().Node.NodeID,
+		)
+
+		events.Dispatch(
 			events.NewKindEvent(events.EVENT_CHANGED, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
 			shared, containerWatcher.Container.GetRuntime().Node.NodeID,
 		)

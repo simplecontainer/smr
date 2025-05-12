@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/tests/engine"
 	"github.com/simplecontainer/smr/pkg/tests/flags"
+	"github.com/simplecontainer/smr/pkg/tests/helpers"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/simplecontainer/smr/pkg/events/events"
-	"github.com/simplecontainer/smr/pkg/tests/helpers"
 )
 
 type Node struct {
@@ -43,18 +43,18 @@ type Ports struct {
 	Overlay int
 }
 
-type NodeOptions struct {
-	Name      string
-	Index     int
-	Image     string
-	Tag       string
-	Join      bool
-	Peer      string
-	BinaryDir string
+type Options struct {
+	Name       string
+	Index      int
+	Image      string
+	Tag        string
+	Join       bool
+	Peer       string
+	BinaryPath string
 }
 
-func DefaultNodeOptions(name string, index int) NodeOptions {
-	return NodeOptions{
+func DefaultNodeOptions(name string, index int) Options {
+	return Options{
 		Name:  name,
 		Index: index,
 		Image: "default-image",
@@ -64,7 +64,7 @@ func DefaultNodeOptions(name string, index int) NodeOptions {
 	}
 }
 
-func New(t *testing.T, opts NodeOptions) (*Node, error) {
+func New(t *testing.T, opts Options) (*Node, error) {
 	if opts.Name == "" {
 		return nil, errors.New("node name cannot be empty")
 	}
@@ -90,15 +90,10 @@ func New(t *testing.T, opts NodeOptions) (*Node, error) {
 		return nil, fmt.Errorf("failed to change directory to project root: %w", err)
 	}
 
-	binaryDir := root
-	if opts.BinaryDir != "" {
-		binaryDir = opts.BinaryDir
-	}
-
-	var err error
-	node.BinaryPath, err = filepath.Abs(binaryDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path to binary: %w", err)
+	if opts.BinaryPath != "" {
+		node.BinaryPath = filepath.Join(root, opts.BinaryPath)
+	} else {
+		panic("no binary provided")
 	}
 
 	engineOptions := engine.DefaultEngineOptions()

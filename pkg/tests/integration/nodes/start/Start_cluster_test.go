@@ -14,8 +14,8 @@ func TestClusterMode(t *testing.T) {
 	leaderOpts := node.DefaultNodeOptions("leader", 1)
 	leaderOpts.Image = flags.Image
 	leaderOpts.Tag = flags.Tag
-	if flags.BinaryDir != "" {
-		leaderOpts.BinaryDir = flags.BinaryDir
+	if flags.BinaryPath != "" {
+		leaderOpts.BinaryDir = flags.BinaryPath
 	}
 
 	leader, err := node.New(t, leaderOpts)
@@ -38,8 +38,8 @@ func TestClusterMode(t *testing.T) {
 	followerOpts.Tag = flags.Tag
 	followerOpts.Join = true
 	followerOpts.Peer = fmt.Sprintf("https://%s:%d", leaderIP, leader.Ports.Control)
-	if flags.BinaryDir != "" {
-		followerOpts.BinaryDir = flags.BinaryDir
+	if flags.BinaryPath != "" {
+		followerOpts.BinaryDir = flags.BinaryPath
 	}
 
 	follower, err := node.New(t, followerOpts)

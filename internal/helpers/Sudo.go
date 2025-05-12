@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"errors"
 	"os"
 	"os/user"
 	"strconv"
@@ -42,7 +41,7 @@ func GetRealUser() (*user.User, error) {
 
 		return u, nil
 	} else {
-		return nil, errors.New(`user not found`)
+		return user.Current()
 	}
 }
 

@@ -1,19 +1,48 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/events/events"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"net/http"
 )
 
 func Events() {
 	Commands = append(Commands,
+		command.Client{
+			Parent: "smrctl",
+			Name:   "events",
+			Condition: func(cli *client.Client) bool {
+				return true
+			},
+			Functions: []func(*client.Client, []string){
+				func(cli *client.Client, args []string) {
+					ctx, cancel := context.WithCancel(context.Background())
+
+					err := cli.Events(ctx, cancel, viper.GetString("wait"), viper.GetString("resource"), cli.Tracker)
+
+					if err != nil {
+						return
+					}
+				},
+			},
+			DependsOn: []func(*client.Client, []string){
+				func(cli *client.Client, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+				cmd.Flags().String("wait", "", "Wait for specific event")
+				cmd.Flags().String("resource", "", "Specify resource you want to track")
+			},
+		},
 		command.Client{
 			Parent: "smrctl",
 			Name:   "sync",
@@ -23,7 +52,7 @@ func Events() {
 			Args: cobra.NoArgs,
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -52,7 +81,7 @@ func Events() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
@@ -80,7 +109,7 @@ func Events() {
 			Args: cobra.NoArgs,
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[0], cli.Group)
+					format, err := f.Build(args[0], cli.Group)
 
 					if err != nil {
 						helpers.PrintAndExit(err, 1)

@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
@@ -33,7 +34,7 @@ func NewNodeEvent(event string, n *node.Node) (Event, error) {
 		Target: static.KIND_NODE,
 		Prefix: static.SMR_PREFIX,
 		Kind:   static.KIND_NODE,
-		Group:  "",
+		Group:  "internal",
 		Name:   n.NodeName,
 		Data:   bytes,
 	}, nil
@@ -134,6 +135,17 @@ func (event Event) IsManaged() bool {
 
 func (event Event) ToFormat() f.Format {
 	return f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
+}
+
+func (event Event) IsOfFormat(format iformat.Format) bool {
+	opts := f.DefaultToStringOpts()
+	opts.ExcludeCategory = true
+
+	if event.ToFormat().ToString() == format.ToStringWithOpts(opts) {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (event Event) ToJSON() ([]byte, error) {

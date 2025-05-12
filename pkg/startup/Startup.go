@@ -69,22 +69,27 @@ func Save(config *configuration.Configuration, environment *configuration.Enviro
 }
 
 func EngineFlags() {
-	// These are only available in the container - not in the cobra commands!
-	containerFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
+	// These are only available in the main before cobra starts parsing flags
+	// environment := configuration.NewEnvironment(configuration.WithHostConfig()) will place root dir correctly
+	// with information provided by these flags - leave default if not sure: it will use home directory as root
+	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
-	containerFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
-	containerFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
+	earlyFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
+	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
 
-	viper.BindPFlag("home", containerFlags.Lookup("home"))
-	viper.BindPFlag("log", containerFlags.Lookup("log"))
+	viper.BindPFlag("home", earlyFlags.Lookup("home"))
+	viper.BindPFlag("log", earlyFlags.Lookup("log"))
 }
 
 func ClientFlags() {
+	// These are only available in the main before cobra starts parsing flags
+	// environment := configuration.NewEnvironment(configuration.WithHostConfig()) will place root dir correctly
+	// with information provided by these flags - leave default if not sure: it will use home directory as root
 	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
+	earlyFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
 	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
-	earlyFlags.String("g", "", "Group")
 
+	viper.BindPFlag("home", earlyFlags.Lookup("home"))
 	viper.BindPFlag("log", earlyFlags.Lookup("log"))
-	viper.BindPFlag("g", earlyFlags.Lookup("g"))
 }

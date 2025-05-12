@@ -18,7 +18,7 @@ func (api *Api) Events(c *gin.Context) {
 
 	conn, err := wssUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logger.Log.Error("Failed to upgrade WebSocket connection: ", zap.Error(err))
+		logger.Log.Error("failed to upgrade WebSocket connection: ", zap.Error(err))
 		return
 	}
 	defer conn.Close()
@@ -61,7 +61,7 @@ func (api *Api) Events(c *gin.Context) {
 				lock.Unlock()
 
 				if err != nil {
-					logger.Log.Warn("Failed to send ping: ", zap.Error(err))
+					logger.Log.Warn("failed to send ping: ", zap.Error(err))
 					cancel()
 					closeOnce.Do(func() { close(ch) })
 
@@ -82,8 +82,10 @@ func (api *Api) Events(c *gin.Context) {
 	for {
 		_, _, err = conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logger.Log.Warn("WebSocket closed unexpectedly: ", zap.Error(err))
+			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logger.Log.Warn("websocket closed unexpectedly: ", zap.Error(err))
+			} else {
+				logger.Log.Info("websocket client disconnected normally")
 			}
 			break
 		}
@@ -101,13 +103,13 @@ func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *
 		case data := <-wss.Channels[position]:
 			bytes, err := data.ToJSON()
 			if err != nil {
-				logger.Log.Error("Failed to serialize event: ", zap.Error(err))
+				logger.Log.Error("failed to serialize event: ", zap.Error(err))
 				continue
 			}
 
 			message, err := websocket.NewPreparedMessage(websocket.TextMessage, bytes)
 			if err != nil {
-				logger.Log.Error("Failed to prepare WebSocket message: ", zap.Error(err))
+				logger.Log.Error("failed to prepare WebSocket message: ", zap.Error(err))
 				continue
 			}
 
@@ -117,7 +119,7 @@ func ListenEvents(ctx context.Context, wss *wss.WebSockets, position int, conn *
 
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					logger.Log.Warn("WebSocket write error: ", zap.Error(err))
+					logger.Log.Warn("websocket write error: ", zap.Error(err))
 				}
 				return
 			}

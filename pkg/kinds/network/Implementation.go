@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
@@ -9,9 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -61,26 +60,25 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 		}
 	}
 
-	if err := networkObj.Create(); err != nil {
+	if err = networkObj.Create(); err != nil {
 		return network.createErrorResponse(http.StatusInternalServerError, "internal error", err)
 	}
 
+	eventsGroup := []events.Event{
+		events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
+		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
+	}
+
+	fmt.Println(networkObj)
 	if networkObj.Name == "cluster" {
 		event, err := events.NewNodeEvent(events.EVENT_CLUSTER_READY, network.Shared.Manager.Cluster.Node)
 
-		if err != nil {
-			logger.Log.Error("failed to dispatch node event", zap.Error(err))
-		} else {
-			logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
-			events.Dispatch(event, network.Shared, network.Shared.Manager.Cluster.Node.NodeID)
+		if err == nil {
+			eventsGroup = append(eventsGroup, event)
 		}
 	}
 
-	// Dispatch events
-	events.DispatchGroup([]events.Event{
-		events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
-		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
-	}, network.Shared, request.Definition.GetRuntime().GetNode())
+	events.DispatchGroup(eventsGroup, network.Shared, request.Definition.GetRuntime().GetNode())
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }

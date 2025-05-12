@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -36,6 +37,8 @@ func Run(cli *client.Client, c *cobra.Command) {
 			Short: fmt.Sprintf("%s %s", cmd.Parent, cmd.Name),
 			Args:  cmd.Args,
 			PreRunE: func(c *cobra.Command, args []string) error {
+				fmt.Println(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory)
+
 				var err error
 				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
 
@@ -90,7 +93,16 @@ func Run(cli *client.Client, c *cobra.Command) {
 	}
 }
 
-func SetupGlobalFlags(rootCmd *cobra.Command) {}
+func SetupGlobalFlags(rootCmd *cobra.Command) {
+	// Global flags
+	rootCmd.PersistentFlags().String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
+	rootCmd.PersistentFlags().String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
+
+	// Bind global flags to viper
+	viper.BindPFlag("home", rootCmd.PersistentFlags().Lookup("home"))
+	viper.BindPFlag("log", rootCmd.PersistentFlags().Lookup("log"))
+
+}
 
 func findCommand(cmd *cobra.Command, name string) *cobra.Command {
 	if cmd.Use == name {
