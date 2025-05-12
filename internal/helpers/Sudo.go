@@ -25,7 +25,7 @@ func GetRealHome() string {
 	u, err := GetRealUser()
 
 	if err != nil {
-		return ""
+		return os.Getenv("HOME")
 	}
 
 	if u.HomeDir != "" {
