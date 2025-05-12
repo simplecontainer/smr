@@ -26,14 +26,14 @@ func TestStandaloneNodeGitopsMinimalContainer(t *testing.T) {
 
 	n, err := node.New(t, opts)
 	if err != nil {
-		t.Fatalf("Failed to create node: %v", err)
+		t.Fatalf("failed to create node: %v", err)
 	}
 
 	defer n.Clean(t)
 
-	t.Logf("Starting standalone node with image %s:%s", flags.Image, flags.Tag)
+	t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
 	if err := n.Start(t); err != nil {
-		t.Fatalf("Failed to start node: %v", err)
+		t.Fatalf("failed to start node: %v", err)
 	}
 
 	cliopts := cli.DefaultCliOptions()
@@ -44,7 +44,7 @@ func TestStandaloneNodeGitopsMinimalContainer(t *testing.T) {
 	cli, err := cli.New(t, cliopts)
 
 	if err != nil {
-		t.Fatalf("Failed to create CLI: %v", err)
+		t.Fatalf("failed to create CLI: %v", err)
 	}
 
 	cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", n.Context))

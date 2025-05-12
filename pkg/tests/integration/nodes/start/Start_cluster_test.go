@@ -5,16 +5,13 @@ package start_test
 
 import (
 	"fmt"
-	"github.com/brianvoe/gofakeit/v6"
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
 )
 
 func TestClusterMode(t *testing.T) {
-	gofakeit.Seed(0)
-
-	leaderOpts := node.DefaultNodeOptions(gofakeit.Username(), 1)
+	leaderOpts := node.DefaultNodeOptions("leader", 1)
 	leaderOpts.Image = flags.Image
 	leaderOpts.Tag = flags.Tag
 	if flags.BinaryPath != "" {
@@ -36,7 +33,7 @@ func TestClusterMode(t *testing.T) {
 	leaderCtx := leader.GetContext()
 	leaderIP := leader.GetIP()
 
-	followerOpts := node.DefaultNodeOptions(gofakeit.Username(), 2)
+	followerOpts := node.DefaultNodeOptions("follower", 2)
 	followerOpts.Image = flags.Image
 	followerOpts.Tag = flags.Tag
 	followerOpts.Join = true
