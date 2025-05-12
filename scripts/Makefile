@@ -61,9 +61,9 @@ nuke:
 test-integration:
 	@echo "Running test(s): $(if $(TEST_NAME),$(TEST_NAME),all tests)"
 ifneq ($(TEST_NAME),)
-	go test -v -tags=integration ../pkg/tests/integration/$(TEST_DIR) -run $(TEST_NAME) $(TEST_FLAGS)
+	go test -v -p 1 -tags=integration ../pkg/tests/integration/$(TEST_DIR) -run $(TEST_NAME) $(TEST_FLAGS)
 else
-	go test -v -tags=integration ../pkg/tests/integration/$(TEST_DIR) $(TEST_FLAGS)
+	go test -v -p 1 -tags=integration ../pkg/tests/integration/$(TEST_DIR) $(TEST_FLAGS)
 endif
 
 ctl: build-ctl install-ctl

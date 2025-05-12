@@ -224,6 +224,16 @@ func Node() {
 						helpers.PrintAndExit(errors.New("platform unknown"), 1)
 					}
 
+					defer func() {
+						err = container.Delete()
+
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
+
+						fmt.Println("node deleted")
+					}()
+
 					err = container.Stop(static.SIGTERM)
 
 					if err != nil {
@@ -231,14 +241,6 @@ func Node() {
 					}
 
 					fmt.Println("node stopped")
-
-					err = container.Delete()
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					fmt.Println("node deleted")
 				},
 			},
 			DependsOn: []func(*api.Api, []string){

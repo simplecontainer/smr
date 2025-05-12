@@ -25,6 +25,7 @@ type Node struct {
 	Join       bool
 	Peer       string
 	BinaryPath string
+	Cleaned    bool
 
 	IP      string
 	Context string
@@ -202,31 +203,37 @@ func (n *Node) Import(t *testing.T, context string) error {
 }
 
 func (n *Node) Clean(t *testing.T) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	if !n.Cleaned {
+		n.mutex.Lock()
+		defer n.mutex.Unlock()
 
-	t.Logf("[NODE] Cleaning up node %s", n.Name)
+		n.Cleaned = true
 
-	if err := n.sudoSmr.Stop(t); err != nil {
-		t.Logf("[NODE] Error stopping agent for node %s: %v", n.Name, err)
-	}
+		t.Logf("[NODE] Cleaning up node %s", n.Name)
 
-	cmd := fmt.Sprintf("node clean --node %s", n.Name)
-	if err := n.smr.RunString(t, cmd); err != nil {
-		t.Logf("[NODE] Error cleaning node %s: %v", n.Name, err)
-	}
+		if err := n.sudoSmr.Stop(t); err != nil {
+			t.Logf("[NODE] Error stopping agent for node %s: %v", n.Name, err)
+		}
 
-	home, err := os.UserHomeDir()
+		cmd := fmt.Sprintf("node clean --node %s", n.Name)
+		if err := n.smr.RunString(t, cmd); err != nil {
+			t.Logf("[NODE] Error cleaning node %s: %v", n.Name, err)
+		}
 
-	if err != nil {
-		t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
-		return
-	}
+		home, err := os.UserHomeDir()
 
-	err = os.RemoveAll(fmt.Sprintf("%s/nodes/%s", home, n.Name))
+		if err != nil {
+			t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+			return
+		}
 
-	if err != nil {
-		t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+		err = os.RemoveAll(fmt.Sprintf("%s/nodes/%s", home, n.Name))
+
+		if err != nil {
+			t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+		}
+
+		time.Sleep(5 * time.Second)
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
-	"time"
 )
 
 func TestStandaloneNode(t *testing.T) {
@@ -33,6 +32,7 @@ func TestStandaloneNode(t *testing.T) {
 		t.Fatalf("Failed to start node: %v", err)
 	}
 
-	t.Logf("Test completed successfully")
-	time.Sleep(5 * time.Second)
+	n.Clean(t)
+
+	t.Logf("test finished")
 }

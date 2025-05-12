@@ -9,7 +9,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
-	"time"
 )
 
 func TestClusterMode(t *testing.T) {
@@ -63,6 +62,8 @@ func TestClusterMode(t *testing.T) {
 		t.Fatalf("failed to start follower node: %v", err)
 	}
 
-	t.Logf("test completed successfully")
-	time.Sleep(5 * time.Second)
+	follower.Clean(t)
+	leader.Clean(t)
+
+	t.Logf("test finished")
 }

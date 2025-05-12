@@ -12,10 +12,9 @@ import (
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
-	"time"
 )
 
-func TestStandaloneNodeMinimalContainer(t *testing.T) {
+func TestStandaloneNodeGitopsMinimalContainer(t *testing.T) {
 	gofakeit.Seed(0)
 
 	opts := node.DefaultNodeOptions(gofakeit.Username(), 1)
@@ -55,11 +54,10 @@ func TestStandaloneNodeMinimalContainer(t *testing.T) {
 	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1", status.READY))
 	cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
 
-	time.Sleep(5 * time.Second)
-
 	cli.Smrctl.Run(t, engine.NewStringCmd("remove simplecontainer.io/v1/kind/containers/example/busybox"))
 	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/busybox", events.EVENT_DELETED))
 
-	t.Logf("Test finished")
-	time.Sleep(5 * time.Second)
+	n.Clean(t)
+
+	t.Logf("test finished")
 }
