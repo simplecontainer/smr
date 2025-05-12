@@ -10,9 +10,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
-	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/static"
-	"go.uber.org/zap"
 	"strings"
 )
 
@@ -42,10 +40,6 @@ func NewFromString(data string) Format {
 	if err == nil && format.IsValid() {
 		return format
 	} else {
-		if err != nil {
-			logger.Log.Info("invalid format", zap.String("format", data), zap.Error(err))
-		}
-
 		return Format{}
 	}
 }

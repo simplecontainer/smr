@@ -81,17 +81,8 @@ func TestBuild(t *testing.T) {
 			format, err := Build(tc.arg, tc.group)
 
 			if tc.expectError {
-				fmt.Println(err)
 				assert.Error(t, err)
 			} else {
-				fmt.Println(format.ToString())
-				fmt.Println(format.GetPrefix())
-				fmt.Println(format.GetVersion())
-				fmt.Println(format.GetCategory())
-				fmt.Println(format.GetKind())
-				fmt.Println(format.GetGroup())
-				fmt.Println(format.GetName())
-
 				assert.NoError(t, err)
 				assert.Equal(t, tc.expected, format.ToString())
 			}
