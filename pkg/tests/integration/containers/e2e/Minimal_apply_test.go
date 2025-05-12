@@ -60,4 +60,5 @@ func TestStandaloneNodeMinimalContainer(t *testing.T) {
 	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/busybox", events.EVENT_DELETED))
 
 	t.Logf("Test finished")
+	time.Sleep(5 * time.Second)
 }

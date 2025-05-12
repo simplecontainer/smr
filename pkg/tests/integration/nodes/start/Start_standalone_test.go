@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
+	"time"
 )
 
 func TestStandaloneNode(t *testing.T) {
@@ -33,4 +34,5 @@ func TestStandaloneNode(t *testing.T) {
 	}
 
 	t.Logf("Test completed successfully")
+	time.Sleep(5 * time.Second)
 }
