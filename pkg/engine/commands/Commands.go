@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/spf13/cobra"
@@ -81,7 +82,7 @@ func Run(api *api.Api, c *cobra.Command) {
 
 func SetupGlobalFlags(rootCmd *cobra.Command) {
 	// Global flags
-	rootCmd.PersistentFlags().String("home", "/home/node", "Root directory for all actions - keep default inside container")
+	rootCmd.PersistentFlags().String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
 	rootCmd.PersistentFlags().String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
 
 	// Bind global flags to viper
