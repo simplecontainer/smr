@@ -194,7 +194,7 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Test code
         run: |         
-          go test -v -tags=integration ./pkg/tests/integration/${{ matrix.tests.directory }} TEST $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
+          go test -v -tags=integration ./pkg/tests/integration/${{ matrix.tests.directory }} $TEST_NAME $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
