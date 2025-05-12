@@ -140,10 +140,18 @@ jobs:
           name: smr-${{ matrix.os }}-${{ matrix.platform }}
           path: ./smr-${{ matrix.os }}-${{ matrix.platform }}
 
+      - name: Download smr-${{ matrix.os }}-${{ matrix.platform }}
+        uses: actions/download-artifact@v4
+        with:
+          name: smrctl-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smrctl-${{ matrix.os }}-${{ matrix.platform }}
+
       - name: Prepare binary
         run: |
           mv ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr-${{ matrix.os }}-${{ matrix.platform }} ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          mv ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl-${{ matrix.os }}-${{ matrix.platform }} ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smr
           chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          chmod +x ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
 
       - name: Build Docker image for testing
         uses: docker/build-push-action@v5
