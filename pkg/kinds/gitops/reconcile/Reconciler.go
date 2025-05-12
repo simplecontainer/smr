@@ -41,6 +41,11 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	}
 
 	events.Dispatch(
+		events.NewKindEvent(gitopsWatcher.Gitops.GetStatus().GetState(), gitopsWatcher.Gitops.GetDefinition(), nil),
+		shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
+	)
+
+	events.Dispatch(
 		events.NewKindEvent(events.EVENT_CHANGED, gitopsWatcher.Gitops.GetDefinition(), nil),
 		shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode(),
 	)

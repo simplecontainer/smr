@@ -49,7 +49,7 @@ func Events() {
 			Condition: func(*client.Client) bool {
 				return true
 			},
-			Args: cobra.NoArgs,
+			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -106,7 +106,7 @@ func Events() {
 			Condition: func(*client.Client) bool {
 				return true
 			},
-			Args: cobra.NoArgs,
+			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)

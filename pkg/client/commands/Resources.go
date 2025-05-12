@@ -40,6 +40,7 @@ func Resources() {
 							if err != nil {
 								helpers.PrintAndExit(err, 1)
 							}
+
 							fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
 						}
 					} else {
@@ -77,6 +78,7 @@ func Resources() {
 					} else {
 						err = resources.Delete(cli.Context, format.GetPrefix(), format.GetVersion(),
 							format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
+
 						if err != nil {
 							fmt.Println(err)
 						} else {
