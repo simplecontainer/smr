@@ -113,22 +113,18 @@ jobs:
         tests: [
           {
             directory: "containers/e2e",
-            tests: "TestStandaloneNodeMinimalContainer",
             name: "Containers e2e"
           },
           {
             directory: "gitops/e2e",
-            tests: "TestStandaloneNodeGitopsMinimalContainer",
             name: "Gitops e2e"
           },
           {
             directory: "nodes/start",
-            tests: "TestStandaloneNode",
             name: "Standalone mode e2e"
           },
           {
             directory: "nodes/start",
-            tests: "TestClusterMode",
             name: "Cluster mode e2e"
           },
         ]
@@ -199,11 +195,10 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Test code
         run: |         
-          go test -v -tags=integration ./pkg/tests/integration/${{ matrix.tests.directory }} $TEST_NAMES $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
+          go test -v -tags=integration ./pkg/tests/integration/${{ matrix.tests.directory }} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
-          TEST_NAMES: ${{ matrix.tests.tests }}
           TEST_FLAGS: ${{ github.event.inputs.test_flags || '' }}
 
   prepare-release:
