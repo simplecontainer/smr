@@ -168,7 +168,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: simplecontainer/examples
-          path: ../examples
+          path: examples
 
       - name: Setup Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5

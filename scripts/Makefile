@@ -8,6 +8,7 @@ TIMEOUT ?= 60s
 CLEANUP ?= true
 TEST_NAME ?= # Empty by default, will run all tests if not specified
 TEST_DIR ?= ./tests/integration/... # Will run all integration tests if not specified
+EXAMPLES_DIR ?=
 
 # Common test flags
 TEST_FLAGS = -image=$(IMAGE) -tag=$(TAG) -timeout=$(TIMEOUT)
@@ -17,6 +18,10 @@ endif
 
 ifneq ($(HOME),)
 TEST_FLAGS += -root=$(HOME)
+endif
+
+ifneq ($(EXAMPLES_DIR),)
+TEST_FLAGS += -examples=$(EXAMPLES_DIR)
 endif
 
 build-engine:
