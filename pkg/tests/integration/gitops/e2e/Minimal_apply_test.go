@@ -47,7 +47,7 @@ func TestStandaloneNodeMinimalContainer(t *testing.T) {
 
 	cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", n.Context))
 
-	cli.Smrctl.Run(t, engine.NewStringCmd("apply %s/../examples/tests/gitops-apps/definitions/gitops-plain.yaml", cli.Root))
+	cli.Smrctl.Run(t, engine.NewStringCmd("apply %s/%s/tests/gitops-apps/definitions/gitops-plain.yaml", cli.Root, flags.ExamplesDir))
 	cli.Smrctl.Run(t, engine.NewStringCmd("sync  gitops/examples/plain-manual"))
 	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1", status.READY))
 	cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
