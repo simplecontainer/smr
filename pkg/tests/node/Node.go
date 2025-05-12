@@ -232,8 +232,6 @@ func (n *Node) Clean(t *testing.T) {
 		if err != nil {
 			t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
 		}
-
-		time.Sleep(5 * time.Second)
 	}
 }
 

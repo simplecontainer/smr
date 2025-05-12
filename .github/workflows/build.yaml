@@ -109,6 +109,24 @@ jobs:
         go-version: [ '1.22.x' ]
         platform: [ 'amd64' ]
         os: [ 'linux' ]
+        tests: [
+          {
+            directory: "containers/e2e",
+            test: "TestStandaloneNodeMinimalContainer"
+          },
+          {
+            directory: "gitops/e2e",
+            test: "TestStandaloneNodeGitopsMinimalContainer"
+          },
+          {
+            directory: "nodes/start",
+            test: "TestStandaloneNode"
+          },
+          {
+            directory: "nodes/start",
+            test: "TestClusterMode"
+          },
+        ]
     if: github.event.inputs.component != 'smrctl' || github.event_name != 'workflow_dispatch'
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
@@ -176,11 +194,11 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Test code
         run: |         
-          go test -v -tags=integration ./pkg/tests/integration/... ${TEST_NAME:+-run $TEST_NAME} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
+          go test -v -tags=integration ./pkg/tests/integration/${{ matrix.tests.directory }} TEST $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
-          TEST_NAME: ${{ github.event.inputs.test_name || '' }}
+          TEST_NAME: ${{ matrix.tests.name }}
           TEST_FLAGS: ${{ github.event.inputs.test_flags || '' }}
 
   prepare-release:
