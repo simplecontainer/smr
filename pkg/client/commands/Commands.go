@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"os"
-	"strings"
 )
 
 var Commands []command.Client
@@ -29,20 +28,7 @@ func Run(cli *client.Client, c *cobra.Command) {
 		Hidden: true,
 	})
 
-	c.SetFlagErrorFunc(func(c *cobra.Command, err error) error {
-		fmt.Printf("error: %s\n\n", err)
-		_ = c.Usage()
-		return nil
-	})
-
-	c.SetArgs(os.Args[1:])
-
-	c.Run = func(cmd *cobra.Command, args []string) {
-		if len(args) > 0 {
-			fmt.Printf("unknown command: %s\n", strings.Join(args, " "))
-		}
-		_ = cmd.Usage()
-	}
+	SetupGlobalFlags(c)
 
 	for _, cmd := range Commands {
 		cobraCmd := &cobra.Command{
@@ -71,16 +57,6 @@ func Run(cli *client.Client, c *cobra.Command) {
 				return nil
 			},
 			Run: func(c *cobra.Command, args []string) {
-				var err error
-				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
-
-				if err != nil {
-					if c.Name() != "import" {
-						fmt.Println("no active context found - try using smr context switch")
-						os.Exit(1)
-					}
-				}
-
 				c.Flags().VisitAll(func(flag *pflag.Flag) {
 					if err := viper.BindPFlag(flag.Name, flag); err != nil {
 						fmt.Printf("warning: failed to bind flag '%s': %s\n", flag.Name, err)
@@ -109,18 +85,12 @@ func Run(cli *client.Client, c *cobra.Command) {
 		}
 	}
 
-	_ = c.Execute()
+	if err := c.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
 
-func SetupGlobalFlags(rootCmd *cobra.Command) {
-	// Global flags
-	rootCmd.PersistentFlags().String("home", "/home/node", "Root directory for all actions - keep default inside container")
-	rootCmd.PersistentFlags().String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
-
-	// Bind global flags to viper
-	viper.BindPFlag("home", rootCmd.PersistentFlags().Lookup("home"))
-	viper.BindPFlag("log", rootCmd.PersistentFlags().Lookup("log"))
-}
+func SetupGlobalFlags(rootCmd *cobra.Command) {}
 
 func findCommand(cmd *cobra.Command, name string) *cobra.Command {
 	if cmd.Use == name {

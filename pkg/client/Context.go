@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/encrypt"
 	"io"
 	"net/http"
 	"os"
@@ -68,9 +69,13 @@ func NewContext(cfg *Config) (*ClientContext, error) {
 		ctx.Directory = contextDir
 
 		if helpers.IsRunningAsSudo() {
-			sudoUser := helpers.GetRealUser()
+			user, err := helpers.GetRealUser()
 
-			if err := helpers.Chown(contextDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+			if err != nil {
+				return nil, err
+			}
+
+			if err := helpers.Chown(contextDir, user.Uid, user.Gid); err != nil {
 				return nil, fmt.Errorf("failed to change owner of context directory: %w", err)
 			}
 		}
@@ -341,17 +346,21 @@ func (c *ClientContext) Save() error {
 	}
 
 	if helpers.IsRunningAsSudo() {
-		sudoUser := helpers.GetRealUser()
+		user, err := helpers.GetRealUser()
 
-		if err := helpers.Chown(c.Directory, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err != nil {
+			return err
+		}
+
+		if err := helpers.Chown(c.Directory, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of context directory: %w", err)
 		}
 
-		if err := helpers.Chown(contextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err := helpers.Chown(contextPath, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of context file: %w", err)
 		}
 
-		if err := helpers.Chown(activeContextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err := helpers.Chown(activeContextPath, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of active context file: %w", err)
 		}
 	}
@@ -470,7 +479,7 @@ func (c *ClientContext) ImportCertificates(ctx context.Context, sshDir string) e
 		return fmt.Errorf("failed to unmarshal encrypted keys: %w", err)
 	}
 
-	decrypted, err := helpers.Decrypt(keysEncrypted.Keys, key)
+	decrypted, err := encrypt.Decrypt(keysEncrypted.Keys, key)
 	if err != nil {
 		return fmt.Errorf("decryption failed: %w", err)
 	}
@@ -485,9 +494,13 @@ func (c *ClientContext) ImportCertificates(ctx context.Context, sshDir string) e
 	}
 
 	if helpers.IsRunningAsSudo() {
-		sudoUser := helpers.GetRealUser()
+		user, err := helpers.GetRealUser()
 
-		if err := helpers.Chown(sshDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err != nil {
+			return err
+		}
+
+		if err := helpers.Chown(sshDir, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of context directory: %w", err)
 		}
 	}
@@ -561,7 +574,7 @@ func (c *ClientContext) Export() (string, string, error) {
 		return "", "", fmt.Errorf("failed to marshal context: %w", err)
 	}
 
-	compressed := helpers.Compress(data)
+	compressed := encrypt.Compress(data)
 
 	randbytes := make([]byte, 32)
 	if _, err = rand.Read(randbytes); err != nil {
@@ -578,15 +591,19 @@ func (c *ClientContext) Export() (string, string, error) {
 		}
 
 		if helpers.IsRunningAsSudo() {
-			sudoUser := helpers.GetRealUser()
+			user, err := helpers.GetRealUser()
 
-			if err := helpers.Chown(keyPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+			if err != nil {
+				return "", "", err
+			}
+
+			if err := helpers.Chown(keyPath, user.Uid, user.Gid); err != nil {
 				return "", "", fmt.Errorf("failed to change owner of context directory: %w", err)
 			}
 		}
 	}
 
-	encrypted, err := helpers.Encrypt(string(compressed.Bytes()), key)
+	encrypted, err := encrypt.Encrypt(string(compressed.Bytes()), key)
 	if err != nil {
 		return "", "", fmt.Errorf("encryption failed: %w", err)
 	}
@@ -607,12 +624,12 @@ func Import(cfg *Config, encrypted, key string) (*ClientContext, error) {
 		return nil, errors.New("key is empty")
 	}
 
-	decrypted, err := helpers.Decrypt(encrypted, key)
+	decrypted, err := encrypt.Decrypt(encrypted, key)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
 
-	decompressed := helpers.Decompress([]byte(decrypted))
+	decompressed := encrypt.Decompress([]byte(decrypted))
 
 	ctx, err := NewContext(cfg)
 	if err != nil {
@@ -657,13 +674,17 @@ func NewManager(cfg *Config) (*Manager, error) {
 		manager.store = NewFileStorage(contextDir)
 
 		if helpers.IsRunningAsSudo() {
-			sudoUser := helpers.GetRealUser()
+			user, err := helpers.GetRealUser()
 
-			if err := helpers.Chown(cfg.RootDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+			if err != nil {
+				return nil, err
+			}
+
+			if err := helpers.Chown(cfg.RootDir, user.Uid, user.Gid); err != nil {
 				return nil, fmt.Errorf("failed to change owner of context directory: %w", err)
 			}
 
-			if err := helpers.Chown(contextDir, sudoUser.Uid, sudoUser.Gid); err != nil {
+			if err := helpers.Chown(contextDir, user.Uid, user.Gid); err != nil {
 				return nil, fmt.Errorf("failed to change owner of context directory: %w", err)
 			}
 		}
@@ -694,9 +715,13 @@ func (fs *FileStorage) Save(ctx *ClientContext) error {
 	}
 
 	if helpers.IsRunningAsSudo() {
-		sudoUser := helpers.GetRealUser()
+		user, err := helpers.GetRealUser()
 
-		if err := helpers.Chown(contextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err != nil {
+			return err
+		}
+
+		if err := helpers.Chown(contextPath, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of context directory: %w", err)
 		}
 	}
@@ -762,13 +787,17 @@ func (fs *FileStorage) SetActive(name string) error {
 	}
 
 	if helpers.IsRunningAsSudo() {
-		sudoUser := helpers.GetRealUser()
+		user, err := helpers.GetRealUser()
 
-		if err := helpers.Chown(contextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err != nil {
+			return err
+		}
+
+		if err := helpers.Chown(contextPath, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of context directory: %w", err)
 		}
 
-		if err := helpers.Chown(activeContextPath, sudoUser.Uid, sudoUser.Gid); err != nil {
+		if err := helpers.Chown(activeContextPath, user.Uid, user.Gid); err != nil {
 			return fmt.Errorf("failed to change owner of context directory: %w", err)
 		}
 	}

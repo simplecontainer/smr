@@ -3,77 +3,77 @@ package helpers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
 	"os/exec"
+	"runtime"
 )
 
 func Editor(jsonBytes []byte) ([]byte, bool, error) {
-	data := make(map[string]interface{})
-
-	err := yaml.Unmarshal(jsonBytes, &data)
-
-	if err != nil {
-		return nil, false, err
+	var data map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
+		return nil, false, fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
 	yamlBytes, err := yaml.Marshal(data)
-
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to marshal to YAML: %w", err)
 	}
 
-	f, err := os.CreateTemp("", "edit")
-
+	f, err := os.CreateTemp("", "edit-*.yaml")
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	tempFileName := f.Name()
+	defer os.Remove(tempFileName)
+
+	if _, err := f.Write(yamlBytes); err != nil {
+		f.Close()
+		return nil, false, fmt.Errorf("failed to write to temporary file: %w", err)
 	}
 
-	defer os.Remove(f.Name())
-
-	_, err = f.Write(yamlBytes)
-
-	if err != nil {
-		return nil, false, err
+	if err := f.Close(); err != nil {
+		return nil, false, fmt.Errorf("failed to close temporary file: %w", err)
 	}
 
-	cmd := exec.Command("vi", f.Name())
+	editorName := os.Getenv("EDITOR")
+	if editorName == "" {
+		// Default editors based on OS
+		if runtime.GOOS == "windows" {
+			editorName = "notepad"
+		} else {
+			editorName = "vi" // Default for Unix-like systems
+		}
+	}
+
+	cmd := exec.Command(editorName, tempFileName)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err = cmd.Start()
-
-	if err != nil {
-		return nil, false, err
+	if err := cmd.Run(); err != nil {
+		return nil, false, fmt.Errorf("editor process failed: %w", err)
 	}
 
-	err = cmd.Wait()
-
+	newYamlBytes, err := os.ReadFile(tempFileName)
 	if err != nil {
-		return nil, false, err
-	}
-
-	newYamlBytes, err := os.ReadFile(f.Name()) // just pass the file name
-	if err != nil {
-		return nil, false, err
-	}
-
-	err = yaml.Unmarshal(newYamlBytes, &data)
-
-	if err != nil {
-		return nil, false, err
-	}
-
-	newJsonBytes, err := json.Marshal(data)
-
-	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to read modified file: %w", err)
 	}
 
 	if bytes.Equal(newYamlBytes, yamlBytes) {
-		return newJsonBytes, false, nil
-	} else {
-		return newJsonBytes, true, nil
+		return jsonBytes, false, nil // No changes, return original JSON
 	}
+
+	var newData map[string]interface{}
+	if err := yaml.Unmarshal(newYamlBytes, &newData); err != nil {
+		return nil, false, fmt.Errorf("failed to parse modified YAML: %w", err)
+	}
+
+	newJSONBytes, err := json.Marshal(newData)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to convert back to JSON: %w", err)
+	}
+
+	return newJSONBytes, true, nil
 }

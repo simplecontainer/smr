@@ -1,6 +1,8 @@
 package encrypt
 
 import (
+	"bytes"
+	"compress/flate"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -8,7 +10,45 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
+	"os"
 )
+
+func Compress(b []byte) *bytes.Buffer {
+	var buf bytes.Buffer
+	fw, err := flate.NewWriter(&buf, flate.BestCompression)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = fw.Write(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = fw.Close()
+
+	if err != nil {
+		return &bytes.Buffer{}
+	}
+
+	return &buf
+}
+
+func Decompress(b []byte) string {
+	var buf = bytes.NewBuffer(b)
+	fr := flate.NewReader(buf)
+	defer fr.Close()
+
+	data, err := ioutil.ReadAll(fr)
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	return string(data)
+}
 
 func Encrypt(stringToEncrypt string, keyString string) (string, error) {
 	key, _ := hex.DecodeString(keyString)

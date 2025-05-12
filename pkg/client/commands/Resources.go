@@ -28,67 +28,18 @@ func Resources() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					entity := args[0]
-
-					u, err := url.ParseRequestURI(entity)
-
-					var pack = packer.New()
-
-					if err != nil || !u.IsAbs() {
-						var stat os.FileInfo
-						stat, err = os.Stat(entity)
-
-						if os.IsNotExist(err) {
-							helpers.PrintAndExit(err, 1)
-						}
-
-						if stat.IsDir() {
-							kinds := relations.NewDefinitionRelationRegistry()
-							kinds.InTree()
-
-							pack, err = packer.Read(entity, kinds)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-						} else {
-							var definitions []byte
-							definitions, err = packer.ReadYAMLFile(entity)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-
-							pack.Definitions, err = packer.Parse(definitions)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-						}
-					} else {
-						var definitions []byte
-						definitions, err = packer.Download(u)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-
-						pack.Definitions, err = packer.Parse(definitions)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
+					pack, _, err := determineDefinitions(args[0], cli)
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
 					}
 
 					if len(pack.Definitions) != 0 {
 						for _, definition := range pack.Definitions {
 							err = definition.ProposeApply(cli.Context.GetClient(), cli.Context.APIURL)
-
 							if err != nil {
 								helpers.PrintAndExit(err, 1)
 							}
-
-							fmt.Println(fmt.Sprintf("object applied: %s", definition.Definition.GetKind()))
+							fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
 						}
 					} else {
 						fmt.Println("specified file/url is not valid definition/pack")
@@ -109,76 +60,22 @@ func Resources() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					entity := args[0]
-
-					u, err := url.ParseRequestURI(entity)
-
-					var pack = packer.New()
-					var format iformat.Format
-
-					if err != nil || !u.IsAbs() {
-						var stat os.FileInfo
-						stat, err = os.Stat(entity)
-
-						if os.IsNotExist(err) {
-							format, err = helpers.BuildFormat(entity, cli.Group)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-						}
-
-						if stat.IsDir() {
-							kinds := relations.NewDefinitionRelationRegistry()
-							kinds.InTree()
-
-							pack, err = packer.Read(entity, kinds)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-						} else {
-							var definitions []byte
-							definitions, err = packer.ReadYAMLFile(entity)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-
-							pack.Definitions, err = packer.Parse(definitions)
-
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-						}
-					} else {
-						var definitions []byte
-						definitions, err = packer.Download(u)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-
-						pack.Definitions, err = packer.Parse(definitions)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
+					pack, format, err := determineDefinitions(args[0], cli)
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
 					}
 
 					if len(pack.Definitions) != 0 {
 						for _, definition := range pack.Definitions {
 							err = definition.ProposeRemove(cli.Context.GetClient(), cli.Context.APIURL)
-
 							if err != nil {
 								helpers.PrintAndExit(err, 1)
 							}
-
-							fmt.Println(fmt.Sprintf("object applied: %s", definition.Definition.GetKind()))
+							fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
 						}
 					} else {
-						err = resources.Delete(cli.Context, format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
-
+						err = resources.Delete(cli.Context, format.GetPrefix(), format.GetVersion(),
+							format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
 						if err != nil {
 							fmt.Println(err)
 						} else {
@@ -202,7 +99,6 @@ func Resources() {
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := helpers.BuildFormat(args[0], cli.Group)
-
 					if err != nil {
 						helpers.PrintAndExit(err, 1)
 					}
@@ -211,17 +107,26 @@ func Resources() {
 
 					switch format.GetKind() {
 					case static.KIND_GITOPS:
-						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
+						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
+							static.CATEGORY_STATE, format.GetKind())
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
 						formaters.Gitops(objects)
-						break
 					case static.KIND_CONTAINERS:
-						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
+						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
+							static.CATEGORY_STATE, format.GetKind())
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
 						formaters.Container(objects)
-						break
 					default:
-						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_KIND, format.GetKind())
+						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
+							static.CATEGORY_KIND, format.GetKind())
+						if err != nil {
+							helpers.PrintAndExit(err, 1)
+						}
 						formaters.Default(objects)
-						break
 					}
 				},
 			},
@@ -239,20 +144,7 @@ func Resources() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[1], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					var response json.RawMessage
-					response, err = resources.Get(cli.Context, format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					} else {
-						fmt.Println(string(response))
-					}
+					action(cli, args, "get")
 				},
 			},
 			DependsOn: []func(*client.Client, []string){
@@ -269,20 +161,7 @@ func Resources() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[1], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					var response json.RawMessage
-					response, err = resources.Inspect(cli.Context, format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					} else {
-						fmt.Println(string(response))
-					}
+					action(cli, args, "inspect")
 				},
 			},
 			DependsOn: []func(*client.Client, []string){
@@ -299,20 +178,7 @@ func Resources() {
 			Args: cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
-					format, err := helpers.BuildFormat(args[1], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					var response json.RawMessage
-					response, err = resources.Edit(cli.Context, format.GetPrefix(), format.GetVersion(), format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					} else {
-						fmt.Println(string(response))
-					}
+					action(cli, args, "edit")
 				},
 			},
 			DependsOn: []func(*client.Client, []string){
@@ -321,4 +187,94 @@ func Resources() {
 			Flags: func(cmd *cobra.Command) {},
 		},
 	)
+}
+
+func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, iformat.Format, error) {
+	var pack = packer.New()
+	var format iformat.Format
+	var err error
+
+	u, err := url.ParseRequestURI(entity)
+
+	if err != nil || !u.IsAbs() {
+		// Not url - then it is file path
+		var stat os.FileInfo
+		stat, err = os.Stat(entity)
+
+		if os.IsNotExist(err) {
+			// File path doesn't exist - then it is format
+			format, err = helpers.BuildFormat(entity, cli.Group)
+
+			if err != nil {
+				// It is not format - error out
+				return nil, format, err
+			}
+		}
+
+		if stat != nil && stat.IsDir() {
+			// It is directory - check if it is pack
+			kinds := relations.NewDefinitionRelationRegistry()
+			kinds.InTree()
+
+			pack, err = packer.Read(entity, kinds)
+			if err != nil {
+				return nil, format, err
+			}
+		} else if stat != nil {
+			// It is file check if it is valid yaml definition
+
+			var definitions []byte
+			definitions, err = packer.ReadYAMLFile(entity)
+			if err != nil {
+				return nil, format, err
+			}
+
+			pack.Definitions, err = packer.Parse(definitions)
+			if err != nil {
+				return nil, format, err
+			}
+		}
+	} else {
+		// It is URL so download file and process it as yaml definition
+
+		var definitions []byte
+		definitions, err = packer.Download(u)
+		if err != nil {
+			return nil, format, err
+		}
+
+		pack.Definitions, err = packer.Parse(definitions)
+		if err != nil {
+			return nil, format, err
+		}
+	}
+
+	return pack, format, nil
+}
+
+func action(cli *client.Client, args []string, action string) {
+	format, err := helpers.BuildFormat(args[1], cli.Group)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	var response json.RawMessage
+
+	switch action {
+	case "get":
+		response, err = resources.Get(cli.Context, format.GetPrefix(), format.GetVersion(),
+			format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
+	case "inspect":
+		response, err = resources.Inspect(cli.Context, format.GetPrefix(), format.GetVersion(),
+			format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
+	case "edit":
+		response, err = resources.Edit(cli.Context, format.GetPrefix(), format.GetVersion(),
+			format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
+	}
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	} else {
+		fmt.Println(string(response))
+	}
 }

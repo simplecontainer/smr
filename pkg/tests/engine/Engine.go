@@ -71,7 +71,6 @@ func NewEngine(binary string) *Engine {
 func NewEngineWithOptions(binary string, options EngineOptions) *Engine {
 	cmdParts, err := shellwords.Parse(binary)
 	if err != nil {
-
 		cmdParts = strings.Fields(binary)
 	}
 
@@ -102,20 +101,24 @@ func (e *Engine) SetFailOnError(failOnError bool) {
 	e.options.FailOnError = failOnError
 }
 
-func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
+// prepareCommand is a helper function that prepares a command from the engine's base command and optional additional arguments
+func (e *Engine) prepareCommand(t *testing.T, command ...CmdSource) ([]string, string, error) {
 	var args []string
 	var err error
+	cmdStr := ""
 
 	if len(command) > 0 {
 		args, err = command[0].ToCmdArgs()
 		if err != nil {
+			errorMsg := fmt.Sprintf("[ENGINE] Failed to parse command arguments: %v", err)
 			if e.options.FailOnError {
-				t.Fatalf("[ENGINE] Failed to parse command arguments: %v", err)
+				t.Fatalf("%s", errorMsg)
 			} else {
-				t.Errorf("[ENGINE] Failed to parse command arguments: %v", err)
+				t.Errorf("%s", errorMsg)
 			}
-			return err
+			return nil, "", err
 		}
+		cmdStr = command[0].String()
 	}
 
 	e.stdout.Reset()
@@ -125,38 +128,111 @@ func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
 
 	if e.options.Suffix != "" {
 		suffixParsed, err := shellwords.Parse(e.options.Suffix)
-
 		if err != nil {
-			return err
+			return nil, "", err
 		}
-
 		fullCmd = append(fullCmd, suffixParsed...)
 	}
 
-	fmt.Println(fullCmd)
+	return fullCmd, cmdStr, nil
+}
 
+// createCommand creates an exec.Cmd from the prepared command parts
+func (e *Engine) createCommand(fullCmd []string) *exec.Cmd {
 	executable := fullCmd[0]
 	var execArgs []string
 	if len(fullCmd) > 1 {
 		execArgs = fullCmd[1:]
 	}
 
-	cmd := exec.Command(executable, execArgs...)
+	return exec.Command(executable, execArgs...)
+}
 
-	cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: "STDOUT"})
-	cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: "STDERR"})
-
-	cmdStr := ""
-	if len(command) > 0 {
-		cmdStr = command[0].String()
-	}
-	t.Logf("[ENGINE] Running command: %s %s %s", strings.Join(e.command, " "), cmdStr, e.options.Suffix)
-
-	err = cmd.Run()
+// handleCommandError handles an error from a command execution
+func (e *Engine) handleCommandError(t *testing.T, err error) error {
 	if err != nil {
 		errorMsg := fmt.Sprintf("[ENGINE] Command failed: %v\nStdout: %s\nStderr: %s",
 			err, e.stdout.String(), e.stderr.String())
 
+		if e.options.FailOnError {
+			t.Fatalf("%s", errorMsg)
+		} else {
+			t.Errorf("%s", errorMsg)
+		}
+	}
+	return err
+}
+
+func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
+	fullCmd, cmdStr, err := e.prepareCommand(t, command...)
+	if err != nil {
+		return err
+	}
+
+	cmd := e.createCommand(fullCmd)
+
+	cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: "STDOUT"})
+	cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: "STDERR"})
+
+	t.Logf("[ENGINE] Running command: %s %s %s", strings.Join(e.command, " "), cmdStr, e.options.Suffix)
+
+	err = cmd.Run()
+	return e.handleCommandError(t, err)
+}
+
+func (e *Engine) RunAndCapture(t *testing.T, command ...CmdSource) (string, error) {
+	fullCmd, cmdStr, err := e.prepareCommand(t, command...)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := e.createCommand(fullCmd)
+
+	stdoutPrefix := fmt.Sprintf("STDOUT %s %s\n", cmdStr, e.options.Suffix)
+	stderrPrefix := fmt.Sprintf("STDERR %s %s\n", cmdStr, e.options.Suffix)
+
+	cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: stdoutPrefix})
+	cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: stderrPrefix})
+
+	t.Logf("[ENGINE] Running command with capture: %s %s", strings.Join(e.command, " "), cmdStr)
+
+	err = cmd.Run()
+	if e.handleCommandError(t, err) != nil {
+		return "", err
+	}
+
+	return e.stdout.String(), nil
+}
+
+func (e *Engine) RunBackground(t *testing.T, command ...CmdSource) error {
+	if e.cmd != nil {
+		errorMsg := "[ENGINE] Command already started once"
+		if e.options.FailOnError {
+			t.Fatalf("%s", errorMsg)
+		} else {
+			t.Errorf("%s", errorMsg)
+		}
+		return fmt.Errorf(errorMsg)
+	}
+
+	fullCmd, cmdStr, err := e.prepareCommand(t, command...)
+	if err != nil {
+		return err
+	}
+
+	cmd := e.createCommand(fullCmd)
+
+	stdoutPrefix := fmt.Sprintf("STDOUT %s %s\n", cmd.String(), e.options.Suffix)
+	stderrPrefix := fmt.Sprintf("STDERR %s %s\n", cmd.String(), e.options.Suffix)
+
+	cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: stdoutPrefix})
+	cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: stderrPrefix})
+
+	t.Logf("[ENGINE] Starting background command: %s %s", strings.Join(e.command, " "), cmdStr)
+
+	err = cmd.Start()
+	if err != nil {
+		errorMsg := fmt.Sprintf("[ENGINE] Failed to start command: %v", err)
 		if e.options.FailOnError {
 			t.Fatalf("%s", errorMsg)
 		} else {
@@ -165,147 +241,8 @@ func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
 		return err
 	}
 
+	e.cmd = cmd
 	return nil
-}
-
-func (e *Engine) RunAndCapture(t *testing.T, command ...CmdSource) (string, error) {
-	var args []string
-	var err error
-
-	if len(command) > 0 {
-		args, err = command[0].ToCmdArgs()
-		if err != nil {
-			if e.options.FailOnError {
-				t.Fatalf("[ENGINE] Failed to parse command arguments: %v", err)
-			} else {
-				t.Errorf("[ENGINE] Failed to parse command arguments: %v", err)
-			}
-			return "", err
-		}
-	}
-
-	e.stdout.Reset()
-	e.stderr.Reset()
-
-	fullCmd := append(append([]string{}, e.command...), args...)
-
-	if e.options.Suffix != "" {
-		suffixParsed, err := shellwords.Parse(e.options.Suffix)
-
-		if err != nil {
-			return "", err
-		}
-
-		fullCmd = append(fullCmd, suffixParsed...)
-	}
-
-	executable := fullCmd[0]
-	var execArgs []string
-	if len(fullCmd) > 1 {
-		execArgs = fullCmd[1:]
-	}
-
-	cmd := exec.Command(executable, execArgs...)
-
-	cmdStr := ""
-	if len(command) > 0 {
-		cmdStr = command[0].String()
-	}
-
-	writers := []io.Writer{e.stdout, testLogWriter{t: t, prefix: fmt.Sprintf("STDOUT %s %s\n", cmdStr, e.options.Suffix)}}
-	cmd.Stdout = io.MultiWriter(writers...)
-
-	writers = []io.Writer{e.stderr, testLogWriter{t: t, prefix: fmt.Sprintf("STDERR %s %s\n", cmdStr, e.options.Suffix)}}
-	cmd.Stderr = io.MultiWriter(writers...)
-
-	t.Logf("[ENGINE] Running command with capture: %s %s", strings.Join(e.command, " "), cmdStr)
-	err = cmd.Run()
-	if err != nil {
-		errorMsg := fmt.Sprintf("[ENGINE] Command failed: %v\nStdout: %s\nStderr: %s",
-			err, e.stdout.String(), e.stderr.String())
-
-		if e.options.FailOnError {
-			t.Fatalf("%s", errorMsg)
-		} else {
-			t.Errorf("%s", errorMsg)
-		}
-		return "", err
-	}
-
-	return e.stdout.String(), nil
-}
-
-func (e *Engine) RunBackground(t *testing.T, command ...CmdSource) error {
-	if e.cmd == nil {
-		var args []string
-		var err error
-
-		if len(command) > 0 {
-			args, err = command[0].ToCmdArgs()
-			if err != nil {
-				if e.options.FailOnError {
-					t.Fatalf("[ENGINE] Failed to parse command arguments: %v", err)
-				} else {
-					t.Errorf("[ENGINE] Failed to parse command arguments: %v", err)
-				}
-				return err
-			}
-		}
-
-		e.stdout.Reset()
-		e.stderr.Reset()
-
-		fullCmd := append(append([]string{}, e.command...), args...)
-
-		if e.options.Suffix != "" {
-			suffixParsed, err := shellwords.Parse(e.options.Suffix)
-
-			if err != nil {
-				return err
-			}
-
-			fullCmd = append(fullCmd, suffixParsed...)
-		}
-
-		executable := fullCmd[0]
-		var execArgs []string
-		if len(fullCmd) > 1 {
-			execArgs = fullCmd[1:]
-		}
-
-		cmd := exec.Command(executable, execArgs...)
-
-		cmd.Stdout = io.MultiWriter(e.stdout, testLogWriter{t: t, prefix: fmt.Sprintf("STDOUT %s %s\n", cmd.String(), e.options.Suffix)})
-		cmd.Stderr = io.MultiWriter(e.stderr, testLogWriter{t: t, prefix: fmt.Sprintf("STDERR %s %s\n", cmd.String(), e.options.Suffix)})
-
-		cmdStr := ""
-		if len(command) > 0 {
-			cmdStr = command[0].String()
-		}
-		t.Logf("[ENGINE] Starting background command: %s %s", strings.Join(e.command, " "), cmdStr)
-
-		err = cmd.Start()
-		if err != nil {
-			errorMsg := fmt.Sprintf("[ENGINE] Failed to start command: %v", err)
-			if e.options.FailOnError {
-				t.Fatalf("%s", errorMsg)
-			} else {
-				t.Errorf("%s", errorMsg)
-			}
-			return err
-		}
-
-		e.cmd = cmd
-		return nil
-	}
-
-	errorMsg := "[ENGINE] Command already started once"
-	if e.options.FailOnError {
-		t.Fatalf("%s", errorMsg)
-	} else {
-		t.Errorf("%s", errorMsg)
-	}
-	return fmt.Errorf(errorMsg)
 }
 
 func (e *Engine) Stop(t *testing.T) error {
