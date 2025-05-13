@@ -137,14 +137,13 @@ jobs:
             --argjson tests "$tests_json" \
             '{ "go-version": $go, "platform": $plat, "os": $os, "tests": $tests }')
           
-          echo $full_matrix | jq
+          echo "$full_matrix" | jq -c
           echo "matrix=$(echo "$full_matrix" | jq -c)" >> "$GITHUB_OUTPUT"
-
 
   test-integration:
     name: Run ${{ matrix.name }} test
     runs-on: ubuntu-latest
-    needs: [ test, build ]
+    needs: [ set-matrix, test, build ]
     strategy:
       matrix:
         go-version: ${{ fromJSON(needs.set-matrix.outputs.matrix).go-version }}
