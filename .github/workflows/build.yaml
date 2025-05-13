@@ -159,7 +159,20 @@ jobs:
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
       image_tag: ${{ steps.image_info.outputs.image_tag }}
-    steps:
+    steps: 
+      - name: Uninstall pre-installed Docker
+        run: |
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc
+
+      - name: Install Docker 28.0.3
+        run: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          VERSION=28.0.3 sh get-docker.sh
+
+      - name: Verify Docker installation
+        run: |
+          docker version
+          docker version --format '{{.Server.APIVersion}}'
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.BOT_USER_PAT }}
