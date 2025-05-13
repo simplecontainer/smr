@@ -106,39 +106,43 @@ jobs:
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Generate dynamic test matrix
+      - name: Generate dynamic matrix
         id: generate
         run: |
-          go_version='["1.22.x"]'
-          platform='["amd64"]'
-          os='["linux"]'
-          
+          GO_VERSIONS='["1.22.x"]'
+          PLATFORMS='["amd64"]'
+          OS_LIST='["linux"]'
+
           TESTS_DIRS=$(find pkg/tests/e2e -type f -name '*_test.go' -exec dirname {} \; | sort -u)
-          
-          tests_json="[]"
+
+          matrix='[]'
           for dir in $TESTS_DIRS; do
             name=$(basename "$dir")
-            tags="e2e"
-            test_entry=$(jq -n \
-              --arg dir "$dir" \
-              --arg name "$name" \
-              --arg tags "$tags" \
-              '{directory: $dir, name: $name, tags: $tags}')
-            tests_json=$(echo "$tests_json" | jq ". += [ $test_entry ]")
+            for go in $(echo $GO_VERSIONS | jq -r '.[]'); do
+              for os in $(echo $OS_LIST | jq -r '.[]'); do
+                for arch in $(echo $PLATFORMS | jq -r '.[]'); do
+                  matrix=$(echo "$matrix" | jq \
+                    --arg dir "$dir" \
+                    --arg name "$name" \
+                    --arg tags "e2e" \
+                    --arg go "$go" \
+                    --arg os "$os" \
+                    --arg arch "$arch" \
+                    '. += [{
+                      directory: $dir,
+                      name: $name,
+                      tags: $tags,
+                      "go-version": $go,
+                      os: $os,
+                      platform: $arch
+                    }]')
+                done
+              done
+            done
           done
-          
-          full_matrix=$(jq -n \
-            --argjson go "$go_version" \
-            --argjson plat "$platform" \
-            --argjson os "$os" \
-            --argjson tests "$tests_json" \
-            '{ "go-version": $go, "platform": $plat, "os": $os, "tests": $tests }')
-          
-          echo "$full_matrix" | jq -c
-          echo "matrix=$(echo "$full_matrix" | jq -c)" >> "$GITHUB_OUTPUT"
+
+          echo "$matrix" | jq
+          echo "matrix=$(echo "$matrix" | jq -c)" >> "$GITHUB_OUTPUT"
 
   test-integration:
     name: Run ${{ matrix.name }} test
@@ -146,11 +150,7 @@ jobs:
     needs: [ set-matrix, test, build ]
     strategy:
       matrix:
-        go-version: ${{ fromJSON(needs.set-matrix.outputs.matrix).go-version }}
-        platform: ${{ fromJSON(needs.set-matrix.outputs.matrix).platform }}
-        os: ${{ fromJSON(needs.set-matrix.outputs.matrix).os }}
-        include: ${{ fromJSON(needs.set-matrix.outputs.matrix).tests }}
-
+        include: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
     if: github.event.inputs.component != 'smrctl' || github.event_name != 'workflow_dispatch'
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
@@ -217,7 +217,7 @@ jobs:
 
       - name: Test code
         run: |
-          go test -v -tags=${{ matrix.tags }} ./pkg/tests/integration/${{ matrix.directory }} \
+          go test -v -tags=${{ matrix.tags }} ${{ matrix.directory }} \
             -image $IMAGE -tag $TAG \
             -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr \
             -examples examples \
