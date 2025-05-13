@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-func (api *Api) Debug(c *gin.Context) {
+func (a *Api) Debug(c *gin.Context) {
 	prefix := c.Param("prefix")
 	version := c.Param("version")
 	category := c.Param("category")
@@ -52,7 +52,7 @@ func (api *Api) Debug(c *gin.Context) {
 	nodeName := ""
 
 	if kind == static.KIND_CONTAINERS {
-		container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
+		container := a.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 
 		if container == nil {
 			stream.Bye(w, errors.New("container is not found"))
@@ -66,7 +66,7 @@ func (api *Api) Debug(c *gin.Context) {
 	} else {
 		format = f.New(prefix, version, "kind", kind, group, name)
 
-		obj := objects.New(api.Manager.Http.Clients[api.User.Username], api.User)
+		obj := objects.New(a.Manager.Http.Clients[a.User.Username], a.User)
 		obj.Find(format)
 
 		if !obj.Exists() {
@@ -84,14 +84,14 @@ func (api *Api) Debug(c *gin.Context) {
 
 		err = request.Definition.FromJson(obj.GetDefinitionByte())
 
-		if request.Definition.GetRuntime().GetNode() != api.Cluster.Node.NodeID {
+		if request.Definition.GetRuntime().GetNode() != a.Cluster.Node.NodeID {
 			isRemote = true
 			nodeName = request.Definition.GetRuntime().NodeName
 		}
 	}
 
 	if isRemote {
-		client, ok := api.Manager.Http.Clients[nodeName]
+		client, ok := a.Manager.Http.Clients[nodeName]
 
 		if !ok {
 			stream.Bye(w, errors.New(fmt.Sprintf("node %s not found", nodeName)))

@@ -22,14 +22,14 @@ import (
 // @Failure		404	{object}	  contracts.Response
 // @Failure		500	{object}	  contracts.Response
 // @Router		/key/propose/{key} [post]
-func (api *Api) ProposeKey(c *gin.Context) {
+func (a *Api) ProposeKey(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
 		common.Response(http.StatusInternalServerError, "", err, nil)
 	} else {
 		key := c.Param("key")
-		api.Cluster.KVStore.Propose(key, data, api.Cluster.Node.NodeID)
+		a.Cluster.KVStore.Propose(key, data, a.Cluster.Node.NodeID)
 
 		c.JSON(http.StatusOK, common.Response(http.StatusOK, "key stored", nil, nil))
 	}
@@ -47,7 +47,7 @@ func (api *Api) ProposeKey(c *gin.Context) {
 // @Failure		404	{object}	  contracts.Response
 // @Failure		500	{object}	  contracts.Response
 // @Router		/key/set/{key} [post]
-func (api *Api) SetKey(c *gin.Context) {
+func (a *Api) SetKey(c *gin.Context) {
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -55,7 +55,7 @@ func (api *Api) SetKey(c *gin.Context) {
 	} else {
 		key := strings.TrimPrefix(c.Param("key"), "/")
 
-		_, err = api.Etcd.Put(context.Background(), key, string(data))
+		_, err = a.Etcd.Put(context.Background(), key, string(data))
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -77,10 +77,10 @@ func (api *Api) SetKey(c *gin.Context) {
 // @Failure		404	{object}	  contracts.Response
 // @Failure		500	{object}	  contracts.Response
 // @Router		/key/remove/{key} [delete]
-func (api *Api) RemoveKey(c *gin.Context) {
+func (a *Api) RemoveKey(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")
 
-	_, err := api.Etcd.Delete(context.Background(), key)
+	_, err := a.Etcd.Delete(context.Background(), key)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))

@@ -3,14 +3,14 @@ package control
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/simplecontainer/smr/pkg/control/controls"
+	"github.com/simplecontainer/smr/pkg/contracts/icontrol"
 	"time"
 )
 
 type CommandBatch struct {
-	ID        uuid.UUID
+	ID        uuid.UUID          `json:"id"`
 	Timestamp time.Time          `json:"timestamp"`
-	Commands  []controls.Command `json:"-"`
+	Commands  []icontrol.Command `json:"-"`
 	RawCmds   []json.RawMessage  `json:"commands"`
 	NodeID    uint64             `json:"nodeID"`
 }

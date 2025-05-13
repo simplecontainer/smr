@@ -1,8 +1,8 @@
 package command
 
 import (
-	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/spf13/cobra"
 )
 
@@ -11,9 +11,9 @@ type Engine struct {
 	Name      string
 	Flag      string
 	Args      func(*cobra.Command, []string) error
-	Condition func(*api.Api) bool
-	Functions []func(*api.Api, []string)
-	DependsOn []func(*api.Api, []string)
+	Condition func(iapi.Api) bool
+	Functions []func(iapi.Api, []string)
+	DependsOn []func(iapi.Api, []string)
 	Flags     func(command *cobra.Command)
 }
 

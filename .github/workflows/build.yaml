@@ -101,33 +101,57 @@ jobs:
             name: ${{ matrix.component }}-${{ matrix.os}}-${{ matrix.platform }}
             path: cmd/${{ matrix.component }}/${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
 
+  set-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate dynamic test matrix
+        id: generate
+        run: |
+          go_version='["1.22.x"]'
+          platform='["amd64"]'
+          os='["linux"]'
+          
+          TESTS_DIRS=$(find tests/e2e -type f -name '*_test.go' -exec dirname {} \; | sort -u)
+          
+          tests_json="[]"
+          for dir in $TESTS_DIRS; do
+            name=$(basename "$dir")
+            tags="e2e"
+            test_entry=$(jq -n \
+              --arg dir "$dir" \
+              --arg name "$name" \
+              --arg tags "$tags" \
+              '{directory: $dir, name: $name, tags: $tags}')
+            tests_json=$(echo "$tests_json" | jq ". += [ $test_entry ]")
+          done
+          
+          full_matrix=$(jq -n \
+            --argjson go "$go_version" \
+            --argjson plat "$platform" \
+            --argjson os "$os" \
+            --argjson tests "$tests_json" \
+            '{ "go-version": $go, "platform": $plat, "os": $os, "tests": $tests }')
+          
+          echo $full_matrix | jq
+          echo "matrix=$full_matrix" >> "$GITHUB_OUTPUT"
+
+
   test-integration:
     name: ${{ matrix.tests.name }}
     runs-on: ubuntu-latest
     needs: [ test, build ]
     strategy:
       matrix:
-        go-version: [ '1.22.x' ]
-        platform: [ 'amd64' ]
-        os: [ 'linux' ]
-        tests: [
-          {
-            directory: "containers/e2e",
-            name: "Containers e2e"
-          },
-          {
-            directory: "gitops/e2e",
-            name: "Gitops e2e"
-          },
-          {
-            directory: "nodes/start",
-            name: "Standalone mode e2e"
-          },
-          {
-            directory: "nodes/start",
-            name: "Cluster mode e2e"
-          },
-        ]
+        go-version: ${{ fromJSON(needs.set-matrix.outputs.matrix).go-version }}
+        platform: ${{ fromJSON(needs.set-matrix.outputs.matrix).platform }}
+        os: ${{ fromJSON(needs.set-matrix.outputs.matrix).os }}
+        include: ${{ fromJSON(needs.set-matrix.outputs.matrix).tests }}
+
     if: github.event.inputs.component != 'smrctl' || github.event_name != 'workflow_dispatch'
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
@@ -195,11 +219,12 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Test code
         run: |         
-          go test -v -tags=integration ./pkg/tests/integration/${{ matrix.tests.directory }} $TEST_FLAGS -image $IMAGE -tag $TAG -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples
+          go test -v -tags=${{ matrix.tags }} ./pkg/tests/integration/${{ matrix.directory }} -image $IMAGE -tag $TAG \
+          -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr -examples examples \
+          -binaryctl smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
-          TEST_FLAGS: ${{ github.event.inputs.test_flags || '' }}
 
   prepare-release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'

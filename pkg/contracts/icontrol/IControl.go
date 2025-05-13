@@ -1,15 +1,32 @@
 package icontrol
 
 import (
-	"github.com/simplecontainer/smr/pkg/authentication"
+	"context"
+	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"time"
 )
 
-type Control struct {
-	Kind      string
-	Operation string
-	Group     string
-	Name      string
+type Command interface {
+	Name() string
+	Time() time.Time
+	Node(iapi.Api, map[string]string) error
+	Agent(iapi.Api, map[string]string) error
+	Data() map[string]string
+	NodeID() uint64
+	SetNodeID(uint64)
+}
 
-	User *authentication.User
-	Data map[string]any
+type Batch interface {
+	GetNodeID() uint64
+	SetNodeID(uint64)
+	Put(ctx context.Context, client *clientv3.Client) error
+	Apply(ctx context.Context, cli *client.Client) (*iresponse.Response, error)
+	AddCommand(cmd Command)
+	GetCommands() []Command
+	GetCommand(name string) (Command, error)
+	MarshalJSON() ([]byte, error)
+	UnmarshalJSON(data []byte) error
 }

@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) Health(c *gin.Context) {
+func (a *Api) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, &iresponse.Response{
 		HttpStatus:       http.StatusOK,
 		Explanation:      "agent is healthy",

@@ -30,7 +30,7 @@ var wssUpgrader = websocket.Upgrader{
 	},
 }
 
-func (api *Api) Exec(c *gin.Context) {
+func (a *Api) Exec(c *gin.Context) {
 	prefix := c.Param("prefix")
 	version := c.Param("version")
 	category := c.Param("kind")
@@ -59,7 +59,7 @@ func (api *Api) Exec(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
+	container := a.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 	if container == nil {
 		logger.Log.Warn("container not found", zap.String("container", fmt.Sprintf("%s/%s", group, name)))
 		sendWebSocketTextAndClose(conn, "container not found")
@@ -67,7 +67,7 @@ func (api *Api) Exec(c *gin.Context) {
 	}
 
 	if container.IsGhost() {
-		httpClient, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
+		httpClient, ok := a.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 		if !ok {
 			sendWebSocketTextAndClose(conn, fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINERS, group, name))
 			return

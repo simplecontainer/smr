@@ -3,7 +3,8 @@
 HOME ?=
 IMAGE ?= smr
 TAG ?= latest
-BINARY_DIR ?=
+BINARY ?=
+BINARY_CLI ?=
 TIMEOUT ?= 60s
 CLEANUP ?= true
 TEST_NAME ?= # Empty by default, will run all tests if not specified
@@ -12,8 +13,12 @@ EXAMPLES_DIR ?=
 
 # Common test flags
 TEST_FLAGS = -image=$(IMAGE) -tag=$(TAG) -timeout=$(TIMEOUT)
-ifneq ($(BINARY_DIR),)
-TEST_FLAGS += -binary=$(BINARY_DIR)
+ifneq ($(BINARY),)
+TEST_FLAGS += -binary=$(BINARY)
+endif
+
+ifneq ($(BINARY_CLI),)
+TEST_FLAGS += -binaryctl=$(BINARY_CLI)
 endif
 
 ifneq ($(HOME),)
@@ -58,12 +63,12 @@ install-engine:
 nuke:
 	./development/nuke.sh
 
-test-integration:
+test-e2e:
 	@echo "Running test(s): $(if $(TEST_NAME),$(TEST_NAME),all tests)"
 ifneq ($(TEST_NAME),)
-	go test -v -p 1 -tags=integration ../pkg/tests/integration/$(TEST_DIR) -run $(TEST_NAME) $(TEST_FLAGS)
+	go test -v -p 1 -tags=e2e ../pkg/tests/e2e/$(TEST_DIR) -run $(TEST_NAME) $(TEST_FLAGS)
 else
-	go test -v -p 1 -tags=integration ../pkg/tests/integration/$(TEST_DIR) $(TEST_FLAGS)
+	go test -v -p 1 -tags=e2e ../pkg/tests/e2e/$(TEST_DIR) $(TEST_FLAGS)
 endif
 
 ctl: build-ctl install-ctl

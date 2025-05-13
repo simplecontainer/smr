@@ -3,8 +3,8 @@ package commands
 import (
 	"fmt"
 	"github.com/simplecontainer/smr/internal/helpers"
-	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -22,7 +22,7 @@ func PreloadCommands() {
 	Agent() // Handle smr agent running on machine and managing flannel, upgrades
 }
 
-func Run(api *api.Api, c *cobra.Command) {
+func Parse(api iapi.Api, c *cobra.Command) *cobra.Command {
 	c.SetHelpCommand(&cobra.Command{
 		Use:    "help",
 		Hidden: true,
@@ -75,6 +75,10 @@ func Run(api *api.Api, c *cobra.Command) {
 		}
 	}
 
+	return c
+}
+
+func Run(c *cobra.Command) {
 	if err := c.Execute(); err != nil {
 		os.Exit(1)
 	}

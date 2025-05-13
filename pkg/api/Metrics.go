@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func (api *Api) MetricsHandle() gin.HandlerFunc {
+func (a *Api) MetricsHandle() gin.HandlerFunc {
 	h := promhttp.Handler()
 
 	return func(c *gin.Context) {

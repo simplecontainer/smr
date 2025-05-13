@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func (api *Api) Events(c *gin.Context) {
+func (a *Api) Events(c *gin.Context) {
 	w, r := c.Writer, c.Request
 	lock := &sync.RWMutex{}
 
@@ -23,11 +23,11 @@ func (api *Api) Events(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	api.Wss.Lock.Lock()
+	a.Wss.Lock.Lock()
 	ch := make(chan ievents.Event, 100)
-	position := len(api.Wss.Channels)
-	api.Wss.Channels[position] = ch
-	api.Wss.Lock.Unlock()
+	position := len(a.Wss.Channels)
+	a.Wss.Channels[position] = ch
+	a.Wss.Lock.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -36,17 +36,17 @@ func (api *Api) Events(c *gin.Context) {
 
 	go func(lock *sync.RWMutex) {
 		defer func() {
-			api.Wss.Lock.Lock()
-			defer api.Wss.Lock.Unlock()
+			a.Wss.Lock.Lock()
+			defer a.Wss.Lock.Unlock()
 
 			closeOnce.Do(func() {
 				close(ch)
 			})
 
-			delete(api.Wss.Channels, position)
+			delete(a.Wss.Channels, position)
 		}()
 
-		ListenEvents(ctx, api.Wss, position, conn, lock)
+		ListenEvents(ctx, a.Wss, position, conn, lock)
 	}(lock)
 
 	pingTicker := time.NewTicker(30 * time.Second)

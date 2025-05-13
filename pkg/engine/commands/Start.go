@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	mdns "github.com/miekg/dns"
-	"github.com/simplecontainer/smr/pkg/api"
 	"github.com/simplecontainer/smr/pkg/api/middlewares"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/kinds"
@@ -29,71 +29,72 @@ func Start() {
 	Commands = append(Commands, command.Engine{
 		Parent: "smr",
 		Name:   "start",
-		Condition: func(*api.Api) bool {
+		Condition: func(iapi.Api) bool {
 			return true
 		},
-		Functions: []func(*api.Api, []string){
-			func(api *api.Api, args []string) {
+		Functions: []func(iapi.Api, []string){
+			func(api iapi.Api, args []string) {
 				var conf = configuration.NewConfig()
 				var err error
 
-				conf, err = startup.Load(api.Config.Environment.Container)
+				conf, err = startup.Load(api.GetConfig().Environment.Container)
 
 				if err != nil {
 					panic(err)
 				}
 
-				api.Config = conf
-				api.Manager.Config = api.Config
+				api.SetConfig(conf)
+				api.GetManager().Config = api.GetConfig()
 
-				api.Keys = keys.NewKeys()
-				api.Manager.Keys = api.Keys
+				api.SetKeys(keys.NewKeys())
+				api.GetManager().Keys = api.GetKeys()
 
-				api.User = &authentication.User{
-					Username: api.Config.NodeName,
+				api.SetUser(&authentication.User{
+					Username: api.GetConfig().NodeName,
 					Domain:   "localhost:1443",
-				}
-				api.Manager.User = api.User
-				api.Version.Image = api.Config.NodeImage
+				})
+
+				api.GetManager().User = api.GetUser()
+				api.GetVersion().Image = api.GetConfig().NodeImage
 
 				var found error
 
-				found = api.Keys.CAExists(static.SMR_SSH_HOME, api.Config.NodeName)
+				found = api.GetKeys().CAExists(static.SMR_SSH_HOME, api.GetConfig().NodeName)
 
 				if found != nil {
-					err = api.Keys.GenerateCA()
+					err = api.GetKeys().GenerateCA()
 
 					if err != nil {
 						panic("failed to generate CA")
 					}
 
-					err = api.Keys.CA.Write(static.SMR_SSH_HOME)
+					err = api.GetKeys().CA.Write(static.SMR_SSH_HOME)
 					if err != nil {
 						panic(err)
 					}
 				}
 
-				found = api.Keys.ServerExists(static.SMR_SSH_HOME, api.Config.NodeName)
+				found = api.GetKeys().ServerExists(static.SMR_SSH_HOME, api.GetConfig().NodeName)
 
 				if found != nil {
-					err = api.Keys.GenerateServer(api.Config.Certificates.Domains, api.Config.Certificates.IPs)
+					err = api.GetKeys().GenerateServer(api.GetConfig().Certificates.Domains, api.GetConfig().Certificates.IPs)
 
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.GenerateClient(api.Config.Certificates.Domains, api.Config.Certificates.IPs, api.Config.NodeName)
+					err = api.GetKeys().GenerateClient(api.GetConfig().Certificates.Domains, api.GetConfig().Certificates.IPs, api.GetConfig().NodeName)
 
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Server.Write(static.SMR_SSH_HOME, api.Config.NodeName)
+					err = api.GetKeys().Server.Write(static.SMR_SSH_HOME, api.GetConfig().NodeName)
 					if err != nil {
 						panic(err)
 					}
 
-					err = api.Keys.Clients[api.Config.NodeName].Write(static.SMR_SSH_HOME, api.Config.NodeName)
+					err = api.GetKeys().Clients[api.GetConfig().NodeName].Write(static.SMR_SSH_HOME, api.GetConfig().NodeName)
 					if err != nil {
 						panic(err)
 					}
@@ -104,19 +105,19 @@ func Start() {
 					fmt.Println("/* ls $HOME/.ssh/simplecontainer                                     */")
 					fmt.Println("/*********************************************************************/")
 
-					err = api.Keys.GeneratePemBundle(static.SMR_SSH_HOME, api.Config.NodeName, api.Keys.Clients[api.Config.NodeName])
+					err = api.GetKeys().GeneratePemBundle(static.SMR_SSH_HOME, api.GetConfig().NodeName, api.GetKeys().Clients[api.GetConfig().NodeName])
 
 					if err != nil {
 						panic(err)
 					}
 				}
 
-				api.Keys.Reloader, err = keys.NewKeypairReloader(api.Keys.Server.CertificatePath, api.Keys.Server.PrivateKeyPath)
+				api.GetKeys().Reloader, err = keys.NewKeypairReloader(api.GetKeys().Server.CertificatePath, api.GetKeys().Server.PrivateKeyPath)
 				if err != nil {
 					panic(err.Error())
 				}
 
-				err = api.Keys.LoadClients(static.SMR_SSH_HOME)
+				err = api.GetKeys().LoadClients(static.SMR_SSH_HOME)
 
 				if err != nil {
 					fmt.Println(err.Error())
@@ -124,17 +125,17 @@ func Start() {
 				}
 
 				// Cluster information is unknown, this only enables localhost to talk to itself via https
-				api.Manager.Http, err = clients.GenerateHttpClients(api.Keys, api.Config.HostPort, nil)
+				api.GetManager().Http, err = clients.GenerateHttpClients(api.GetKeys(), api.GetConfig().HostPort, nil)
 
 				if err != nil {
 					panic(err)
 				}
 
-				api.DnsCache = dns.New(api.Config.NodeName, api.Manager.Http, api.User)
-				api.DnsCache.Client = api.Manager.Http
+				api.SetDnsCache(dns.New(api.GetConfig().NodeName, api.GetManager().Http, api.GetUser()))
+				api.GetDnsCache().Client = api.GetManager().Http
 
-				api.Manager.DnsCache = api.DnsCache
-				go api.DnsCache.ListenRecords()
+				api.GetManager().DnsCache = api.GetDnsCache()
+				go api.GetDnsCache().ListenRecords()
 
 				mdns.HandleFunc(".", api.HandleDns)
 
@@ -192,7 +193,7 @@ func Start() {
 
 					cluster := v1.Group("cluster")
 					{
-						cluster.GET("/", api.GetCluster)
+						cluster.GET("/", api.StatusCluster)
 						cluster.POST("/start", api.StartCluster)
 						cluster.POST("/control", api.Control)
 						cluster.GET("/nodes", api.Nodes)
@@ -222,7 +223,7 @@ func Start() {
 
 				router.GET("/metrics", api.MetricsHandle())
 				router.GET("/healthz", api.Health)
-				router.GET("/version", api.GetVersion)
+				router.GET("/version", api.DisplayVersion)
 				router.GET("/events", api.Events)
 
 				//debug := routerHttp.Group("/debug", func(c *gin.Context) {
@@ -232,37 +233,37 @@ func Start() {
 
 				routerHttp.GET("/metrics", api.MetricsHandle())
 				routerHttp.GET("/healthz", api.Health)
-				routerHttp.GET("/version", api.GetVersion)
+				routerHttp.GET("/version", api.DisplayVersion)
 
 				CAPool := x509.NewCertPool()
-				CAPool.AddCert(api.Keys.CA.Certificate)
+				CAPool.AddCert(api.GetKeys().CA.Certificate)
 
 				tlsConfig := &tls.Config{
 					ClientAuth: tls.RequireAndVerifyClientCert,
 					ClientCAs:  CAPool,
 				}
 
-				tlsConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
+				tlsConfig.GetCertificate = api.GetKeys().Reloader.GetCertificateFunc()
 
 				api.SetupEtcd()
 
 				server := http.Server{
-					Addr:         fmt.Sprintf("%s:%s", api.Config.HostPort.Host, api.Config.HostPort.Port),
+					Addr:         fmt.Sprintf("%s:%s", api.GetConfig().HostPort.Host, api.GetConfig().HostPort.Port),
 					Handler:      router,
 					TLSConfig:    tlsConfig,
 					ReadTimeout:  10 * time.Second,
 					WriteTimeout: 10 * time.Second,
 				}
 
-				server.TLSConfig.GetCertificate = api.Keys.Reloader.GetCertificateFunc()
-				_, err = api.DnsCache.AddARecord(static.SMR_NODE_DOMAIN, api.Config.Environment.Container.NodeIP)
+				server.TLSConfig.GetCertificate = api.GetKeys().Reloader.GetCertificateFunc()
+				_, err = api.GetDnsCache().AddARecord(static.SMR_NODE_DOMAIN, api.GetConfig().Environment.Container.NodeIP)
 
 				if err != nil {
 					panic(err)
 				}
 
-				api.KindsRegistry = kinds.BuildRegistry(api.Manager)
-				api.Manager.KindsRegistry = api.KindsRegistry
+				api.SetKindsRegistry(kinds.BuildRegistry(api.GetManager()))
+				api.GetManager().KindsRegistry = api.GetKindsRegistry()
 
 				defer func(server *http.Server) {
 					err = server.Close()
@@ -288,8 +289,8 @@ func Start() {
 				}
 			},
 		},
-		DependsOn: []func(*api.Api, []string){
-			func(mgr *api.Api, args []string) {},
+		DependsOn: []func(iapi.Api, []string){
+			func(api iapi.Api, args []string) {},
 		},
 		Flags: func(cmd *cobra.Command) {
 			cmd.Flags().String("flannel.backend", "wireguard", "Flannel backend: vxlan, wireguard")

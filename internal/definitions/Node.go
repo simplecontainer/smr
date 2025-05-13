@@ -3,7 +3,6 @@ package definitions
 import (
 	"errors"
 	"fmt"
-	"github.com/mattn/go-shellwords"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -11,23 +10,7 @@ import (
 	"unicode"
 )
 
-func Node(name string, config *configuration.Configuration) (*v1.ContainersDefinition, error) {
-	var entrypoint []string
-	var args []string
-	var err error
-
-	entrypoint, err = shellwords.Parse(viper.GetString("entrypoint"))
-
-	if err != nil {
-		return nil, err
-	}
-
-	args, err = shellwords.Parse(viper.GetString("args"))
-
-	if err != nil {
-		return nil, err
-	}
-
+func Node(name string, config *configuration.Configuration, entrypoint []string, args []string) (*v1.ContainersDefinition, error) {
 	// Prevent etcd port to contain anything except numbers
 	for _, r := range config.Ports.Etcd {
 		if !unicode.IsDigit(r) {

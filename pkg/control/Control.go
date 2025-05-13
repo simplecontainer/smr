@@ -6,24 +6,35 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/simplecontainer/smr/pkg/control/controls"
-	"github.com/simplecontainer/smr/pkg/control/controls/drain"
-	"github.com/simplecontainer/smr/pkg/control/controls/start"
+	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contracts/icontrol"
+	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/control/registry"
+	"github.com/simplecontainer/smr/pkg/network"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"net/http"
 	"time"
 )
 
-func NewCommandBatch() *CommandBatch {
+func NewCommandBatch() icontrol.Batch {
 	return &CommandBatch{
-		ID:        uuid.New(),
-		Timestamp: time.Now(),
-		Commands:  make([]controls.Command, 0),
+		ID:        uuid.UUID{},
+		Timestamp: time.Time{},
+		Commands:  make([]icontrol.Command, 0),
 		RawCmds:   make([]json.RawMessage, 0),
 		NodeID:    0,
 	}
 }
 
-func (b *CommandBatch) Apply(ctx context.Context, client *clientv3.Client) error {
+func (b *CommandBatch) GetNodeID() uint64 {
+	return b.NodeID
+}
+
+func (b *CommandBatch) SetNodeID(nodeID uint64) {
+	b.NodeID = nodeID
+}
+
+func (b *CommandBatch) Put(ctx context.Context, client *clientv3.Client) error {
 	bytes, err := json.Marshal(b)
 
 	if err != nil {
@@ -35,23 +46,43 @@ func (b *CommandBatch) Apply(ctx context.Context, client *clientv3.Client) error
 	return err
 }
 
-func (b *CommandBatch) AddCommand(cmd controls.Command) {
+func (b *CommandBatch) Apply(ctx context.Context, cli *client.Client) (*iresponse.Response, error) {
+	bytes, err := json.Marshal(b)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := network.Send(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/cluster/control", cli.Context.APIURL), http.MethodPost, bytes)
+
+	object := json.RawMessage{}
+
+	err = json.Unmarshal(response.Data, &object)
+
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
+}
+
+func (b *CommandBatch) AddCommand(cmd icontrol.Command) {
 	cmd.SetNodeID(b.NodeID)
 	b.Commands = append(b.Commands, cmd)
 }
 
-func (b *CommandBatch) GetCommands() []controls.Command {
+func (b *CommandBatch) GetCommands() []icontrol.Command {
 	return b.Commands
 }
 
-func (b *CommandBatch) GetCommand(name string) (controls.Command, error) {
+func (b *CommandBatch) GetCommand(name string) (icontrol.Command, error) {
 	for _, cmd := range b.Commands {
 		if cmd.Name() == name {
 			return cmd, nil
 		}
 	}
 
-	return nil, errors.New("control command not found")
+	return nil, errors.New("control commands are empty")
 }
 
 func (b *CommandBatch) MarshalJSON() ([]byte, error) {
@@ -61,6 +92,7 @@ func (b *CommandBatch) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		b.RawCmds[i] = data
 	}
 
@@ -76,7 +108,7 @@ func (b *CommandBatch) UnmarshalJSON(data []byte) error {
 	aux := &struct {
 		ID        uuid.UUID         `json:"id"`
 		Timestamp time.Time         `json:"timestamp"`
-		Commands  []json.RawMessage `json:"commands"`
+		RawCmds   []json.RawMessage `json:"commands"`
 		NodeID    uint64            `json:"nodeID"`
 	}{}
 
@@ -85,36 +117,14 @@ func (b *CommandBatch) UnmarshalJSON(data []byte) error {
 	}
 
 	b.Timestamp = aux.Timestamp
-	b.RawCmds = aux.Commands
+	b.RawCmds = aux.RawCmds
 	b.NodeID = aux.NodeID
 	b.ID = aux.ID
 
-	b.Commands = make([]controls.Command, len(b.RawCmds))
+	b.Commands = make([]icontrol.Command, len(b.RawCmds))
 	for i, raw := range b.RawCmds {
-		var peek struct {
-			Name string `json:"name"`
-		}
-
-		if err := json.Unmarshal(raw, &peek); err != nil {
-			return err
-		}
-
-		var cmd controls.Command
-
-		switch peek.Name {
-		case "drain":
-			cmd = &drain.Command{
-				GenericCommand: &controls.GenericCommand{},
-			}
-		case "start":
-			cmd = &start.Command{
-				GenericCommand: &controls.GenericCommand{},
-			}
-		default:
-			return fmt.Errorf("unknown command type: %s", peek.Name)
-		}
-
-		if err := json.Unmarshal(raw, cmd); err != nil {
+		cmd, err := registry.UnmarshalCommand(raw)
+		if err != nil {
 			return err
 		}
 

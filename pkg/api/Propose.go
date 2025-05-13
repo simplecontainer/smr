@@ -12,7 +12,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) Propose(c *gin.Context) {
+func (a *Api) Propose(c *gin.Context) {
 	jsonData, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -31,7 +31,7 @@ func (api *Api) Propose(c *gin.Context) {
 				return
 			}
 
-			_, ok = api.KindsRegistry[kind]
+			_, ok = a.KindsRegistry[kind]
 
 			if !ok {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
@@ -58,12 +58,12 @@ func (api *Api) Propose(c *gin.Context) {
 					if request.Definition.GetRuntime() == nil {
 						request.Definition.SetRuntime(&commonv1.Runtime{
 							Owner:    commonv1.Owner{},
-							Node:     api.Cluster.Node.NodeID,
-							NodeName: api.Cluster.Node.NodeName,
+							Node:     a.Cluster.Node.NodeID,
+							NodeName: a.Cluster.Node.NodeName,
 						})
 					} else {
-						request.Definition.Definition.GetRuntime().SetNode(api.Cluster.Node.NodeID)
-						request.Definition.Definition.GetRuntime().SetNodeName(api.Cluster.Node.NodeName)
+						request.Definition.Definition.GetRuntime().SetNode(a.Cluster.Node.NodeID)
+						request.Definition.Definition.GetRuntime().SetNodeName(a.Cluster.Node.NodeName)
 					}
 
 					var format f.Format
@@ -89,7 +89,7 @@ func (api *Api) Propose(c *gin.Context) {
 
 					format = f.New(static.SMR_PREFIX, static.CATEGORY_KIND, kind, request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
 
-					api.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, api.Manager.Config.KVStore.Node.NodeID)
+					a.Cluster.KVStore.Propose(format.ToStringWithUUID(), bytes, a.Manager.Config.KVStore.Node.NodeID)
 
 					c.JSON(http.StatusOK, common.Response(http.StatusOK, static.RESPONSE_SCHEDULED, nil, nil))
 				}

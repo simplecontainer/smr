@@ -33,7 +33,9 @@ type Node struct {
 	Ports Ports
 
 	smr     *engine.Engine
-	sudoSmr *engine.Engine
+	control *engine.Engine
+	flannel *engine.Engine
+	sudo    *engine.Engine
 
 	mutex sync.Mutex
 }
@@ -98,10 +100,12 @@ func New(t *testing.T, opts Options) (*Node, error) {
 	}
 
 	engineOptions := engine.DefaultEngineOptions()
-	engineOptions.Suffix = fmt.Sprintf("--home %s", flags.Home)
+	engineOptions.Suffix = fmt.Sprintf("--home %s --node %s", flags.Home, node.Name)
 
 	node.smr = engine.NewEngineWithOptions(fmt.Sprintf("%s", node.BinaryPath), engineOptions)
-	node.sudoSmr = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
+	node.flannel = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
+	node.control = engine.NewEngineWithOptions(fmt.Sprintf(node.BinaryPath), engineOptions)
+	node.sudo = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
 
 	return node, nil
 }
@@ -117,14 +121,11 @@ func (n *Node) Start(t *testing.T) error {
 		return fmt.Errorf("failed to create node: %w", err)
 	}
 
-	startCmd := fmt.Sprintf("node start --node %s -y", n.Name)
-	t.Logf("[NODE] Starting node container with: %s", startCmd)
-	if err := n.smr.RunString(t, startCmd); err != nil {
+	if err := n.smr.RunString(t, "node start -y"); err != nil {
 		return fmt.Errorf("failed to start node: %w", err)
 	}
 
-	networkCmd := fmt.Sprintf("node networks --node %s --network bridge", n.Name)
-	output, err := n.smr.RunAndCaptureString(t, networkCmd)
+	output, err := n.smr.RunAndCaptureString(t, "node networks --network bridge")
 	if err != nil {
 		return fmt.Errorf("failed to get node networks: %w", err)
 	}
@@ -135,17 +136,20 @@ func (n *Node) Start(t *testing.T) error {
 	}
 	t.Logf("[NODE] Node IP: %s", n.IP)
 
-	contextCmd := fmt.Sprintf("agent export --node %s --api %s:%d", n.Name, n.IP, n.Ports.Control)
-	output, err = n.sudoSmr.RunAndCaptureString(t, contextCmd)
+	contextCmd := fmt.Sprintf("agent export --api %s:%d", n.IP, n.Ports.Control)
+	output, err = n.sudo.RunAndCaptureString(t, contextCmd)
 	if err != nil {
 		return fmt.Errorf("failed to export agent context: %w", err)
 	}
 	n.Context = strings.TrimSpace(output)
 
-	agentCmd := fmt.Sprintf("agent start --node %s --raft https://%s:%d",
-		n.Name, n.IP, n.Ports.Overlay)
-	if err := n.sudoSmr.RunBackgroundString(t, agentCmd); err != nil {
+	agentCmd := fmt.Sprintf("agent start --raft https://%s:%d", n.IP, n.Ports.Overlay)
+	if err := n.flannel.RunBackgroundString(t, agentCmd); err != nil {
 		return fmt.Errorf("failed to start agent: %w", err)
+	}
+
+	if err := n.control.RunBackgroundString(t, "agent control"); err != nil {
+		return fmt.Errorf("failed to start agent control job: %w", err)
 	}
 
 	return n.WaitForEvent(t, events.EVENT_CLUSTER_READY, 60*time.Second)
@@ -153,8 +157,8 @@ func (n *Node) Start(t *testing.T) error {
 
 func (n *Node) buildCreateCommand() string {
 	baseCmd := fmt.Sprintf(
-		"node create --node %s --image %s --tag %s --port.control 0.0.0.0:%d --port.etcd %d --port.overlay 0.0.0.0:%d",
-		n.Name, n.Image, n.Tag, n.Ports.Control, n.Ports.Etcd, n.Ports.Overlay)
+		"node create --image %s --tag %s --port.control 0.0.0.0:%d --port.etcd %d --port.overlay 0.0.0.0:%d",
+		n.Image, n.Tag, n.Ports.Control, n.Ports.Etcd, n.Ports.Overlay)
 
 	if n.Join {
 		return fmt.Sprintf("%s --join --peer %s", baseCmd, n.Peer)
@@ -170,8 +174,8 @@ func (n *Node) WaitForEvent(t *testing.T, eventName string, timeout time.Duratio
 	errCh := make(chan error, 1)
 
 	go func() {
-		cmd := fmt.Sprintf("agent events --node %s --wait %s", n.Name, eventName)
-		if err := n.sudoSmr.RunString(t, cmd); err != nil {
+		cmd := fmt.Sprintf("agent events --wait %s", eventName)
+		if err := n.sudo.RunString(t, cmd); err != nil {
 			errCh <- fmt.Errorf("error waiting for event %s: %w", eventName, err)
 			return
 		}
@@ -195,8 +199,8 @@ func (n *Node) Import(t *testing.T, context string) error {
 	}
 
 	t.Logf("[NODE] Importing agent context for node %s", n.Name)
-	cmd := fmt.Sprintf("agent import --node %s -y %s", n.Name, context)
-	if err := n.sudoSmr.RunString(t, cmd); err != nil {
+	cmd := fmt.Sprintf("agent import -y %s", context)
+	if err := n.sudo.RunString(t, cmd); err != nil {
 		return fmt.Errorf("failed to import agent context: %w", err)
 	}
 	return nil
@@ -205,39 +209,45 @@ func (n *Node) Import(t *testing.T, context string) error {
 func (n *Node) Clean(t *testing.T) {
 	if !n.Cleaned {
 		n.mutex.Lock()
-		defer n.mutex.Unlock()
+		defer func() {
+			n.mutex.Unlock()
+
+			home, err := os.UserHomeDir()
+
+			if err != nil {
+				t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+				return
+			}
+
+			err = os.RemoveAll(fmt.Sprintf("%s/nodes/%s", home, n.Name))
+
+			if err != nil {
+				t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+			}
+
+		}()
 
 		n.Cleaned = true
 
 		t.Logf("[NODE] Cleaning up node %s", n.Name)
 
-		if err := n.sudoSmr.Stop(t); err != nil {
-			t.Logf("[NODE] Error stopping agent for node %s: %v", n.Name, err)
+		if err := n.flannel.Stop(t); err != nil {
+			t.Logf("[NODE] Error stopping flannel for node %s: %v", n.Name, err)
 		}
 
-		cmd := fmt.Sprintf("node clean --node %s", n.Name)
-		if err := n.smr.RunString(t, cmd); err != nil {
+		if err := n.control.Stop(t); err != nil {
+			t.Logf("[NODE] Error stopping control for node %s: %v", n.Name, err)
+		}
+
+		if err := n.smr.RunString(t, "node clean"); err != nil {
 			t.Logf("[NODE] Error cleaning node %s: %v", n.Name, err)
-		}
-
-		home, err := os.UserHomeDir()
-
-		if err != nil {
-			t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
-			return
-		}
-
-		err = os.RemoveAll(fmt.Sprintf("%s/nodes/%s", home, n.Name))
-
-		if err != nil {
-			t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
 		}
 	}
 }
 
 func (n *Node) RunCommand(t *testing.T, command string) (string, error) {
 	t.Logf("[NODE] Running command on node %s: %s", n.Name, command)
-	output, err := n.sudoSmr.RunAndCaptureString(t, command)
+	output, err := n.sudo.RunAndCaptureString(t, command)
 	if err != nil {
 		return "", fmt.Errorf("command execution failed: %w", err)
 	}
@@ -257,7 +267,7 @@ func (n *Node) GetSmr() *engine.Engine {
 }
 
 func (n *Node) GetSudoSmr() *engine.Engine {
-	return n.sudoSmr
+	return n.sudo
 }
 
 func (n *Node) SetNodePorts(control, etcd, overlay int) {
