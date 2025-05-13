@@ -221,7 +221,7 @@ jobs:
 
       - name: Test code
         run: |
-          go test -v -tags=${{ matrix.tags }} ${{ matrix.directory }}/... \
+          go test -v -tags=${{ matrix.tags }} ./${{ matrix.directory }}/... \
             -image $IMAGE -tag $TAG \
             -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr \
             -examples examples \
