@@ -1,11 +1,19 @@
-package upgrade
+package restart
 
 import (
-	"fmt"
+	"github.com/simplecontainer/smr/internal/helpers"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/contracts/icontrol"
+	"github.com/simplecontainer/smr/pkg/control"
 	"github.com/simplecontainer/smr/pkg/control/generic"
 	"github.com/simplecontainer/smr/pkg/control/registry"
+	"github.com/simplecontainer/smr/pkg/control/start"
+	"github.com/simplecontainer/smr/pkg/engine/agent"
+	"github.com/simplecontainer/smr/pkg/engine/node"
+	"github.com/simplecontainer/smr/pkg/startup"
+	"github.com/spf13/viper"
+	"time"
 )
 
 type Command struct {
@@ -20,18 +28,47 @@ func init() {
 	})
 }
 
-func NewUpgradeCommand(options map[string]string) *Command {
+func NewUpgradCommand(options map[string]string) *Command {
 	return &Command{
 		GenericCommand: generic.NewCommand("upgrade", options),
 	}
 }
 
 func (c *Command) Node(api iapi.Api, params map[string]string) error {
-	fmt.Println("Executing upgrade on node")
 	return nil
 }
 
 func (c *Command) Agent(api iapi.Api, params map[string]string) error {
-	fmt.Println("Executing upgrade on agent")
+	environment := configuration.NewEnvironment(configuration.WithHostConfig())
+	conf, err := startup.Load(environment)
+
+	if err != nil {
+		return err
+	}
+
+	node.Clean()
+	viper.Set("y", true)
+
+	conf.NodeImage = params["image"]
+	conf.NodeTag = params["tag"]
+
+	node.Start("/opt/smr/smr", "start")
+
+	parsed, err := helpers.EnforceHTTPS(viper.GetString("raft"))
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	b := control.NewCommandBatch()
+	b.AddCommand(start.NewStartCommand(map[string]string{
+		"raft":    parsed.String(),
+		"cidr":    conf.Flannel.CIDR,
+		"backend": conf.Flannel.Backend,
+	}))
+
+	time.Sleep(10 * time.Second)
+	agent.Start(b)
+
 	return nil
 }

@@ -183,7 +183,7 @@ func Agent() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					ctrl := factory.NewCommand("drain", map[string]string{"force": "true"})
+					ctrl := factory.NewCommand("drain", map[string]string{})
 
 					b := control.NewCommandBatch()
 					b.SetNodeID(conf.KVStore.Node.NodeID)
@@ -206,6 +206,7 @@ func Agent() {
 			Condition: func(iapi.Api) bool {
 				return true
 			},
+			Args: cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -215,8 +216,43 @@ func Agent() {
 						helpers.PrintAndExit(err, 1)
 					}
 
-					ctrl := factory.NewCommand("drain", map[string]string{"force": "true"})
-					restrt := factory.NewCommand("restart", map[string]string{"force": "true"})
+					ctrl := factory.NewCommand("drain", map[string]string{})
+					restrt := factory.NewCommand("restart", map[string]string{})
+
+					b := control.NewCommandBatch()
+					b.SetNodeID(conf.KVStore.Node.NodeID)
+					b.AddCommand(ctrl)
+					b.AddCommand(restrt)
+
+					agent.Restart(b)
+				},
+			},
+			DependsOn: []func(iapi.Api, []string){
+				func(api iapi.Api, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+				cmd.Flags().String("wait", "", "Node")
+			},
+		},
+		command.Engine{
+			Parent: "agent",
+			Name:   "upgrade",
+			Condition: func(iapi.Api) bool {
+				return true
+			},
+			Args: cobra.ExactArgs(2),
+			Functions: []func(iapi.Api, []string){
+				func(api iapi.Api, args []string) {
+					environment := configuration.NewEnvironment(configuration.WithHostConfig())
+					conf, err := startup.Load(environment)
+
+					if err != nil {
+						helpers.PrintAndExit(err, 1)
+					}
+
+					ctrl := factory.NewCommand("drain", map[string]string{})
+					restrt := factory.NewCommand("upgrade", map[string]string{"image": args[0], "tag": args[1]})
 
 					b := control.NewCommandBatch()
 					b.SetNodeID(conf.KVStore.Node.NodeID)

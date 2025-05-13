@@ -13,9 +13,10 @@ import (
 	"os/signal"
 	"syscall"
 	"testing"
+	"time"
 )
 
-func TestStandaloneNodeRestart(t *testing.T) {
+func TestStandaloneNodeUpgrade(t *testing.T) {
 	var nodes = make([]*node.Node, 0)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
@@ -70,6 +71,8 @@ func TestStandaloneNodeRestart(t *testing.T) {
 	go func() {
 		n.GetSmr().Run(t, engine.NewStringCmd("agent restart"))
 	}()
+
+	time.Sleep(60 * time.Second)
 
 	n.Clean(t)
 
