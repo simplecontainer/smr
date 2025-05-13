@@ -56,56 +56,60 @@ jobs:
         os: [ 'linux' ]
         component: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.component != 'all') && fromJSON(format('["{}"]', github.event.inputs.component)) || fromJSON('["smr", "smrctl"]') }}
     steps:
-        - uses: actions/checkout@v4
-          with:
-            token: ${{ secrets.BOT_USER_PAT }}
-            show-progress: false
-        - name: Setup Go ${{ matrix.go-version }}
-          uses: actions/setup-go@v5
-          with:
-            go-version: ${{ matrix.go-version }}
-        - name: Install UPX
-          uses: crazy-max/ghaction-upx@v3
-          with:
-            install-only: true
-        - name: Display Go version
-          run: go version
-        - name: Bump versions
-          run: |
-            VERSION_SMR=$(cat cmd/smr/version)
-            VERSION_SMRCTL=$(cat cmd/smrctl/version)
-            
-            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
-            
-            echo "$VERSION_SMR" > cmd/smr/version.tmp
-            echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
-            
-            mv cmd/smr/version.tmp cmd/smr/version
-            mv cmd/smrctl/version.tmp cmd/smrctl/version
-        - name: Build ${{ matrix.component }} for ${{ matrix.os }} on ${{ matrix.platform }}
-          if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
-          working-directory: "cmd/${{matrix.component}}"
-          run: |
-            VERSION=$(cat version)
-            CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o ${{matrix.component}}-${{ matrix.os }}-${{ matrix.platform }}
-            chmod +x ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
-  
-            if echo ${{ matrix.os }} | grep -qv darwin; then
-              upx -9 ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
-            fi
-        - name: Upload smr artifacts
-          if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
-          uses: actions/upload-artifact@v4
-          with:
-            name: ${{ matrix.component }}-${{ matrix.os}}-${{ matrix.platform }}
-            path: cmd/${{ matrix.component }}/${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Bump versions
+        run: |
+          VERSION_SMR=$(cat cmd/smr/version)
+          VERSION_SMRCTL=$(cat cmd/smrctl/version)
+          
+          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+          VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          
+          echo "$VERSION_SMR" > cmd/smr/version.tmp
+          echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
+          
+          mv cmd/smr/version.tmp cmd/smr/version
+          mv cmd/smrctl/version.tmp cmd/smrctl/version
+      - name: Build ${{ matrix.component }} for ${{ matrix.os }} on ${{ matrix.platform }}
+        if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
+        working-directory: "cmd/${{matrix.component}}"
+        run: |
+          VERSION=$(cat version)
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o ${{matrix.component}}-${{ matrix.os }}-${{ matrix.platform }}
+          chmod +x ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
+          
+          if echo ${{ matrix.os }} | grep -qv darwin; then
+            upx -9 ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
+          fi
+      - name: Upload smr artifacts
+        if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.component }}-${{ matrix.os}}-${{ matrix.platform }}
+          path: cmd/${{ matrix.component }}/${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
 
   set-matrix:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
       - name: Generate dynamic matrix
         id: generate
         run: |
@@ -288,11 +292,11 @@ jobs:
           else
             VERSION_SMR=$(cat cmd/smr/version)
             VERSION_SMRCTL=$(cat cmd/smrctl/version)
-            
+          
             VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
             VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
           fi
-                    
+          
           echo "$VERSION_SMR" > cmd/smr/version
           echo "$VERSION_SMRCTL" > cmd/smrctl/version
       - uses: stefanzweifel/git-auto-commit-action@v5
@@ -320,7 +324,7 @@ jobs:
             COMPONENTS="smr smrctl"
           fi  VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
             VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
-            
+          
             echo "$VERSION_SMR" > cmd/smr/version.tmp
             echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
           
