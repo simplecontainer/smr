@@ -143,14 +143,18 @@ func (n *Node) Start(t *testing.T) error {
 	}
 	n.Context = strings.TrimSpace(output)
 
-	agentCmd := fmt.Sprintf("agent start --raft https://%s:%d", n.IP, n.Ports.Overlay)
-	if err := n.flannel.RunBackgroundString(t, agentCmd); err != nil {
-		return fmt.Errorf("failed to start agent: %w", err)
-	}
+	go func() {
+		agentCmd := fmt.Sprintf("agent start --raft https://%s:%d", n.IP, n.Ports.Overlay)
+		if err := n.flannel.RunBackgroundString(t, agentCmd); err != nil {
+			t.Logf(fmt.Errorf("failed to start agent: %w", err).Error())
+			t.Fail()
+		}
 
-	if err := n.control.RunBackgroundString(t, "agent control"); err != nil {
-		return fmt.Errorf("failed to start agent control job: %w", err)
-	}
+		if err := n.control.RunBackgroundString(t, "agent control"); err != nil {
+			t.Logf(fmt.Errorf("failed to start agent: %w", err).Error())
+			t.Fail()
+		}
+	}()
 
 	return n.WaitForEvent(t, events.EVENT_CLUSTER_READY, 60*time.Second)
 }

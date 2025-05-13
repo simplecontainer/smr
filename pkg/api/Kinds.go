@@ -135,7 +135,7 @@ func (a *Api) GetKind(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 	} else {
 		if len(response.Kvs) == 0 {
-			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("key not found"), nil))
+			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("resource not found"), nil))
 		} else {
 			var bytes json.RawMessage
 			bytes, err = json.RawMessage(response.Kvs[0].Value).MarshalJSON()
@@ -267,7 +267,7 @@ func (a *Api) CompareKind(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 	} else {
 		if len(response.Kvs) == 0 {
-			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("key not found"), nil))
+			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("resource not found"), nil))
 		} else {
 			var data []byte
 			data, err = io.ReadAll(c.Request.Body)

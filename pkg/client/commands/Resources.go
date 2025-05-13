@@ -256,7 +256,7 @@ func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, ifor
 }
 
 func action(cli *client.Client, args []string, action string) {
-	format, err := f.Build(args[1], cli.Group)
+	format, err := f.Build(args[0], cli.Group)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

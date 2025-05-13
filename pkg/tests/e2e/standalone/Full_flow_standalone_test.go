@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package restart_test
+package standalone_test
 
 import (
 	"github.com/simplecontainer/smr/pkg/events/events"
@@ -28,7 +28,7 @@ func TestStandaloneNodeRestart(t *testing.T) {
 			n.Clean(t)
 		}
 
-		os.Exit(1)
+		os.Exit(0)
 	}()
 
 	opts := node.DefaultNodeOptions("test", 1)
@@ -74,14 +74,19 @@ func TestStandaloneNodeRestart(t *testing.T) {
 	}()
 
 	for {
+		time.Sleep(10 * time.Second)
 		cli.Smrctl.SetFailOnError(false)
-		err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1", status.READY))
+		err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_CLUSTER_REPLAYED))
 
 		if err == nil {
 			break
 		}
+	}
 
-		time.Sleep(15 * time.Second)
+	output, err := cli.Smrctl.RunAndCapture(t, engine.NewStringCmd("get containers/example/busybox"))
+
+	if output == "resource not found" || err != nil {
+		t.Fail()
 	}
 
 	n.GetSmr().Run(t, engine.NewStringCmd("agent drain"))

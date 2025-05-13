@@ -149,15 +149,16 @@ func (e *Engine) createCommand(fullCmd []string) *exec.Cmd {
 }
 
 // handleCommandError handles an error from a command execution
-func (e *Engine) handleCommandError(t *testing.T, err error) error {
+func (e *Engine) handleCommandError(t *testing.T, fullCmd []string, err error) error {
 	if err != nil {
-		errorMsg := fmt.Sprintf("[ENGINE] Command failed: %v\nStdout: %s\nStderr: %s",
-			err, e.stdout.String(), e.stderr.String())
+		errorMsg := fmt.Sprintf("[%s] Command failed: %v\nStdout: %s\nStderr: %s",
+			strings.Join(fullCmd, " "), err, e.stdout.String(), e.stderr.String())
 
 		if e.options.FailOnError {
+			fmt.Println("FAIL ON ERROR!!!!!!!!!!!!!!!!!!")
 			t.Fatalf("%s", errorMsg)
 		} else {
-			t.Errorf("%s", errorMsg)
+			t.Logf("%s", errorMsg)
 		}
 	}
 	return err
@@ -177,7 +178,7 @@ func (e *Engine) Run(t *testing.T, command ...CmdSource) error {
 	t.Logf("[ENGINE] Running command: %s %s %s", strings.Join(e.command, " "), cmdStr, e.options.Suffix)
 
 	err = cmd.Run()
-	return e.handleCommandError(t, err)
+	return e.handleCommandError(t, fullCmd, err)
 }
 
 func (e *Engine) RunAndCapture(t *testing.T, command ...CmdSource) (string, error) {
@@ -197,7 +198,7 @@ func (e *Engine) RunAndCapture(t *testing.T, command ...CmdSource) (string, erro
 	t.Logf("[ENGINE] Running command with capture: %s %s", strings.Join(e.command, " "), cmdStr)
 
 	err = cmd.Run()
-	if e.handleCommandError(t, err) != nil {
+	if e.handleCommandError(t, fullCmd, err) != nil {
 		return "", err
 	}
 
@@ -251,11 +252,8 @@ func (e *Engine) Stop(t *testing.T) error {
 		err := e.cmd.Process.Signal(os.Signal(syscall.SIGTERM))
 		if err != nil {
 			errorMsg := fmt.Sprintf("Error stopping process: %v", err)
-			if e.options.FailOnError {
-				t.Fatalf("%s", errorMsg)
-			} else {
-				t.Errorf("%s", errorMsg)
-			}
+			t.Errorf("%s", errorMsg)
+
 			return err
 		}
 		e.cmd = nil

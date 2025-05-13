@@ -209,6 +209,15 @@ func (a *Api) StartCluster(c *gin.Context) {
 					logger.Log.Error("failed to replay", zap.Error(err))
 				}
 			}
+
+			event, err := events.NewNodeEvent(events.EVENT_CLUSTER_REPLAYED, a.Cluster.Node)
+
+			if err != nil {
+				logger.Log.Error("failed to dispatch node event", zap.Error(err))
+			} else {
+				logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
+				events.Dispatch(event, a.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), a.Cluster.Node.NodeID)
+			}
 			break
 		}
 	}()

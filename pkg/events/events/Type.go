@@ -35,3 +35,4 @@ const EVENT_DRAIN_SUCCESS = "drain_success"
 
 const EVENT_CLUSTER_STARTED = "cluster_started"
 const EVENT_CLUSTER_READY = "cluster_ready"
+const EVENT_CLUSTER_REPLAYED = "cluster_replayed"
