@@ -81,7 +81,7 @@ func TestStandaloneNodeRestart(t *testing.T) {
 			break
 		}
 
-		time.Sleep(time.Second)
+		time.Sleep(15 * time.Second)
 	}
 
 	n.GetSmr().Run(t, engine.NewStringCmd("agent drain"))
