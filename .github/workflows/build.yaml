@@ -142,7 +142,7 @@ jobs:
 
 
   test-integration:
-    name: ${{ matrix.tests.name }}
+    name: ${{ fromJSON(needs.set-matrix.outputs.matrix).name }}
     runs-on: ubuntu-latest
     needs: [ test, build ]
     strategy:
