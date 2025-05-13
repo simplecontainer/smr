@@ -137,8 +137,8 @@ jobs:
             --argjson tests "$tests_json" \
             '{ "go-version": $go, "platform": $plat, "os": $os, "tests": $tests }')
           
-          echo $full_matrix | jq || echo "FAILED TO JQit"
-          echo "matrix=$full_matrix" >> "$GITHUB_OUTPUT"
+          echo $full_matrix | jq
+          echo "matrix=$(echo "$full_matrix" | jq -c)" >> "$GITHUB_OUTPUT"
 
 
   test-integration:
