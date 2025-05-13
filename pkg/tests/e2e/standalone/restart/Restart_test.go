@@ -1,7 +1,7 @@
 //go:build e2e
 // +build e2e
 
-package bootstrap_test
+package restart_test
 
 import (
 	"github.com/simplecontainer/smr/pkg/events/events"

@@ -116,7 +116,7 @@ jobs:
           platform='["amd64"]'
           os='["linux"]'
           
-          TESTS_DIRS=$(find tests/e2e -type f -name '*_test.go' -exec dirname {} \; | sort -u)
+          TESTS_DIRS=$(find pkg/tests/e2e -type f -name '*_test.go' -exec dirname {} \; | sort -u)
           
           tests_json="[]"
           for dir in $TESTS_DIRS; do
@@ -137,7 +137,7 @@ jobs:
             --argjson tests "$tests_json" \
             '{ "go-version": $go, "platform": $plat, "os": $os, "tests": $tests }')
           
-          echo $full_matrix | jq
+          echo $full_matrix | jq || echo "FAILED TO JQit"
           echo "matrix=$full_matrix" >> "$GITHUB_OUTPUT"
 
 
