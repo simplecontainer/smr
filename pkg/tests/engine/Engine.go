@@ -155,7 +155,6 @@ func (e *Engine) handleCommandError(t *testing.T, fullCmd []string, err error) e
 			strings.Join(fullCmd, " "), err, e.stdout.String(), e.stderr.String())
 
 		if e.options.FailOnError {
-			fmt.Println("FAIL ON ERROR!!!!!!!!!!!!!!!!!!")
 			t.Fatalf("%s", errorMsg)
 		} else {
 			t.Logf("%s", errorMsg)
@@ -252,8 +251,11 @@ func (e *Engine) Stop(t *testing.T) error {
 		err := e.cmd.Process.Signal(os.Signal(syscall.SIGTERM))
 		if err != nil {
 			errorMsg := fmt.Sprintf("Error stopping process: %v", err)
-			t.Errorf("%s", errorMsg)
-
+			if e.options.FailOnError {
+				t.Fatalf("%s", errorMsg)
+			} else {
+				t.Errorf("%s", errorMsg)
+			}
 			return err
 		}
 		e.cmd = nil

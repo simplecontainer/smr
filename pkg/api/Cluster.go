@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -30,7 +29,6 @@ import (
 	"net/url"
 	"sync"
 	"syscall"
-	"time"
 )
 
 var lock = &sync.RWMutex{}
@@ -241,15 +239,6 @@ func (a *Api) StartCluster(c *gin.Context) {
 	})))
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		err = batch.Put(ctx, a.Etcd)
-
-		if err != nil {
-			logger.Log.Error("failed to inform client about control status", zap.Error(err))
-		}
-
 		event, err := events.NewNodeEvent(events.EVENT_CLUSTER_STARTED, a.Cluster.Node)
 
 		if err != nil {

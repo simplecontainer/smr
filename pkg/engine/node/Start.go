@@ -1,7 +1,6 @@
 package node
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -70,30 +69,6 @@ func Start(entrypoint string, args string) {
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
-
-	go func() {
-		// Read initial logs of the node to inform about the startup errors
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		logs, err := container.Logs(ctx, true)
-
-		if err != nil {
-			helpers.PrintAndExit(err, 1)
-		}
-
-		defer logs.Close()
-
-		scanner := bufio.NewScanner(logs)
-		for scanner.Scan() {
-			line := scanner.Text()
-			fmt.Println(line)
-		}
-
-		if err := scanner.Err(); err != nil {
-			helpers.PrintAndExit(err, 1)
-		}
-	}()
 
 	fmt.Println("node started")
 }

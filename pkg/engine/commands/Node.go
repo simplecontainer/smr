@@ -109,6 +109,24 @@ func Node() {
 		},
 		command.Engine{
 			Parent: "node",
+			Name:   "logs",
+			Condition: func(iapi.Api) bool {
+				return true
+			},
+			Functions: []func(iapi.Api, []string){
+				func(api iapi.Api, args []string) {
+					node.Logs()
+				},
+			},
+			DependsOn: []func(iapi.Api, []string){
+				func(api iapi.Api, args []string) {},
+			},
+			Flags: func(cmd *cobra.Command) {
+				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+			},
+		},
+		command.Engine{
+			Parent: "node",
 			Name:   "networks",
 			Condition: func(iapi.Api) bool {
 				return true

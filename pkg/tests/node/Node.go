@@ -33,6 +33,7 @@ type Node struct {
 	Ports Ports
 
 	smr     *engine.Engine
+	logs    *engine.Engine
 	control *engine.Engine
 	flannel *engine.Engine
 	sudo    *engine.Engine
@@ -228,7 +229,6 @@ func (n *Node) Clean(t *testing.T) {
 			if err != nil {
 				t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
 			}
-
 		}()
 
 		n.Cleaned = true
@@ -242,6 +242,9 @@ func (n *Node) Clean(t *testing.T) {
 		if err := n.control.Stop(t); err != nil {
 			t.Logf("[NODE] Error stopping control for node %s: %v", n.Name, err)
 		}
+
+		output, _ := n.smr.RunAndCapture(t, engine.NewStringCmd("node logs"))
+		fmt.Println(output)
 
 		if err := n.smr.RunString(t, "node clean"); err != nil {
 			t.Logf("[NODE] Error cleaning node %s: %v", n.Name, err)

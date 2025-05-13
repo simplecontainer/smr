@@ -4,6 +4,7 @@
 package standalone_test
 
 import (
+	"context"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/tests/cli"
@@ -18,17 +19,22 @@ import (
 )
 
 func TestStandaloneNodeRestart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var nodes = make([]*node.Node, 0)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {
 		<-sigs
+		cancel()
+
 		for _, n := range nodes {
 			n.Clean(t)
 		}
 
-		os.Exit(0)
+		os.Exit(1)
 	}()
 
 	opts := node.DefaultNodeOptions("test", 1)
@@ -73,13 +79,20 @@ func TestStandaloneNodeRestart(t *testing.T) {
 		n.GetSmr().Run(t, engine.NewStringCmd("agent restart"))
 	}()
 
+loop:
 	for {
-		time.Sleep(10 * time.Second)
-		cli.Smrctl.SetFailOnError(false)
-		err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_CLUSTER_REPLAYED))
+		select {
+		case <-ctx.Done():
+			break loop
+		default:
+			cli.Smrctl.SetFailOnError(false)
+			err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_CLUSTER_REPLAYED))
 
-		if err == nil {
-			break
+			if err == nil {
+				break loop
+			}
+
+			time.Sleep(5 * time.Second)
 		}
 	}
 
