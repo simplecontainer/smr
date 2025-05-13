@@ -36,7 +36,7 @@ func (c *Client) Events(ctx context.Context, cancel context.CancelFunc, event st
 		err = cancelWSS()
 
 		if err != nil {
-			fmt.Println(err)
+			helpers.PrintAndExit(err, 1)
 		}
 	}()
 
@@ -83,7 +83,7 @@ func (c *Client) Tracker(ctx context.Context, cancel context.CancelFunc, waitFor
 		err := c.ReadEvents(ctx, conn, msgChannel)
 
 		if err != nil {
-			fmt.Println(err)
+			helpers.PrintAndExit(err, 1)
 		}
 
 		close(msgChannel)

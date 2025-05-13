@@ -4,6 +4,7 @@
 package bootstrap_test
 
 import (
+	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/tests/cli"
 	"github.com/simplecontainer/smr/pkg/tests/engine"
@@ -13,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func TestStandaloneNodeRestart(t *testing.T) {
@@ -70,6 +72,20 @@ func TestStandaloneNodeRestart(t *testing.T) {
 	go func() {
 		n.GetSmr().Run(t, engine.NewStringCmd("agent restart"))
 	}()
+
+	for {
+		cli.Smrctl.SetFailOnError(false)
+		err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1", status.READY))
+
+		if err == nil {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	n.GetSmr().Run(t, engine.NewStringCmd("agent drain"))
+	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_DRAIN_SUCCESS))
 
 	n.Clean(t)
 

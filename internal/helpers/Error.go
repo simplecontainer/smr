@@ -14,7 +14,7 @@ func LogIfError(err error) {
 
 func PrintAndExit(err error, code int) {
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	} else {
 		fmt.Println("nil err passed to print")
 	}

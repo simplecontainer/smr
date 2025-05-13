@@ -1,4 +1,4 @@
-package restart
+package upgrade
 
 import (
 	"github.com/simplecontainer/smr/internal/helpers"
@@ -28,7 +28,7 @@ func init() {
 	})
 }
 
-func NewUpgradCommand(options map[string]string) *Command {
+func NewUpgradeCommand(options map[string]string) *Command {
 	return &Command{
 		GenericCommand: generic.NewCommand("upgrade", options),
 	}

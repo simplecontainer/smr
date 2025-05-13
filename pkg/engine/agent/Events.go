@@ -29,6 +29,6 @@ func Events() {
 	err = cli.Events(ctx, cancel, viper.GetString("wait"), "", cli.Tracker)
 
 	if err != nil {
-		return
+		helpers.PrintAndExit(err, 1)
 	}
 }
