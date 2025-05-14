@@ -97,7 +97,7 @@ func (a *Api) StartCluster(c *gin.Context) {
 
 	user := &authentication.User{}
 
-	if a.Config.KVStore.Join && len(a.Config.KVStore.Cluster) > 1 {
+	if a.Config.KVStore.Join {
 		for _, peer := range peers.Nodes {
 			// Find any valid certificate for the domain or ip
 			clientObj := a.Manager.Http.FindValidFor(peer.API)
@@ -263,7 +263,10 @@ func (a *Api) SaveClusterConfiguration() {
 	a.Config.KVStore.API = a.Cluster.Node.API
 
 	// After later restarts/upgrades node needs to join the cluster
-	a.Config.KVStore.Join = true
+	// This behavior is only desired in the multi node cluster - standalone node ignore
+	if len(a.Cluster.Cluster.Nodes) > 1 {
+		a.Config.KVStore.Join = true
+	}
 
 	err := startup.Save(a.Config, a.Config.Environment.Container, 0)
 	if err != nil {

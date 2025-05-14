@@ -4,6 +4,7 @@
 package minimal
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/tests/cli"
@@ -13,7 +14,10 @@ import (
 	"testing"
 )
 
-func TestStandaloneNodeGitopsMinimalContainer(t *testing.T) {
+func TestStandaloneNodeMinimalContainer(t *testing.T) {
+	nm := node.NewNodeManager()
+	nm.SetupTestCleanup(t)
+
 	opts := node.DefaultNodeOptions("test", 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
@@ -21,16 +25,34 @@ func TestStandaloneNodeGitopsMinimalContainer(t *testing.T) {
 		opts.BinaryPath = flags.BinaryPath
 	}
 
-	n, err := node.New(t, opts)
-	if err != nil {
-		t.Fatalf("failed to create node: %v", err)
+	n, err := nm.CreateAndStartNodeWithOptions(
+		t,
+		func(t *testing.T, options interface{}) (node.NodeCleaner, error) {
+			nodeOpts, ok := options.(node.Options)
+			if !ok {
+				return nil, fmt.Errorf("invalid options type")
+			}
+			return node.New(t, nodeOpts)
+		},
+		opts,
+		func(nodeTmp node.NodeCleaner, t *testing.T) error {
+			n, ok := nodeTmp.(*node.Node)
+			if !ok {
+				return fmt.Errorf("invalid node type")
+			}
+			t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
+			return n.Start(t)
+		},
+	)
+
+	if nm.HandleError(t, err, "failed to create or start node") {
+		t.FailNow()
 	}
 
-	defer n.Clean(t)
-
-	t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
-	if err := n.Start(t); err != nil {
-		t.Fatalf("failed to start node: %v", err)
+	// Type assertion to get concrete node type
+	concreteNode, ok := n.(*node.Node)
+	if !ok {
+		t.Fatalf("invalid node type returned")
 	}
 
 	cliopts := cli.DefaultCliOptions()
@@ -39,22 +61,41 @@ func TestStandaloneNodeGitopsMinimalContainer(t *testing.T) {
 	}
 
 	cli, err := cli.New(t, cliopts)
-
-	if err != nil {
-		t.Fatalf("failed to create CLI: %v", err)
+	if nm.HandleError(t, err, "failed to create CLI") {
+		t.FailNow()
 	}
 
-	cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", n.Context))
+	// Run commands with automatic error handling and cleanup
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", concreteNode.Context))
+	}, "context import")
 
-	cli.Smrctl.Run(t, engine.NewStringCmd("apply %s/%s/tests/gitops-apps/definitions/gitops-plain.yaml", cli.Root, flags.ExamplesDir))
-	cli.Smrctl.Run(t, engine.NewStringCmd("sync  gitops/examples/plain-manual"))
-	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1", status.READY))
-	cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("apply %s/%s/tests/gitops-apps/definitions/gitops-plain.yaml",
+			cli.Root, flags.ExamplesDir))
+	}, "apply gitops-plain.yaml")
 
-	cli.Smrctl.Run(t, engine.NewStringCmd("remove simplecontainer.io/v1/kind/containers/example/busybox"))
-	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/busybox", events.EVENT_DELETED))
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("sync gitops/examples/plain-manual"))
+	}, "sync gitops example")
 
-	n.Clean(t)
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1",
+			status.READY))
+	}, "wait for container ready")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
+	}, "ps command")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("remove simplecontainer.io/v1/kind/containers/example/busybox"))
+	}, "remove container")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/busybox",
+			events.EVENT_DELETED))
+	}, "wait for container deleted")
 
 	t.Logf("test finished")
 }

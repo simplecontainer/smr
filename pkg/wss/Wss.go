@@ -51,17 +51,12 @@ func Request(ctx context.Context, client *http.Client, headers http.Header, url 
 		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 
 		closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed")
-		err := conn.WriteMessage(websocket.CloseMessage, closeMsg)
+		err = conn.WriteMessage(websocket.CloseMessage, closeMsg)
 
 		cancel()
 
 		time.Sleep(100 * time.Millisecond)
-
-		if err != nil {
-			return conn.Close()
-		}
-
-		return conn.Close()
+		return nil
 	}
 
 	go func() {

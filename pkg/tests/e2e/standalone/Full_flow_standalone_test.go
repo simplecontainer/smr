@@ -4,58 +4,56 @@
 package standalone_test
 
 import (
-	"context"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/tests/cli"
 	"github.com/simplecontainer/smr/pkg/tests/engine"
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
-	"os"
-	"os/signal"
-	"syscall"
 	"testing"
 	"time"
 )
 
-func TestStandaloneNodeRestart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var nodes = make([]*node.Node, 0)
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
-
-	go func() {
-		<-sigs
-		cancel()
-
-		for _, n := range nodes {
-			n.Clean(t)
-		}
-
-		os.Exit(1)
-	}()
+func TestStandaloneMode(t *testing.T) {
+	nm := node.NewNodeManager()
+	nm.SetupTestCleanup(t)
 
 	opts := node.DefaultNodeOptions("test", 1)
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
-
 	if flags.BinaryPath != "" {
 		opts.BinaryPath = flags.BinaryPath
 	}
 
-	n, err := node.New(t, opts)
-	if err != nil {
-		t.Fatalf("failed to create node: %v", err)
+	n, err := nm.CreateAndStartNodeWithOptions(
+		t,
+		func(t *testing.T, options interface{}) (node.NodeCleaner, error) {
+			nodeOpts, ok := options.(node.Options)
+			if !ok {
+				return nil, fmt.Errorf("invalid options type")
+			}
+			return node.New(t, nodeOpts)
+		},
+		opts,
+		func(nodeTmp node.NodeCleaner, t *testing.T) error {
+			n, ok := nodeTmp.(*node.Node)
+			if !ok {
+				return fmt.Errorf("invalid node type")
+			}
+			t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
+			return n.Start(t)
+		},
+	)
+
+	if nm.HandleError(t, err, "failed to create or start node") {
+		t.FailNow()
 	}
 
-	nodes = append(nodes, n)
-	defer n.Clean(t)
-
-	t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
-	if err := n.Start(t); err != nil {
-		t.Fatalf("failed to start node: %v", err)
+	// Type assertion to get concrete node type
+	concreteNode, ok := n.(*node.Node)
+	if !ok {
+		t.Fatalf("invalid node type returned")
 	}
 
 	cliopts := cli.DefaultCliOptions()
@@ -64,37 +62,49 @@ func TestStandaloneNodeRestart(t *testing.T) {
 	}
 
 	cli, err := cli.New(t, cliopts)
-
-	if err != nil {
-		t.Fatalf("failed to create CLI: %v", err)
+	if nm.HandleError(t, err, "failed to create CLI") {
+		t.FailNow()
 	}
 
-	cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", n.Context))
+	// Run commands with automatic error handling and cleanup
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", concreteNode.Context))
+	}, "context import")
 
-	cli.Smrctl.Run(t, engine.NewStringCmd("apply %s/%s/tests/minimal/definitions/Containers.yaml", cli.Root, flags.ExamplesDir))
-	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1", status.READY))
-	cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("apply %s/%s/tests/minimal/definitions/Containers.yaml",
+			cli.Root, flags.ExamplesDir))
+	}, "apply tests/minimal/definitions/Containers.yaml")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1",
+			status.READY))
+	}, "wait for container ready")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
+	}, "ps command")
 
 	go func() {
-		n.GetSmr().Run(t, engine.NewStringCmd("agent restart"))
+		nm.RunCommand(t, func() error {
+			return concreteNode.GetSmr().Run(t, engine.NewStringCmd("agent restart"))
+		}, "agent restart")
 	}()
 
-loop:
-	for {
-		select {
-		case <-ctx.Done():
-			break loop
-		default:
+	nm.RunCommand(t, func() error {
+		for {
 			cli.Smrctl.SetFailOnError(false)
 			err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_CLUSTER_REPLAYED))
 
 			if err == nil {
-				break loop
+				break
 			}
 
 			time.Sleep(5 * time.Second)
 		}
-	}
+
+		return nil
+	}, "events wait for replay")
 
 	output, err := cli.Smrctl.RunAndCapture(t, engine.NewStringCmd("get containers/example/busybox"))
 
@@ -102,10 +112,13 @@ loop:
 		t.Fail()
 	}
 
-	n.GetSmr().Run(t, engine.NewStringCmd("agent drain"))
-	cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_DRAIN_SUCCESS))
+	nm.RunCommand(t, func() error {
+		return concreteNode.GetSmr().Run(t, engine.NewStringCmd("agent drain"))
+	}, "remove container")
 
-	n.Clean(t)
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_DRAIN_SUCCESS))
+	}, "wait for container deleted")
 
 	t.Logf("test finished")
 }

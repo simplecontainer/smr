@@ -64,10 +64,6 @@ type Engine struct {
 	options EngineOptions
 }
 
-func NewEngine(binary string) *Engine {
-	return NewEngineWithOptions(binary, DefaultEngineOptions())
-}
-
 func NewEngineWithOptions(binary string, options EngineOptions) *Engine {
 	cmdParts, err := shellwords.Parse(binary)
 	if err != nil {
@@ -81,10 +77,6 @@ func NewEngineWithOptions(binary string, options EngineOptions) *Engine {
 		cmd:     nil,
 		options: options,
 	}
-}
-
-func NewEngineFromSlice(cmdParts []string) *Engine {
-	return NewEngineFromSliceWithOptions(cmdParts, DefaultEngineOptions())
 }
 
 func NewEngineFromSliceWithOptions(cmdParts []string, options EngineOptions) *Engine {
@@ -101,7 +93,6 @@ func (e *Engine) SetFailOnError(failOnError bool) {
 	e.options.FailOnError = failOnError
 }
 
-// prepareCommand is a helper function that prepares a command from the engine's base command and optional additional arguments
 func (e *Engine) prepareCommand(t *testing.T, command ...CmdSource) ([]string, string, error) {
 	var args []string
 	var err error
@@ -137,7 +128,6 @@ func (e *Engine) prepareCommand(t *testing.T, command ...CmdSource) ([]string, s
 	return fullCmd, cmdStr, nil
 }
 
-// createCommand creates an exec.Cmd from the prepared command parts
 func (e *Engine) createCommand(fullCmd []string) *exec.Cmd {
 	executable := fullCmd[0]
 	var execArgs []string
@@ -148,7 +138,6 @@ func (e *Engine) createCommand(fullCmd []string) *exec.Cmd {
 	return exec.Command(executable, execArgs...)
 }
 
-// handleCommandError handles an error from a command execution
 func (e *Engine) handleCommandError(t *testing.T, fullCmd []string, err error) error {
 	if err != nil {
 		errorMsg := fmt.Sprintf("[%s] Command failed: %v\nStdout: %s\nStderr: %s",
@@ -277,33 +266,6 @@ func (e *Engine) StopWithError() error {
 		return e.cmd.Process.Signal(os.Signal(syscall.SIGTERM))
 	}
 	return nil
-}
-
-func (e *Engine) RunString(t *testing.T, args string) error {
-	return e.Run(t, StringCmd(args))
-}
-
-func (e *Engine) RunAndCaptureString(t *testing.T, args string) (string, error) {
-	return e.RunAndCapture(t, StringCmd(args))
-}
-
-func (e *Engine) RunBackgroundString(t *testing.T, args string) error {
-	return e.RunBackground(t, StringCmd(args))
-}
-
-func (e *Engine) MustRunString(t *testing.T, args string) {
-	err := e.RunString(t, args)
-	if err != nil && !e.options.FailOnError {
-		t.Fatalf("[ENGINE] Command must succeed but failed: %v", err)
-	}
-}
-
-func (e *Engine) MustRunAndCaptureString(t *testing.T, args string) string {
-	output, err := e.RunAndCaptureString(t, args)
-	if err != nil && !e.options.FailOnError {
-		t.Fatalf("[ENGINE] Command must succeed but failed: %v", err)
-	}
-	return output
 }
 
 type testLogWriter struct {

@@ -118,15 +118,15 @@ func (n *Node) Start(t *testing.T) error {
 	t.Logf("[NODE] Starting node %s", n.Name)
 
 	createCmd := n.buildCreateCommand()
-	if err := n.smr.RunString(t, createCmd); err != nil {
+	if err := n.smr.Run(t, engine.NewStringCmd(createCmd)); err != nil {
 		return fmt.Errorf("failed to create node: %w", err)
 	}
 
-	if err := n.smr.RunString(t, "node start -y"); err != nil {
+	if err := n.smr.Run(t, engine.NewStringCmd("node start -y")); err != nil {
 		return fmt.Errorf("failed to start node: %w", err)
 	}
 
-	output, err := n.smr.RunAndCaptureString(t, "node networks --network bridge")
+	output, err := n.smr.RunAndCapture(t, engine.NewStringCmd("node networks --network bridge"))
 	if err != nil {
 		return fmt.Errorf("failed to get node networks: %w", err)
 	}
@@ -138,7 +138,7 @@ func (n *Node) Start(t *testing.T) error {
 	t.Logf("[NODE] Node IP: %s", n.IP)
 
 	contextCmd := fmt.Sprintf("agent export --api %s:%d", n.IP, n.Ports.Control)
-	output, err = n.sudo.RunAndCaptureString(t, contextCmd)
+	output, err = n.sudo.RunAndCapture(t, engine.NewStringCmd(contextCmd))
 	if err != nil {
 		return fmt.Errorf("failed to export agent context: %w", err)
 	}
@@ -146,12 +146,12 @@ func (n *Node) Start(t *testing.T) error {
 
 	go func() {
 		agentCmd := fmt.Sprintf("agent start --raft https://%s:%d", n.IP, n.Ports.Overlay)
-		if err := n.flannel.RunBackgroundString(t, agentCmd); err != nil {
+		if err := n.flannel.RunBackground(t, engine.NewStringCmd(agentCmd)); err != nil {
 			t.Logf(fmt.Errorf("failed to start agent: %w", err).Error())
 			t.Fail()
 		}
 
-		if err := n.control.RunBackgroundString(t, "agent control"); err != nil {
+		if err := n.control.RunBackground(t, engine.NewStringCmd("agent control")); err != nil {
 			t.Logf(fmt.Errorf("failed to start agent: %w", err).Error())
 			t.Fail()
 		}
@@ -180,7 +180,7 @@ func (n *Node) WaitForEvent(t *testing.T, eventName string, timeout time.Duratio
 
 	go func() {
 		cmd := fmt.Sprintf("agent events --wait %s", eventName)
-		if err := n.sudo.RunString(t, cmd); err != nil {
+		if err := n.sudo.Run(t, engine.NewStringCmd(cmd)); err != nil {
 			errCh <- fmt.Errorf("error waiting for event %s: %w", eventName, err)
 			return
 		}
@@ -205,13 +205,13 @@ func (n *Node) Import(t *testing.T, context string) error {
 
 	t.Logf("[NODE] Importing agent context for node %s", n.Name)
 	cmd := fmt.Sprintf("agent import -y %s", context)
-	if err := n.sudo.RunString(t, cmd); err != nil {
+	if err := n.sudo.Run(t, engine.NewStringCmd(cmd)); err != nil {
 		return fmt.Errorf("failed to import agent context: %w", err)
 	}
 	return nil
 }
 
-func (n *Node) Clean(t *testing.T) {
+func (n *Node) Clean(t *testing.T) error {
 	if !n.Cleaned {
 		n.mutex.Lock()
 		defer func() {
@@ -233,28 +233,33 @@ func (n *Node) Clean(t *testing.T) {
 
 		n.Cleaned = true
 
-		t.Logf("[NODE] Cleaning up node %s", n.Name)
-
 		if err := n.flannel.Stop(t); err != nil {
-			t.Logf("[NODE] Error stopping flannel for node %s: %v", n.Name, err)
+			return err
 		}
 
 		if err := n.control.Stop(t); err != nil {
-			t.Logf("[NODE] Error stopping control for node %s: %v", n.Name, err)
+			return err
 		}
 
-		output, _ := n.smr.RunAndCapture(t, engine.NewStringCmd("node logs"))
+		output, err := n.smr.RunAndCapture(t, engine.NewStringCmd("node logs"))
+
+		if err != nil {
+			return err
+		}
+
 		fmt.Println(output)
 
-		if err := n.smr.RunString(t, "node clean"); err != nil {
-			t.Logf("[NODE] Error cleaning node %s: %v", n.Name, err)
+		if err := n.smr.Run(t, engine.NewStringCmd("node clean")); err != nil {
+			return err
 		}
 	}
+
+	return nil
 }
 
 func (n *Node) RunCommand(t *testing.T, command string) (string, error) {
 	t.Logf("[NODE] Running command on node %s: %s", n.Name, command)
-	output, err := n.sudo.RunAndCaptureString(t, command)
+	output, err := n.sudo.RunAndCapture(t, engine.NewStringCmd(command))
 	if err != nil {
 		return "", fmt.Errorf("command execution failed: %w", err)
 	}
@@ -263,6 +268,10 @@ func (n *Node) RunCommand(t *testing.T, command string) (string, error) {
 
 func (n *Node) GetContext() string {
 	return n.Context
+}
+
+func (n *Node) GetPorts() Ports {
+	return n.Ports
 }
 
 func (n *Node) GetIP() string {

@@ -149,8 +149,7 @@ Manager(){
     echo "tail control logs at: tail -f ~/nodes/${NODE}/logs/control.log"
     echo "waiting for cluster to be ready..."
 
-    while [ ! -f "$HOME/nodes/${NODE}/logs/control.log" ]; do sleep 0.1; done
-    (tail -F "$HOME/nodes/${NODE}/logs/control.log" | grep --line-buffered "cluster started with success" | { read line; echo "cluster started with success"; killall tail; })
+    smr agent events --wait cluster_started --node "$NODE"
   else
     HelpStart
   fi
