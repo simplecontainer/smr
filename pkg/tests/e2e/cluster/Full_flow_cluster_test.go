@@ -37,6 +37,7 @@ func TestClusterMode(t *testing.T) {
 				return fmt.Errorf("invalid node type")
 			}
 			t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
+
 			return n.Start(t)
 		},
 	)
@@ -72,6 +73,9 @@ func TestClusterMode(t *testing.T) {
 				return fmt.Errorf("invalid node type")
 			}
 			t.Logf("starting standalone node with image %s:%s", flags.Image, flags.Tag)
+
+			err = n.Import(t, leader.GetContext())
+
 			return n.Start(t)
 		},
 	)
