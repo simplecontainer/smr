@@ -35,20 +35,20 @@ type KVStore struct {
 	proposeC    chan<- string // channel for proposing updates
 	DataC       chan KV.KV
 	InSyncC     chan bool
-	JoinInSync  bool
+	Replay      bool
 	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
 	Node        *node.Node
 	mu          sync.RWMutex
 	snapshotter *snap.Snapshotter
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, node *node.Node) (*KVStore, error) {
+func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, replay bool, node *node.Node) (*KVStore, error) {
 	s := &KVStore{
 		proposeC:    proposeC,
 		DataC:       dataC,
 		InSyncC:     insyncC,
 		snapshotter: snapshotter,
-		JoinInSync:  join,
+		Replay:      replay,
 		Node:        node,
 	}
 
@@ -106,8 +106,8 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node.NodeID)
 			}
 
-			if s.JoinInSync {
-				s.JoinInSync = false
+			if s.Replay {
+				s.Replay = false
 				s.InSyncC <- true
 			}
 

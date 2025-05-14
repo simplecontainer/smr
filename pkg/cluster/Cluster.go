@@ -12,6 +12,7 @@ func New() *Cluster {
 	return &Cluster{
 		Node:    node.NewNode(),
 		Cluster: nodes,
+		Replay:  false,
 	}
 }
 
@@ -50,5 +51,7 @@ func Restore(config *configuration.Configuration) (*Cluster, error) {
 			API:      config.KVStore.API,
 		},
 		Cluster: cluster,
+		Replay:  config.KVStore.Replay,
+		Join:    config.KVStore.Join,
 	}, nil
 }

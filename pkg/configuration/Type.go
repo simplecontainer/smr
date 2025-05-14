@@ -44,6 +44,7 @@ type KVStore struct {
 	API     string       `yaml:"api"`
 	Join    bool         `yaml:"join"`
 	Peer    string       `yaml:"peer"`
+	Replay  bool         `yaml:"replay"`
 }
 
 type Ports struct {

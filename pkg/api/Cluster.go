@@ -97,7 +97,7 @@ func (a *Api) StartCluster(c *gin.Context) {
 
 	user := &authentication.User{}
 
-	if a.Config.KVStore.Join {
+	if a.Cluster.Join || a.Config.KVStore.Join {
 		for _, peer := range peers.Nodes {
 			// Find any valid certificate for the domain or ip
 			clientObj := a.Manager.Http.FindValidFor(peer.API)
@@ -195,30 +195,32 @@ func (a *Api) StartCluster(c *gin.Context) {
 
 	a.SaveClusterConfiguration()
 
-	go func() {
-		select {
-		case <-a.Cluster.InSync:
-			// Replay after RAFT synced with cluster
+	if a.Cluster.Replay {
+		go func() {
+			select {
+			case <-a.Cluster.InSync:
+				// Replay after RAFT synced with cluster
 
-			for _, kind := range a.KindsRegistry {
-				_, err = kind.Replay(a.Manager.User)
+				for _, kind := range a.KindsRegistry {
+					_, err = kind.Replay(a.Manager.User)
+
+					if err != nil {
+						logger.Log.Error("failed to replay", zap.Error(err))
+					}
+				}
+
+				event, err := events.NewNodeEvent(events.EVENT_CLUSTER_REPLAYED, a.Cluster.Node)
 
 				if err != nil {
-					logger.Log.Error("failed to replay", zap.Error(err))
+					logger.Log.Error("failed to dispatch node event", zap.Error(err))
+				} else {
+					logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
+					events.Dispatch(event, a.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), a.Cluster.Node.NodeID)
 				}
+				break
 			}
-
-			event, err := events.NewNodeEvent(events.EVENT_CLUSTER_REPLAYED, a.Cluster.Node)
-
-			if err != nil {
-				logger.Log.Error("failed to dispatch node event", zap.Error(err))
-			} else {
-				logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
-				events.Dispatch(event, a.KindsRegistry[static.KIND_NODE].GetShared().(*shared.Shared), a.Cluster.Node.NodeID)
-			}
-			break
-		}
-	}()
+		}()
+	}
 
 	go events.Listen(a.Manager.KindsRegistry, a.Replication.EventsC, a.Replication.Informer, a.Wss)
 	go a.ListenNode()
@@ -261,6 +263,7 @@ func (a *Api) SaveClusterConfiguration() {
 	a.Config.KVStore.Node = a.Cluster.Node
 	a.Config.KVStore.URL = a.Cluster.Node.URL
 	a.Config.KVStore.API = a.Cluster.Node.API
+	a.Config.KVStore.Replay = true
 
 	// After later restarts/upgrades node needs to join the cluster
 	// This behavior is only desired in the multi node cluster - standalone node ignore

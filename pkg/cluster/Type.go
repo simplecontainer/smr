@@ -15,4 +15,6 @@ type Cluster struct {
 	RaftLeader    uint64
 	RaftNode      *raft.RaftNode
 	Started       bool
+	Replay        bool
+	Join          bool
 }

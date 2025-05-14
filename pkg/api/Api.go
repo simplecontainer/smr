@@ -95,7 +95,7 @@ func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster
 	a.Manager.Replication = a.Replication
 
 	var err error
-	a.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, a.Replication.DataC, insyncC, join, n)
+	a.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, a.Replication.DataC, insyncC, join, cluster.Replay, n)
 
 	if err != nil {
 		return err
