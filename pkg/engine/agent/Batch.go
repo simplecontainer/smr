@@ -10,7 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/startup"
 )
 
-func Restart(batch icontrol.Batch) {
+func Batch(batch icontrol.Batch) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
 	conf, err := startup.Load(environment)
 

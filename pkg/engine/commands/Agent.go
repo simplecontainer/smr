@@ -189,7 +189,7 @@ func Agent() {
 					b.SetNodeID(conf.KVStore.Node.NodeID)
 					b.AddCommand(ctrl)
 
-					agent.Drain(b)
+					agent.Batch(b)
 				},
 			},
 			DependsOn: []func(iapi.Api, []string){
@@ -224,7 +224,7 @@ func Agent() {
 					b.AddCommand(ctrl)
 					b.AddCommand(restrt)
 
-					agent.Restart(b)
+					agent.Batch(b)
 				},
 			},
 			DependsOn: []func(iapi.Api, []string){
@@ -259,7 +259,7 @@ func Agent() {
 					b.AddCommand(ctrl)
 					b.AddCommand(restrt)
 
-					agent.Restart(b)
+					agent.Batch(b)
 				},
 			},
 			DependsOn: []func(iapi.Api, []string){
