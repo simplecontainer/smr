@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/tests/engine"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,6 +15,7 @@ type NodeCleaner interface {
 	GetPorts() Ports
 	GetIP() string
 	GetContext() string
+	GetSmr() *engine.Engine
 	Import(t *testing.T, context string) error
 }
 

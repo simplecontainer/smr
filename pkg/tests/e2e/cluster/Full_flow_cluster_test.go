@@ -5,6 +5,9 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/events/events"
+	"github.com/simplecontainer/smr/pkg/tests/cli"
+	"github.com/simplecontainer/smr/pkg/tests/engine"
 	"github.com/simplecontainer/smr/pkg/tests/flags"
 	"github.com/simplecontainer/smr/pkg/tests/node"
 	"testing"
@@ -46,8 +49,6 @@ func TestClusterMode(t *testing.T) {
 		t.FailNow()
 	}
 
-	leader = leader.(*node.Node)
-
 	followerOpts := node.DefaultNodeOptions("follower", 2)
 	followerOpts.Image = flags.Image
 	followerOpts.Tag = flags.Tag
@@ -83,6 +84,40 @@ func TestClusterMode(t *testing.T) {
 	if nm.HandleError(t, err, "failed to create or start node") {
 		t.FailNow()
 	}
+
+	cliopts := cli.DefaultCliOptions()
+	if flags.BinaryPathCli != "" {
+		cliopts.BinaryPath = flags.BinaryPathCli
+	}
+
+	cli, err := cli.New(t, cliopts)
+	if nm.HandleError(t, err, "failed to create CLI") {
+		t.FailNow()
+	}
+
+	nm.RunCommand(t, func() error {
+		return follower.GetSmr().Run(t, engine.NewStringCmd("agent drain"))
+	}, "remove container")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", follower.GetContext()))
+	}, "context import")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_DRAIN_SUCCESS))
+	}, "wait for container deleted")
+
+	nm.RunCommand(t, func() error {
+		return leader.GetSmr().Run(t, engine.NewStringCmd("agent drain"))
+	}, "remove container")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("context import %s -y", leader.GetContext()))
+	}, "context import")
+
+	nm.RunCommand(t, func() error {
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_DRAIN_SUCCESS))
+	}, "wait for container deleted")
 
 	t.Logf("test finished")
 }
