@@ -84,8 +84,5 @@ func TestClusterMode(t *testing.T) {
 		t.FailNow()
 	}
 
-	fmt.Println(leader.GetIP())
-	fmt.Println(follower.GetIP())
-
 	t.Logf("test finished")
 }
