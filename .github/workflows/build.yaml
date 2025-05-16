@@ -2,6 +2,8 @@ name: Simplecontainer CI/CD
 
 on:
   push:
+    branches-ignore:
+      - main
     paths-ignore:
       - 'README.md'
       - 'scripts/**'
