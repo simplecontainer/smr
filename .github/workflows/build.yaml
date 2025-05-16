@@ -243,7 +243,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ test-integration ]
     outputs:
-      tag: ${{ steps.generate_tag.outputs.tag }}
+      tag_smr: ${{ steps.generate_tag.outputs.tag_smr }}
+      tag_ctl: ${{ steps.generate_tag.outputs.tag_ctl }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -387,7 +388,7 @@ jobs:
       - name: Prepare binaries
         run: |
           chmod +x ./smr-linux-amd64/smr
-          chmod +x ./smr-linux-arm64/smr
+          chmod +x ./smr-linux-arm64/smrctl
 
       - name: Login to Docker Registry
         uses: docker/login-action@v3
@@ -404,7 +405,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-            type=raw,value=${{ needs.prepare-release.outputs.tag }}
+            type=raw,value=${{ needs.prepare-release.outputs.tag_smr }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -412,5 +413,5 @@ jobs:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.docker_meta.outputs.tags }}
+          tags: ${{ steps.docker_meta.outputs.tag_smr }}
           push: true
