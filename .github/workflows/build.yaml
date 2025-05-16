@@ -254,28 +254,31 @@ jobs:
           COMPONENT="${{ github.event.inputs.component || 'all' }}"
           VERSION=""
           
-          if [[ "$COMPONENT" == "smr" || "$COMPONENT" == "all" ]]; then
-            VERSION=$(cat cmd/smr/version)
+          if [[ "$COMPONENT" == "all" ]]; then
+            VERSION_SMR=$(cat cmd/smr/version)
+            VERSION_CTL=$(cat cmd/smrctl/version)
           elif [[ "$COMPONENT" == "smrctl" ]]; then
-            VERSION=$(cat cmd/smrctl/version)
+            VERSION_CTL=$(cat cmd/smrctl/version)
+          elif [[ "$COMPONENT" == "smr" ]]; then
+            VERSION_SMR=$(cat cmd/smr/version)
           fi
           
-          # Use current date if no version found
-          if [[ -z "$VERSION" ]]; then
-            VERSION=$(date +"%Y.%m.%d-%H%M")
-          fi
-          
+          TAG_CTL=""
+          TAG_SMR=""
+                    
           # Form tag name
           if [[ "$COMPONENT" != "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG="${COMPONENT}-v${VERSION}"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG="v${VERSION}"
-          else
-            TAG="${{ github.ref_name }}"
+            TAG_CTL="${COMPONENT}-v${VERSION}"
+            TAG_SMR="${COMPONENT}-v${VERSION}"
+          elif [[ "$COMPONENT" != "smr" ]]; then
+            TAG_SMR="${COMPONENT}-${VERSION}"
+          elif [[ "$COMPONENT" != "smrctl" ]]; then
+            TAG_CTL="${COMPONENT}-${VERSION}"
           fi
           
-          echo "Generated tag: $TAG"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Generated tags: $TAG_CTL $TAG_SMR"
+          echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
+          echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
 
   release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'

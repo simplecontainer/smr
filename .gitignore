@@ -1,7 +1,6 @@
 *
 !.gitattributes
 !.gitignore
-!readme.md
 !.gitkeep
 !*.go
 !*.mod
