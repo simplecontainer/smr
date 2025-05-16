@@ -266,17 +266,20 @@ jobs:
             VERSION_SMR=$(cat cmd/smr/version)
           fi
           
+          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+          VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "${{ github.event.head_commit.message }}")
+          
           TAG_CTL=""
           TAG_SMR=""
                     
           # Form tag name
-          if [[ "$COMPONENT" != "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG_CTL="${COMPONENT}-v${VERSION}"
-            TAG_SMR="${COMPONENT}-v${VERSION}"
+          if [[ "$COMPONENT" == "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG_CTL="smrctl-${VERSION_CTL}"
+            TAG_SMR="smr-${VERSION_SMR}"
           elif [[ "$COMPONENT" != "smr" ]]; then
-            TAG_SMR="${COMPONENT}-${VERSION}"
+            TAG_SMR="${COMPONENT}-${VERSION_SMR}"
           elif [[ "$COMPONENT" != "smrctl" ]]; then
-            TAG_CTL="${COMPONENT}-${VERSION}"
+            TAG_CTL="${COMPONENT}-${VERSION_CTL}"
           fi
           
           echo "Generated tags: $TAG_CTL $TAG_SMR"
@@ -388,7 +391,6 @@ jobs:
       - name: Prepare binaries
         run: |
           chmod +x ./smr-linux-amd64/smr
-          chmod +x ./smr-linux-arm64/smrctl
 
       - name: Login to Docker Registry
         uses: docker/login-action@v3
