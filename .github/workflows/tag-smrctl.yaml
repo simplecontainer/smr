@@ -1,0 +1,65 @@
+name: Release smrctl
+
+on:
+  push:
+    tags:
+      - 'smrctl-v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        platform: [ 'amd64', 'arm64' ]
+        os: [ 'linux' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Display Go version
+        run: go version
+      - name: Build smrctl
+        working-directory: "cmd/smrctl"
+        run: |
+          VERSION=$(cat version)
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smrctl-${{ matrix.os }}-${{ matrix.platform }}
+          chmod +x smrctl-${{ matrix.os }}-${{ matrix.platform }}
+
+      - name: Upload smr artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: smrctl-${{ matrix.os}}-${{ matrix.platform }}
+          path: cmd/smrctl/smrctl-${{ matrix.os }}-${{ matrix.platform }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [ build ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      - name: Create release assets
+        run: |
+          mkdir -p release
+          
+          VERSION=$(cat cmd/smrctl/version)
+          
+          cp artifacts/* release/
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "release/*"
+          body: 'Automatically created - fill in accordingly'
+          allowUpdates: true
+          draft: false
+          tag: ${{ github.ref_name }}

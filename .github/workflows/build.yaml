@@ -236,12 +236,14 @@ jobs:
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
+
   prepare-release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [ test-integration ]
     outputs:
-      docker_tag: ${{ steps.generate_tag.outputs.docker_tag }}
+      tag_smr: ${{ steps.generate_tag.outputs.tag_smr }}
+      tag_ctl: ${{ steps.generate_tag.outputs.tag_ctl }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -256,29 +258,51 @@ jobs:
           
           if [[ "$COMPONENT" == "all" ]]; then
             VERSION_SMR=$(cat cmd/smr/version)
+            VERSION_CTL=$(cat cmd/smrctl/version)
+          elif [[ "$COMPONENT" == "smrctl" ]]; then
+            VERSION_CTL=$(cat cmd/smrctl/version)
           elif [[ "$COMPONENT" == "smr" ]]; then
             VERSION_SMR=$(cat cmd/smr/version)
           fi
           
           VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+          VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "${{ github.event.head_commit.message }}")
           
+          TAG_CTL=""
           TAG_SMR=""
           
+          # Form tag name
           if [[ "$COMPONENT" == "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG_CTL="smrctl-${VERSION_CTL}"
             TAG_SMR="smr-${VERSION_SMR}"
           elif [[ "$COMPONENT" != "smr" ]]; then
             TAG_SMR="${COMPONENT}-${VERSION_SMR}"
+          elif [[ "$COMPONENT" != "smrctl" ]]; then
+            TAG_CTL="${COMPONENT}-${VERSION_CTL}"
           fi
           
-          echo "Generated tags: $TAG_SMR"
-          echo "docker_tag=$TAG_SMR" >> $GITHUB_OUTPUT
+          echo "Generated tags: $TAG_CTL $TAG_SMR"
+          echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
+          echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
+          
+          if [[ $TAG_SMR != "" && $TAG_CTL != "" ]]; then
+            MATRIX='[{tags: ["$TAG_SMR","$TAG_CTL"]}]'
+          elif [[ $TAG_SMR != "" ]]; then
+            MATRIX='[{tags: ["$TAG_SMR"]}]'
+          elif [[ $TAG_CTL != "" ]]; then
+            MATRIX='[{tags: ["$TAG_CTL"]}]'
+          fi
+          
+          echo "$matrix" | jq
+          echo "matrix=$(echo "$matrix" | jq -c)" >> "$GITHUB_OUTPUT"
+
   release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [ test-integration ]
     strategy:
       matrix:
-        component: ['smr', 'smrctl']
+        include: ${{ fromJSON(needs.prepare-release.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -286,7 +310,10 @@ jobs:
           show-progress: false
       - name: Bump versions and commit
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" == "all" || "${{ github.event.inputs.component }}" == "${ matrix.component }" ]]; then
+          TMP=$(echo "${{ matrix.component }}" | cut -d'-' -f1)
+          COMPONENT=$TMP[0]
+          
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" == "all" || "${{ github.event.inputs.component }}" == "$COMPONENT" ]]; then
             VERSION=$(cat cmd/${{ matrix.component }}/version)
             VERSION=$(.github/scripts/version.sh "$VERSION" "${{ github.event.head_commit.message }}")
           
@@ -295,89 +322,14 @@ jobs:
           fi
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Automated version tracking for ${{ matrix.component }} [no ci]
+          commit_message: Automated version tracking for ${{ matrix.tags }} [no ci]
           branch: main
           file_pattern: 'cmd/${{ matrix.component }}/version'
           repository: .
           commit_user_name: bot
           commit_user_email: bot@qdnqn.org
           commit_author: Author <actions@github.com>
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-      - name: Create release assets
+      - name: Create tag
         run: |
-          mkdir -p release
-                  
-          VERSION=$(cat cmd/${{ matrix.component }}/version)
-          
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" == "all"  || "${{ github.event.inputs.component }}" == "${ matrix.component }" ]]; then
-             if [[ -f "artifacts/${{ matrix.component }}-linux-amd64/${{ matrix.component }}" ]]; then
-              cp "artifacts/${{ matrix.component }}-linux-amd64/${{ matrix.component }}" "release/${{ matrix.component }}-linux-amd64"
-            fi
-          fi
-      - uses: ncipollo/release-action@v1
-        with:
-          artifacts: "release/*"
-          body: |
-            ${{ github.event_name == 'workflow_dispatch' && format('Manual release of {0}', github.event.inputs.component) || 'Automatically created - fill in accordingly' }}
-          allowUpdates: trueactions
-          draft: false
-          tag: ${{ matrix.component }}
-
-  release-docker:
-    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.component == 'smr')
-    runs-on: ubuntu-latest
-    needs: [ test-integration ]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.BOT_USER_PAT }}
-          show-progress: false
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Download smr amd64
-        uses: actions/download-artifact@v4
-        with:
-          name: smr-linux-amd64
-          path: ./smr-linux-amd64/smr
-
-      - name: Download smr arm64
-        uses: actions/download-artifact@v4
-        with:
-          name: smr-linux-arm64
-          path: ./smr-linux-arm64/smr
-
-      - name: Prepare binaries
-        run: |
-          chmod +x ./smr-linux-amd64/smr
-          chmod +x ./smr-linux-arm64/smr
-
-      - name: Login to Docker Registry
-        uses: docker/login-action@v3
-        with:
-          registry: "quay.io"
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: Prepare Docker tags
-        id: docker_meta
-        uses: docker/metadata-action@v5
-        with:
-          images: 'quay.io/simplecontainer/smr'
-          tags: |
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-            type=raw,value=${{ needs.prepare-release.outputs.docker_tag }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.docker_meta.outputs.docker_tag }}
-          push: true
+          git tag ${{ matrix.tags }}
+          git push origin
