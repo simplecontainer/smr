@@ -7,7 +7,11 @@ Introduction
 > The project is alpha.
 
 ## Quickstart
+### Prerequisite
+To turn docker daemon into simplecontainer node:
+- Docker must be already installed (https://docs.docker.com/engine/install/)
 
+### Running node with default config
 To run container node with default config:
 
 ```bash
