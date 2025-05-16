@@ -284,15 +284,15 @@ jobs:
           echo "Generated tags: $TAG_CTL $TAG_SMR"
           echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
           echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
-          
-          if [[ $TAG_SMR != "" && $TAG_CTL != "" ]]; then
-            MATRIX='[{tags: ["$TAG_SMR","$TAG_CTL"]}]'
-          elif [[ $TAG_SMR != "" ]]; then
-            MATRIX='[{tags: ["$TAG_SMR"]}]'
-          elif [[ $TAG_CTL != "" ]]; then
-            MATRIX='[{tags: ["$TAG_CTL"]}]'
+
+          if [[ -n "$TAG_SMR" && -n "$TAG_CTL" ]]; then
+            MATRIX=$(printf '[{"tags": ["%s", "%s"]}]' "$TAG_SMR" "$TAG_CTL")
+          elif [[ -n "$TAG_SMR" ]]; then
+            MATRIX=$(printf '[{"tags": ["%s"]}]' "$TAG_SMR")
+          elif [[ -n "$TAG_CTL" ]]; then
+            MATRIX=$(printf '[{"tags": ["%s"]}]' "$TAG_CTL")
           fi
-          
+
           echo "$MATRIX" | jq
           echo "matrix=$(echo "$MATRIX" | jq -c)" >> "$GITHUB_OUTPUT"
 
