@@ -1,4 +1,4 @@
-name: Simplecontainer client CI/CD
+name: Simplecontainer CI/CD
 
 on:
   push:
@@ -162,7 +162,7 @@ jobs:
     steps: 
       - name: Uninstall pre-installed Docker
         run: |
-          for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          for pkg in docker docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove "$pkg"*; done
 
       - name: Install Docker 28.0.3
         run: |
