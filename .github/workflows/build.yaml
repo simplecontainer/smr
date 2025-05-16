@@ -162,7 +162,7 @@ jobs:
     steps: 
       - name: Uninstall pre-installed Docker
         run: |
-          sudo apt-get remove -y docker docker-engine docker.io containerd runc
+          for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
 
       - name: Install Docker 28.0.3
         run: |

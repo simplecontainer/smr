@@ -334,7 +334,7 @@ This example demonstrates:
 - readiness check
 - dependency
 
-After running commands above, check the `smr ps`:
+After running commands above, check the `smrctl ps`:
 ```bash
 smrctl ps
 NODE         RESOURCE                              PORTS                      DEPS      ENGINE STATE      SMR STATE              
@@ -357,7 +357,6 @@ Important links
 - https://blog.simplecontainer.io
 - https://quay.io/repository/simplecontainer/smr
 - https://github.com/simplecontainer/smr
-- https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
 
 # License
