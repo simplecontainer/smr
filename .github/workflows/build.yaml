@@ -236,15 +236,12 @@ jobs:
         env:
           IMAGE: ${{ steps.image_info.outputs.image_name }}
           TAG: ${{ steps.image_info.outputs.image_tag }}
-
-
   prepare-release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [ test-integration ]
     outputs:
-      tag_smr: ${{ steps.generate_tag.outputs.tag_smr }}
-      tag_ctl: ${{ steps.generate_tag.outputs.tag_ctl }}
+      docker_tag: ${{ steps.generate_tag.outputs.docker_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -259,37 +256,29 @@ jobs:
           
           if [[ "$COMPONENT" == "all" ]]; then
             VERSION_SMR=$(cat cmd/smr/version)
-            VERSION_CTL=$(cat cmd/smrctl/version)
-          elif [[ "$COMPONENT" == "smrctl" ]]; then
-            VERSION_CTL=$(cat cmd/smrctl/version)
           elif [[ "$COMPONENT" == "smr" ]]; then
             VERSION_SMR=$(cat cmd/smr/version)
           fi
           
           VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-          VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "${{ github.event.head_commit.message }}")
           
-          TAG_CTL=""
           TAG_SMR=""
-                    
-          # Form tag name
+          
           if [[ "$COMPONENT" == "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG_CTL="smrctl-${VERSION_CTL}"
             TAG_SMR="smr-${VERSION_SMR}"
           elif [[ "$COMPONENT" != "smr" ]]; then
             TAG_SMR="${COMPONENT}-${VERSION_SMR}"
-          elif [[ "$COMPONENT" != "smrctl" ]]; then
-            TAG_CTL="${COMPONENT}-${VERSION_CTL}"
           fi
           
-          echo "Generated tags: $TAG_CTL $TAG_SMR"
-          echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
-          echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
-
+          echo "Generated tags: $TAG_SMR"
+          echo "docker_tag=$TAG_SMR" >> $GITHUB_OUTPUT
   release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    needs: [ test-integration, prepare-release ]
+    needs: [ test-integration ]
+    strategy:
+      matrix:
+        component: ['smr', 'smrctl']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -297,29 +286,19 @@ jobs:
           show-progress: false
       - name: Bump versions and commit
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "smr" ]]; then
-            VERSION_SMR=$(cat cmd/smr/version)
-            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "smrctl" ]]; then
-            VERSION_SMRCTL=$(cat cmd/smrctl/version)
-            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
-          else
-            VERSION_SMR=$(cat cmd/smr/version)
-            VERSION_SMRCTL=$(cat cmd/smrctl/version)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" == "all" || "${{ github.event.inputs.component }}" == "${ matrix.component }" ]]; then
+            VERSION=$(cat cmd/${{ matrix.component }}/version)
+            VERSION=$(.github/scripts/version.sh "$VERSION" "${{ github.event.head_commit.message }}")
           
-            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+            echo "$VERSION" > cmd/smr/version
+            echo "VERSION=$(cat cmd/${{ matrix.component }}/version)" >> $GITHUB_OUTPUT
           fi
-          
-          echo "$VERSION_SMR" > cmd/smr/version
-          echo "$VERSION_SMRCTL" > cmd/smrctl/version
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Automated version tracking [no ci]
+          commit_message: Automated version tracking for ${{ matrix.component }} [no ci]
           branch: main
-          file_pattern: 'cmd/**/version'
+          file_pattern: 'cmd/${{ matrix.component }}/version'
           repository: .
-          tagging_message: '${{ github.ref_name }}'
           commit_user_name: bot
           commit_user_email: bot@qdnqn.org
           commit_author: Author <actions@github.com>
@@ -330,43 +309,27 @@ jobs:
       - name: Create release assets
         run: |
           mkdir -p release
+                  
+          VERSION=$(cat cmd/${{ matrix.component }}/version)
           
-          # Determine which components to include based on workflow type
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "all" ]]; then
-            COMPONENTS="${{ github.event.inputs.component }}"
-          else
-            COMPONENTS="smr smrctl"
-          fi  
-          
-          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-          VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
-          
-          echo "$VERSION_SMR" > cmd/smr/version.tmp
-          echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
-          
-          # Copy artifacts based on selected components
-          for component in $COMPONENTS; do
-            if [[ -f "artifacts/${component}-linux-amd64/${component}" ]]; then
-              cp "artifacts/${component}-linux-amd64/${component}" "release/${component}-linux-amd64"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" == "all"  || "${{ github.event.inputs.component }}" == "${ matrix.component }" ]]; then
+             if [[ -f "artifacts/${{ matrix.component }}-linux-amd64/${{ matrix.component }}" ]]; then
+              cp "artifacts/${{ matrix.component }}-linux-amd64/${{ matrix.component }}" "release/${{ matrix.component }}-linux-amd64"
             fi
-          
-            if [[ -f "artifacts/${component}-linux-arm64/${component}" ]]; then
-              cp "artifacts/${component}-linux-arm64/${component}" "release/${component}-linux-arm64"
-            fi
-          done
+          fi
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "release/*"
           body: |
             ${{ github.event_name == 'workflow_dispatch' && format('Manual release of {0}', github.event.inputs.component) || 'Automatically created - fill in accordingly' }}
-          allowUpdates: true
+          allowUpdates: trueactions
           draft: false
-          tag: ${{ needs.prepare-release.outputs.tag }}
+          tag: ${{ matrix.component }}
 
   release-docker:
-    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.component != 'smrctl')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.component == 'smr')
     runs-on: ubuntu-latest
-    needs: [ test-integration, prepare-release ]
+    needs: [ test-integration ]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -391,6 +354,7 @@ jobs:
       - name: Prepare binaries
         run: |
           chmod +x ./smr-linux-amd64/smr
+          chmod +x ./smr-linux-arm64/smr
 
       - name: Login to Docker Registry
         uses: docker/login-action@v3
@@ -407,7 +371,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-            type=raw,value=${{ needs.prepare-release.outputs.tag_smr }}
+            type=raw,value=${{ needs.prepare-release.outputs.docker_tag }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -415,5 +379,5 @@ jobs:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.docker_meta.outputs.tag_smr }}
+          tags: ${{ steps.docker_meta.outputs.docker_tag }}
           push: true
