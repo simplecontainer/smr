@@ -1,6 +1,8 @@
 package iformat
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type Format interface {
 	GetPrefix() string
@@ -10,11 +12,17 @@ type Format interface {
 	GetKind() string
 	GetGroup() string
 	GetName() string
-	Inverse() Format
+	Shift() Format
 	GetUUID() uuid.UUID
 	ToString() string
+	ToStringWithOpts(opts *ToStringOpts) string
 	ToStringWithUUID() string
 	Compliant() bool
 	IsValid() bool
 	ToBytes() []byte
+}
+
+type ToStringOpts struct {
+	IncludeUUID     bool
+	ExcludeCategory bool
 }

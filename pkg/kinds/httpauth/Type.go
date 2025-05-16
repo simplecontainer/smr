@@ -1,7 +1,8 @@
 package httpauth
 
 import (
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
+	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/static"
 )
@@ -13,11 +14,13 @@ type Httpauth struct {
 
 type Shared struct {
 	Manager *manager.Manager
-	Client  *client.Http
+	Client  *clients.Http
 }
 
-func (shared *Shared) GetManager() *manager.Manager {
-	return shared.Manager
+func (shared *Shared) GetCluster() *cluster.Cluster {
+	return shared.Manager.Cluster
 }
+func (shared *Shared) Drain()          {}
+func (shared *Shared) IsDrained() bool { return true }
 
 const KIND string = static.KIND_HTTPAUTH

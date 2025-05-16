@@ -1,6 +1,9 @@
 package reconcile
 
 import (
+	"reflect"
+	"time"
+
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
@@ -9,234 +12,256 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/static"
-	"reflect"
-	"time"
 )
 
-func Reconcile(shared *shared.Shared, containerWatcher *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
-	containerObj := containerWatcher.Container
+type StateHandlerFunc func(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool)
 
-	switch containerObj.GetStatus().State.State {
-	case status.TRANSFERING:
-		if existing != nil && existing.IsGhost() {
-			containerWatcher.Logger.Info("container is not dead on another node - wait")
-			return status.TRANSFERING, false
-		} else {
-			containerWatcher.Logger.Info("container transefered on this node")
-			return status.CREATED, true
-		}
-	case status.RESTART:
-		containerWatcher.Logger.Info("container is restarted")
-		return status.CLEAN, true
-	case status.CREATED:
-		containerWatcher.Logger.Info("container is created")
-		return status.CLEAN, true
-	case status.CLEAN:
-		err := containerObj.Clean()
+var stateHandlers = map[string]StateHandlerFunc{
+	status.TRANSFERING:        handleTransferring,
+	status.RESTART:            handleRestart,
+	status.CREATED:            handleCreated,
+	status.CLEAN:              handleClean,
+	status.PREPARE:            handlePrepare,
+	status.PENDING:            handlePrepare,
+	status.DEPENDS_CHECKING:   handleDependsChecking,
+	status.DEPENDS_SOLVED:     handleDependsSolved,
+	status.INIT:               handleInit,
+	status.INIT_FAILED:        handleInitFailed,
+	status.DEPENDS_FAILED:     handleDependsFailed,
+	status.START:              handleStart,
+	status.READINESS_CHECKING: handleReadinessChecking,
+	status.READY:              handleReady,
+	status.READINESS_FAILED:   handleReadinessFailed,
+	status.RUNNING:            handleRunning,
+	status.KILL:               handleKill,
+	status.DEAD:               handleDead,
+	status.DELETE:             handleDelete,
+	status.DAEMON_FAILURE:     handleDaemonFailure,
+	status.BACKOFF:            handleBackoff,
+}
 
+func Reconcile(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer, engine string, engineError string) (string, bool) {
+	state := cw.Container.GetStatus().State.State
+
+	if handler, ok := stateHandlers[state]; ok {
+		return handler(shared, cw, existing)
+	}
+
+	return status.CREATED, true
+}
+
+func handleTransferring(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	if existing != nil && existing.IsGhost() {
+		cw.Logger.Info("container is not dead on another node - wait")
+		return status.TRANSFERING, false
+	}
+	cw.Logger.Info("container transferred on this node")
+	return status.CREATED, true
+}
+
+func handleRestart(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container is restarted")
+	return status.CLEAN, true
+}
+
+func handleCreated(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container is created")
+	return status.CLEAN, true
+}
+
+func handleClean(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container is cleaning old container")
+	if err := cw.Container.Clean(); err != nil {
+		cw.Logger.Error(err.Error())
+		return status.DAEMON_FAILURE, true
+	}
+	return status.PREPARE, true
+}
+
+func handlePrepare(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	if err := cw.Container.PreRun(shared.Manager.Config, shared.Client, cw.User); err != nil {
+		cw.Logger.Error(err.Error())
+		return status.PENDING, true
+	}
+	go func() {
+		_, err := dependency.Ready(cw.ReconcileCtx, shared.Registry, cw.Container.GetGroup(), cw.Container.GetGeneratedName(),
+			cw.Container.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, cw.DependencyChan)
 		if err != nil {
-			containerWatcher.Logger.Error(err.Error())
-			return status.DAEMON_FAILURE, true
+			cw.Logger.Error(err.Error())
 		}
+	}()
+	cw.Logger.Info("container prepared")
+	return status.DEPENDS_CHECKING, true
+}
 
-		return status.PREPARE, true
-	case status.PREPARE:
-		err := containerObj.PreRun(shared.Manager.Config, shared.Client, containerWatcher.User)
+func handleDependsChecking(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	for {
+		select {
+		case dependencyResult := <-cw.DependencyChan:
+			if dependencyResult == nil {
+				return status.DEPENDS_FAILED, true
+			}
 
+			switch dependencyResult.State {
+			case dependency.CHECKING:
+				cw.Logger.Info("checking dependency")
+
+				if dependencyResult.Error != nil {
+					cw.Logger.Info(dependencyResult.Error.Error())
+				}
+
+				break
+			case dependency.SUCCESS:
+				cw.Logger.Info("dependency check success")
+				return status.DEPENDS_SOLVED, true
+			case dependency.FAILED:
+				cw.Logger.Info("dependency check failed")
+				return status.DEPENDS_FAILED, true
+			}
+		}
+	}
+}
+
+func handleDependsSolved(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Container.GetStatus().LastDependsSolved = true
+	cw.Container.GetStatus().LastDependsSolvedTimestamp = time.Now()
+
+	if !reflect.ValueOf(cw.Container.GetInitDefinition()).IsZero() {
+		return status.INIT, true
+	}
+
+	return status.START, true
+}
+
+func handleInit(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	if err := cw.Container.InitContainer(cw.Container.GetInitDefinition(), shared.Manager.Config, shared.Client, cw.User); err != nil {
+		return status.INIT_FAILED, true
+	}
+
+	return status.START, true
+}
+
+func handleInitFailed(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("init container exited with error - reconciler going to sleep")
+	return status.INIT_FAILED, false
+}
+
+func handleDependsFailed(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container depends timeout or failed - retry again")
+	return status.PREPARE, true
+}
+
+func handleStart(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container attempt to start")
+
+	if err := cw.Container.Run(); err != nil {
+		cw.Logger.Error(err.Error())
+		return status.DAEMON_FAILURE, true
+	}
+
+	cw.Logger.Info("container started")
+
+	go func() {
+		_, err := solver.Ready(cw.ReconcileCtx, shared.Client, cw.Container, cw.User, cw.ReadinessChan, cw.Logger)
 		if err != nil {
-			containerWatcher.Logger.Error(err.Error())
-			return status.PENDING, true
-		} else {
-			go func() {
-				_, err = dependency.Ready(containerWatcher.ReconcileCtx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
-
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-				}
-			}()
-
-			containerWatcher.Logger.Info("container prepared")
-			return status.DEPENDS_CHECKING, true
+			cw.Logger.Error(err.Error())
 		}
-	case status.PENDING:
-		err := containerObj.PreRun(shared.Manager.Config, shared.Client, containerWatcher.User)
+	}()
 
-		if err != nil {
-			containerWatcher.Logger.Error(err.Error())
-			return status.PENDING, false
-		} else {
-			go func() {
-				_, err = dependency.Ready(containerWatcher.ReconcileCtx, shared.Registry, containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, containerWatcher.DependencyChan)
+	return status.READINESS_CHECKING, true
+}
 
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-				}
-			}()
+func handleReadinessChecking(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	for {
+		select {
+		case readinessResult := <-cw.ReadinessChan:
+			state := GetState(cw)
 
-			containerWatcher.Logger.Info("container prepared")
-			return status.DEPENDS_CHECKING, true
-		}
-	case status.DEPENDS_CHECKING:
-		for {
-			select {
-			case dependencyResult := <-containerWatcher.DependencyChan:
-				if dependencyResult == nil {
-					return status.DEPENDS_FAILED, true
-				}
-
-				switch dependencyResult.State {
+			if state.State == "running" {
+				switch readinessResult.State {
 				case dependency.CHECKING:
-					containerWatcher.Logger.Info("checking dependency")
-
-					if dependencyResult.Error != nil {
-						containerWatcher.Logger.Info(dependencyResult.Error.Error())
-					}
-
+					cw.Logger.Info("checking readiness")
 					break
 				case dependency.SUCCESS:
-					containerWatcher.Logger.Info("dependency check success")
-					return status.DEPENDS_SOLVED, true
-				case dependency.FAILED:
-					containerWatcher.Logger.Info("dependency check failed")
-					return status.DEPENDS_FAILED, true
-				}
-			}
-		}
-	case status.DEPENDS_SOLVED:
-		containerObj.GetStatus().LastDependsSolved = true
-		containerObj.GetStatus().LastDependsSolvedTimestamp = time.Now()
+					cw.Logger.Info("readiness check success")
 
-		if !reflect.ValueOf(containerObj.GetInitDefinition()).IsZero() {
-			return status.INIT, true
-		} else {
-			return status.START, true
-		}
-	case status.INIT:
-		err := containerObj.InitContainer(containerObj.GetInitDefinition(), shared.Manager.Config, shared.Client, containerWatcher.User)
+					// Add dns only when container is ready so no one can contact it earlier
+					err := cw.Container.PostRun(shared.Manager.Config, shared.Manager.DnsCache)
 
-		if err != nil {
-			return status.INIT_FAILED, true
-		} else {
-			return status.START, true
-		}
-	case status.INIT_FAILED:
-		containerWatcher.Logger.Info("init container exited with error - reconciler going to sleep")
-		return status.INIT_FAILED, false
-	case status.DEPENDS_FAILED:
-		containerWatcher.Logger.Info("container depends timeout or failed - retry again")
-		return status.PREPARE, true
-	case status.START:
-		containerWatcher.Logger.Info("container attempt to start")
-		err := containerObj.Run()
+					if err != nil {
+						cw.Logger.Info("container failed to update dns - proceed with restart")
+						cw.Logger.Error(err.Error())
 
-		if err != nil {
-			containerWatcher.Logger.Error(err.Error())
-			return status.DAEMON_FAILURE, true
-		} else {
-			containerWatcher.Logger.Info("container started")
-
-			go func() {
-				_, err = solver.Ready(containerWatcher.ReconcileCtx, shared.Client, containerObj, containerWatcher.User, containerWatcher.ReadinessChan, containerWatcher.Logger)
-
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-				}
-			}()
-
-			return status.READINESS_CHECKING, true
-		}
-	case status.READINESS_CHECKING:
-		for {
-			select {
-			case readinessResult := <-containerWatcher.ReadinessChan:
-				state := GetState(containerWatcher)
-
-				if state.State == "running" {
-					switch readinessResult.State {
-					case dependency.CHECKING:
-						containerWatcher.Logger.Info("checking readiness")
-						break
-					case dependency.SUCCESS:
-						containerWatcher.Logger.Info("readiness check success")
-
-						// Add dns only when container is ready so no one can contact it earlier
-						err := containerObj.PostRun(shared.Manager.Config, shared.Manager.DnsCache)
-
-						if err != nil {
-							containerWatcher.Logger.Info("container failed to update dns - proceed with restart")
-							containerWatcher.Logger.Error(err.Error())
-
-							return status.KILL, true
-						} else {
-							containerWatcher.Logger.Info("container updated dns")
-							return status.READY, true
-						}
-					case dependency.FAILED:
-						containerWatcher.Logger.Info("readiness check failed")
-						return status.READINESS_FAILED, true
+						return status.KILL, true
+					} else {
+						cw.Logger.Info("container updated dns")
+						return status.READY, true
 					}
-				} else {
+				case dependency.FAILED:
+					cw.Logger.Info("readiness check failed")
 					return status.READINESS_FAILED, true
 				}
+			} else {
+				return status.READINESS_FAILED, true
 			}
 		}
-	case status.READY:
-		containerObj.GetStatus().LastReadiness = true
-		containerObj.GetStatus().LastReadinessTimestamp = time.Now()
-
-		return status.RUNNING, true
-	case status.READINESS_FAILED:
-		containerWatcher.Logger.Info("container readiness failed")
-		containerObj.GetStatus().LastReadiness = false
-		containerObj.GetStatus().LastReadinessTimestamp = time.Now()
-		return status.KILL, true
-
-	case status.RUNNING:
-		shared.Registry.BackOffReset(containerObj.GetGroup(), containerObj.GetGeneratedName())
-		containerWatcher.Logger.Info("container is running, backoff is cleared - reconciler going to sleep")
-		return status.RUNNING, false
-
-	case status.KILL:
-		err := containerObj.Stop(static.SIGTERM)
-
-		if err != nil {
-			err = containerObj.Stop(static.SIGKILL)
-
-			if err != nil {
-				containerWatcher.Logger.Error(err.Error())
-			}
-		}
-
-		// TODO: Test when container dies quickly
-		return status.DEAD, false
-	case status.DEAD:
-		if err := shared.Registry.BackOff(containerObj.GetGroup(), containerObj.GetGeneratedName()); err != nil {
-			return status.BACKOFF, true
-		} else {
-			containerWatcher.Logger.Info("deleting dead container")
-
-			err = containerObj.Clean()
-
-			if err != nil {
-				containerWatcher.Logger.Error(err.Error())
-				return status.DAEMON_FAILURE, true
-			}
-
-			return status.PREPARE, true
-		}
-
-	case status.DELETE:
-		containerWatcher.AllowPlatformEvents = false
-		return "", false
-	case status.DAEMON_FAILURE:
-		containerWatcher.Logger.Info("container daemon engine failed - reconciler going to sleep")
-		return status.DAEMON_FAILURE, false
-
-	case status.BACKOFF:
-		containerWatcher.Logger.Info("container is in backoff - reconciler going to sleep")
-		return status.BACKOFF, false
-
-	default:
-		return status.CREATED, true
 	}
+}
+
+func handleReady(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Container.GetStatus().LastReadiness = true
+	cw.Container.GetStatus().LastReadinessTimestamp = time.Now()
+	return status.RUNNING, true
+}
+
+func handleReadinessFailed(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container readiness failed")
+	cw.Container.GetStatus().LastReadiness = false
+	cw.Container.GetStatus().LastReadinessTimestamp = time.Now()
+	return status.KILL, true
+}
+
+func handleRunning(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	shared.Registry.BackOffReset(cw.Container.GetGroup(), cw.Container.GetGeneratedName())
+	cw.Logger.Info("container is running, backoff is cleared - reconciler going to sleep")
+	return status.RUNNING, false
+}
+
+func handleKill(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	if err := cw.Container.Stop(static.SIGTERM); err != nil {
+		if err = cw.Container.Stop(static.SIGKILL); err != nil {
+			cw.Logger.Error(err.Error())
+		}
+	}
+	return status.DEAD, false
+}
+
+func handleDead(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	if err := shared.Registry.BackOff(cw.Container.GetGroup(), cw.Container.GetGeneratedName()); err != nil {
+		return status.BACKOFF, true
+	}
+
+	cw.Logger.Info("deleting dead container")
+
+	if err := cw.Container.Clean(); err != nil {
+		cw.Logger.Error(err.Error())
+		return status.DAEMON_FAILURE, true
+	}
+
+	return status.PREPARE, true
+}
+
+func handleDelete(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.AllowPlatformEvents = false
+	return "", false
+}
+
+func handleDaemonFailure(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container daemon engine failed - reconciler going to sleep")
+	return status.DAEMON_FAILURE, false
+}
+
+func handleBackoff(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container is in backoff - reconciler going to sleep")
+	return status.BACKOFF, false
 }

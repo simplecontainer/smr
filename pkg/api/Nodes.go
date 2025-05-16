@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -21,8 +21,8 @@ import (
 	"time"
 )
 
-func (api *Api) Nodes(c *gin.Context) {
-	bytes, err := json.Marshal(api.Cluster.Cluster.Nodes)
+func (a *Api) Nodes(c *gin.Context) {
+	bytes, err := json.Marshal(a.Cluster.Cluster.Nodes)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
@@ -31,8 +31,8 @@ func (api *Api) Nodes(c *gin.Context) {
 	}
 }
 
-func (api *Api) AddNode(c *gin.Context) {
-	if !api.Cluster.Started {
+func (a *Api) AddNode(c *gin.Context) {
+	if !a.Cluster.Started {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("cluster is not started"), nil))
 		return
 	}
@@ -53,10 +53,10 @@ func (api *Api) AddNode(c *gin.Context) {
 		return
 	}
 
-	existing := api.Cluster.Cluster.Find(n)
+	existing := a.Cluster.Cluster.Find(n)
 
 	if existing == nil {
-		n.NodeID = api.Cluster.Cluster.GenerateID()
+		n.NodeID = a.Cluster.Cluster.GenerateID()
 	} else {
 		n.NodeID = existing.NodeID
 	}
@@ -75,12 +75,12 @@ func (api *Api) AddNode(c *gin.Context) {
 		Context: bytes,
 	}
 
-	api.Cluster.NodeConf <- *n
+	a.Cluster.NodeConf <- *n
 
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node added", nil, bytes))
 }
-func (api *Api) RemoveNode(c *gin.Context) {
-	if !api.Cluster.Started {
+func (a *Api) RemoveNode(c *gin.Context) {
+	if !a.Cluster.Started {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("cluster is not started"), nil))
 		return
 	}
@@ -98,19 +98,19 @@ func (api *Api) RemoveNode(c *gin.Context) {
 		NodeID: id,
 	}
 
-	api.Cluster.NodeConf <- *n
+	a.Cluster.NodeConf <- *n
 
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node deleted", nil, nil))
 }
 
-func (api *Api) GetNode(c *gin.Context) {
-	nodeID, err := api.parseNodeID(c)
+func (a *Api) GetNode(c *gin.Context) {
+	nodeID, err := a.parseNodeID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
 		return
 	}
 
-	n := api.Cluster.Cluster.FindById(nodeID)
+	n := a.Cluster.Cluster.FindById(nodeID)
 	if n == nil {
 		c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		return
@@ -125,24 +125,24 @@ func (api *Api) GetNode(c *gin.Context) {
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "node found", nil, bytes))
 }
 
-func (api *Api) GetNodeVersion(c *gin.Context) {
-	nodeID, err := api.parseNodeID(c)
+func (a *Api) GetNodeVersion(c *gin.Context) {
+	nodeID, err := a.parseNodeID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "please provide valid node id", err, nil))
 		return
 	}
 
-	n := api.Cluster.Cluster.FindById(nodeID)
+	n := a.Cluster.Cluster.FindById(nodeID)
 	if n == nil {
 		c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "node not found", nil, nil))
 		return
 	}
 
-	response := network.Send(api.Manager.Http.Clients[api.Manager.User.Username].Http, fmt.Sprintf("%s/version", n.API), http.MethodGet, nil)
+	response := network.Send(a.Manager.Http.Clients[a.Manager.User.Username].Http, fmt.Sprintf("%s/version", n.API), http.MethodGet, nil)
 	c.JSON(response.HttpStatus, response)
 }
 
-func (api *Api) parseNodeID(c *gin.Context) (uint64, error) {
+func (a *Api) parseNodeID(c *gin.Context) (uint64, error) {
 	if c.Param("id") == "" {
 		return 0, fmt.Errorf("missing node id")
 	}
@@ -155,31 +155,31 @@ func (api *Api) parseNodeID(c *gin.Context) (uint64, error) {
 	return nodeID, nil
 }
 
-func (api *Api) ListenNode() {
+func (a *Api) ListenNode() {
 	for {
 		select {
-		case n, ok := <-api.Cluster.NodeConf:
+		case n, ok := <-a.Cluster.NodeConf:
 			if ok {
 				switch n.ConfChange.Type {
 				case raftpb.ConfChangeAddNode:
-					api.Cluster.Cluster.Add(&n)
+					a.Cluster.Cluster.Add(&n)
 
-					api.SaveClusterConfiguration()
-					startup.Save(api.Config)
+					a.SaveClusterConfiguration()
+					startup.Save(a.Config, a.Config.Environment.Container, 0)
 
-					api.Cluster.Regenerate(api.Config, api.Keys)
-					api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+					a.Cluster.Regenerate(a.Config, a.Keys)
+					a.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-					api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+					a.Manager.Http, _ = clients.GenerateHttpClients(a.Keys, a.Config.HostPort, a.Cluster)
 
-					api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+					a.Cluster.KVStore.ConfChangeC <- n.ConfChange
 
 					logger.Log.Info("added new node")
 					break
 				case raftpb.ConfChangeRemoveNode:
 					nodeID := n.NodeID
 
-					if nodeID != api.Cluster.Node.NodeID {
+					if nodeID != a.Cluster.Node.NodeID {
 						timeout := 5 * time.Second
 						ticker := time.NewTicker(500 * time.Millisecond)
 
@@ -193,17 +193,17 @@ func (api *Api) ListenNode() {
 								pool = false
 								break
 							case <-ticker.C:
-								if peer := api.Cluster.Cluster.FindById(nodeID); peer == nil {
+								if peer := a.Cluster.Cluster.FindById(nodeID); peer == nil {
 									ticker.Stop()
-									api.Cluster.Cluster.Remove(&n)
+									a.Cluster.Cluster.Remove(&n)
 
-									api.SaveClusterConfiguration()
-									startup.Save(api.Config)
+									a.SaveClusterConfiguration()
+									startup.Save(a.Config, a.Config.Environment.Container, 0)
 
-									api.Cluster.Regenerate(api.Config, api.Keys)
-									api.Keys.Reloader.ReloadC <- syscall.SIGHUP
+									a.Cluster.Regenerate(a.Config, a.Keys)
+									a.Keys.Reloader.ReloadC <- syscall.SIGHUP
 
-									api.Manager.Http, _ = client.GenerateHttpClients(api.Config.NodeName, api.Keys, api.Config.HostPort, api.Cluster)
+									a.Manager.Http, _ = clients.GenerateHttpClients(a.Keys, a.Config.HostPort, a.Cluster)
 
 									logger.Log.Info("removed node from the cluster", zap.Uint64("nodeID", nodeID))
 
@@ -218,18 +218,18 @@ func (api *Api) ListenNode() {
 						ticker.Stop()
 						break
 					} else {
-						if len(api.Cluster.Peers().Nodes) > 0 && api.Cluster.Node.NodeID != api.Cluster.Peers().Nodes[0].NodeID {
-							if api.Cluster.RaftNode.IsLeader.Load() {
-								logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
+						if len(a.Cluster.Peers().Nodes) > 0 && a.Cluster.Node.NodeID != a.Cluster.Peers().Nodes[0].NodeID {
+							if a.Cluster.RaftNode.IsLeader.Load() {
+								logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", a.Cluster.Peers().Nodes[0].NodeID))
 
 								ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-								api.Cluster.RaftNode.TransferLeadership(ctx, api.Cluster.Peers().Nodes[0].NodeID)
+								a.Cluster.RaftNode.TransferLeadership(ctx, a.Cluster.Peers().Nodes[0].NodeID)
 
 								ticker := time.NewTicker(5 * time.Millisecond)
 								defer ticker.Stop()
 
 								for {
-									if !api.Cluster.RaftNode.IsLeader.Load() {
+									if !a.Cluster.RaftNode.IsLeader.Load() {
 										break
 									}
 									select {
@@ -240,23 +240,23 @@ func (api *Api) ListenNode() {
 									}
 								}
 
-								logger.Log.Info(fmt.Sprintf("transefered leader role to %d", api.Cluster.Peers().Nodes[0].NodeID))
+								logger.Log.Info(fmt.Sprintf("transefered leader role to %d", a.Cluster.Peers().Nodes[0].NodeID))
 							}
 						}
 
 						go func() {
-							<-api.Cluster.RaftNode.Done()
+							<-a.Cluster.RaftNode.Done()
 
 							logger.Log.Info("raft is stopped")
-							api.Cluster.NodeFinalizer <- n
+							a.Cluster.NodeFinalizer <- n
 
 							return
 						}()
 
-						if len(api.Cluster.Peers().Nodes) > 0 && api.Cluster.Node.NodeID != api.Cluster.Peers().Nodes[0].NodeID {
-							api.Cluster.KVStore.ConfChangeC <- n.ConfChange
+						if len(a.Cluster.Peers().Nodes) > 0 && a.Cluster.Node.NodeID != a.Cluster.Peers().Nodes[0].NodeID {
+							a.Cluster.KVStore.ConfChangeC <- n.ConfChange
 						} else {
-							api.Cluster.NodeFinalizer <- n
+							a.Cluster.NodeFinalizer <- n
 						}
 					}
 				}

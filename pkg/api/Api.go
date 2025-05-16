@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/distributed"
@@ -42,7 +42,7 @@ func NewApi(config *configuration.Configuration) *Api {
 	api.Manager.Kinds = api.Kinds
 	api.Manager.Keys = api.Keys
 	api.Manager.DnsCache = api.DnsCache
-	api.Manager.Http = client.NewHttpClients()
+	api.Manager.Http = clients.NewHttpClients()
 	api.Manager.Wss = api.Wss
 
 	api.Kinds.InTree()
@@ -50,18 +50,18 @@ func NewApi(config *configuration.Configuration) *Api {
 	return api
 }
 
-func (api *Api) SetupEtcd() {
+func (a *Api) SetupEtcd() {
 	var err error
 
-	api.Server, err = etcd.StartEtcd(api.Config)
+	a.Server, err = etcd.StartEtcd(a.Config)
 
 	if err != nil {
 		panic(err)
 	}
 
 	select {
-	case <-api.Server.Server.ReadyNotify():
-		api.Etcd, err = clientv3.New(clientv3.Config{
+	case <-a.Server.Server.ReadyNotify():
+		a.Etcd, err = clientv3.New(clientv3.Config{
 			Endpoints:   []string{"localhost:2379"},
 			DialTimeout: 5 * time.Second,
 		})
@@ -71,44 +71,44 @@ func (api *Api) SetupEtcd() {
 		}
 		return
 	case <-time.After(60 * time.Second):
-		api.Server.Server.Stop()
+		a.Server.Server.Stop()
 		panic("etcd server took too long to start!")
 	}
 }
 
-func (api *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error {
+func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error {
 	proposeC := make(chan string)
 	insyncC := make(chan bool)
 	confChangeC := make(chan raftpb.ConfChange)
 	nodeUpdate := make(chan node.Node)
 	nodeFinalizer := make(chan node.Node)
 
-	getSnapshot := func() ([]byte, error) { return api.Cluster.KVStore.GetSnapshot() }
+	getSnapshot := func() ([]byte, error) { return a.Cluster.KVStore.GetSnapshot() }
 
 	raftNode := &raft.RaftNode{}
-	rn, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, api.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
+	rn, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, a.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
 
-	api.Replication = distributed.New(api.Manager.Http.Clients[api.User.Username], api.User, api.Cluster.Node.NodeName, n)
-	api.Replication.EventsC = make(chan KV.KV)
-	api.Replication.DnsUpdatesC = api.DnsCache.Records
+	a.Replication = distributed.New(a.Manager.Http.Clients[a.User.Username], a.User, a.Cluster.Node.NodeName, n)
+	a.Replication.EventsC = make(chan KV.KV)
+	a.Replication.DnsUpdatesC = a.DnsCache.Records
 
-	api.Manager.Replication = api.Replication
+	a.Manager.Replication = a.Replication
 
 	var err error
-	api.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, api.Replication.DataC, insyncC, join, n)
+	a.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, a.Replication.DataC, insyncC, join, cluster.Replay, n)
 
 	if err != nil {
 		return err
 	}
 
-	api.Cluster.RaftNode = rn
-	api.Cluster.KVStore.ConfChangeC = confChangeC
-	api.Cluster.KVStore.Node = n
-	api.Cluster.InSync = insyncC
-	api.Cluster.NodeConf = nodeUpdate
-	api.Cluster.NodeFinalizer = nodeFinalizer
+	a.Cluster.RaftNode = rn
+	a.Cluster.KVStore.ConfChangeC = confChangeC
+	a.Cluster.KVStore.Node = n
+	a.Cluster.InSync = insyncC
+	a.Cluster.NodeConf = nodeUpdate
+	a.Cluster.NodeFinalizer = nodeFinalizer
 
-	api.Manager.Cluster = api.Cluster
+	a.Manager.Cluster = a.Cluster
 
 	return nil
 }

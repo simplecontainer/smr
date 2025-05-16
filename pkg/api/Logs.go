@@ -17,7 +17,7 @@ import (
 	"strconv"
 )
 
-func (api *Api) Logs(c *gin.Context) {
+func (a *Api) Logs(c *gin.Context) {
 	prefix := c.Param("prefix")
 	version := c.Param("version")
 	category := c.Param("category")
@@ -39,7 +39,7 @@ func (api *Api) Logs(c *gin.Context) {
 	header.Set("Content-Type", "application/json")
 	header.Set("Connection", "keep-alive")
 
-	containerShared, ok := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared)
+	containerShared, ok := a.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared)
 	if !ok {
 		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New("container registry not available"))
 		return
@@ -47,7 +47,7 @@ func (api *Api) Logs(c *gin.Context) {
 
 	container := containerShared.Registry.Find(static.SMR_PREFIX, group, name)
 	if container == nil {
-		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+		stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("%s '%s/%s' not found", static.KIND_CONTAINERS, group, name)))
 		return
 	}
 
@@ -55,9 +55,9 @@ func (api *Api) Logs(c *gin.Context) {
 	defer cancel()
 
 	if container.IsGhost() {
-		client, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
+		client, ok := a.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 		if !ok {
-			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name)))
+			stream.ByeWithStatus(w, http.StatusBadRequest, errors.New(fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINERS, group, name)))
 			return
 		}
 

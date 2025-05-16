@@ -35,16 +35,11 @@ func NewNodeDefinition(cluster []*Node, nodeId uint64) *Node {
 }
 
 func (node *Node) Accepting() bool {
-	// If any of this status is true - node should not accept new objects
-	return !(node.State.Control.Draining || node.State.Control.Upgrading)
-}
-
-func (node *Node) SetDrain(drain bool) {
-	node.State.Control.Draining = drain
-}
-
-func (node *Node) SetUpgrade(upgrade bool) {
-	node.State.Control.Upgrading = upgrade
+	if node.State.Control.Draining != StatusNotStarted || node.State.Control.Upgrading != StatusNotStarted {
+		return false
+	} else {
+		return true
+	}
 }
 
 func (node *Node) Parse(change raftpb.ConfChange) error {

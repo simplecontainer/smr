@@ -2,7 +2,7 @@ package objects
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/wI2L/jsondiff"
 	"time"
 )
@@ -12,7 +12,7 @@ type Object struct {
 	Category string
 
 	Changelog jsondiff.Patch
-	client    *client.Client
+	client    *clients.Client
 
 	changed bool
 	exists  bool

@@ -13,7 +13,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mholt/archives"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
@@ -88,6 +88,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		Volumes:        volumes,
 		VolumeInternal: TDVolume.Volume{},
 		Capabilities:   definition.(*v1.ContainersDefinition).Spec.Capabilities,
+		User:           definition.(*v1.ContainersDefinition).Spec.User,
 		Privileged:     definition.(*v1.ContainersDefinition).Spec.Privileged,
 		Definition:     definitionCopy,
 	}
@@ -156,6 +157,7 @@ func (container *Docker) Run() error {
 			Entrypoint:   container.Entrypoint,
 			Cmd:          container.Args,
 			Tty:          false,
+			User:         container.User,
 			ExposedPorts: container.Ports.ToPortExposed(),
 		}, &TDContainer.HostConfig{
 			DNS:          container.Docker.DNS,
@@ -195,11 +197,11 @@ func (container *Docker) Run() error {
 		return errors.New("container is already running")
 	}
 }
-func (container *Docker) PreRun(config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+func (container *Docker) PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
 	var DNS []string
 
-	if config.Environment.NodeIP != "" {
-		DNS = []string{config.Environment.NodeIP, "127.0.0.1"}
+	if config.Environment.Container.NodeIP != "" {
+		DNS = []string{config.Environment.Container.NodeIP, "127.0.0.1"}
 	} else {
 		DNS = []string{"127.0.0.1"}
 	}
@@ -531,8 +533,8 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 		}(cli)
 
 		config := TDContainer.ExecOptions{
-			AttachStderr: interactive,
-			AttachStdout: interactive,
+			AttachStderr: true,
+			AttachStdout: true,
 			AttachStdin:  interactive,
 			Tty:          interactive,
 			Cmd:          command,
@@ -543,7 +545,7 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 			return "", nil, nil, err
 		}
 
-		resp, err := cli.ContainerExecAttach(context.Background(), exec.ID, TDTypes.ExecStartCheck{})
+		resp, err := cli.ContainerExecAttach(ctx, exec.ID, TDTypes.ExecStartCheck{})
 		if err != nil {
 			return "", nil, nil, err
 		}
@@ -636,7 +638,7 @@ func (container *Docker) MountResources() error {
 	return nil
 }
 
-func (container *Docker) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *client.Http, user *authentication.User, runtime *types.Runtime) error {
+func (container *Docker) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

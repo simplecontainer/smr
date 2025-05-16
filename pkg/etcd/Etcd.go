@@ -9,7 +9,7 @@ import (
 
 func StartEtcd(config *configuration.Configuration) (e *embed.Etcd, err error) {
 	cfg := embed.NewConfig()
-	cfg.Dir = fmt.Sprintf("%s/persistent/etcd", config.Environment.NodeDirectory)
+	cfg.Dir = fmt.Sprintf("%s/persistent/etcd", config.Environment.Container.NodeDirectory)
 
 	URLC, _ := url.Parse("http://0.0.0.0:2379") // Important: Expose etcd only to the localhost!
 

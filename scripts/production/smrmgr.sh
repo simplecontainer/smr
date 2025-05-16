@@ -4,15 +4,13 @@ HelpStart(){
   echo """Usage:
 
  Eg:
- ./start.sh -a https://localhost:1443 -d example.com -i 1 -n https://node1.example.com -o 0.0.0.0:9212 -c https://node1.example.com:9212,https:node2.example.com:9212
+ ./start.sh -n smr-node-1 -d example.com
 
  Options:
- -a: Agent domain
- -m: Mode: standalone or cluster
- -d: Domain of agent
- -n: Node URL - if node URL is different than domain of agent
- -c: Cluster URLs
- -o: Overlay port default is 0.0.0.0:9212
+ -n: Node name
+ -d: Node domain
+ -a: Node IP address
+ -r Raft port
 """
 }
 
@@ -36,83 +34,61 @@ Manager(){
   NODE=""
   DOMAIN=""
   IP=""
-  NODE_DOMAIN=""
-  NODE_PORT="1443"
-  RAFT_PORT="9212"
-  CONN_STRING="https://localhost:1443"
-  NODE_ARGS="--port 0.0.0.0:1443"
-  CLIENT_ARGS="--dynamic.hostport 0.0.0.0:1443 --dynamic.overlayport 0.0.0.0:9212"
-  MODE="cluster"
+  NODE_ARGS="--listen 0.0.0.0:1443"
+  CLIENT_ARGS="--port.control 0.0.0.0:1443 --port.overlay 0.0.0.0:9212"
   JOIN=false
   PEER=""
-  REPOSITORY="quay.io/simplecontainer/smr"
+  IMAGE="quay.io/simplecontainer/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
-  ALLYES=false
 
-  echo "All arguments: $@"
+  echo "All arguments: $*"
 
-  while getopts ":a:c:d:e:h:i:m:n:p:r:t:x:z:sujy" option; do
+  while getopts ":a:c:d:h:i:n:p:t:j" option; do
     case $option in
-      a) # Set agent
+      n) # Set node
          NODE=$OPTARG; ;;
-      c) # Control plane client connect string
-         CONN_STRING=$OPTARG; ;;
       d) # Set domain
          DOMAIN=$OPTARG; ;;
-      e) # Expose control plane
-         NODE_ARGS=$OPTARG; ;;
-      h) # Display help
-         HelpStart && exit; ;;
-      i) # Set ip
+      a) # Set ip addr
          IP=$OPTARG; ;;
-      j) #Set join
-         JOIN="true"; ;;
-      m) #Set mode
-         MODE=$OPTARG; ;;
-      n) # Set Node URL
-         NODE_DOMAIN=$OPTARG; ;;
-      p) # Set node port
-         NODE_PORT=$OPTARG; ;;
-      r) # Set repository
-         REPOSITORY=$OPTARG; ;;
+      c) # Set client args
+         CLIENT_ARGS=$OPTARG; ;;
+      i) # Set repository/image
+         IMAGE=$OPTARG; ;;
       t) # Set tag
          TAG=$OPTARG; ;;
-      x) # Set client additional args
-         CLIENT_ARGS=$OPTARG; ;;
-      y) #SSet all yes answer
-         ALLYES=true; ;;
-      z) PEER=$OPTARG; ;;
+      j) #Set join
+         JOIN="true"; ;;
+      p) #Set peer
+         PEER=$OPTARG; ;;
+      h) # Display help
+         HelpStart && exit; ;;
       *) # Invalid option
         echo "Invalid option"; ;;
    esac
   done
 
-  if [[ $DOMAIN != "" ]]; then
-    if [[ $NODE_DOMAIN == "" ]]; then
-      NODE_DOMAIN=$DOMAIN
-    fi
+  if [[ ${NODE} == "" ]]; then
+    NODE="simplecontainer-node"
   fi
 
-  if [[ $DOMAIN == "" && $NODE_DOMAIN == "" ]]; then
+  if [[ $DOMAIN == "" ]]; then
     DOMAIN="localhost"
-    NODE_DOMAIN="localhost"
   fi
 
-  # Domain not known at the top so append it here!
+  NODE_ARGS="--image ${IMAGE} --tag ${TAG} --node ${NODE} ${NODE_ARGS}"
 
-  if [[ ${JOIN} == true ]]; then
-    NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS} --domains ${DOMAIN} --ips ${IP} --join --peer ${PEER}"
-  else
-    NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS} --domains ${DOMAIN} --ips ${IP}"
-  fi
+  [[ -n "$DOMAIN" ]] && NODE_ARGS+=" --domain ${DOMAIN}"
+  [[ -n "$IP" ]] && NODE_ARGS+=" --ip ${IP}"
+  [[ -n "$PEER" && "$JOIN" == true ]] && NODE_ARGS+=" --join --peer ${PEER}"
 
   echo "..Node info....................................................................................................."
   echo "....Agent name:           $NODE"
-  echo "....Node:                 $NODE_DOMAIN"
-  echo "....Repository:           $REPOSITORY"
+  echo "....Node:                 $DOMAIN"
+  echo "....Image:                $IMAGE"
   echo "....Tag:                  $TAG"
-  echo "....Mode:                 $MODE"
-  echo "....Additional args:      $CLIENT_ARGS"
+  echo "....Node args:            $NODE_ARGS"
+  echo "....Client args:          $CLIENT_ARGS"
 
   if [[ $JOIN == "true" ]]; then
     echo "....Join:                 $JOIN"
@@ -121,11 +97,9 @@ Manager(){
     echo "....Join:                 false"
   fi
 
-  echo "....cli version:          $(smr version)"
-  echo "....node logs path:       ~/smr/logs/flannel-${NODE}.log"
+  echo "....smr version:          $(smr version)"
+  echo "....ctl version:          $(smrctl version)"
   echo "................................................................................................................"
-
-  touch ~/smr/logs/flannel-${NODE}.log || (echo "Failed to create log file: ~/smr/logs/flannel-${NODE}.log" && exit 2)
 
   if ! dpkg -s curl &>/dev/null; then
     echo 'please install curl manually'
@@ -133,67 +107,33 @@ Manager(){
   fi
 
   if [[ ${NODE} != "" ]]; then
-    if [[ ${MODE} == "cluster" ]]; then
-      ID=$(smr node create \
-        --node "${NODE}" \
-        --static.image "${REPOSITORY}" \
-        --static.tag "${TAG}" \
-        $CLIENT_ARGS \
-        --args="create ${NODE_ARGS}" \
-        --w exited)
-
-      EXIT_CODE=${?}
-
-      if [[ ${EXIT_CODE} != 0 ]]; then
-        echo $ID
-        exit ${EXIT_CODE}
-      fi
-
-      echo "Configuration created with success - configuration container id: $ID"
-
-      smr node rename --node "${NODE}" "${NODE}-create-${ID}" || exit 3
-      smr node run --node "${NODE}" --args="start" --w running
-
-      if [[ $NODE_DOMAIN == "localhost" ]]; then
-        RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${RAFT_PORT}"
-      else
-        RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
-      fi
-
-      echo "Attemp to connect to the simplecontainer node and save context."
-
-      while :
-      do
-        if smr context connect "${CONN_STRING}" "${HOME}/smr/.ssh/${NODE}.pem" --context "${NODE}" --y; then
-          break
-        else
-          echo "Failed to connect to simplecontainer node, trying again in 1 second..."
-          sleep 1
-        fi
-      done
-
-      sudo nohup smr node cluster join --node "$NODE" --raft $RAFT_URL </dev/null 2>&1 | stdbuf -o0 grep "" > ~/smr/logs/flannel-${NODE}.log &
-      echo "The simplecontainer node is started."
+    if [[ ! $(smr node create --node "${NODE}" $NODE_ARGS $CLIENT_ARGS) ]]; then
+      echo "failed to create node configuration"
+      exit 2
     fi
+
+    touch ~/nodes/${NODE}/logs/cluster.log || (echo "failed to create log file: ~/smr/logs/cluster.log" && exit 2)
+    touch ~/nodes/${NODE}/logs/control.log || (echo "failed to create log file: ~/smr/logs/control.log" && exit 2)
+
+    smr node start --node "${NODE}" -y
+
+    if [[ $DOMAIN == "localhost" ]]; then
+      RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):9212"
+    else
+      RAFT_URL="https://${DOMAIN}:9212"
+    fi
+
+    sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
+    sudo nohup smr agent control --node "${NODE}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/control.log &
+
+    echo "tail flannel logs at: tail -f ~/nodes/${NODE}/logs/cluster.log"
+    echo "tail control logs at: tail -f ~/nodes/${NODE}/logs/control.log"
+    echo "waiting for cluster to be ready..."
+
+    smr agent events --wait cluster_started --node "$NODE"
   else
     HelpStart
   fi
-}
-
-Export(){
-  smr context export <<< $1
-}
-
-Import(){
-  KEY=""
-
-  while read line
-  do
-    KEY=$line
-  done < /dev/stdin
-
-  smr context import "${1}" <<< "${KEY}"
-  smr context fetch
 }
 
 Download(){
@@ -222,12 +162,6 @@ case "$COMMAND" in
       Download "$@";;
     "start")
       Manager "$@";;
-    "wait")
-     Wait "$@";;
-    "import")
-     Import "$@";;
-    "export")
-     Export "$@";;
     *)
-      echo "Unknown command: $COMMAND" ;;
+      echo "Available commands are: install and start" ;;
 esac

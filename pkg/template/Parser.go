@@ -4,14 +4,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"strings"
 	"text/template"
 )
 
-func Parse(name string, value string, client *client.Http, user *authentication.User, runtime *smaps.Smap, depth int) (string, []f.Format, error) {
+func Parse(name string, value string, client *clients.Http, user *authentication.User, runtime *smaps.Smap, depth int) (string, []f.Format, error) {
 	var dependencies = make([]f.Format, 0)
 
 	variables := Variables{Values: make(map[string]interface{})}

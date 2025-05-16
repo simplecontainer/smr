@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -14,7 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
-func Lookup(placeholder string, client *client.Http, user *authentication.User, runtime *smaps.Smap, dependencies []f.Format, depth int) (string, error) {
+func Lookup(placeholder string, client *clients.Http, user *authentication.User, runtime *smaps.Smap, dependencies []f.Format, depth int) (string, error) {
 	if depth > 1 {
 		return placeholder, errors.New("depth is too big consider restructuring definition files")
 	}
@@ -22,7 +22,7 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 	format := f.NewFromString(placeholder)
 
 	if !format.Compliant() {
-		format = format.Inverse().(f.Format)
+		format = format.Shift().(f.Format)
 	}
 
 	// Handle case when format is specified in kind compliant format
@@ -133,7 +133,7 @@ func Lookup(placeholder string, client *client.Http, user *authentication.User, 
 	}
 }
 
-func Fetch(format iformat.Format, name string, client *client.Http, user *authentication.User) ([]byte, f.Format, error) {
+func Fetch(format iformat.Format, name string, client *clients.Http, user *authentication.User) ([]byte, f.Format, error) {
 	obj := objects.New(client.Clients[user.Username], user)
 
 	var formatNoKey f.Format

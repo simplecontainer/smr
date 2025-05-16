@@ -7,7 +7,7 @@ import (
 	"errors"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/exec"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func Ready(ctx context.Context, client *client.Http, container platforms.IContainer, user *authentication.User, channel chan *readiness.ReadinessState, logger *zap.Logger) (bool, error) {
+func Ready(ctx context.Context, client *clients.Http, container platforms.IContainer, user *authentication.User, channel chan *readiness.ReadinessState, logger *zap.Logger) (bool, error) {
 	for _, r := range container.GetReadiness() {
 		r.Function = func() error {
 			container.GetStatus().LastReadinessStarted = time.Now()
@@ -58,7 +58,7 @@ func Ready(ctx context.Context, client *client.Http, container platforms.IContai
 	return true, nil
 }
 
-func SolveReadiness(client *client.Http, user *authentication.User, container platforms.IContainer, logger *zap.Logger, r *readiness.Readiness, channel chan *readiness.ReadinessState) error {
+func SolveReadiness(client *clients.Http, user *authentication.User, container platforms.IContainer, logger *zap.Logger, r *readiness.Readiness, channel chan *readiness.ReadinessState) error {
 	if !container.GetStatus().IfStateIs(status.READINESS_CHECKING) {
 		r.Cancel()
 	}

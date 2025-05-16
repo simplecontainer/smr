@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func (api *Api) Kind(c *gin.Context) {
+func (a *Api) Kind(c *gin.Context) {
 	definition, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -23,7 +23,7 @@ func (api *Api) Kind(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		} else {
-			kindObj, ok := api.KindsRegistry[dummy.GetKind()]
+			kindObj, ok := a.KindsRegistry[dummy.GetKind()]
 
 			if !ok {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New("invalid definition sent"), nil))
@@ -32,13 +32,13 @@ func (api *Api) Kind(c *gin.Context) {
 
 				switch c.Param("action") {
 				case "apply":
-					response, err = kindObj.Apply(authentication.NewUser(c.Request.TLS), definition, api.Config.NodeName)
+					response, err = kindObj.Apply(authentication.NewUser(c.Request.TLS), definition, a.Config.NodeName)
 					break
 				case "state":
-					response, err = kindObj.State(authentication.NewUser(c.Request.TLS), definition, api.Config.NodeName)
+					response, err = kindObj.State(authentication.NewUser(c.Request.TLS), definition, a.Config.NodeName)
 					break
 				case "remove":
-					response, err = kindObj.Delete(authentication.NewUser(c.Request.TLS), definition, api.Config.NodeName)
+					response, err = kindObj.Delete(authentication.NewUser(c.Request.TLS), definition, a.Config.NodeName)
 					break
 				}
 

@@ -146,3 +146,30 @@ func (client *Client) Read(directory string, username string) error {
 
 	return nil
 }
+func (client *Client) Load(certificate []byte, privateKey []byte) error {
+	var err error
+
+	client.CertificateBytes = PEMDecode(certificate)
+	client.Certificate, err = x509.ParseCertificate(PEMDecode(certificate))
+
+	if err != nil {
+		return err
+	}
+
+	var PrivateKeyTmp any
+	PrivateKeyTmp, err = x509.ParsePKCS8PrivateKey(PEMDecode(privateKey))
+
+	if err != nil {
+		return err
+	}
+
+	client.PrivateKey = PrivateKeyTmp.(*ecdsa.PrivateKey)
+
+	client.PrivateKeyBytes, err = x509.MarshalPKCS8PrivateKey(client.PrivateKey)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

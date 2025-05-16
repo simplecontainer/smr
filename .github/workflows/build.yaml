@@ -1,0 +1,417 @@
+name: Simplecontainer client CI/CD
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'scripts/**'
+      - 'LICENSE'
+      - '.github/resources/**'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to release'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smr
+          - smrctl
+      test_name:
+        description: 'Optional test name to run'
+        required: false
+        type: string
+      test_flags:
+        description: 'Optional test flags'
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        os: [ 'linux' ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Test code
+        run: go test -tags=unit ./...
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+        platform: [ 'amd64', 'arm64' ]
+        os: [ 'linux' ]
+        component: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.component != 'all') && fromJSON(format('["{}"]', github.event.inputs.component)) || fromJSON('["smr", "smrctl"]') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+      - name: Display Go version
+        run: go version
+      - name: Bump versions
+        run: |
+          VERSION_SMR=$(cat cmd/smr/version)
+          VERSION_SMRCTL=$(cat cmd/smrctl/version)
+          
+          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+          VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          
+          echo "$VERSION_SMR" > cmd/smr/version.tmp
+          echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
+          
+          mv cmd/smr/version.tmp cmd/smr/version
+          mv cmd/smrctl/version.tmp cmd/smrctl/version
+      - name: Build ${{ matrix.component }} for ${{ matrix.os }} on ${{ matrix.platform }}
+        if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
+        working-directory: "cmd/${{matrix.component}}"
+        run: |
+          VERSION=$(cat version)
+          CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o ${{matrix.component}}-${{ matrix.os }}-${{ matrix.platform }}
+          chmod +x ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
+          
+          if echo ${{ matrix.os }} | grep -qv darwin; then
+            upx -9 ${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
+          fi
+      - name: Upload smr artifacts
+        if: matrix.component == 'smr' || github.event.inputs.component == 'all' || github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.component }}-${{ matrix.os}}-${{ matrix.platform }}
+          path: cmd/${{ matrix.component }}/${{ matrix.component }}-${{ matrix.os }}-${{ matrix.platform }}
+
+  set-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Generate dynamic matrix
+        id: generate
+        run: |
+          GO_VERSIONS='["1.22.x"]'
+          PLATFORMS='["amd64"]'
+          OS_LIST='["linux"]'
+
+          TESTS_DIRS=$(find pkg/tests/e2e -type f -name '*_test.go' -exec dirname {} \; | sort -u)
+
+          matrix='[]'
+          for dir in $TESTS_DIRS; do
+            name=$(basename "$dir")
+            for go in $(echo $GO_VERSIONS | jq -r '.[]'); do
+              for os in $(echo $OS_LIST | jq -r '.[]'); do
+                for arch in $(echo $PLATFORMS | jq -r '.[]'); do
+                  matrix=$(echo "$matrix" | jq \
+                    --arg dir "$dir" \
+                    --arg name "$name" \
+                    --arg tags "e2e" \
+                    --arg go "$go" \
+                    --arg os "$os" \
+                    --arg arch "$arch" \
+                    '. += [{
+                      directory: $dir,
+                      name: $name,
+                      tags: $tags,
+                      "go-version": $go,
+                      os: $os,
+                      platform: $arch
+                    }]')
+                done
+              done
+            done
+          done
+
+          echo "$matrix" | jq
+          echo "matrix=$(echo "$matrix" | jq -c)" >> "$GITHUB_OUTPUT"
+
+  test-integration:
+    name: Run ${{ matrix.name }} test
+    runs-on: ubuntu-latest
+    needs: [ set-matrix, test, build ]
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
+    if: github.event.inputs.component != 'smrctl' || github.event_name != 'workflow_dispatch'
+    outputs:
+      image_name: ${{ steps.image_info.outputs.image_name }}
+      image_tag: ${{ steps.image_info.outputs.image_tag }}
+    steps: 
+      - name: Uninstall pre-installed Docker
+        run: |
+          for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+
+      - name: Install Docker 28.0.3
+        run: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          VERSION=28.0.3 sh get-docker.sh
+
+      - name: Verify Docker installation
+        run: |
+          docker version
+          docker version --format '{{.Server.APIVersion}}'
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+
+      - name: Generate image info
+        id: image_info
+        run: |
+          IMAGE_NAME="simplecontainer/smr"
+          IMAGE_TAG="build-${{ github.run_id }}"
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Download smr-${{ matrix.os }}-${{ matrix.platform }}
+        uses: actions/download-artifact@v4
+        with:
+          name: smr-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smr-${{ matrix.os }}-${{ matrix.platform }}
+
+      - name: Download smrctl-${{ matrix.os }}-${{ matrix.platform }}
+        uses: actions/download-artifact@v4
+        with:
+          name: smrctl-${{ matrix.os }}-${{ matrix.platform }}
+          path: ./smrctl-${{ matrix.os }}-${{ matrix.platform }}
+
+      - name: Prepare binary
+        run: |
+          mv ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr-${{ matrix.os }}-${{ matrix.platform }} ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          mv ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl-${{ matrix.os }}-${{ matrix.platform }} ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
+          chmod +x ./smr-${{ matrix.os }}-${{ matrix.platform }}/smr
+          chmod +x ./smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
+
+      - name: Build Docker image for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          tags: ${{ steps.image_info.outputs.image_name }}:${{ steps.image_info.outputs.image_tag }}
+          load: true
+          build-args: |
+            TARGETOS=${{ matrix.os }}
+            TARGETARCH=${{ matrix.platform }}
+
+      - name: Clone examples repository for tests
+        uses: actions/checkout@v4
+        with:
+          repository: simplecontainer/examples
+          path: examples
+
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Test code
+        run: |
+          go test -v -tags=${{ matrix.tags }} ./${{ matrix.directory }}/... \
+            -image $IMAGE -tag $TAG \
+            -binary smr-${{ matrix.os }}-${{ matrix.platform }}/smr \
+            -examples examples \
+            -binaryctl smrctl-${{ matrix.os }}-${{ matrix.platform }}/smrctl
+        env:
+          IMAGE: ${{ steps.image_info.outputs.image_name }}
+          TAG: ${{ steps.image_info.outputs.image_tag }}
+
+
+  prepare-release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: [ test-integration ]
+    outputs:
+      tag: ${{ steps.generate_tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+
+      - name: Generate tag name for workflow dispatch
+        id: generate_tag
+        run: |
+          COMPONENT="${{ github.event.inputs.component || 'all' }}"
+          VERSION=""
+          
+          if [[ "$COMPONENT" == "smr" || "$COMPONENT" == "all" ]]; then
+            VERSION=$(cat cmd/smr/version)
+          elif [[ "$COMPONENT" == "smrctl" ]]; then
+            VERSION=$(cat cmd/smrctl/version)
+          fi
+          
+          # Use current date if no version found
+          if [[ -z "$VERSION" ]]; then
+            VERSION=$(date +"%Y.%m.%d-%H%M")
+          fi
+          
+          # Form tag name
+          if [[ "$COMPONENT" != "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${COMPONENT}-v${VERSION}"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="v${VERSION}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          
+          echo "Generated tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: [ test-integration, prepare-release ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+      - name: Bump versions and commit
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "smr" ]]; then
+            VERSION_SMR=$(cat cmd/smr/version)
+            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "smrctl" ]]; then
+            VERSION_SMRCTL=$(cat cmd/smrctl/version)
+            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          else
+            VERSION_SMR=$(cat cmd/smr/version)
+            VERSION_SMRCTL=$(cat cmd/smrctl/version)
+          
+            VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          fi
+          
+          echo "$VERSION_SMR" > cmd/smr/version
+          echo "$VERSION_SMRCTL" > cmd/smrctl/version
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Automated version tracking [no ci]
+          branch: main
+          file_pattern: '**/version'
+          repository: .
+          tagging_message: '${{ github.ref_name }}'
+          commit_user_name: bot
+          commit_user_email: bot@qdnqn.org
+          commit_author: Author <actions@github.com>
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      - name: Create release assets
+        run: |
+          mkdir -p release
+          
+          # Determine which components to include based on workflow type
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" != "all" ]]; then
+            COMPONENTS="${{ github.event.inputs.component }}"
+          else
+            COMPONENTS="smr smrctl"
+          fi  VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
+            VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          
+            echo "$VERSION_SMR" > cmd/smr/version.tmp
+            echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
+          
+          # Copy artifacts based on selected components
+          for component in $COMPONENTS; do
+            if [[ -f "artifacts/${component}-linux-amd64/${component}" ]]; then
+              cp "artifacts/${component}-linux-amd64/${component}" "release/${component}-linux-amd64"
+            fi
+          
+            if [[ -f "artifacts/${component}-linux-arm64/${component}" ]]; then
+              cp "artifacts/${component}-linux-arm64/${component}" "release/${component}-linux-arm64"
+            fi
+          done
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "release/*"
+          body: |
+            ${{ github.event_name == 'workflow_dispatch' && format('Manual release of {0}', github.event.inputs.component) || 'Automatically created - fill in accordingly' }}
+          allowUpdates: true
+          draft: false
+          tag: ${{ needs.prepare-release.outputs.tag }}
+
+  release-docker:
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.component != 'smrctl')
+    runs-on: ubuntu-latest
+    needs: [ test-integration, prepare-release ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+          show-progress: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download smr amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: smr-linux-amd64
+          path: ./smr-linux-amd64/smr
+
+      - name: Download smr arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: smr-linux-arm64
+          path: ./smr-linux-arm64/smr
+
+      - name: Prepare binaries
+        run: |
+          chmod +x ./smr-linux-amd64/smr
+          chmod +x ./smr-linux-arm64/smr
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: "quay.io"
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Prepare Docker tags
+        id: docker_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: 'quay.io/simplecontainer/smr'
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=${{ needs.prepare-release.outputs.tag }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          push: true

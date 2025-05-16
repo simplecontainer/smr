@@ -7,7 +7,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/network/nameservers"
 	"github.com/simplecontainer/smr/pkg/objects"
@@ -24,7 +24,7 @@ var (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func New(agent string, client *client.Http, user *authentication.User) *Records {
+func New(agent string, client *clients.Http, user *authentication.User) *Records {
 	ns, err := nameservers.NewfromResolvConf(false)
 
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/mattn/go-shellwords"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/exec"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -30,7 +30,7 @@ var wssUpgrader = websocket.Upgrader{
 	},
 }
 
-func (api *Api) Exec(c *gin.Context) {
+func (a *Api) Exec(c *gin.Context) {
 	prefix := c.Param("prefix")
 	version := c.Param("version")
 	category := c.Param("kind")
@@ -59,7 +59,7 @@ func (api *Api) Exec(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	container := api.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
+	container := a.KindsRegistry[static.KIND_CONTAINERS].GetShared().(*shared.Shared).Registry.Find(static.SMR_PREFIX, group, name)
 	if container == nil {
 		logger.Log.Warn("container not found", zap.String("container", fmt.Sprintf("%s/%s", group, name)))
 		sendWebSocketTextAndClose(conn, "container not found")
@@ -67,9 +67,9 @@ func (api *Api) Exec(c *gin.Context) {
 	}
 
 	if container.IsGhost() {
-		httpClient, ok := api.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
+		httpClient, ok := a.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
 		if !ok {
-			sendWebSocketTextAndClose(conn, fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINER, group, name))
+			sendWebSocketTextAndClose(conn, fmt.Sprintf("node for %s '%s/%s' not found", static.KIND_CONTAINERS, group, name))
 			return
 		}
 
@@ -93,7 +93,7 @@ func (api *Api) Exec(c *gin.Context) {
 	}
 }
 
-func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *client.Client) error {
+func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *clients.Client) error {
 	ctx, fn := context.WithCancel(c)
 	proxy, err := wss.New(ctx, fn, httpClient.Http, c.Request.Header, conn, url)
 

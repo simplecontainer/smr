@@ -2,7 +2,7 @@ package commonv1
 
 import (
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/simplecontainer/smr/pkg/helpers"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/wI2L/jsondiff"
 	"sync"
 	"time"

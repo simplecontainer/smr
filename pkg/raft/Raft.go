@@ -3,10 +3,8 @@ package raft
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/controler"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
@@ -97,8 +95,8 @@ func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id 
 		id:          int(id),
 		Peers:       peers,
 		join:        join,
-		waldir:      fmt.Sprintf("/home/node/smr/persistent/smr-%d", id),
-		snapdir:     fmt.Sprintf("/home/node/smr/persistent/smr-%d-snap", id),
+		waldir:      fmt.Sprintf("/home/node/persistent/smr-%d", id),
+		snapdir:     fmt.Sprintf("/home/node/persistent/smr-%d-snap", id),
 		getSnapshot: getSnapshot,
 		snapCount:   defaultSnapshotCount,
 		stopc:       make(chan struct{}),
@@ -193,18 +191,18 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				n := node.NewNode()
 				_ = n.Parse(cc)
 
-				control := controler.New()
+				//control := control.New()
 
-				err := json.Unmarshal(cc.Context, control)
+				//err := json.Unmarshal(cc.Context, control)
 
-				if err != nil {
-					panic("invalid control in node context for removal")
-				}
+				//if err != nil {
+				//	panic("invalid control in node context for removal")
+				//}
 
-				if rc.started.After(control.Timestamp) {
-					logger.Log.Info("ignoring control message since it happened before our lifetime")
-					continue
-				}
+				//if rc.started.After(control.Timestamp) {
+				//	logger.Log.Info("ignoring control message since it happened before our lifetime")
+				//	continue
+				//}
 
 				if cc.NodeID == uint64(rc.id) {
 					return nil, false

@@ -7,6 +7,6 @@ import (
 	"net/http"
 )
 
-func (api *Api) GetVersion(c *gin.Context) {
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(api.Version)))
+func (a *Api) DisplayVersion(c *gin.Context) {
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(a.Version)))
 }

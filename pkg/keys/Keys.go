@@ -2,6 +2,7 @@ package keys
 
 import (
 	"crypto/rand"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -106,6 +107,17 @@ func (keys *Keys) LoadClients(directory string) error {
 
 	return nil
 }
+func (keys *Keys) LoadClient(username string, bundle string) error {
+	keys.Clients[username] = NewClient()
+
+	certificate, privateKey, err := ParsePemBundle(bundle)
+
+	if err != nil {
+		return err
+	}
+
+	return keys.Clients[username].Load(certificate, privateKey)
+}
 
 func (keys *Keys) GeneratePemBundle(directory string, username string, client *Client) error {
 	var PemCertificateClient []byte
@@ -140,6 +152,45 @@ func (keys *Keys) GeneratePemBundle(directory string, username string, client *C
 	}
 
 	return nil
+}
+
+func ParsePemBundle(bundle string) ([]byte, []byte, error) {
+	blocks, err := PEMParse(bundle)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var certificate []byte
+	var privateKey []byte
+
+	for _, block := range blocks {
+		parsed, _ := pem.Decode([]byte(block))
+
+		switch parsed.Type {
+		case CERTIFICATE:
+			var isCA bool
+			isCA, err = IsCA(parsed)
+
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if !isCA {
+				certificate = parsed.Bytes
+			}
+			break
+		case PRIVATE_KEY:
+			privateKey = parsed.Bytes
+			break
+		}
+	}
+
+	if len(certificate) == 0 || len(privateKey) == 0 {
+		return nil, nil, errors.New("invalid certificate or private key")
+	}
+
+	return certificate, privateKey, err
 }
 
 func generateSerialNumber() *big.Int {

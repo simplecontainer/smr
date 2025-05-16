@@ -15,6 +15,7 @@ func (containers *Containers) Create(cs []platforms.IContainer, exists bool, use
 
 		if !exists || existingWatcher == nil {
 			s := status.CREATED
+
 			if exists && containerObj.IsGhost() {
 				s = status.TRANSFERING
 			}

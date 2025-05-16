@@ -2,13 +2,13 @@ package registry
 
 import (
 	"fmt"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"strconv"
 	"strings"
 )
 
-func (registry *Registry) Name(client *client.Http, prefix string, group string, name string) (string, []uint64, error) {
+func (registry *Registry) Name(client *clients.Http, prefix string, group string, name string) (string, []uint64, error) {
 	indexes, err := registry.GetIndexes(prefix, group, name)
 	index := uint64(1)
 

@@ -6,7 +6,40 @@ Introduction
 > [!IMPORTANT]
 > The project is alpha.
 
-Introducing Kubernetes alike features for docker. Deploy to docker daemons with ease using the simplecontainer. Works as an overlay over docker daemon and
+## Quickstart
+### Prerequisite
+To turn docker daemon into simplecontainer node:
+- Docker must be already installed (https://docs.docker.com/engine/install/)
+
+### Running node with default config
+To run container node with default config:
+
+```bash
+curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
+chmod +x smrmgr
+sudo mv smrmgr /usr/local/bin  # places smrmgr and smrctl under /usr/bin/local
+sudo smrmgr install # places smr and smrctl under /usr/bin/local
+```
+
+Now that tools are installed, to run default node just execute:
+
+```bash
+smrmgr start # Requires sudo permissions to start flannel networking
+```
+
+After node is started import context for the smrctl and use smrctl to talk using control plane.
+
+```bash
+smrctl import $(sudo smr agent export --api localhost:1443)
+smrctl ps
+```
+
+If you want to run on some another domain just replace localhost with the domain.
+
+Simplecontainer runs as a docker container with access to the docker daemon socket and takes over orchestration.
+It let's you define YAML files with state you want and after applying the node reconcile to the defined state.
+
+It works as an overlay over docker daemon and
 providing API for orchestrating containers and additional resources like configuration, secret, etc. 
 
 Simplecontainer runs as container itself with the access to the /var/run/docker.sock to orchestrate containers.
@@ -15,19 +48,24 @@ mTLS is used to authenticate the clients and security is on high level.
 
 In practice, it would look like this:
 ```cgo
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definitions/Containers.yaml
-smr ps
+smrctl apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definitions/Containers.yaml
+smrctl ps
 NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE     
 smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (9s)  
-smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (9s)
 ```
 
-Make VMs, On-prem servers, or trifty VMs stable resources for serverless with simplecontainer.
+The goals are to make mangement of docker containers on VMs, On-prem servers, or thrifty machines as stable and manageable
+resources for business operations. It can standardize deployment procedure without using different glues to make deployments.
+Turning docker daemon into simplecontainer node is matter of seconds.
 
+Simplecontainer can manage next scenarios:
+- Running one simplecontainer node for one docker daemon
+- Running multiple simplecontainer nodes for multiple docker daemons where every node is isolated
+- Running multiple simplecontainer nodes for multiple docker daemons where nodes are in cluster
 
 To explore more dive into this README.md.
 ## Architecture
-Simplecontainer relies on etcd, RAFT and flannel to enable cluster of docker daemons.
+You can run single node, multiple single nodes, or multiple nodes in cluster. Simplecontainer relies on etcd, RAFT and flannel to enable cluster of docker daemons.
 
 The etcd is started in the single instance mode, embedded in the simplecontainer itself. RAFT protocol is used to enable multi
 node architecture, also embeded in the simplecontainer - not to be confused with cluster of etcd nodes. 
@@ -49,7 +87,6 @@ Afterward, it exposes API for container manipulation and orchestration.**
 
 The simplecontainer introduces the following:
 
-- Single docker daemon or cluster of docker daemons
 - Overlay networking for containers using flannel (encrypted using wireguard by default)
 - Integrated DNS server isolated from Docker daemon
 - GitOps: deploy containers on Docker using GitOps pattern
@@ -75,25 +112,10 @@ The smrmgr is bash script for management of the simplecontainer. It is used for:
 ```bash
 curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
 chmod +x smrmgr
-sudo mv smrmgr /usr/local/bin
-sudo smrmgr install
+sudo mv smrmgr /usr/local/bin  # places smrmgr and smrctl under /usr/bin/local
+sudo smrmgr install # places smr and smrctl under /usr/bin/local
 ```
-
-### OR Using smr (optional)
-The smr is client used to communicate to the local/external simplecontainer agents running on nodes.
-The smrmgr automatically downloads the client and places it under `/usr/local/bin/smr`.
-
-To manually install, start and manage simplecontainer nodes download the client from the releases:
-
-https://github.com/simplecontainer/client/releases
-
-```bash
-LATEST_VERSION=$(curl -s https://raw.githubusercontent.com/simplecontainer/client/main/version)
-PLATFORM=linux-amd64
-curl -o client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
-sudo mv client /usr/local/bin/smr
-```
-
+The smrmgr automatically downloads the smr and smrctl binaryies and places them under `/usr/local/bin`.
 Explore `/scripts/production/smrmgr.sh` to see how you can utilize smr client to configure and start simplecontainer nodes.
 
 ## Running simplecontainer
@@ -121,31 +143,14 @@ The control plane can be exposed:
 #### How to run it? (Control plane exposed to all interfaces)
 Exposing the control plane to the `0.0.0.0:1443` and `smr.example.com` will be only valid domain for the certificate authentication (**Change domain to your domain**):
 ```bash
-smrmgr start -a smr-agent-1 -d smr.example.com
-# Copy the content of the export
-smr context export <<< https://smr.example.com:1443
-# Copy the decryption key
-cat $HOME/smr/smr/contexts/$(smr context).key
+smrmgr start -d smr.example.com
+sudo smr agent export --api smr.example.com:1443
 ```
 
 On the external machine run:
 ```bash
-smr context import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
-smr ps
-```
-
-#### How to run it? (Control plane exposed to the localhost only)
-Exposing the control plane only to the localhost:
-
-```bash
-smrmgr start -a smr-node -x "--dynamic.hostport=127.0.0.1:1443 --dynamic.overlayport=127.0.0.1:9212"
-```
-
-Now the contorl plane is accesible from the localhost.
-
-```bash
-smr ps
-NODE  GROUP  NAME  DOCKER NAME  IMAGE  IP  PORTS  DEPS  ENGINE STATE  SMR STATE  
+smrctl import PASTE_OUTPUT_HERE
+smrctl ps
 ```
 
 ### Cluster mode
@@ -165,11 +170,8 @@ Requirements:
 - Docker daemon running on the Node 1
 
 ```bash
-smrmgr start -a smr-agent-1 -d smr1.example.com
-# Copy the content of the export
-smrmgr export https://node1.example.com:1443
-# Copy the decryption key
-cat $HOME/smr/smr/contexts/$(smr context).key
+smrmgr start -n simplecontainer-1 -d smr-1.example.com
+smr agent export --api smr.example.com:1443
 ```
 
 **Node 2 (And any other nodes joining cluster)**
@@ -178,14 +180,11 @@ Requirements:
 - The docker daemon running on the Node 2
 
 ```bash
-smrmgr import {{ PASTE CONTEXT }} <<< {{ PASTE KEY }}
-smrmgr start -a smr-agent-2 -d smr2.example.com -j smr1.example.com:1443
+smr agent import --node simplecontainer-2 -y PASTE_EXPORTED_OUTPUT
+smrmgr start -n simplecontainer-2 -d smr-2.example.com -j -p smr-1.example.com
 ```
 
-Afterward, the cluster is started. Flannel will start and the agent will create a docker network named cluster. 
-
-To connect containers with cluster network in the container definition specify that you want the container to connect to the cluster network.
-
+Afterward, the cluster is started. Flannel will start and the agent will create a docker network named cluster.
 ## How to manipulate containers?
 The simplecontainer introduces objects which can be defined as YAML definition and sent to the simplecontainer manager to produce containers on the engine via reconciliation:
 
@@ -209,7 +208,7 @@ smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/
 Applying this definition will create GitOps object on the simplecontainer.
 
 ```bash
-smr ps gitops
+smrctl ps gitops
 RESOURCE                      REPOSITORY                                             REVISION  SYNCED        AUTO   STATE    STATUS              
 gitops/examples/plain-manual  https://github.com/simplecontainer/examples (2fbe408)  main      Never synced  false  Drifted  drifted
 ```
@@ -217,8 +216,8 @@ gitops/examples/plain-manual  https://github.com/simplecontainer/examples (2fbe4
 Since auto sync is disabled - sync must be triggered by the user.
 
 ```bash
-smr sync gitops/examples/plain-manual
-smr ps
+smrctl sync gitops/examples/plain-manual
+smrctl ps
 NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE         
 smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (29m24s)  
 smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (29m25s)
@@ -315,7 +314,7 @@ This scenario assumes two nodes of simplecontainer running.
 Run the next commands:
 ```bash
 git clone https://github.com/simplecontainer/examples
-smr apply examples/tests/dependency-readiness-simple 
+smrctl apply examples/tests/dependency-readiness-simple 
 object applied: resource
 object applied: configuration
 object applied: configuration
@@ -335,9 +334,9 @@ This example demonstrates:
 - readiness check
 - dependency
 
-After running commands above, check the `smr ps`:
+After running commands above, check the `smrctl ps`:
 ```bash
-smr ps
+smrctl ps
 NODE         RESOURCE                              PORTS                      DEPS      ENGINE STATE      SMR STATE              
 smr-agent-2  containers/example/example-busybox-1  -                          -         running (docker)  running (32m55s)       
 smr-agent-2  containers/example/example-busybox-2  -                          -         running (docker)  running (32m55s)       
@@ -358,7 +357,6 @@ Important links
 - https://blog.simplecontainer.io
 - https://quay.io/repository/simplecontainer/smr
 - https://github.com/simplecontainer/smr
-- https://github.com/simplecontainer/client
 - https://github.com/simplecontainer/examples
 
 # License

@@ -1,8 +1,8 @@
 package startup
 
 import (
-	"flag"
 	"fmt"
+	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/pflag"
@@ -42,40 +42,54 @@ func Load(environment *configuration.Environment) (*configuration.Configuration,
 	return configObj, err
 }
 
-func Save(configObj *configuration.Configuration) error {
-	yamlObj, err := yaml.Marshal(*configObj)
+func Save(config *configuration.Configuration, environment *configuration.Environment, permissions os.FileMode) error {
+	yamlObj, err := yaml.Marshal(*config)
 
 	if err != nil {
 		return err
 	}
 
-	path := fmt.Sprintf("%s/%s/%s/config.yaml", configObj.Environment.Home, static.ROOTSMR, static.CONFIGDIR)
+	path := fmt.Sprintf("%s/%s/config.yaml", environment.NodeDirectory, static.CONFIGDIR)
 
-	err = os.WriteFile(path, yamlObj, 0644)
+	err = os.WriteFile(path, yamlObj, permissions)
 	if err != nil {
 		return err
+	}
+
+	info, statErr := os.Stat(path)
+	if statErr == nil {
+		err = os.WriteFile(path, yamlObj, info.Mode().Perm())
+	} else if os.IsNotExist(statErr) {
+		err = os.WriteFile(path, yamlObj, permissions)
+	} else {
+		return statErr
 	}
 
 	return nil
 }
 
-func SetFlags() {
-	flag.String("port", "0.0.0.0:1443", "Simplecontainer mTLS listening interface and port")
-	flag.String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
-	flag.String("domains", "", "Domains that TLS certificates are valid for")
-	flag.String("ips", "", "IP addresses that TLS certificates are valid for")
+func EngineFlags() {
+	// These are only available in the main before cobra starts parsing flags
+	// environment := configuration.NewEnvironment(configuration.WithHostConfig()) will place root dir correctly
+	// with information provided by these flags - leave default if not sure: it will use home directory as root
+	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
-	flag.String("node", "", "Node container name")
-	flag.Int("id", 0, "Distributed KVStore Node ID")
+	earlyFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
+	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
 
-	flag.String("image", "", "Node image name")
-	flag.String("tag", "", "Node image tag")
-	flag.String("cluster", "", "SMR Cluster")
-	flag.Bool("join", false, "Join the raft")
-	flag.String("peer", "", "Peer for entering cluster first time. Format: https://host:port")
+	viper.BindPFlag("home", earlyFlags.Lookup("home"))
+	viper.BindPFlag("log", earlyFlags.Lookup("log"))
+}
 
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	pflag.Parse()
+func ClientFlags() {
+	// These are only available in the main before cobra starts parsing flags
+	// environment := configuration.NewEnvironment(configuration.WithHostConfig()) will place root dir correctly
+	// with information provided by these flags - leave default if not sure: it will use home directory as root
+	earlyFlags := pflag.NewFlagSet("early", pflag.ContinueOnError)
 
-	viper.BindPFlags(pflag.CommandLine)
+	earlyFlags.String("home", helpers.GetRealHome(), "Root directory for all actions - keep default inside container")
+	earlyFlags.String("log", "info", "Log level: debug, info, warn, error, dpanic, panic, fatal")
+
+	viper.BindPFlag("home", earlyFlags.Lookup("home"))
+	viper.BindPFlag("log", earlyFlags.Lookup("log"))
 }

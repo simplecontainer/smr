@@ -34,6 +34,7 @@ type Docker struct {
 	Resources      *internal.Resources
 	Configurations *internal.Configurations
 	Capabilities   []string
+	User           string
 	Definition     v1.ContainersDefinition
 	RegistryAuth   string
 	Docker         DockerInternal

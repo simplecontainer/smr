@@ -3,14 +3,14 @@ package dns
 import (
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"sync"
 )
 
 type Records struct {
 	ARecords    *smaps.Smap
-	Client      *client.Http
+	Client      *clients.Http
 	User        *authentication.User
 	Lock        *sync.RWMutex
 	Nameservers []string

@@ -38,6 +38,45 @@ func NewLogger(logLevel string, outputStdout []string, outputStderr []string) *z
 	return zap.Must(config.Build())
 }
 
+func NewLoggerFile(dir string, name string, logLevel string) *zap.Logger {
+	encoderCfg := zap.NewProductionEncoderConfig()
+	encoderCfg.TimeKey = "timestamp"
+	encoderCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	atomicLevel, err := zap.ParseAtomicLevel(logLevel)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	log := filepath.Join(dir, fmt.Sprintf("%s.log", name))
+
+	_, err = os.Create(log)
+	if err != nil {
+		panic(err)
+	}
+
+	config := zap.Config{
+		Level:             atomicLevel,
+		Development:       false,
+		DisableCaller:     false,
+		DisableStacktrace: false,
+		Sampling:          nil,
+		Encoding:          "json",
+		EncoderConfig:     encoderCfg,
+		OutputPaths: []string{
+			log,
+		},
+		ErrorOutputPaths: []string{
+			log,
+		},
+		InitialFields: map[string]interface{}{},
+	}
+
+	return zap.Must(config.Build())
+}
+
 func CreateOrRotate(path string) error {
 	_, err := os.Stat(path)
 

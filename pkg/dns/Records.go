@@ -2,7 +2,7 @@ package dns
 
 import (
 	"github.com/simplecontainer/smr/pkg/authentication"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -39,7 +39,7 @@ func (AR *ARecord) Remove(ip string) {
 	AR.Addresses = newAddresses
 }
 
-func (AR *ARecord) Fetch(client *client.Http, user *authentication.User, domain string) ([]string, error) {
+func (AR *ARecord) Fetch(client *clients.Http, user *authentication.User, domain string) ([]string, error) {
 	format := f.New(static.SMR_PREFIX, static.CATEGORY_DNS, "dns", "internal", domain)
 	obj := objects.New(client.Clients[user.Username], user)
 

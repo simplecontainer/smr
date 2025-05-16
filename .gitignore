@@ -12,5 +12,5 @@
 !LICENSE
 !Makefile
 !Dockerfile
-!version
+!cmd/smr/version
 !*/

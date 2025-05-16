@@ -36,6 +36,7 @@ type ContainersInternal struct {
 	Configurations []ContainersConfigurations `json:"configurations,omitempty"`
 	Replicas       uint64                     `validate:"required" json:"replicas"`
 	Capabilities   []string                   `json:"capabilities,omitempty"`
+	User           string                     `json:"user,omitempty"`
 	Privileged     bool                       `json:"privileged,omitempty"`
 	NetworkMode    string                     `json:"network_mode,omitempty"`
 	Spread         ContainersSpread           `json:"spread,omitempty"`

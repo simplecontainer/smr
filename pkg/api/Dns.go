@@ -6,7 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 )
 
-func (api *Api) HandleDns(w mdns.ResponseWriter, m *mdns.Msg) {
+func (a *Api) HandleDns(w mdns.ResponseWriter, m *mdns.Msg) {
 	go func() {
 		m.Compress = false
 
@@ -18,7 +18,7 @@ func (api *Api) HandleDns(w mdns.ResponseWriter, m *mdns.Msg) {
 			}
 		}(w)
 
-		r, err := dns.ParseQuery(api.DnsCache, m)
+		r, err := dns.ParseQuery(a.DnsCache, m)
 
 		if err != nil {
 			m.Rcode = mdns.RcodeNameError

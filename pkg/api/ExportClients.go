@@ -11,8 +11,8 @@ import (
 	"net/http"
 )
 
-func (api *Api) ExportClients(c *gin.Context) {
-	bytes, err := json.Marshal(api.Keys)
+func (a *Api) ExportClients(c *gin.Context) {
+	bytes, err := json.Marshal(a.Keys)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, &iresponse.Response{
@@ -28,7 +28,7 @@ func (api *Api) ExportClients(c *gin.Context) {
 	}
 
 	var ciphertext string
-	ciphertext, err = encrypt.Encrypt(string(bytes), hex.EncodeToString(api.Keys.Clients[api.User.Username].PrivateKeyBytes[:32]))
+	ciphertext, err = encrypt.Encrypt(string(bytes), hex.EncodeToString(a.Keys.Clients[a.User.Username].PrivateKeyBytes[:32]))
 
 	encrypted := keys.Encrypted{Keys: ciphertext}
 

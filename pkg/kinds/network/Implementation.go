@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/contracts/iresponse"
+	"github.com/simplecontainer/smr/pkg/contracts/ishared"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/network/implementation"
@@ -17,29 +18,25 @@ func (network *Network) Start() error {
 	return nil
 }
 
-func (network *Network) GetShared() interface{} {
+func (network *Network) GetShared() ishared.Shared {
 	return network.Shared
 }
 
 func (network *Network) Apply(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
-	// Create request from JSON definition
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 	if err != nil {
 		return network.createErrorResponse(http.StatusBadRequest, "invalid definition sent", err)
 	}
 
-	// Apply the request
 	obj, err := request.Apply(network.Shared.Client, user)
 	if err != nil {
 		return network.createErrorResponse(http.StatusBadRequest, "", err)
 	}
 
-	// Check if the network is local scoped to the node
 	if request.Definition.GetRuntime().Node != network.Shared.Manager.Config.KVStore.Node.NodeID {
 		return common.Response(http.StatusOK, "networks are local scoped", nil, nil), nil
 	}
 
-	// Create network object based on definition or existing object
 	var networkObj *implementation.Network
 	if obj.Exists() {
 		networkObj = implementation.New(obj.GetDefinitionByte())
@@ -47,41 +44,39 @@ func (network *Network) Apply(user *authentication.User, definition []byte, agen
 		networkObj = implementation.New(definition)
 	}
 
-	// Find the network members
 	members, found, err := networkObj.Find()
 	if err != nil {
 		return network.createErrorResponse(http.StatusInternalServerError, "", err)
 	}
 
 	if found {
-		// If members exist, ask to disconnect them first
 		if len(members) > 0 {
 			return common.Response(http.StatusBadRequest, "disconnect all container from network and try again", nil, nil), nil
 		}
 
-		// Attempt to remove and recreate network
 		if err := networkObj.Remove(); err != nil {
 			return network.createErrorResponse(http.StatusInternalServerError, "", err)
 		}
-
-		// Try recreating the network with retries
-		if err := network.recreateNetworkWithRetry(networkObj); err != nil {
-			return network.createErrorResponse(http.StatusInternalServerError, "", err)
-		}
-
-		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 
-	// Create network if it doesn't exist
-	if err := networkObj.Create(); err != nil {
+	if err = networkObj.Create(); err != nil {
 		return network.createErrorResponse(http.StatusInternalServerError, "internal error", err)
 	}
 
-	// Dispatch events
-	events.DispatchGroup([]events.Event{
+	eventsGroup := []events.Event{
 		events.NewKindEvent(events.EVENT_CHANGED, request.Definition, nil),
 		events.NewKindEvent(events.EVENT_INSPECT, request.Definition, nil),
-	}, network.Shared, request.Definition.GetRuntime().GetNode())
+	}
+
+	if networkObj.Name == "cluster" {
+		event, err := events.NewNodeEvent(events.EVENT_CLUSTER_READY, network.Shared.Manager.Cluster.Node)
+
+		if err == nil {
+			eventsGroup = append(eventsGroup, event)
+		}
+	}
+
+	events.DispatchGroup(eventsGroup, network.Shared, request.Definition.GetRuntime().GetNode())
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
