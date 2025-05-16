@@ -293,8 +293,8 @@ jobs:
             MATRIX='[{tags: ["$TAG_CTL"]}]'
           fi
           
-          echo "$matrix" | jq
-          echo "matrix=$(echo "$matrix" | jq -c)" >> "$GITHUB_OUTPUT"
+          echo "$MATRIX" | jq
+          echo "matrix=$(echo "$MATRIX" | jq -c)" >> "$GITHUB_OUTPUT"
 
   release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
