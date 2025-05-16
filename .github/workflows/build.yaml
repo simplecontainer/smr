@@ -244,6 +244,7 @@ jobs:
     outputs:
       tag_smr: ${{ steps.generate_tag.outputs.tag_smr }}
       tag_ctl: ${{ steps.generate_tag.outputs.tag_ctl }}
+      matrix: ${{ steps.generate_tag.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
