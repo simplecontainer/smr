@@ -317,7 +317,7 @@ jobs:
         with:
           commit_message: Automated version tracking [no ci]
           branch: main
-          file_pattern: '**/version'
+          file_pattern: 'cmd/**/version'
           repository: .
           tagging_message: '${{ github.ref_name }}'
           commit_user_name: bot
