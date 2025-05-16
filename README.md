@@ -8,14 +8,34 @@ Introduction
 
 ## Quickstart
 
-To run the simplecontainer node
+To run container node with default config:
 
-```cgo
-
+```bash
+curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
+chmod +x smrmgr
+sudo mv smrmgr /usr/local/bin
+sudo smrmgr install
 ```
 
+Now that tools are installed, to run default node just run:
 
-Introducing Kubernetes alike features for docker. Deploy to docker daemons with ease using the simplecontainer. Works as an overlay over docker daemon and
+```bash
+smrmgr start 
+```
+
+After node is started import context for the smrctl and use smrctl to talk using control plane.
+
+```bash
+smrctl import $(sudo smr agent export --api localhost:1443)
+smrctl ps
+```
+
+If you want to run on some another domain just replace localhost with the domain.
+
+Simplecontainer runs as a docker container with access to the docker daemon socket and takes over orchestration.
+It let's you define YAML files with state you want and after applying the node reconcile to the defined state.
+
+It works as an overlay over docker daemon and
 providing API for orchestrating containers and additional resources like configuration, secret, etc. 
 
 Simplecontainer runs as container itself with the access to the /var/run/docker.sock to orchestrate containers.
@@ -24,19 +44,24 @@ mTLS is used to authenticate the clients and security is on high level.
 
 In practice, it would look like this:
 ```cgo
-smr apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definitions/Containers.yaml
-smr ps
+smrctl apply https://raw.githubusercontent.com/simplecontainer/examples/refs/heads/main/tests/minimal/definitions/Containers.yaml
+smrctl ps
 NODE         RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE     
 smr-agent-2  containers/example/example-busybox-1  -      -     running (docker)  running (9s)  
-smr-agent-2  containers/example/example-busybox-2  -      -     running (docker)  running (9s)
 ```
 
-Make VMs, On-prem servers, or trifty VMs stable resources for serverless with simplecontainer.
+The goals are to make mangement of docker containers on VMs, On-prem servers, or thrifty machines as stable and manageable
+resources for business operations. It can standardize deployment procedure without using different glues to make deployments.
+Turning docker daemon into simplecontainer node is matter of seconds.
 
+Simplecontainer can manage next scenarios:
+- Running one simplecontainer node for one docker daemon
+- Running multiple simplecontainer nodes for multiple docker daemons where every node is isolated
+- Running multiple simplecontainer nodes for multiple docker daemons where nodes are in cluster
 
 To explore more dive into this README.md.
 ## Architecture
-Simplecontainer relies on etcd, RAFT and flannel to enable cluster of docker daemons.
+You can run single node, multiple single nodes, or multiple nodes in cluster. Simplecontainer relies on etcd, RAFT and flannel to enable cluster of docker daemons.
 
 The etcd is started in the single instance mode, embedded in the simplecontainer itself. RAFT protocol is used to enable multi
 node architecture, also embeded in the simplecontainer - not to be confused with cluster of etcd nodes. 
@@ -58,7 +83,6 @@ Afterward, it exposes API for container manipulation and orchestration.**
 
 The simplecontainer introduces the following:
 
-- Single docker daemon or cluster of docker daemons
 - Overlay networking for containers using flannel (encrypted using wireguard by default)
 - Integrated DNS server isolated from Docker daemon
 - GitOps: deploy containers on Docker using GitOps pattern

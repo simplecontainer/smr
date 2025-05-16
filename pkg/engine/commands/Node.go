@@ -99,8 +99,8 @@ func Node() {
 				cmd.Flags().Bool("join", false, "Join the raft")
 
 				cmd.Flags().String("listen", "0.0.0.0:1443", "Simplecontainer mTLS listening interface and port combo")
-				cmd.Flags().String("domains", "", "Domains that TLS certificates are valid for")
-				cmd.Flags().String("ips", "", "IP addresses that TLS certificates are valid for")
+				cmd.Flags().String("domain", "", "Domain that TLS certificates is valid for")
+				cmd.Flags().String("ip", "", "IP address that TLS certificates is valid for")
 
 				cmd.Flags().String("port.control", ":1443", "Port mapping of node control plane -> Default 0.0.0.0:1443")
 				cmd.Flags().String("port.overlay", ":9212", "Port mapping of node overlay raft port  -> Default 0.0.0.0:9212")

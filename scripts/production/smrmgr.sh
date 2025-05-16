@@ -4,11 +4,13 @@ HelpStart(){
   echo """Usage:
 
  Eg:
- ./start.sh -a smr-node-1 -d example.com -i 1 -n https://node1.example.com -o 0.0.0.0:9212 -c https://node1.example.com:9212,https:node2.example.com:9212
+ ./start.sh -n smr-node-1 -d example.com
 
  Options:
- -a: Node domain
- -d: Domain of agent
+ -n: Node name
+ -d: Node domain
+ -a: Node IP address
+ -r Raft port
 """
 }
 
@@ -32,78 +34,58 @@ Manager(){
   NODE=""
   DOMAIN=""
   IP=""
-  NODE_DOMAIN=""
-  NODE_PORT="1443"
-  RAFT_PORT="9212"
-  CONN_STRING="https://localhost:1443"
   NODE_ARGS="--listen 0.0.0.0:1443"
   CLIENT_ARGS="--port.control 0.0.0.0:1443 --port.overlay 0.0.0.0:9212"
-  MODE="cluster"
   JOIN=false
   PEER=""
-  REPOSITORY="quay.io/simplecontainer/smr"
+  IMAGE="quay.io/simplecontainer/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
-  ALLYES=false
 
   echo "All arguments: $*"
 
-  while getopts ":a:c:d:e:h:i:m:n:p:r:t:x:z:sujy" option; do
+  while getopts ":a:c:d:h:i:n:p:t:j" option; do
     case $option in
-      a) # Set agent
+      n) # Set node
          NODE=$OPTARG; ;;
-      c) # Control plane client connect string
-         CONN_STRING=$OPTARG; ;;
       d) # Set domain
          DOMAIN=$OPTARG; ;;
-      e) # Expose control plane
-         NODE_ARGS=$OPTARG; ;;
-      h) # Display help
-         HelpStart && exit; ;;
-      i) # Set ip
+      a) # Set ip addr
          IP=$OPTARG; ;;
-      j) #Set join
-         JOIN="true"; ;;
-      m) #Set mode
-         MODE=$OPTARG; ;;
-      n) # Set Node URL
-         NODE_DOMAIN=$OPTARG; ;;
-      p) # Set node port
-         NODE_PORT=$OPTARG; ;;
-      r) # Set repository
-         REPOSITORY=$OPTARG; ;;
+      c) # Set client args
+         CLIENT_ARGS=$OPTARG; ;;
+      i) # Set repository/image
+         IMAGE=$OPTARG; ;;
       t) # Set tag
          TAG=$OPTARG; ;;
-      x) # Set client additional args
-         CLIENT_ARGS=$OPTARG; ;;
-      y) #SSet all yes answer
-         ALLYES=true; ;;
-      z) PEER=$OPTARG; ;;
+      j) #Set join
+         JOIN="true"; ;;
+      p) #Set peer
+         PEER=$OPTARG; ;;
+      h) # Display help
+         HelpStart && exit; ;;
       *) # Invalid option
         echo "Invalid option"; ;;
    esac
   done
 
-  if [[ $DOMAIN != "" ]]; then
-    if [[ $NODE_DOMAIN == "" ]]; then
-      NODE_DOMAIN=$DOMAIN
-    fi
+  if [[ ${NODE} == "" ]]; then
+    NODE="simplecontainer-node"
   fi
 
-  if [[ $DOMAIN == "" && $NODE_DOMAIN == "" ]]; then
+  if [[ $DOMAIN == "" ]]; then
     DOMAIN="localhost"
-    NODE_DOMAIN="localhost"
   fi
 
-  NODE_ARGS="--image ${REPOSITORY} --tag ${TAG} --node ${NODE} ${NODE_ARGS}"
+  NODE_ARGS="--image ${IMAGE} --tag ${TAG} --node ${NODE} ${NODE_ARGS}"
 
-  [[ -n "$DOMAIN" ]] && NODE_ARGS+=" --domains ${DOMAIN}"
-  [[ -n "$IP" ]] && NODE_ARGS+=" --ips ${IP}"
+  [[ -n "$DOMAIN" ]] && NODE_ARGS+=" --domain ${DOMAIN}"
+  [[ -n "$IP" ]] && NODE_ARGS+=" --ip ${IP}"
   [[ -n "$PEER" && "$JOIN" == true ]] && NODE_ARGS+=" --join --peer ${PEER}"
 
   echo "..Node info....................................................................................................."
   echo "....Agent name:           $NODE"
-  echo "....Node:                 $NODE_DOMAIN"
-  echo "....Repository:           $REPOSITORY"
+  echo "....Node:                 $DOMAIN"
+  echo "....Image:                $IMAGE"
   echo "....Tag:                  $TAG"
   echo "....Node args:            $NODE_ARGS"
   echo "....Client args:          $CLIENT_ARGS"
@@ -115,9 +97,8 @@ Manager(){
     echo "....Join:                 false"
   fi
 
-  #echo "....smr version:          $(smr version)"
+  echo "....smr version:          $(smr version)"
   echo "....ctl version:          $(smrctl version)"
-  #echo "....node logs path:       ~/smr/logs/flannel-${NODE}.log"
   echo "................................................................................................................"
 
   if ! dpkg -s curl &>/dev/null; then
@@ -126,7 +107,7 @@ Manager(){
   fi
 
   if [[ ${NODE} != "" ]]; then
-    if [[ ! $(smr node create --node "${NODE}" --image "${REPOSITORY}" --tag "${TAG}" $NODE_ARGS $CLIENT_ARGS) ]]; then
+    if [[ ! $(smr node create --node "${NODE}" $NODE_ARGS $CLIENT_ARGS) ]]; then
       echo "failed to create node configuration"
       exit 2
     fi
@@ -136,10 +117,10 @@ Manager(){
 
     smr node start --node "${NODE}" -y
 
-    if [[ $NODE_DOMAIN == "localhost" ]]; then
-      RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):${RAFT_PORT}"
+    if [[ $DOMAIN == "localhost" ]]; then
+      RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):9212"
     else
-      RAFT_URL="https://${NODE_DOMAIN}:${RAFT_PORT}"
+      RAFT_URL="https://${DOMAIN}:9212"
     fi
 
     sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
@@ -153,22 +134,6 @@ Manager(){
   else
     HelpStart
   fi
-}
-
-Export(){
-  smr context export <<< $1
-}
-
-Import(){
-  KEY=""
-
-  while read line
-  do
-    KEY=$line
-  done < /dev/stdin
-
-  smr context import "${1}" <<< "${KEY}"
-  smr context fetch
 }
 
 Download(){
@@ -197,12 +162,6 @@ case "$COMMAND" in
       Download "$@";;
     "start")
       Manager "$@";;
-    "wait")
-     Wait "$@";;
-    "import")
-     Import "$@";;
-    "export")
-     Export "$@";;
     *)
-      echo "Unknown command: $COMMAND" ;;
+      echo "Available commands are: install and start" ;;
 esac

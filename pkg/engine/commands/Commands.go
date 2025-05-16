@@ -20,6 +20,7 @@ func PreloadCommands() {
 	// Outside of docker
 	Node()  // Handle smr node starting, stoping
 	Agent() // Handle smr agent running on machine and managing flannel, upgrades
+	Version()
 }
 
 func Parse(api iapi.Api, c *cobra.Command) *cobra.Command {
