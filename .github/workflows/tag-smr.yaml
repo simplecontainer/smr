@@ -55,7 +55,7 @@ jobs:
           
           VERSION=$(cat cmd/smr/version)
           
-          cp -r artifacts/* release/
+          find artifacts -type f -exec cp {} release/ \;
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "release/*"
