@@ -268,11 +268,10 @@ jobs:
           
           VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
           VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "${{ github.event.head_commit.message }}")
-          
+
           TAG_CTL=""
           TAG_SMR=""
-          
-          # Form tag name
+
           if [[ "$COMPONENT" == "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             TAG_CTL="smrctl-${VERSION_CTL}"
             TAG_SMR="smr-${VERSION_SMR}"
@@ -282,26 +281,26 @@ jobs:
             TAG_SMR="smr-${VERSION_SMR}"
           fi
 
-
           echo "Generated tags: $TAG_CTL $TAG_SMR"
           echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
           echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
 
           if [[ -n "$TAG_SMR" && -n "$TAG_CTL" ]]; then
-            MATRIX=$(printf '[{"tags": ["%s", "%s"]}]' "$TAG_SMR" "$TAG_CTL")
+            MATRIX=$(printf '[{"tag": "%s", "component":"smr"}, {"tag": "%s", "component":"smrctl"}]' "$TAG_SMR" "$TAG_CTL")
           elif [[ -n "$TAG_SMR" ]]; then
-            MATRIX=$(printf '[{"tags": ["%s"]}]' "$TAG_SMR")
+            MATRIX=$(printf '["{"tag": "%s", "component":"smr"}]' "$TAG_SMR")
           elif [[ -n "$TAG_CTL" ]]; then
-            MATRIX=$(printf '[{"tags": ["%s"]}]' "$TAG_CTL")
+            MATRIX=$(printf '[{"tag": "%s", "component":"smrctl"}]' "$TAG_CTL")
           fi
 
           echo "$MATRIX" | jq -c
           echo "matrix=$(echo "$MATRIX" | jq -c)" >> $GITHUB_OUTPUT
 
   release:
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [ prepare-release ]
+    name: ${{ matrix.tag }}
     strategy:
       matrix:
         include: ${{ fromJSON(needs.prepare-release.outputs.matrix) }}
@@ -312,9 +311,6 @@ jobs:
           show-progress: false
       - name: Bump versions and commit
         run: |
-          TMP=$(echo "${{ matrix.component }}" | cut -d'-' -f1)
-          COMPONENT=$TMP[0]
-          
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.component }}" == "all" || "${{ github.event.inputs.component }}" == "$COMPONENT" ]]; then
             VERSION=$(cat cmd/${{ matrix.component }}/version)
             VERSION=$(.github/scripts/version.sh "$VERSION" "${{ github.event.head_commit.message }}")
@@ -324,7 +320,7 @@ jobs:
           fi
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Automated version tracking for ${{ matrix.tags }} [no ci]
+          commit_message: Automated version tracking for ${{ matrix.tag }} [no ci]
           branch: main
           file_pattern: 'cmd/${{ matrix.component }}/version'
           repository: .
@@ -333,5 +329,5 @@ jobs:
           commit_author: Author <actions@github.com>
       - name: Create tag
         run: |
-          git tag ${{ matrix.tags }}
+          git tag ${{ matrix.tag }}
           git push origin
