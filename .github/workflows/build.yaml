@@ -320,7 +320,7 @@ jobs:
           fi
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: Automated version tracking for ${{ matrix.tag }} [no ci]
+          commit_message: Automated version tracking for ${{ matrix.tag }}
           branch: main
           file_pattern: 'cmd/${{ matrix.component }}/version'
           repository: .
