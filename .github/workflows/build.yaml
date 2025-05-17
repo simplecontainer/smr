@@ -276,12 +276,13 @@ jobs:
           if [[ "$COMPONENT" == "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             TAG_CTL="smrctl-${VERSION_CTL}"
             TAG_SMR="smr-${VERSION_SMR}"
-          elif [[ "$COMPONENT" != "smr" ]]; then
-            TAG_SMR="${COMPONENT}-${VERSION_SMR}"
-          elif [[ "$COMPONENT" != "smrctl" ]]; then
-            TAG_CTL="${COMPONENT}-${VERSION_CTL}"
+          elif [[ "$COMPONENT" == "smrctl" ]]; then
+            TAG_CTL="smrctl-${VERSION_CTL}"
+          elif [[ "$COMPONENT" == "smr" ]]; then
+            TAG_SMR="smr-${VERSION_SMR}"
           fi
-          
+
+
           echo "Generated tags: $TAG_CTL $TAG_SMR"
           echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
           echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
@@ -294,8 +295,8 @@ jobs:
             MATRIX=$(printf '[{"tags": ["%s"]}]' "$TAG_CTL")
           fi
 
-          echo "$MATRIX" | jq
-          echo "matrix=$(echo "$MATRIX" | jq -c)" >> "$GITHUB_OUTPUT"
+          echo "$MATRIX" | jq -c
+          echo "matrix=$(echo "$MATRIX" | jq -c)" >> $GITHUB_OUTPUT
 
   release:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
