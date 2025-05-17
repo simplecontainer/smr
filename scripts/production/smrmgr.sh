@@ -138,20 +138,32 @@ Manager(){
 
 Download(){
   which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
-  echo "Downloading smr binary and installing it to the /usr/local/bin/smr"
+  echo "Downloading smr and smrctl binary. They will be installed at the /usr/local/bin/smr"
   ARCH=$(uname -p)
 
   if [[ $ARCH == "x86_64" ]]; then
     ARCH="amd64"
+  elif [[ $ARCH == "aarch64" || $ARCH == "arm64" ]]; then
+    ARCH="arm64"
+  else
+    echo "Unsupported architecture"
+    exit 1
   fi
 
-  VERSION=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/client/main/version)}
   PLATFORM="linux-${ARCH}"
 
-  curl -Lo client https://github.com/simplecontainer/client/releases/download/$VERSION/client-$PLATFORM
-  chmod +x client
+  VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)}
 
-  sudo mv client /usr/local/bin/smr
+  curl -Lo client https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM
+  chmod +x smr
+
+  VERSION_CTL=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smrctl/version)}
+
+  curl -Lo client https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM
+  chmod +x smrctl
+
+  sudo mv smr /usr/local/bin/smr
+  sudo mv smrctl /usr/local/bin/smrctl
 }
 
 COMMAND=${1}
