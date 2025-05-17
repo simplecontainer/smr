@@ -315,7 +315,7 @@ jobs:
             VERSION=$(cat cmd/${{ matrix.component }}/version)
             VERSION=$(.github/scripts/version.sh "$VERSION" "${{ github.event.head_commit.message }}")
           
-            echo "$VERSION" > cmd/smr/version
+            echo "$VERSION" > cmd/${{ matrix.component }}/version
             echo "VERSION=$(cat cmd/${{ matrix.component }}/version)" >> $GITHUB_OUTPUT
           fi
       - uses: stefanzweifel/git-auto-commit-action@v5
