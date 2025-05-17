@@ -329,5 +329,6 @@ jobs:
           commit_author: Author <actions@github.com>
       - name: Create tag
         run: |
+          git pull
           git tag ${{ matrix.tag }}
           git push origin ${{ matrix.tag }}
