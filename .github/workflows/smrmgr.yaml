@@ -17,7 +17,7 @@ jobs:
           - ubuntu:latest
           - debian:latest
           - archlinux:latest
-          - centos:7
+          - almalinux:9
           - redhat/ubi8:latest
     container:
       image: ${{ matrix.os }}
