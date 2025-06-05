@@ -28,14 +28,11 @@ jobs:
           if command -v apt-get &>/dev/null; then
             apt-get update && apt-get install -y bash curl git
           elif command -v yum &>/dev/null; then
-            yum install -y bash curl git --nobest
+            yum install -y bash curl git --nobest --skip-broken
           elif command -v dnf &>/dev/null; then
             dnf install -y bash curl git
           elif command -v pacman &>/dev/null; then
             pacman -Sy --noconfirm bash curl git
-          elif command -v emerge &>/dev/null; then
-            echo 'Installing git and bash on Gentoo...'
-            emerge dev-vcs/git app-shells/bash
           else
             echo "Unsupported package manager"
             exit 1
