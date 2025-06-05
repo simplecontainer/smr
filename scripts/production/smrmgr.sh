@@ -139,14 +139,14 @@ Manager(){
 Download(){
   which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
   echo "Downloading smr and smrctl binary. They will be installed at the /usr/local/bin/smr"
-  ARCH=$(uname -p)
+  ARCH=$(uname -m)
 
   if [[ $ARCH == "x86_64" ]]; then
     ARCH="amd64"
   elif [[ $ARCH == "aarch64" || $ARCH == "arm64" ]]; then
     ARCH="arm64"
   else
-    echo "Unsupported architecture"
+    echo "Unsupported architecture $ARCH"
     exit 1
   fi
 
