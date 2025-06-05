@@ -28,7 +28,7 @@ jobs:
           if command -v apt-get &>/dev/null; then
             apt-get update && apt-get install -y bash curl git
           elif command -v yum &>/dev/null; then
-            yum install -y bash curl git
+            yum install -y bash curl git --nobest
           elif command -v dnf &>/dev/null; then
             dnf install -y bash curl git
           elif command -v pacman &>/dev/null; then
