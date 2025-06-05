@@ -139,7 +139,7 @@ Manager(){
 Download(){
   which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
   echo "Downloading smr and smrctl binary. They will be installed at the /usr/local/bin/smr"
-  ARCH=$(uname -p)
+  ARCH=$(uname -m)
 
   if [[ $ARCH == "x86_64" ]]; then
     ARCH="amd64"
