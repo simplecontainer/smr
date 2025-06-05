@@ -146,7 +146,7 @@ Download(){
   elif [[ $ARCH == "aarch64" || $ARCH == "arm64" ]]; then
     ARCH="arm64"
   else
-    echo "Unsupported architecture"
+    echo "Unsupported architecture $ARCH"
     exit 1
   fi
 
