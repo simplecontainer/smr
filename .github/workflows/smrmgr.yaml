@@ -6,6 +6,7 @@ on:
       - pr/harden-install-script
     paths:
       - 'scripts/production/smrmgr.sh'
+      - '.github/workflows/smrmgr.yaml'
 
 jobs:
   test-on-distros:
