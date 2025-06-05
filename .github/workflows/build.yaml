@@ -10,6 +10,7 @@ on:
       - 'LICENSE'
       - '.github/resources/**'
       - '.gitignore'
+      - '.github/**'
   workflow_dispatch:
     inputs:
       component:
