@@ -139,17 +139,8 @@ Manager(){
 Download(){
   which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
   echo "Downloading smr and smrctl binary. They will be installed at the /usr/local/bin/smr"
-  ARCH=$(uname -m)
 
-  if [[ $ARCH == "x86_64" ]]; then
-    ARCH="amd64"
-  elif [[ $ARCH == "aarch64" || $ARCH == "arm64" ]]; then
-    ARCH="arm64"
-  else
-    echo "Unsupported architecture: $ARCH"
-    exit 1
-  fi
-
+  ARCH=$(detect_arch)
   PLATFORM="linux-${ARCH}"
 
   VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)}
@@ -164,6 +155,38 @@ Download(){
 
   sudo mv smr /usr/local/bin/smr
   sudo mv smrctl /usr/local/bin/smrctl
+}
+
+detect_arch() {
+  ARCH=""
+
+  if command -v uname >/dev/null 2>&1; then
+    ARCH="$(uname -m 2>/dev/null)"
+  fi
+
+  if [ -z "$ARCH" ] && command -v dpkg >/dev/null 2>&1; then
+    ARCH="$(dpkg --print-architecture 2>/dev/null)"
+  fi
+
+  if [ -z "$ARCH" ] && command -v arch >/dev/null 2>&1; then
+    ARCH="$(arch 2>/dev/null)"
+  fi
+
+  case "$ARCH" in
+    x86_64 | amd64)
+      echo "amd64"
+      ;;
+    aarch64 | arm64)
+      echo "arm64"
+      ;;
+    armv8* | armv7* | armv6* | armhf)
+      echo "arm64"  # adjust here if you want separate armv7l, etc.
+      ;;
+    *)
+      echo "Error: Unknown or unsupported architecture: '$ARCH'" >&2
+      exit 1
+      ;;
+  esac
 }
 
 COMMAND=${1}

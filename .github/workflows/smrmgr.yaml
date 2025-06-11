@@ -28,11 +28,11 @@ jobs:
           if command -v apt-get &>/dev/null; then
             apt-get update && apt-get install -y sudo bash curl git coreutils
           elif command -v yum &>/dev/null; then
-            yum install -y sudo bash curl git --nobest --skip-broken
+            yum install -y sudo bash curl git coreutils --nobest --skip-broken
           elif command -v dnf &>/dev/null; then
-            dnf install -y sudo bash curl git
+            dnf install -y sudo bash curl git coreutils
           elif command -v pacman &>/dev/null; then
-            pacman -Sy --noconfirm sudo bash curl git
+            pacman -Sy --noconfirm sudo bash curl git coreutils
           else
             echo "Unsupported package manager"
             exit 1
