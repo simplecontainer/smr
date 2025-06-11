@@ -125,7 +125,7 @@ Manager(){
 }
 
 Download(){
-  which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
+  which curl &> /dev/null || { echo "Please install curl before proceeding with installing smr!"; exit 1; }
 
   ARCH=$(detect_arch)
   PLATFORM="linux-${ARCH}"
@@ -133,19 +133,32 @@ Download(){
   VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version --fail)}
   VERSION_CTL=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smrctl/version)}
 
-  echo "Downloading smr:$VERSION_SMR and smrctl:$VERSION_CTL binary. They will be installed at the /usr/local/bin/smr"
-
+  echo "Downloading smr:$VERSION_SMR and smrctl:$VERSION_CTL binary. They will be installed at /usr/local/bin/smr"
   echo "Downloading: https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/smr-$PLATFORM"
+
   curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/smr-$PLATFORM --fail
   chmod +x smr
+
+  if ! ./smr --help > /dev/null 2>&1 && ! ./smr --version > /dev/null 2>&1; then
+    echo "smr is not executable or cannot run."
+    exit 1
+  fi
 
   echo "Downloading https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM"
   curl -Lo smrctl https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM --fail
   chmod +x smrctl
 
+  if ! ./smrctl --help > /dev/null 2>&1 && ! ./smrctl --version > /dev/null 2>&1; then
+    echo "smrctl is not executable or cannot run."
+    exit 1
+  fi
+
   sudo mv smr /usr/local/bin/smr
   sudo mv smrctl /usr/local/bin/smrctl
+
+  echo "smr and smrctl have been successfully installed to /usr/local/bin."
 }
+
 
 detect_arch() {
   ARCH=""
