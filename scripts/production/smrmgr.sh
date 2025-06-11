@@ -143,14 +143,14 @@ Download(){
   ARCH=$(detect_arch)
   PLATFORM="linux-${ARCH}"
 
-  VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)}
+  VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version --fail)}
 
-  curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM
+  curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM --fail
   chmod +x smr
 
   VERSION_CTL=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smrctl/version)}
 
-  curl -Lo smrctl https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM
+  curl -Lo smrctl https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM --fail
   chmod +x smrctl
 
   sudo mv smr /usr/local/bin/smr
