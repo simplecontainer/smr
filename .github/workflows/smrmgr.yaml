@@ -49,7 +49,7 @@ jobs:
         run: |
           curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
           chmod +x smrmgr
-          sudo mv smrmgr /usr/local/bin 
+          sudo mv smrmgr /usr/bin 
           sudo smrmgr install
           smr version
           smrctl version
