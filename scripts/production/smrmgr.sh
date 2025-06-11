@@ -125,10 +125,7 @@ Manager(){
 }
 
 Download(){
-  if ! dpkg -s curl &>/dev/null; then
-    echo 'please install curl manually'
-    exit 1
-  fi
+  which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
 
   ARCH=$(detect_arch)
   PLATFORM="linux-${ARCH}"
