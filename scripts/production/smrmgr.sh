@@ -138,7 +138,7 @@ Manager(){
 
 Download(){
   which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
-  echo "Downloading smr and smrctl binary. They will be installed at the /usr/bin/smr"
+  echo "Downloading smr and smrctl binary. They will be installed at the /usr/local/bin/smr"
 
   ARCH=$(detect_arch)
   PLATFORM="linux-${ARCH}"
@@ -153,8 +153,8 @@ Download(){
   curl -Lo smrctl https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM
   chmod +x smrctl
 
-  sudo mv smr /usr/bin/smr
-  sudo mv smrctl /usr/bin/smrctl
+  sudo mv smr /usr/local/bin/smr
+  sudo mv smrctl /usr/local/bin/smrctl
 }
 
 detect_arch() {
