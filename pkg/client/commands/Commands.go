@@ -41,7 +41,10 @@ func Run(cli *client.Client, c *cobra.Command) {
 				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
 
 				if err != nil {
-					if c.Name() != "import" {
+					switch c.Name() {
+					case "import", "version":
+						break
+					default:
 						fmt.Println("no active context found - try using smr context switch")
 						os.Exit(1)
 					}

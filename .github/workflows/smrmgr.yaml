@@ -1,0 +1,56 @@
+name: Test smrmgr.sh on Linux distros
+
+on:
+  push:
+    branches:
+      - pr/harden-install-script
+    paths:
+      - 'scripts/production/smrmgr.sh'
+      - '.github/workflows/smrmgr.yaml'
+
+jobs:
+  test-on-distros:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu:latest
+          - debian:latest
+          - archlinux:latest
+          - almalinux:9
+          - redhat/ubi8:latest
+    container:
+      image: ${{ matrix.os }}
+
+    steps:
+      - name: Install common dependencies for specific OS
+        run: |
+          if command -v apt-get &>/dev/null; then
+            apt-get update && apt-get install -y sudo bash curl git coreutils
+          elif command -v yum &>/dev/null; then
+            yum install -y sudo bash curl git coreutils --nobest --skip-broken
+          elif command -v dnf &>/dev/null; then
+            dnf install -y sudo bash curl git coreutils
+          elif command -v pacman &>/dev/null; then
+            pacman -Sy --noconfirm sudo bash curl git coreutils
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Make script executable
+        run: chmod +x scripts/production/smrmgr.sh
+
+      - name: Test smrmgr.sh
+        run: |
+          curl -sL --header "Cache-Control: no-cache" https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/pr/harden-install-script/scripts/production/smrmgr.sh -o smrmgr
+          chmod +x smrmgr
+          sudo mv smrmgr /usr/local/bin 
+          smrmgr install
+          smr version
+          smrctl version
+

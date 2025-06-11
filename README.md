@@ -17,7 +17,7 @@ To run container node with default config:
 ```bash
 curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
 chmod +x smrmgr
-sudo mv smrmgr /usr/local/bin  # places smrmgr and smrctl under /usr/bin/local
+sudo mv smrmgr /usr/bin  # places smrmgr and smrctl under /usr/bin/local
 sudo smrmgr install # places smr and smrctl under /usr/bin/local
 ```
 
