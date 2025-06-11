@@ -26,7 +26,7 @@ jobs:
       - name: Install common dependencies for specific OS
         run: |
           if command -v apt-get &>/dev/null; then
-            apt-get update && apt-get install -y sudo bash curl git
+            apt-get update && apt-get install -y sudo bash curl git coreutils
           elif command -v yum &>/dev/null; then
             yum install -y sudo bash curl git --nobest --skip-broken
           elif command -v dnf &>/dev/null; then
