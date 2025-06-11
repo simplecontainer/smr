@@ -125,7 +125,7 @@ Manager(){
 }
 
 Download(){
-  which curl &> /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
+  curl --version || echo "Please install curl before proceeding with installing smr!" | exit 1
 
   ARCH=$(detect_arch)
   PLATFORM="linux-${ARCH}"
