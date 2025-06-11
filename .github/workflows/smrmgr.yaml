@@ -47,7 +47,7 @@ jobs:
 
       - name: Test smrmgr.sh
         run: |
-          curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/pr/harden-install-script/scripts/production/smrmgr.sh -o smrmgr
+          curl -sL --header "Cache-Control: no-cache" https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/pr/harden-install-script/scripts/production/smrmgr.sh -o smrmgr
           chmod +x smrmgr
           sudo mv smrmgr /usr/local/bin 
           smrmgr install
