@@ -150,7 +150,6 @@ jobs:
     strategy:
       matrix:
         include: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
-    if: github.event_name != 'workflow_dispatch'
     outputs:
       image_name: ${{ steps.image_info.outputs.image_name }}
       image_tag: ${{ steps.image_info.outputs.image_tag }}
