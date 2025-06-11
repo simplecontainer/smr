@@ -145,12 +145,12 @@ Download(){
 
   VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)}
 
-  curl -Lo client https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM
+  curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM
   chmod +x smr
 
   VERSION_CTL=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smrctl/version)}
 
-  curl -Lo client https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM
+  curl -Lo smrctl https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM
   chmod +x smrctl
 
   sudo mv smr /usr/local/bin/smr
