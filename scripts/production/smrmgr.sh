@@ -14,18 +14,6 @@ HelpStart(){
 """
 }
 
-extract_flag_value() {
-  local input="$1"
-  local flag="$2"
-
-  # Extract value for the given flag using regex
-  if [[ "$input" =~ ($flag)[=[:space:]]([^[:space:]]+) ]]; then
-    echo "${BASH_REMATCH[2]}"
-  else
-    echo ""
-  fi
-}
-
 #
 #
 # smrmgr
@@ -147,8 +135,8 @@ Download(){
 
   echo "Downloading smr:$VERSION_SMR and smrctl:$VERSION_CTL binary. They will be installed at the /usr/local/bin/smr"
 
-  echo "Downloading: https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM"
-  curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_SMR/smrctl-$PLATFORM --fail
+  echo "Downloading: https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/smr-$PLATFORM"
+  curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/smr-$PLATFORM --fail
   chmod +x smr
 
   echo "Downloading https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM"
