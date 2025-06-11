@@ -2,8 +2,6 @@ name: Test smrmgr.sh on Linux distros
 
 on:
   push:
-    branches:
-      - pr/harden-install-script
     paths:
       - 'scripts/production/smrmgr.sh'
       - '.github/workflows/smrmgr.yaml'
