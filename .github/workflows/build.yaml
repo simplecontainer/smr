@@ -288,7 +288,7 @@ jobs:
           if [[ -n "$TAG_SMR" && -n "$TAG_CTL" ]]; then
             MATRIX=$(printf '[{"tag": "%s", "component":"smr"}, {"tag": "%s", "component":"smrctl"}]' "$TAG_SMR" "$TAG_CTL")
           elif [[ -n "$TAG_SMR" ]]; then
-            MATRIX=$(printf '["{"tag": "%s", "component":"smr"}]' "$TAG_SMR")
+            MATRIX=$(printf '[{"tag": "%s", "component":"smr"}]' "$TAG_SMR")
           elif [[ -n "$TAG_CTL" ]]; then
             MATRIX=$(printf '[{"tag": "%s", "component":"smrctl"}]' "$TAG_CTL")
           fi
