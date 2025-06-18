@@ -27,7 +27,7 @@ Manager(){
   JOIN=false
   PEER=""
   IMAGE="quay.io/simplecontainer/smr"
-  TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/main/version)
+  TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)
 
   echo "All arguments: $*"
 
