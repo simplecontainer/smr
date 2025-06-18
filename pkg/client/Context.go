@@ -835,7 +835,6 @@ func (fs *FileStorage) Delete(name string) error {
 }
 
 func (fs *FileStorage) List() ([]string, error) {
-	fmt.Println("READ READ", fs.contextDir)
 	files, err := os.ReadDir(fs.contextDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read context directory: %w", err)
@@ -848,9 +847,6 @@ func (fs *FileStorage) List() ([]string, error) {
 			contexts = append(contexts, name)
 		}
 	}
-
-	fmt.Println(files)
-	fmt.Println(contexts)
 
 	return contexts, nil
 }

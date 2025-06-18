@@ -57,7 +57,7 @@ Manager(){
   done
 
   if [[ ${NODE} == "" ]]; then
-    NODE="simplecontainer-node"
+    NODE="simplecontainer-node-1"
   fi
 
   if [[ $DOMAIN == "" ]]; then
@@ -91,6 +91,11 @@ Manager(){
 
   if ! dpkg -s curl &>/dev/null; then
     echo 'please install curl manually'
+    exit 1
+  fi
+
+  if ! dpkg -s docker &>/dev/null; then
+    echo 'please install docker manually'
     exit 1
   fi
 

@@ -30,7 +30,7 @@ smrmgr start # Requires sudo permissions to start flannel networking
 After node is started import context for the smrctl and use smrctl to talk using control plane.
 
 ```bash
-smrctl import $(sudo smr agent export --api localhost:1443)
+smrctl context import $(sudo smr agent export --api localhost:1443)
 smrctl ps
 ```
 
@@ -149,7 +149,7 @@ sudo smr agent export --api smr.example.com:1443
 
 On the external machine run:
 ```bash
-smrctl import PASTE_OUTPUT_HERE
+smrctl context import PASTE_OUTPUT_HERE
 smrctl ps
 ```
 
