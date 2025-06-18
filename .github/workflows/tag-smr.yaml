@@ -126,3 +126,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.docker_meta.outputs.tags }}
           push: true
+
+  smrmgr:
+    uses: ./.github/workflows/smrmgr.yaml

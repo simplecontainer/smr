@@ -63,3 +63,6 @@ jobs:
           allowUpdates: true
           draft: false
           tag: ${{ github.ref_name }}
+
+  smrmgr:
+    uses: ./.github/workflows/smrmgr.yaml
