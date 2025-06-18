@@ -328,3 +328,5 @@ jobs:
             git tag "$TAG"
             git push origin main --tags
           done
+  smrmgr:
+    uses: ./.github/workflows/smrmgr.yaml

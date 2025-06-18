@@ -1,11 +1,8 @@
 name: Test smrmgr.sh on Linux distros
 
 on:
-  push:
-    paths:
-      - 'scripts/production/smrmgr.sh'
-      - '.github/workflows/smrmgr.yaml'
-
+  workflow_call:
+    
 jobs:
   test-on-distros:
     runs-on: ubuntu-latest
