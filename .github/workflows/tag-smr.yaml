@@ -30,7 +30,6 @@ jobs:
           VERSION=$(cat version)
           CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.platform }} go build -ldflags "-s -w -X main.version=$VERSION" -o smr-${{ matrix.os }}-${{ matrix.platform }}
           chmod +x smr-${{ matrix.os }}-${{ matrix.platform }}
-
       - name: Upload smr artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -80,18 +79,21 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: smr-linux-amd64
-          path: ./smr-linux-amd64/smr
+          path: ./smr-linux-amd64/
 
       - name: Download smr arm64
         uses: actions/download-artifact@v4
         with:
           name: smr-linux-arm64
-          path: ./smr-linux-arm64/smr
+          path: ./smr-linux-arm64/
 
       - name: Prepare binaries
         run: |
-          chmod +x ./smr-linux-amd64/smr
-          chmod +x ./smr-linux-arm64/smr
+          chmod +x ./smr-linux-amd64/smr-linux-amd64
+          chmod +x ./smr-linux-arm64/smr-linux-arm64
+          
+          mv ./smr-linux-amd64/smr-linux-amd64 ./smr-linux-amd64/smr
+          mv ./smr-linux-arm64/smr-linux-arm64 ./smr-linux-arm64/smr
 
       - name: Extract version tag
         id: extract_tag
