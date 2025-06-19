@@ -327,7 +327,8 @@ func (c *ClientContext) Save() error {
 	activeContextPath := filepath.Join(c.Directory, ".active")
 
 	if _, err := os.Stat(contextPath); err == nil {
-		if !viper.GetBool("y") && !helpers.Confirm("Context with the same name already exists. Do you want to overwrite it?") {
+		if !viper.GetBool("y") &&
+			!helpers.Confirm(fmt.Sprintf("Context with the same name: %s already exists. Do you want to overwrite it?", c.Name)) {
 			return errors.New("action aborted by user")
 		}
 	}
@@ -671,6 +672,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 		if err := os.MkdirAll(contextDir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create context directory: %w", err)
 		}
+
 		manager.store = NewFileStorage(contextDir)
 
 		if helpers.IsRunningAsSudo() {
@@ -984,16 +986,16 @@ func (m *Manager) ListContexts() ([]string, error) {
 }
 
 func (m *Manager) ImportContext(encrypted, key string) (*ClientContext, error) {
-	ctx, err := Import(m.config, encrypted, key)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := m.store.Save(ctx); err != nil {
-		return nil, fmt.Errorf("failed to save imported context: %w", err)
-	}
-
-	return ctx, nil
+	return Import(m.config, encrypted, key)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	////if err := m.store.Save(ctx); err != nil {
+	////	return nil, fmt.Errorf("failed to save imported context: %w", err)
+	////}
+	//
+	//return ctx, nil
 }
 
 func (m *Manager) ExportContext(name string) (string, string, error) {

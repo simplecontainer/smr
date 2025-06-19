@@ -21,12 +21,12 @@ import (
 
 func Resources() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("apply").Args(cobra.ExactArgs(1)).Function(cmdApply).Build(),
-		command.NewBuilder().Parent("smrctl").Name("remove").Args(cobra.ExactArgs(1)).Function(cmdRemove).Build(),
-		command.NewBuilder().Parent("smrctl").Name("list").Args(cobra.ExactArgs(1)).Function(cmdList).Build(),
-		command.NewBuilder().Parent("smrctl").Name("get").Args(cobra.ExactArgs(1)).Function(cmdGet).Build(),
-		command.NewBuilder().Parent("smrctl").Name("inspect").Args(cobra.ExactArgs(1)).Function(cmdInspect).Build(),
-		command.NewBuilder().Parent("smrctl").Name("edit").Args(cobra.ExactArgs(1)).Function(cmdEdit).Build(),
+		command.NewBuilder().Parent("smrctl").Name("apply").Args(cobra.ExactArgs(1)).Function(cmdApply).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("remove").Args(cobra.ExactArgs(1)).Function(cmdRemove).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("list").Args(cobra.ExactArgs(1)).Function(cmdList).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("get").Args(cobra.ExactArgs(1)).Function(cmdGet).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("inspect").Args(cobra.ExactArgs(1)).Function(cmdInspect).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("edit").Args(cobra.ExactArgs(1)).Function(cmdEdit).BuildWithValidation(),
 	)
 }
 

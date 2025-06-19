@@ -94,7 +94,7 @@ Manager(){
     exit 1
   fi
 
-  if ! dpkg -s docker &>/dev/null; then
+  if ! dpkg -s docker-ce &>/dev/null; then
     echo 'please install docker manually'
     exit 1
   fi

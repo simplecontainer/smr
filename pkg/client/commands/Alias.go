@@ -16,7 +16,7 @@ import (
 
 func Alias() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("ps").Args(cobra.MaximumNArgs(1)).Function(cmdPs).Flags(cmdPsFlags).Build(),
+		command.NewBuilder().Parent("smrctl").Name("ps").Args(cobra.MaximumNArgs(1)).Function(cmdPs).Flags(cmdPsFlags).BuildWithValidation(),
 	)
 }
 

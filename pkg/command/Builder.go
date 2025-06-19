@@ -18,30 +18,6 @@ type Builder struct {
 	dependsOn []func(iapi.Api, *client.Client, []string)
 }
 
-type FlagConfig struct {
-	Name         string
-	Shorthand    string
-	DefaultValue interface{}
-	Usage        string
-	Required     bool
-	FlagType     FlagType
-}
-
-type FlagType int
-
-const (
-	StringFlag FlagType = iota
-	IntFlag
-	BoolFlag
-	StringSliceFlag
-	IntSliceFlag
-)
-
-type CommandGroup struct {
-	name     string
-	commands []icommand.Command
-}
-
 func NewBuilder() *Builder {
 	return &Builder{
 		args:      cobra.NoArgs,
@@ -49,13 +25,6 @@ func NewBuilder() *Builder {
 		condition: EmptyCondition,
 		dependsOn: EmptyDepend,
 		command:   EmptyFunction,
-	}
-}
-
-func NewGroup(name string) *CommandGroup {
-	return &CommandGroup{
-		name:     name,
-		commands: []icommand.Command{},
 	}
 }
 
@@ -76,21 +45,6 @@ func (cb *Builder) Flags(flags func(cmd *cobra.Command)) *Builder {
 
 func (cb *Builder) Args(args func(*cobra.Command, []string) error) *Builder {
 	cb.args = args
-	return cb
-}
-
-func (cb *Builder) NoArgs() *Builder {
-	cb.args = cobra.NoArgs
-	return cb
-}
-
-func (cb *Builder) ExactArgs(n int) *Builder {
-	cb.args = cobra.ExactArgs(n)
-	return cb
-}
-
-func (cb *Builder) MinimumNArgs(n int) *Builder {
-	cb.args = cobra.MinimumNArgs(n)
 	return cb
 }
 
@@ -121,29 +75,6 @@ func (cb *Builder) Build() icommand.Command {
 	}
 }
 
-func (cg *CommandGroup) AddRootCommand() *CommandGroup {
-	cmd := NewBuilder().
-		Parent("smr").
-		Name(cg.name).
-		Build()
-
-	cg.commands = append(cg.commands, cmd)
-	return cg
-}
-
-func (cg *CommandGroup) AddCommand(name string) *Builder {
-	return NewBuilder().Parent(cg.name).Name(name)
-}
-
-func (cg *CommandGroup) AddBuiltCommand(cmd Command) *CommandGroup {
-	cg.commands = append(cg.commands, cmd)
-	return cg
-}
-
-func (cg *CommandGroup) GetCommands() []icommand.Command {
-	return cg.commands
-}
-
 func (cb *Builder) Validate() error {
 	if cb.name == "" {
 		return fmt.Errorf("command name is required")
@@ -154,67 +85,10 @@ func (cb *Builder) Validate() error {
 	return nil
 }
 
-func (cb *Builder) BuildWithValidation() (icommand.Command, error) {
+func (cb *Builder) BuildWithValidation() icommand.Command {
 	if err := cb.Validate(); err != nil {
-		return Command{}, err
+		panic(err)
 	}
-	return cb.Build(), nil
+
+	return cb.Build()
 }
-
-//func ExampleAgentCommands() []Engine {
-//	agentGroup := NewGroup("agent")
-//
-//	agentGroup.AddRootCommand()
-//
-//	startCmd := agentGroup.AddCommand("start").
-//		RequiredStringFlag("raft", "raft endpoint (required)").
-//		StringFlag("node", "simplecontainer-node-1", "Node container name").
-//		Function(func(api iapi.Api, args []string) {
-//			fmt.Println("Starting engine agent...")
-//		}).
-//		Build()
-//
-//	agentGroup.AddBuiltCommand(startCmd)
-//
-//	exportCmd := agentGroup.AddCommand("export").
-//		StringFlag("api", "localhost:1443", "Public/private facing endpoint").
-//		StringFlag("node", "simplecontainer-node-1", "Node name").
-//		EngineFunction(func(api iapi.Api, args []string) {
-//			fmt.Println("Exporting engine agent...")
-//		}).
-//		BuildEngine()
-//
-//	agentGroup.AddBuiltCommand(exportCmd)
-//
-//	return agentGroup.GetCommands()
-//}
-
-//func ExampleMixedCommands() ([]Engine, []Client) {
-//	engineCommands := []Engine{
-//		CreateSimpleEngineCommand("server", "start", func(api iapi.Api, args []string) {
-//			fmt.Println("Starting server...")
-//		}),
-//		CreateEngineCommandWithFlags("server", "config",
-//			func(api iapi.Api, args []string) {
-//				fmt.Println("Configuring server...")
-//			},
-//			map[string]string{
-//				"host": "Host address",
-//				"port": "Port number",
-//			},
-//		),
-//	}
-//
-//	clientCommands := []Client{
-//		CreateSimpleClientCommand("client", "connect", func(client *client.Client, args []string) {
-//			fmt.Println("Connecting client...")
-//		}),
-//		CreateClientCommandWithRequiredArgs("client", "send", 2,
-//			func(client *client.Client, args []string) {
-//				fmt.Printf("Sending %s to %s\n", args[0], args[1])
-//			},
-//		),
-//	}
-//
-//	return engineCommands, clientCommands
-//}

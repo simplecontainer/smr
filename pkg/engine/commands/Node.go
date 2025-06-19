@@ -12,12 +12,12 @@ import (
 
 func Node() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smr").Name("node").Build(),
-		command.NewBuilder().Parent("node").Name("create").Function(cmdNodeCreate).Flags(cmdNodeCreateFlags).Build(),
-		command.NewBuilder().Parent("node").Name("start").Function(cmdNodeStart).Flags(cmdNodeStartFlags).Build(),
-		command.NewBuilder().Parent("node").Name("clean").Function(cmdNodeClean).Flags(cmdNodeCleanFlags).Build(),
-		command.NewBuilder().Parent("node").Name("logs").Function(cmdNodeLogs).Flags(cmdNodeLogsFlags).Build(),
-		command.NewBuilder().Parent("node").Name("networks").Function(cmdNodeNetworks).Flags(cmdNodeNetworksFlags).Build(),
+		command.NewBuilder().Parent("smr").Name("node").BuildWithValidation(),
+		command.NewBuilder().Parent("node").Name("create").Function(cmdNodeCreate).Flags(cmdNodeCreateFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("node").Name("start").Function(cmdNodeStart).Flags(cmdNodeStartFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("node").Name("clean").Function(cmdNodeClean).Flags(cmdNodeCleanFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("node").Name("logs").Function(cmdNodeLogs).Flags(cmdNodeLogsFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("node").Name("networks").Function(cmdNodeNetworks).Flags(cmdNodeNetworksFlags).BuildWithValidation(),
 	)
 }
 

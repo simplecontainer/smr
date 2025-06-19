@@ -9,7 +9,7 @@ import (
 
 func Version() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("version").Function(cmdVersion).Build(),
+		command.NewBuilder().Parent("smrctl").Name("version").Function(cmdVersion).BuildWithValidation(),
 	)
 }
 

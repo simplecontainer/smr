@@ -16,11 +16,11 @@ import (
 
 func Context() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("context").Function(cmdContext).Build(),
-		command.NewBuilder().Parent("context").Name("switch").Args(cobra.MaximumNArgs(1)).Function(cmdContext).Build(),
+		command.NewBuilder().Parent("smrctl").Name("context").Function(cmdContext).BuildWithValidation(),
+		command.NewBuilder().Parent("context").Name("switch").Args(cobra.MaximumNArgs(1)).Function(cmdContextSwitch).BuildWithValidation(),
 
-		command.NewBuilder().Parent("context").Name("export").Args(cobra.MaximumNArgs(1)).Function(cmdContextImport).Flags(cmdContextImportFlags).Build(),
-		command.NewBuilder().Parent("context").Name("import").Args(cobra.ExactArgs(2)).Function(cmdContextExport).Flags(cmdContextExportFlags).Build(),
+		command.NewBuilder().Parent("context").Name("export").Args(cobra.MaximumNArgs(1)).Function(cmdContextExport).Flags(cmdContextExportFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("context").Name("import").Args(cobra.ExactArgs(2)).Function(cmdContextImport).Flags(cmdContextImportFlags).BuildWithValidation(),
 	)
 }
 

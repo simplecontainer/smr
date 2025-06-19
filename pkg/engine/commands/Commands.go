@@ -18,7 +18,7 @@ func PreloadCommands() {
 	Start()
 
 	// Outside of docker
-	Node()  // Handle smr node starting, stoping
+	Node()  // Handle smr node starting, stopping
 	Agent() // Handle smr agent running on machine and managing flannel, upgrades
 	Version()
 }

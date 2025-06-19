@@ -17,13 +17,13 @@ func (command Command) GetName() string {
 	return command.Name
 }
 
-func (command Command) GetParent() string { return "" }
+func (command Command) GetParent() string { return command.Parent }
 
 func (command Command) SetFlags(cmd *cobra.Command) {
 	command.Flags(cmd)
 }
 
-func (command Command) GetFlag() string { return "" }
+func (command Command) GetFlags() func(command *cobra.Command) { return command.Flags }
 
 func (command Command) GetArgs() func(*cobra.Command, []string) error {
 	return command.Args

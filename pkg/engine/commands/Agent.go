@@ -15,16 +15,16 @@ import (
 
 func Agent() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smr").Name("agent").Build(),
-		command.NewBuilder().Parent("agent").Name("start").Function(cmdAgentStart).Flags(cmdAgentStartFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("export").Function(cmdAgentExport).Flags(cmdAgentExportFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("import").Args(cobra.ExactArgs(2)).Function(cmdAgentImport).Flags(cmdAgentImportFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("stop").Function(cmdAgentStop).Build(),
-		command.NewBuilder().Parent("agent").Name("control").Function(cmdAgentControl).Flags(cmdAgentControlFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("events").Function(cmdAgentEvents).Flags(cmdAgentControlFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("drain").Function(cmdAgentDrain).Flags(cmdAgentDrainFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("restart").Function(cmdAgentRestart).Flags(cmdAgentRestartFlags).Build(),
-		command.NewBuilder().Parent("agent").Name("upgrade").Args(cobra.ExactArgs(2)).Function(cmdAgentUpgrade).Flags(cmdAgentUpgradeFlags).Build(),
+		command.NewBuilder().Parent("smr").Name("agent").BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("start").Function(cmdAgentStart).Flags(cmdAgentStartFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("export").Function(cmdAgentExport).Flags(cmdAgentExportFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("import").Args(cobra.ExactArgs(2)).Function(cmdAgentImport).Flags(cmdAgentImportFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("stop").Function(cmdAgentStop).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("control").Function(cmdAgentControl).Flags(cmdAgentControlFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("events").Function(cmdAgentEvents).Flags(cmdAgentEventsFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("drain").Function(cmdAgentDrain).Flags(cmdAgentDrainFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("restart").Function(cmdAgentRestart).Flags(cmdAgentRestartFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("upgrade").Args(cobra.ExactArgs(2)).Function(cmdAgentUpgrade).Flags(cmdAgentUpgradeFlags).BuildWithValidation(),
 	)
 }
 

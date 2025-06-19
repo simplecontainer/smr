@@ -28,7 +28,7 @@ import (
 
 func Start() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smr").Name("start").Function(cmdStart).Flags(cmdStartFlags).Build(),
+		command.NewBuilder().Parent("smr").Name("start").Function(cmdStart).Flags(cmdStartFlags).BuildWithValidation(),
 	)
 }
 

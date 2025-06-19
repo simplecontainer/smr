@@ -9,7 +9,7 @@ import (
 type Command interface {
 	GetParent() string
 	GetName() string
-	GetFlag() string
+	GetFlags() func(command *cobra.Command)
 	SetFlags(cmd *cobra.Command)
 	GetArgs() func(*cobra.Command, []string) error
 	GetCondition(api iapi.Api, cli *client.Client) bool

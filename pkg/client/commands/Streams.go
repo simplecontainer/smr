@@ -26,9 +26,9 @@ import (
 
 func Streams() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("debug").Args(cobra.ExactArgs(1)).Function(cmdDebug).Flags(cmdDebugFlags).Build(),
-		command.NewBuilder().Parent("smrctl").Name("logs").Args(cobra.ExactArgs(1)).Function(cmdLogs).Flags(cmdLogsFlags).Build(),
-		command.NewBuilder().Parent("smrctl").Name("exec").Args(cobra.ExactArgs(1)).Function(cmdExec).Flags(cmdExecFlags).Build(),
+		command.NewBuilder().Parent("smrctl").Name("debug").Args(cobra.ExactArgs(1)).Function(cmdDebug).Flags(cmdDebugFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("logs").Args(cobra.ExactArgs(1)).Function(cmdLogs).Flags(cmdLogsFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("exec").Args(cobra.ExactArgs(1)).Function(cmdExec).Flags(cmdExecFlags).BuildWithValidation(),
 	)
 }
 
