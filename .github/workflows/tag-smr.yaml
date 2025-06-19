@@ -114,7 +114,6 @@ jobs:
         with:
           images: 'quay.io/simplecontainer/smr'
           tags: |
-            type=ref,event=tag
             type=raw,value=latest,enable=true
             type=raw,value=${{ steps.extract_tag.outputs.version }}
 
@@ -128,4 +127,5 @@ jobs:
           push: true
 
   smrmgr:
+    needs: [release]
     uses: ./.github/workflows/smrmgr.yaml

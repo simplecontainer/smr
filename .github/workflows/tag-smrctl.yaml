@@ -65,4 +65,5 @@ jobs:
           tag: ${{ github.ref_name }}
 
   smrmgr:
+    needs: [release]
     uses: ./.github/workflows/smrmgr.yaml
