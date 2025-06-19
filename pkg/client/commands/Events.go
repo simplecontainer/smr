@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -17,105 +18,72 @@ import (
 
 func Events() {
 	Commands = append(Commands,
-		command.Client{
-			Parent: "smrctl",
-			Name:   "events",
-			Condition: func(cli *client.Client) bool {
-				return true
-			},
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					ctx, cancel := context.WithCancel(context.Background())
-
-					err := cli.Events(ctx, cancel, viper.GetString("wait"), viper.GetString("resource"), cli.Tracker)
-
-					if err != nil {
-						return
-					}
-				},
-			},
-			DependsOn: EmptyDepend,
-			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
-				cmd.Flags().String("wait", "", "Wait for specific event")
-				cmd.Flags().String("resource", "", "Specify resource you want to track")
-			},
-		},
-		command.Client{
-			Parent:    "smrctl",
-			Name:      "sync",
-			Condition: EmptyCondition,
-			Args:      cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					event := events.New(events.EVENT_SYNC, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, format.GetGroup(), format.GetName(), nil)
-
-					var bytes []byte
-					bytes, err = event.ToJSON()
-
-					Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
-
-				},
-			},
-			DependsOn: EmptyDepend,
-			Flags:     EmptyFlag,
-		},
-		command.Client{
-			Parent:    "smrctl",
-			Name:      "refresh",
-			Condition: EmptyCondition,
-			Args:      cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					event := events.New(events.EVENT_REFRESH, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, format.GetGroup(), format.GetName(), nil)
-
-					var bytes []byte
-					bytes, err = event.ToJSON()
-
-					Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
-				},
-			},
-			DependsOn: EmptyDepend,
-			Flags:     EmptyFlag,
-		},
-		command.Client{
-			Parent:    "smrctl",
-			Name:      "restart",
-			Condition: EmptyCondition,
-			Args:      cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					event := events.New(events.EVENT_RESTART, static.KIND_CONTAINERS, static.SMR_PREFIX, static.KIND_CONTAINERS, format.GetGroup(), format.GetName(), nil)
-
-					var bytes []byte
-					bytes, err = event.ToJSON()
-
-					Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
-
-				},
-			},
-			DependsOn: EmptyDepend,
-			Flags:     EmptyFlag,
-		},
+		command.NewBuilder().Parent("smrctl").Name("events").Function(cmdEvents).Flags(cmdEventsFlags).Build(),
+		command.NewBuilder().Parent("smrctl").Name("sync").Args(cobra.ExactArgs(1)).Function(cmdSync).Build(),
+		command.NewBuilder().Parent("smrctl").Name("refresh").Args(cobra.ExactArgs(1)).Function(cmdRefresh).Build(),
+		command.NewBuilder().Parent("smrctl").Name("restart").Args(cobra.ExactArgs(1)).Function(cmdRestart).Build(),
 	)
+}
+
+func cmdEvents(api iapi.Api, cli *client.Client, args []string) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := cli.Events(ctx, cancel, viper.GetString("wait"), viper.GetString("resource"), cli.Tracker)
+
+	if err != nil {
+		return
+	}
+}
+func cmdEventsFlags(cmd *cobra.Command) {
+	cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmd.Flags().String("wait", "", "Wait for specific event")
+	cmd.Flags().String("resource", "", "Specify resource you want to track")
+}
+
+func cmdSync(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	event := events.New(events.EVENT_SYNC, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, format.GetGroup(), format.GetName(), nil)
+
+	var bytes []byte
+	bytes, err = event.ToJSON()
+
+	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
+
+}
+
+func cmdRefresh(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	event := events.New(events.EVENT_REFRESH, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, format.GetGroup(), format.GetName(), nil)
+
+	var bytes []byte
+	bytes, err = event.ToJSON()
+
+	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
+}
+
+func cmdRestart(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	event := events.New(events.EVENT_RESTART, static.KIND_CONTAINERS, static.SMR_PREFIX, static.KIND_CONTAINERS, format.GetGroup(), format.GetName(), nil)
+
+	var bytes []byte
+	bytes, err = event.ToJSON()
+
+	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
 }
 
 func Event(context *client.ClientContext, prefix string, version string, category string, kind string, group string, name string, data []byte) {
