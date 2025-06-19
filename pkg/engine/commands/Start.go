@@ -27,11 +27,9 @@ import (
 
 func Start() {
 	Commands = append(Commands, command.Engine{
-		Parent: "smr",
-		Name:   "start",
-		Condition: func(iapi.Api) bool {
-			return true
-		},
+		Parent:    "smr",
+		Name:      "start",
+		Condition: EmptyCondition,
 		Functions: []func(iapi.Api, []string){
 			func(api iapi.Api, args []string) {
 				var conf = configuration.NewConfig()
@@ -289,9 +287,7 @@ func Start() {
 				}
 			},
 		},
-		DependsOn: []func(iapi.Api, []string){
-			func(api iapi.Api, args []string) {},
-		},
+		DependsOn: EmptyDepend,
 		Flags: func(cmd *cobra.Command) {
 			cmd.Flags().String("flannel.backend", "wireguard", "Flannel backend: vxlan, wireguard")
 			cmd.Flags().String("flannel.cidr", "10.10.0.0/16", "Flannel overlay network CIDR")

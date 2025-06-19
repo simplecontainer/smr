@@ -26,12 +26,10 @@ import (
 func Streams() {
 	Commands = append(Commands,
 		command.Client{
-			Parent: "smrctl",
-			Name:   "debug",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "debug",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -64,21 +62,17 @@ func Streams() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("container", "main", "Logs from main or init")
 				cmd.Flags().BoolP("follow", "f", false, "Follow logs")
 			},
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "logs",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "logs",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -119,21 +113,17 @@ func Streams() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("container", "main", "Logs from main or init")
 				cmd.Flags().BoolP("follow", "f", false, "Follow logs")
 			},
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "exec",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "exec",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -172,9 +162,7 @@ func Streams() {
 					handle(ctx, cancel, conn, interactive)
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().StringP("c", "c", "/bin/sh", "Command to execute in container")
 				cmd.Flags().BoolP("it", "i", false, "Interactive session")

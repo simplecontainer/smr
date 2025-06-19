@@ -21,12 +21,10 @@ import (
 func Resources() {
 	Commands = append(Commands,
 		command.Client{
-			Parent: "smrctl",
-			Name:   "apply",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "apply",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					pack, _, err := determineDefinitions(args[0], cli)
@@ -48,18 +46,14 @@ func Resources() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "remove",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "remove",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					pack, format, err := determineDefinitions(args[0], cli)
@@ -87,18 +81,14 @@ func Resources() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "list",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "list",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -133,61 +123,47 @@ func Resources() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "get",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "get",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					action(cli, args, "get")
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "inspect",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "inspect",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					action(cli, args, "inspect")
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "edit",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "edit",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					action(cli, args, "edit")
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 	)
 }

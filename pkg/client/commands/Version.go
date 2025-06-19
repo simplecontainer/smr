@@ -10,21 +10,17 @@ import (
 func Version() {
 	Commands = append(Commands,
 		command.Client{
-			Parent: "smrctl",
-			Name:   "version",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "smrctl",
+			Name:      "version",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					fmt.Println(cli.Version.Version)
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 	)
 }

@@ -16,12 +16,10 @@ import (
 func Context() {
 	Commands = append(Commands,
 		command.Client{
-			Parent: "smrctl",
-			Name:   "context",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "smrctl",
+			Name:      "context",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -34,19 +32,15 @@ func Context() {
 					fmt.Println(activeCtx.Name)
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 			},
 		},
 		command.Client{
-			Parent: "context",
-			Name:   "switch",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.MaximumNArgs(1),
+			Parent:    "context",
+			Name:      "switch",
+			Condition: EmptyCondition,
+			Args:      cobra.MaximumNArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -94,19 +88,15 @@ func Context() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 			},
 		},
 		command.Client{
-			Parent: "context",
-			Name:   "export",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.MaximumNArgs(1),
+			Parent:    "context",
+			Name:      "export",
+			Condition: EmptyCondition,
+			Args:      cobra.MaximumNArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					name := ""
@@ -133,12 +123,10 @@ func Context() {
 			},
 		},
 		command.Client{
-			Parent: "context",
-			Name:   "import",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(2),
+			Parent:    "context",
+			Name:      "import",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(2),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					var err error

@@ -34,9 +34,7 @@ func Events() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().String("wait", "", "Wait for specific event")
@@ -44,12 +42,10 @@ func Events() {
 			},
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "sync",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "sync",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -67,18 +63,14 @@ func Events() {
 
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "refresh",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "refresh",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -95,18 +87,14 @@ func Events() {
 					Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Client{
-			Parent: "smrctl",
-			Name:   "restart",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
+			Parent:    "smrctl",
+			Name:      "restart",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					format, err := f.Build(args[0], cli.Group)
@@ -124,10 +112,8 @@ func Events() {
 
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 	)
 }

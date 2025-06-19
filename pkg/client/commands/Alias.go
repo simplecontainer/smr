@@ -16,12 +16,10 @@ import (
 func Alias() {
 	Commands = append(Commands,
 		command.Client{
-			Parent: "smrctl",
-			Name:   "ps",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.MaximumNArgs(1),
+			Parent:    "smrctl",
+			Name:      "ps",
+			Condition: EmptyCondition,
+			Args:      cobra.MaximumNArgs(1),
 			Functions: []func(*client.Client, []string){
 				func(cli *client.Client, args []string) {
 					if len(args) == 0 {
@@ -61,9 +59,7 @@ func Alias() {
 					}
 				},
 			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("output", "full", "output format: full, short")
 			},

@@ -12,38 +12,29 @@ import (
 func Node() {
 	Commands = append(Commands,
 		command.Engine{
-			Parent: "smr",
-			Name:   "node",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "smr",
+			Name:      "node",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-			},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Engine{
-			Parent: "node",
-			Name:   "start",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "node",
+			Name:      "start",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					node.Start(viper.GetString("entrypoint"), viper.GetString("args"))
 					node.SetupAccess()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
 				cmd.Flags().String("entrypoint", "/opt/smr/smr", "Entrypoint")
@@ -52,39 +43,31 @@ func Node() {
 			},
 		},
 		command.Engine{
-			Parent: "node",
-			Name:   "clean",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "node",
+			Name:      "clean",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					node.Clean()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
 			},
 		},
 		command.Engine{
-			Parent: "node",
-			Name:   "create",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "node",
+			Name:      "create",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					node.Create(api)
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
 
@@ -108,37 +91,29 @@ func Node() {
 			},
 		},
 		command.Engine{
-			Parent: "node",
-			Name:   "logs",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "node",
+			Name:      "logs",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					node.Logs()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 			},
 		},
 		command.Engine{
-			Parent: "node",
-			Name:   "networks",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "node",
+			Name:      "networks",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					node.Networks()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().String("network", "bridge", "Network name")

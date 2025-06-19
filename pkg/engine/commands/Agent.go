@@ -17,28 +17,19 @@ import (
 func Agent() {
 	Commands = append(Commands,
 		command.Engine{
-			Parent: "smr",
-			Name:   "agent",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
-			Functions: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-			},
+			Parent:    "smr",
+			Name:      "agent",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
+			Functions: EmptyDepend,
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "start",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "agent",
+			Name:      "start",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -66,114 +57,89 @@ func Agent() {
 					agent.Flannel()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("raft", "", "raft endpoint")
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "export",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "agent",
+			Name:      "export",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					agent.Export()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "import",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(2),
+			Parent:    "agent",
+			Name:      "import",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(2),
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					agent.Import(args[0], args[1])
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "stop",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "agent",
+			Name:      "stop",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					agent.Stop()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-			},
+			DependsOn: EmptyDepend,
+			Flags:     EmptyFlag,
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "control",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "agent",
+			Name:      "control",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					controller.Control(api)
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "events",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "agent",
+			Name:      "events",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					agent.Events()
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().String("wait", "", "Node")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "drain",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
+			Parent:    "agent",
+			Name:      "drain",
+			Condition: EmptyCondition,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -192,21 +158,17 @@ func Agent() {
 					agent.Batch(b)
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().String("wait", "", "Node")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "restart",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "agent",
+			Name:      "restart",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -227,21 +189,17 @@ func Agent() {
 					agent.Batch(b)
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().String("wait", "", "Node")
 			},
 		},
 		command.Engine{
-			Parent: "agent",
-			Name:   "upgrade",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(2),
+			Parent:    "agent",
+			Name:      "upgrade",
+			Condition: EmptyCondition,
+			Args:      cobra.ExactArgs(2),
 			Functions: []func(iapi.Api, []string){
 				func(api iapi.Api, args []string) {
 					environment := configuration.NewEnvironment(configuration.WithHostConfig())
@@ -262,9 +220,7 @@ func Agent() {
 					agent.Batch(b)
 				},
 			},
-			DependsOn: []func(iapi.Api, []string){
-				func(api iapi.Api, args []string) {},
-			},
+			DependsOn: EmptyDepend,
 			Flags: func(cmd *cobra.Command) {
 				cmd.Flags().String("node", "simplecontainer-node-1", "Node")
 				cmd.Flags().String("wait", "", "Node")

@@ -10,12 +10,10 @@ import (
 func Version() {
 	Commands = append(Commands,
 		command.Engine{
-			Parent: "smr",
-			Name:   "version",
-			Condition: func(iapi.Api) bool {
-				return true
-			},
-			Args: cobra.NoArgs,
+			Parent:    "smr",
+			Name:      "version",
+			Condition: EmptyCondition,
+			Args:      cobra.NoArgs,
 			Functions: []func(iapi.Api, []string){
 				func(a iapi.Api, args []string) {
 					fmt.Println(a.GetVersion().Node)
@@ -24,7 +22,7 @@ func Version() {
 			DependsOn: []func(iapi.Api, []string){
 				func(cli iapi.Api, args []string) {},
 			},
-			Flags: func(cmd *cobra.Command) {},
+			Flags: EmptyFlag,
 		},
 	)
 }
