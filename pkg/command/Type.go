@@ -6,24 +6,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Engine struct {
-	Parent    string
-	Name      string
-	Flag      string
-	Args      func(*cobra.Command, []string) error
-	Condition func(iapi.Api) bool
-	Functions []func(iapi.Api, []string)
-	DependsOn []func(iapi.Api, []string)
-	Flags     func(command *cobra.Command)
-}
+var (
+	EmptyCondition = func(iapi.Api, *client.Client) bool { return true }
+	EmptyFunction  = func(iapi.Api, *client.Client, []string) {}
+	EmptyDepend    = []func(iapi.Api, *client.Client, []string){EmptyFunction}
+	EmptyFlag      = func(cmd *cobra.Command) {}
+)
 
-type Client struct {
+type Command struct {
 	Parent    string
 	Name      string
 	Flag      string
 	Args      func(*cobra.Command, []string) error
-	Condition func(client *client.Client) bool
-	Functions []func(*client.Client, []string)
-	DependsOn []func(*client.Client, []string)
+	Condition func(iapi.Api, *client.Client) bool
+	Command   func(iapi.Api, *client.Client, []string)
+	DependsOn []func(iapi.Api, *client.Client, []string)
 	Flags     func(command *cobra.Command)
 }

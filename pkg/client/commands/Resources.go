@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/client/resources"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/formaters"
@@ -20,176 +21,104 @@ import (
 
 func Resources() {
 	Commands = append(Commands,
-		command.Client{
-			Parent: "smrctl",
-			Name:   "apply",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					pack, _, err := determineDefinitions(args[0], cli)
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					if len(pack.Definitions) != 0 {
-						for _, definition := range pack.Definitions {
-							err = definition.ProposeApply(cli.Context.GetClient(), cli.Context.APIURL)
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-
-							fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
-						}
-					} else {
-						fmt.Println("specified file/url is not valid definition/pack")
-					}
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "remove",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					pack, format, err := determineDefinitions(args[0], cli)
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					if len(pack.Definitions) != 0 {
-						for _, definition := range pack.Definitions {
-							err = definition.ProposeRemove(cli.Context.GetClient(), cli.Context.APIURL)
-							if err != nil {
-								helpers.PrintAndExit(err, 1)
-							}
-							fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
-						}
-					} else {
-						err = resources.Delete(cli.Context, format.GetPrefix(), format.GetVersion(),
-							format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
-
-						if err != nil {
-							fmt.Println(err)
-						} else {
-							fmt.Println("object proposed for deleting")
-						}
-					}
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "list",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					var objects []json.RawMessage
-
-					switch format.GetKind() {
-					case static.KIND_GITOPS:
-						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
-							static.CATEGORY_STATE, format.GetKind())
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-						formaters.Gitops(objects)
-					case static.KIND_CONTAINERS:
-						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
-							static.CATEGORY_STATE, format.GetKind())
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-						formaters.Container(objects)
-					default:
-						objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
-							static.CATEGORY_KIND, format.GetKind())
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-						formaters.Default(objects)
-					}
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "get",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					action(cli, args, "get")
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "inspect",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					action(cli, args, "inspect")
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "edit",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					action(cli, args, "edit")
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {},
-		},
+		command.NewBuilder().Parent("smrctl").Name("apply").Args(cobra.ExactArgs(1)).Function(cmdApply).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("remove").Args(cobra.ExactArgs(1)).Function(cmdRemove).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("list").Args(cobra.ExactArgs(1)).Function(cmdList).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("get").Args(cobra.ExactArgs(1)).Function(cmdGet).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("inspect").Args(cobra.ExactArgs(1)).Function(cmdInspect).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("edit").Args(cobra.ExactArgs(1)).Function(cmdEdit).BuildWithValidation(),
 	)
+}
+
+func cmdApply(api iapi.Api, cli *client.Client, args []string) {
+	pack, _, err := determineDefinitions(args[0], cli)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	if len(pack.Definitions) != 0 {
+		for _, definition := range pack.Definitions {
+			err = definition.ProposeApply(cli.Context.GetClient(), cli.Context.APIURL)
+			if err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+
+			fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
+		}
+	} else {
+		fmt.Println("specified file/url is not valid definition/pack")
+	}
+}
+
+func cmdRemove(api iapi.Api, cli *client.Client, args []string) {
+	pack, format, err := determineDefinitions(args[0], cli)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	if len(pack.Definitions) != 0 {
+		for _, definition := range pack.Definitions {
+			err = definition.ProposeRemove(cli.Context.GetClient(), cli.Context.APIURL)
+			if err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+			fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
+		}
+	} else {
+		err = resources.Delete(cli.Context, format.GetPrefix(), format.GetVersion(),
+			format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
+
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("object proposed for deleting")
+		}
+	}
+}
+
+func cmdList(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	var objects []json.RawMessage
+
+	switch format.GetKind() {
+	case static.KIND_GITOPS:
+		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
+			static.CATEGORY_STATE, format.GetKind())
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
+		}
+		formaters.Gitops(objects)
+	case static.KIND_CONTAINERS:
+		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
+			static.CATEGORY_STATE, format.GetKind())
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
+		}
+		formaters.Container(objects)
+	default:
+		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
+			static.CATEGORY_KIND, format.GetKind())
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
+		}
+		formaters.Default(objects)
+	}
+}
+
+func cmdGet(api iapi.Api, cli *client.Client, args []string) {
+	action(cli, args, "get")
+}
+
+func cmdInspect(api iapi.Api, cli *client.Client, args []string) {
+	action(cli, args, "inspect")
+}
+
+func cmdEdit(api iapi.Api, cli *client.Client, args []string) {
+	action(cli, args, "edit")
 }
 
 func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, iformat.Format, error) {

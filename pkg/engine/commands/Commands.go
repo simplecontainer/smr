@@ -3,22 +3,22 @@ package commands
 import (
 	"fmt"
 	"github.com/simplecontainer/smr/internal/helpers"
-	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
+	"github.com/simplecontainer/smr/pkg/contracts/icommand"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"os"
 )
 
-var Commands []command.Engine
+var Commands []icommand.Command
 
 func PreloadCommands() {
 	// Inside the docker
 	Start()
 
 	// Outside of docker
-	Node()  // Handle smr node starting, stoping
+	Node()  // Handle smr node starting, stopping
 	Agent() // Handle smr agent running on machine and managing flannel, upgrades
 	Version()
 }
@@ -33,16 +33,16 @@ func Parse(api iapi.Api, c *cobra.Command) *cobra.Command {
 
 	for _, cmd := range Commands {
 		cobraCmd := &cobra.Command{
-			Use:   cmd.Name,
-			Short: fmt.Sprintf("%s %s", cmd.Parent, cmd.Name),
-			Args:  cmd.Args,
+			Use:   cmd.GetName(),
+			Short: fmt.Sprintf("%s %s", cmd.GetParent(), cmd.GetName()),
+			Args:  cmd.GetArgs(),
 			PreRunE: func(c *cobra.Command, args []string) error {
-				if !cmd.Condition(api) {
+				if !cmd.GetCondition(api, nil) {
 					return fmt.Errorf("condition failed for command %s", c.Use)
 				}
 
-				for _, dep := range cmd.DependsOn {
-					dep(api, args)
+				for _, dep := range cmd.GetDependsOn() {
+					dep(api, nil, args)
 				}
 
 				return nil
@@ -55,23 +55,21 @@ func Parse(api iapi.Api, c *cobra.Command) *cobra.Command {
 					}
 				})
 
-				for _, fn := range cmd.Functions {
-					fn(api, args)
-				}
+				cmd.GetCommand()(api, nil, args)
 			},
 		}
 
 		cmd.SetFlags(cobraCmd)
 
-		if cmd.Parent == "smr" || cmd.Parent == "" {
+		if cmd.GetParent() == "smr" || cmd.GetParent() == "" {
 			c.AddCommand(cobraCmd)
 		} else {
-			parent := findCommand(c, cmd.Parent)
+			parent := findCommand(c, cmd.GetParent())
 
 			if parent != nil {
 				parent.AddCommand(cobraCmd)
 			} else {
-				fmt.Printf("warning: parent command '%s' not found for '%s'\n", cmd.Parent, cmd.Name)
+				fmt.Printf("warning: parent command '%s' not found for '%s'\n", cmd.GetParent(), cmd.GetName())
 			}
 		}
 	}

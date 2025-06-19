@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/client/exec"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -25,162 +26,129 @@ import (
 
 func Streams() {
 	Commands = append(Commands,
-		command.Client{
-			Parent: "smrctl",
-			Name:   "debug",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
-
-					sigChan := make(chan os.Signal, 1)
-					signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
-					go func() {
-						<-sigChan
-						resp.Body.Close()
-						cancel()
-					}()
-
-					err = helpers.PrintBytes(ctx, resp.Body)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("container", "main", "Logs from main or init")
-				cmd.Flags().BoolP("follow", "f", false, "Follow logs")
-			},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "logs",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
-
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
-
-					sigChan := make(chan os.Signal, 1)
-					signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-					go func() {
-						<-sigChan
-						resp.Body.Close()
-						cancel()
-					}()
-
-					if resp.StatusCode == 200 {
-						err = helpers.PrintBytesDemux(ctx, resp.Body)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-					} else {
-						err = helpers.PrintBytes(ctx, resp.Body)
-
-						if err != nil {
-							helpers.PrintAndExit(err, 1)
-						}
-					}
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().String("container", "main", "Logs from main or init")
-				cmd.Flags().BoolP("follow", "f", false, "Follow logs")
-			},
-		},
-		command.Client{
-			Parent: "smrctl",
-			Name:   "exec",
-			Condition: func(*client.Client) bool {
-				return true
-			},
-			Args: cobra.ExactArgs(1),
-			Functions: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {
-					format, err := f.Build(args[0], cli.Group)
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-
-					interactive := viper.GetBool("it")
-					command := viper.GetString("c")
-
-					url := fmt.Sprintf("%s/api/v1/exec/%s/%s", cli.Context.APIURL, format.ToString(), strconv.FormatBool(interactive))
-
-					requestHeaders := http.Header{}
-					requestHeaders.Add("command", command)
-
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
-
-					conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetClient(), requestHeaders, url)
-					if err != nil {
-						helpers.PrintAndExit(err, 1)
-					}
-					defer conn.Close()
-
-					sigChan := make(chan os.Signal, 1)
-					signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-					go func() {
-						<-sigChan
-						err := cancelWSS()
-
-						if err != nil {
-							fmt.Println(err)
-						}
-					}()
-
-					handle(ctx, cancel, conn, interactive)
-				},
-			},
-			DependsOn: []func(*client.Client, []string){
-				func(cli *client.Client, args []string) {},
-			},
-			Flags: func(cmd *cobra.Command) {
-				cmd.Flags().StringP("c", "c", "/bin/sh", "Command to execute in container")
-				cmd.Flags().BoolP("it", "i", false, "Interactive session")
-			},
-		},
+		command.NewBuilder().Parent("smrctl").Name("debug").Args(cobra.ExactArgs(1)).Function(cmdDebug).Flags(cmdDebugFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("logs").Args(cobra.ExactArgs(1)).Function(cmdLogs).Flags(cmdLogsFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("exec").Args(cobra.ExactArgs(1)).Function(cmdExec).Flags(cmdExecFlags).BuildWithValidation(),
 	)
+}
+
+func cmdDebug(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	go func() {
+		<-sigChan
+		resp.Body.Close()
+		cancel()
+	}()
+
+	err = helpers.PrintBytes(ctx, resp.Body)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+}
+func cmdDebugFlags(cmd *cobra.Command) {
+	cmd.Flags().String("container", "main", "Logs from main or init")
+	cmd.Flags().BoolP("follow", "f", false, "Follow logs")
+}
+
+func cmdLogs(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		resp.Body.Close()
+		cancel()
+	}()
+
+	if resp.StatusCode == 200 {
+		err = helpers.PrintBytesDemux(ctx, resp.Body)
+
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
+		}
+	} else {
+		err = helpers.PrintBytes(ctx, resp.Body)
+
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
+		}
+	}
+}
+func cmdLogsFlags(cmd *cobra.Command) {
+	cmd.Flags().String("container", "main", "Logs from main or init")
+	cmd.Flags().BoolP("follow", "f", false, "Follow logs")
+}
+
+func cmdExec(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	interactive := viper.GetBool("it")
+	command := viper.GetString("c")
+
+	url := fmt.Sprintf("%s/api/v1/exec/%s/%s", cli.Context.APIURL, format.ToString(), strconv.FormatBool(interactive))
+
+	requestHeaders := http.Header{}
+	requestHeaders.Add("command", command)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetClient(), requestHeaders, url)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+	defer conn.Close()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		err := cancelWSS()
+
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	handle(ctx, cancel, conn, interactive)
+}
+func cmdExecFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("c", "c", "/bin/sh", "Command to execute in container")
+	cmd.Flags().BoolP("it", "i", false, "Interactive session")
 }
 
 func handle(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn, interactive bool) {
