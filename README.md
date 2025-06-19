@@ -1,4 +1,4 @@
-# Simplecontainer Manager
+# Simplecontainer
 
 ![Simplecontainer GitOps](.github/resources/simplecontainer-gitops-promo.png)
 
