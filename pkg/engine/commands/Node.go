@@ -76,5 +76,6 @@ func cmdNodeNetworks(api iapi.Api, cli *client.Client, args []string) {
 	node.Networks()
 }
 func cmdNodeNetworksFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
+	cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmd.Flags().String("network", "bridge", "Network name")
 }
