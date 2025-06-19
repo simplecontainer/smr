@@ -11,7 +11,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/simplecontainer/smr/pkg/version"
 	"github.com/spf13/viper"
-	_ "net/http/pprof"
 )
 
 func main() {
