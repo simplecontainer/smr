@@ -1,16 +1,24 @@
 #!/bin/bash
 
 HelpStart(){
-  echo """Usage:
+  echo """
+Usage: smrmgr.sh [options]
 
- Eg:
- ./start.sh -n smr-node-1 -d example.com
+Options:
+  -n <node>         Set node name (e.g., node-1)
+  -d <domain>       Set domain (e.g., example.com)
+  -a <ip address>   Set IP address (e.g., 192.168.1.10)
+  -c <args>         Set additional client arguments (e.g., "--foo bar")
+  -i <image>        Set Docker image (e.g., myrepo/myimage)
+  -t <tag>          Set Docker image tag (e.g., latest)
+  -j                Join an existing cluster (no value needed)
+  -p <peer>         Set peer address (e.g., 192.168.1.20)
+  -s                Install as a systemd service (no value needed)
+  -h                Show this help message and exit
 
- Options:
- -n: Node name
- -d: Node domain
- -a: Node IP address
- -r Raft port
+Examples:
+  smrmgr.sh -n node-1 -d mydomain.com -a 10.0.0.1 -i myrepo/myimage -t latest -s
+  smrmgr.sh -n node-2 -j -p 10.0.0.1
 """
 }
 
@@ -28,10 +36,11 @@ Manager(){
   PEER=""
   IMAGE="quay.io/simplecontainer/smr"
   TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)
+  SERVICE="false"
 
   echo "All arguments: $*"
 
-  while getopts ":a:c:d:h:i:n:p:t:j" option; do
+  while getopts ":a:c:d:h:i:n:p:t:j:s" option; do
     case $option in
       n) # Set node
          NODE=$OPTARG; ;;
@@ -49,6 +58,8 @@ Manager(){
          JOIN="true"; ;;
       p) #Set peer
          PEER=$OPTARG; ;;
+      s) #Install as service
+         SERVICE="true" ;;
       h) # Display help
          HelpStart && exit; ;;
       *) # Invalid option
@@ -116,14 +127,15 @@ Manager(){
       RAFT_URL="https://${DOMAIN}:9212"
     fi
 
-    sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
-    sudo nohup smr agent control --node "${NODE}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/control.log &
+    if [[ $SERVICE == "false" ]]; then
+      Start "${NODE}" "${RAFT_URL}"
 
-    echo "tail flannel logs at: tail -f ~/nodes/${NODE}/logs/cluster.log"
-    echo "tail control logs at: tail -f ~/nodes/${NODE}/logs/control.log"
-    echo "waiting for cluster to be ready..."
+      echo "tail flannel logs at: tail -f ~/nodes/${NODE}/logs/cluster.log"
+      echo "tail control logs at: tail -f ~/nodes/${NODE}/logs/control.log"
+      echo "waiting for cluster to be ready..."
 
-    smr agent events --wait cluster_started --node "$NODE"
+      smr agent events --wait cluster_started --node "$NODE"
+    fi
   else
     HelpStart
   fi
@@ -164,6 +176,15 @@ Download(){
   echo "smr and smrctl have been successfully installed to /usr/local/bin."
 }
 
+Start(){
+  sudo nohup smr agent start --node "${1}" --raft "${2}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${1}/logs/cluster.log &
+  sudo nohup smr agent control --node "${1}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${1}/logs/control.log &
+}
+
+Stop(){
+  smr agent drain
+  smr agent stop
+}
 
 detect_arch() {
   ARCH=""
@@ -205,6 +226,12 @@ case "$COMMAND" in
       Download "$@";;
     "start")
       Manager "$@";;
+    "stop")
+      Stop "$@";;
+    "service-start")
+      Start "$@";;
+    "service-stop")
+      Stop "$@";;
     *)
       echo "Available commands are: install and start" ;;
 esac

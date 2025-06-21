@@ -25,3 +25,5 @@ echo "Kept tags:"
 for tag in "${keep_tags[@]}"; do
     echo "  $tag"
 done
+
+rm -rf ~/nodes
