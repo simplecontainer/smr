@@ -191,19 +191,6 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				n := node.NewNode()
 				_ = n.Parse(cc)
 
-				//control := control.New()
-
-				//err := json.Unmarshal(cc.Context, control)
-
-				//if err != nil {
-				//	panic("invalid control in node context for removal")
-				//}
-
-				//if rc.started.After(control.Timestamp) {
-				//	logger.Log.Info("ignoring control message since it happened before our lifetime")
-				//	continue
-				//}
-
 				if cc.NodeID == uint64(rc.id) {
 					return nil, false
 				} else {
