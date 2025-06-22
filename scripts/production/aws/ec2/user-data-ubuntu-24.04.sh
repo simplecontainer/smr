@@ -1,4 +1,15 @@
 #!/bin/bash
+
+#
+# Notice:
+# Script can be outdated and is maintained on the best-effort basis.
+#
+# This script does next:
+# - install docker-ce
+# - install wireguard
+# - install smr, smrctl, and smrmgr.sh
+# - setup simplecontainer to work on boot using services
+
 set -euxo pipefail
 
 curl -fsSL https://get.docker.com | sudo bash
@@ -20,5 +31,8 @@ curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/s
 chmod +x smrmgr
 sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
-smrmgr start
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+LOCAL_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
+PUBLIC_HOSTNAME=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-hostname)
+smrmgr start -a $LOCAL_IP -d $PUBLIC_HOSTNAME -s
 EOF

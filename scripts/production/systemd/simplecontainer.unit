@@ -1,0 +1,18 @@
+[Unit]
+Description=Run simplecontainer on startup
+Requires=docker.service
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=simplecontainer
+Environment=NODE=$(hostname)
+Environment=RAFT_URL=https://$(ip -o -4 route get 1.1.1.1 | awk '{print $7}'):9212
+ExecStart=smrmgr service-start $NODE $RAFT_URL
+ExecStop=smrmgr service-stop $NODE
+Restart=on-failure
+TimeoutStopSec=60
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -2,7 +2,7 @@
 
 HelpStart(){
   echo """
-Usage: smrmgr.sh [options]
+Usage: smrmgr.sh start [options]
 
 Options:
   -n <node>         Set node name (e.g., node-1)
@@ -88,6 +88,7 @@ Manager(){
   echo "....Tag:                  $TAG"
   echo "....Node args:            $NODE_ARGS"
   echo "....Client args:          $CLIENT_ARGS"
+  echo "....Service install:      $SERVICE"
 
   if [[ $JOIN == "true" ]]; then
     echo "....Join:                 $JOIN"
@@ -119,8 +120,6 @@ Manager(){
     touch ~/nodes/${NODE}/logs/cluster.log || (echo "failed to create log file: ~/smr/logs/cluster.log" && exit 2)
     touch ~/nodes/${NODE}/logs/control.log || (echo "failed to create log file: ~/smr/logs/control.log" && exit 2)
 
-    smr node start --node "${NODE}" -y
-
     if [[ $DOMAIN == "localhost" ]]; then
       RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):9212"
     else
@@ -139,6 +138,21 @@ Manager(){
   else
     HelpStart
   fi
+}
+
+Start(){
+  smr node start --node "${1}" -y
+
+  sudo nohup smr agent start --node "${1}" --raft "${2}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${1}/logs/cluster.log &
+  sudo nohup smr agent control --node "${1}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${1}/logs/control.log &
+}
+
+Stop(){
+  smr agent drain
+  smr events --wait drain_success
+  smr node clean --node ${1}
+
+  sudo smr agent stop
 }
 
 Download(){
@@ -174,16 +188,6 @@ Download(){
   sudo mv smrctl /usr/local/bin/smrctl
 
   echo "smr and smrctl have been successfully installed to /usr/local/bin."
-}
-
-Start(){
-  sudo nohup smr agent start --node "${1}" --raft "${2}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${1}/logs/cluster.log &
-  sudo nohup smr agent control --node "${1}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${1}/logs/control.log &
-}
-
-Stop(){
-  smr agent drain
-  smr agent stop
 }
 
 detect_arch() {
@@ -233,5 +237,5 @@ case "$COMMAND" in
     "service-stop")
       Stop "$@";;
     *)
-      echo "Available commands are: install and start" ;;
+      echo "Available commands are: install, start, stop, service-start, service-stop" ;;
 esac
