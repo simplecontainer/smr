@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -10,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
 	"net"
+	"regexp"
 	"strings"
 )
 
@@ -30,6 +32,12 @@ func Create(api iapi.Api) {
 	}
 
 	api.GetConfig().NodeName = viper.GetString("node")
+
+	pattern := regexp.MustCompile(`^.+-\d+$`)
+	if !pattern.MatchString(api.GetConfig().NodeName) {
+		helpers.PrintAndExit(errors.New("node name must contain text and finish with dash index eg. test-1 OR test-2"), 1)
+	}
+
 	api.GetConfig().NodeImage = viper.GetString("image")
 	api.GetConfig().NodeTag = viper.GetString("tag")
 	api.GetConfig().Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
@@ -59,7 +67,7 @@ func Create(api iapi.Api) {
 	err = startup.Save(api.GetConfig(), environment, 0750)
 
 	if err != nil {
-		panic(err)
+		helpers.PrintAndExit(err, 1)
 	}
 
 	fmt.Println(fmt.Sprintf("config created and saved at %s/config/config.yaml", environment.NodeDirectory))

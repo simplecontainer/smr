@@ -13,12 +13,33 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
+	"os"
 	"time"
 )
 
 func Control(api iapi.Api) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
 	conf, err := startup.Load(environment)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	fmt.Println("trying to run control watcher if not running")
+	err = helpers.AcquireLock("/var/run/control.lock")
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	defer func() {
+		err = helpers.ReleaseLock("/var/run/control.lock")
+		if err != nil {
+			logger.Log.Error("failed to clear lock /var/run/control.lock - do it manually", zap.Error(err))
+		}
+	}()
+
+	err = os.WriteFile("/var/run/control.pid", []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
