@@ -105,7 +105,7 @@ func New(t *testing.T, opts Options) (*Node, error) {
 
 	node.smr = engine.NewEngineWithOptions(fmt.Sprintf("%s", node.BinaryPath), engineOptions)
 	node.flannel = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
-	node.control = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
+	node.control = engine.NewEngineWithOptions(fmt.Sprintf(node.BinaryPath), engineOptions)
 	node.sudo = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
 
 	return node, nil
@@ -220,7 +220,7 @@ func (n *Node) Clean(t *testing.T) error {
 			home, err := os.UserHomeDir()
 
 			if err != nil {
-				t.Logf("[NODE] Error cleaning node directory %s: %v", n.Name, err)
+				t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
 				return
 			}
 

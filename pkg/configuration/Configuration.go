@@ -51,7 +51,7 @@ func WithContainerConfig() EnvOption {
 
 func WithHostConfig() EnvOption {
 	return func(env *Environment) {
-		env.User = fmt.Sprintf("%d:%d", os.Geteuid(), os.Getegid())
+		env.User = fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
 		env.Home = viper.GetString("home")
 		env.NodeDirectory = fmt.Sprintf("%s/nodes/%s", viper.GetString("home"), viper.GetString("node"))
 		env.ClientDirectory = fmt.Sprintf("%s/.smrctl", viper.GetString("home"))

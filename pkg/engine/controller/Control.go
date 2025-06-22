@@ -18,10 +18,17 @@ import (
 )
 
 func Control(api iapi.Api) {
+	if os.Getuid() < 1000 {
+		panic("control process can only be started with 1000 and greater UIDs")
+	}
+
+	lockfile := fmt.Sprintf("/var/run/user/%d/control.lock", os.Getuid())
+	pidfile := fmt.Sprintf("/var/run/user/%d/control.pid", os.Getuid())
+
 	defer func() {
-		err := helpers.ReleaseLock("/var/run/control.lock")
+		err := helpers.ReleaseLock(lockfile)
 		if err != nil {
-			logger.Log.Error("failed to clear lock /var/run/control.lock - do it manually", zap.Error(err))
+			logger.Log.Error("failed to clear lock file - do it manually", zap.Error(err))
 		}
 	}()
 
@@ -33,20 +40,21 @@ func Control(api iapi.Api) {
 	}
 
 	fmt.Println("trying to run control watcher if not running")
-	err = helpers.AcquireLock("/var/run/control.lock")
+	err = helpers.AcquireLock(lockfile)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
 
 	defer func() {
-		err = helpers.ReleaseLock("/var/run/control.lock")
+		err = helpers.ReleaseLock(lockfile)
+
 		if err != nil {
-			logger.Log.Error("failed to clear lock /var/run/control.lock - do it manually", zap.Error(err))
+			logger.Log.Error("failed to clear lock file - do it manually", zap.String("file", lockfile), zap.Error(err))
 		}
 	}()
 
-	err = os.WriteFile("/var/run/control.pid", []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
+	err = os.WriteFile(pidfile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
