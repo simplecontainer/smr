@@ -47,8 +47,8 @@ func (c *Command) Agent(api iapi.Api, params map[string]string) error {
 	}
 
 	node.Clean()
-	viper.Set("y", true)
 
+	viper.Set("y", true)
 	node.Start("/opt/smr/smr", "start")
 
 	parsed, err := helpers.EnforceHTTPS(viper.GetString("raft"))

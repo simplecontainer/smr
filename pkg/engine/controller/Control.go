@@ -18,6 +18,13 @@ import (
 )
 
 func Control(api iapi.Api) {
+	defer func() {
+		err := helpers.ReleaseLock("/var/run/control.lock")
+		if err != nil {
+			logger.Log.Error("failed to clear lock /var/run/control.lock - do it manually", zap.Error(err))
+		}
+	}()
+
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
 	conf, err := startup.Load(environment)
 

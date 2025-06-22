@@ -18,5 +18,7 @@ func Clean() {
 		helpers.PrintAndExit(err, 1)
 	}
 
+	err = container.Wait("removed")
+
 	fmt.Println("node container removed")
 }

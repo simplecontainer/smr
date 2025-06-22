@@ -9,6 +9,11 @@ import (
 )
 
 func Stop() {
+	StopFlannel()
+	StopControl()
+}
+
+func StopFlannel() {
 	err := StopProcessFromPIDFile("/var/run/flannel.pid")
 
 	if err != nil {
@@ -16,8 +21,10 @@ func Stop() {
 	} else {
 		fmt.Println("process killed successfully")
 	}
+}
 
-	err = StopProcessFromPIDFile("/var/run/control.pid")
+func StopControl() {
+	err := StopProcessFromPIDFile("/var/run/control.pid")
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
@@ -47,6 +54,6 @@ func StopProcessFromPIDFile(pidFile string) error {
 		return fmt.Errorf("failed to kill process %d: %w", pid, err)
 	}
 
-	fmt.Printf("Process %d killed successfully\n", pid)
+	fmt.Printf("process %d killed successfully\n", pid)
 	return nil
 }

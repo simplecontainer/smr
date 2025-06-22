@@ -14,7 +14,7 @@ func Container() (platforms.IPlatform, error) {
 	conf, err := startup.Load(configuration.NewEnvironment(configuration.WithHostConfig()))
 
 	if err != nil {
-		return nil, errors.New("platform unknown")
+		return nil, err
 	}
 
 	definition, err := definitions.Node(conf.NodeName, conf, nil, nil)

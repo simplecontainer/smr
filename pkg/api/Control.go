@@ -47,7 +47,10 @@ func (a *Api) Control(c *gin.Context) {
 
 			if err != nil {
 				logger.Log.Error("failed to inform client about control event", zap.Error(err))
+				return
 			}
+
+			logger.Log.Info("control batch finished with success")
 		}()
 
 		c.JSON(http.StatusOK, common.Response(http.StatusOK, "controls batch applied", nil, nil))

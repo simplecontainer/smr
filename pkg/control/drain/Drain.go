@@ -124,7 +124,7 @@ func (c *Command) Node(api iapi.Api, params map[string]string) error {
 			}
 
 			if cmd.Time() == c.Time() {
-				logger.Log.Info("finalizing node", zap.Uint64("node", finalized.NodeID))
+				logger.Log.Info("finalized node drain", zap.Uint64("node", finalized.NodeID))
 				api.GetCluster().Node.State.ModifyControl("draining", node.StatusSuccess)
 
 				return nil
