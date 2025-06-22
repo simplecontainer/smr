@@ -8,28 +8,22 @@ import (
 	"strings"
 )
 
-func Stop() {
-	StopFlannel()
-	StopControl()
-}
-
 func StopFlannel() {
-	err := StopProcessFromPIDFile("/var/run/flannel.pid")
+	pidFile := "/var/run/flannel.pid"
+	err := StopProcessFromPIDFile(pidFile)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
-	} else {
-		fmt.Println("process killed successfully")
 	}
 }
 
 func StopControl() {
-	err := StopProcessFromPIDFile("/var/run/control.pid")
+	pidFile := fmt.Sprintf("/var/run/user/%d/control.pid", os.Getuid())
+
+	err := StopProcessFromPIDFile(pidFile)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
-	} else {
-		fmt.Println("process killed successfully")
 	}
 }
 

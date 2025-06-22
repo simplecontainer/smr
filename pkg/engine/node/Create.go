@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/viper"
 	"net"
 	"regexp"
-	"strings"
 )
 
 func Create(api iapi.Api) {
@@ -40,8 +39,8 @@ func Create(api iapi.Api) {
 
 	api.GetConfig().NodeImage = viper.GetString("image")
 	api.GetConfig().NodeTag = viper.GetString("tag")
-	api.GetConfig().Certificates.Domains = configuration.NewDomains(strings.FieldsFunc(viper.GetString("domains"), helpers.SplitClean))
-	api.GetConfig().Certificates.IPs = configuration.NewIPs(strings.FieldsFunc(viper.GetString("ips"), helpers.SplitClean))
+	api.GetConfig().Certificates.Domains = configuration.NewDomains([]string{viper.GetString("domain")})
+	api.GetConfig().Certificates.IPs = configuration.NewIPs([]string{viper.GetString("ip")})
 
 	// Internal domains needed
 	api.GetConfig().Certificates.Domains.Add("localhost")
@@ -63,6 +62,8 @@ func Create(api iapi.Api) {
 		Overlay: viper.GetString("port.overlay"),
 		Etcd:    viper.GetString("port.etcd"),
 	}
+
+	fmt.Println(api.GetConfig())
 
 	err = startup.Save(api.GetConfig(), environment, 0750)
 

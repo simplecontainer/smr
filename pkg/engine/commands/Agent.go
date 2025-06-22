@@ -19,7 +19,9 @@ func Agent() {
 		command.NewBuilder().Parent("agent").Name("start").Function(cmdAgentStart).Flags(cmdAgentStartFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("export").Function(cmdAgentExport).Flags(cmdAgentExportFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("import").Args(cobra.ExactArgs(2)).Function(cmdAgentImport).Flags(cmdAgentImportFlags).BuildWithValidation(),
-		command.NewBuilder().Parent("agent").Name("stop").Function(cmdAgentStop).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("stop").Function(command.EmptyFunction).BuildWithValidation(),
+		command.NewBuilder().Parent("stop").Name("agent").Function(cmdAgentStopFlannel).BuildWithValidation(),
+		command.NewBuilder().Parent("stop").Name("control").Function(cmdAgentStopControl).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("control").Function(cmdAgentControl).Flags(cmdAgentControlFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("events").Function(cmdAgentEvents).Flags(cmdAgentEventsFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("drain").Function(cmdAgentDrain).Flags(cmdAgentDrainFlags).BuildWithValidation(),
@@ -117,8 +119,12 @@ func cmdAgentImportFlags(cmdAgent *cobra.Command) {
 	cmdAgent.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 }
 
-func cmdAgentStop(api iapi.Api, cli *client.Client, args []string) {
-	agent.Stop()
+func cmdAgentStopFlannel(api iapi.Api, cli *client.Client, args []string) {
+	agent.StopFlannel()
+}
+
+func cmdAgentStopControl(api iapi.Api, cli *client.Client, args []string) {
+	agent.StopControl()
 }
 
 func cmdAgentControl(api iapi.Api, cli *client.Client, args []string) {

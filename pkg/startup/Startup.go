@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 	"os"
+	"path/filepath"
 )
 
 func Load(environment *configuration.Environment) (*configuration.Configuration, error) {
@@ -44,28 +45,17 @@ func Load(environment *configuration.Environment) (*configuration.Configuration,
 
 func Save(config *configuration.Configuration, environment *configuration.Environment, permissions os.FileMode) error {
 	yamlObj, err := yaml.Marshal(*config)
-
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	path := fmt.Sprintf("%s/%s/config.yaml", environment.NodeDirectory, static.CONFIGDIR)
+	path := filepath.Join(environment.NodeDirectory, static.CONFIGDIR, "config.yaml")
 
-	err = os.WriteFile(path, yamlObj, permissions)
-	if err != nil {
-		return err
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	info, statErr := os.Stat(path)
-	if statErr == nil {
-		err = os.WriteFile(path, yamlObj, info.Mode().Perm())
-	} else if os.IsNotExist(statErr) {
-		err = os.WriteFile(path, yamlObj, permissions)
-	} else {
-		return statErr
-	}
-
-	return nil
+	return os.WriteFile(path, yamlObj, permissions)
 }
 
 func EngineFlags() {

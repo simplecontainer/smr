@@ -5,7 +5,13 @@ import (
 )
 
 func NewIPs(ips []string) *IPs {
-	return &IPs{Members: ips}
+	container := &IPs{Members: []string{}}
+
+	for _, ip := range ips {
+		container.Add(ip)
+	}
+
+	return container
 }
 
 func (ips *IPs) Add(ip string) {
@@ -13,6 +19,10 @@ func (ips *IPs) Add(ip string) {
 		if member == ip {
 			return
 		}
+	}
+
+	if ip == "" {
+		return
 	}
 
 	ips.Members = append(ips.Members, ip)

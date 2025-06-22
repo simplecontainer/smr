@@ -55,6 +55,9 @@ jobs:
           VERSION=$(cat cmd/smr/version)
           
           find artifacts -type f -exec cp {} release/ \;
+          
+          cp scripts/production/systemd/simplecontainer.unit release/simplecontainer.unit
+          cp scripts/production/smrmgr.sh release/smrmgr.sh
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "release/*"

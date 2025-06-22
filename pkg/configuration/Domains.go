@@ -1,7 +1,13 @@
 package configuration
 
 func NewDomains(domains []string) *Domains {
-	return &Domains{Members: domains}
+	container := &Domains{Members: []string{}}
+
+	for _, domain := range domains {
+		container.Add(domain)
+	}
+
+	return container
 }
 
 func (domains *Domains) Add(domain string) {
@@ -9,6 +15,10 @@ func (domains *Domains) Add(domain string) {
 		if d == domain {
 			return
 		}
+	}
+
+	if domain == "" {
+		return
 	}
 
 	domains.Members = append(domains.Members, domain)
