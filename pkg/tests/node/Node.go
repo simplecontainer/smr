@@ -220,7 +220,7 @@ func (n *Node) Clean(t *testing.T) error {
 			home, err := os.UserHomeDir()
 
 			if err != nil {
-				t.Logf("[NODE] Error cleanin node directory %s: %v", n.Name, err)
+				t.Logf("[NODE] Error cleaning node directory %s: %v", n.Name, err)
 				return
 			}
 
