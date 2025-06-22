@@ -11,6 +11,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"time"
 )
 
@@ -88,7 +89,7 @@ func cmdContextExport(api iapi.Api, cli *client.Client, args []string) {
 		name = args[0]
 	}
 
-	encrypted, key, err := cli.Manager.ExportContext(name)
+	encrypted, key, err := cli.Manager.ExportContext(name, viper.GetString("api"))
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

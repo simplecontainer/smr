@@ -104,7 +104,7 @@ func cmdAgentUpgradeFlags(cmdAgent *cobra.Command) {
 }
 
 func cmdAgentExport(api iapi.Api, cli *client.Client, args []string) {
-	agent.Export()
+	agent.Export(viper.GetString("api"))
 }
 func cmdAgentExportFlags(cmdAgent *cobra.Command) {
 	cmdAgent.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")

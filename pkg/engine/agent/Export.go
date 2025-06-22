@@ -8,7 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/startup"
 )
 
-func Export() {
+func Export(api string) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
 	conf, err := startup.Load(environment)
 
@@ -18,7 +18,7 @@ func Export() {
 
 	cli := client.New(conf, environment.NodeDirectory)
 
-	encrypted, key, err := cli.Manager.ExportContext("")
+	encrypted, key, err := cli.Manager.ExportContext("", api)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

@@ -987,18 +987,9 @@ func (m *Manager) ListContexts() ([]string, error) {
 
 func (m *Manager) ImportContext(encrypted, key string) (*ClientContext, error) {
 	return Import(m.config, encrypted, key)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	////if err := m.store.Save(ctx); err != nil {
-	////	return nil, fmt.Errorf("failed to save imported context: %w", err)
-	////}
-	//
-	//return ctx, nil
 }
 
-func (m *Manager) ExportContext(name string) (string, string, error) {
+func (m *Manager) ExportContext(name string, api string) (string, string, error) {
 	var ctx *ClientContext
 	var err error
 
@@ -1016,6 +1007,13 @@ func (m *Manager) ExportContext(name string) (string, string, error) {
 		return "", "", errors.New("context not found")
 	}
 
+	url, err := helpers.EnforceHTTPS(api)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	ctx.APIURL = url.String()
 	ctx.config = m.config
 
 	return ctx.Export()
