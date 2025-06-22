@@ -137,7 +137,7 @@ func (n *Node) Start(t *testing.T) error {
 	}
 	t.Logf("[NODE] Node IP: %s", n.IP)
 
-	contextCmd := fmt.Sprintf("agent export --api %s:%d", n.IP, n.Ports.Control)
+	contextCmd := fmt.Sprintf("agent export --api localhost:%d", n.Ports.Control)
 	output, err = n.sudo.RunAndCapture(t, engine.NewStringCmd(contextCmd))
 	if err != nil {
 		return fmt.Errorf("failed to export agent context: %w", err)
