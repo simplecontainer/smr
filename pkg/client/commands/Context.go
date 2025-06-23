@@ -21,6 +21,7 @@ func Context() {
 		command.NewBuilder().Parent("context").Name("switch").Args(cobra.MaximumNArgs(1)).Function(cmdContextSwitch).BuildWithValidation(),
 
 		command.NewBuilder().Parent("context").Name("export").Args(cobra.MaximumNArgs(1)).Function(cmdContextExport).Flags(cmdContextExportFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("export").Name("active").Args(cobra.MaximumNArgs(1)).Function(cmdContextExportActive).BuildWithValidation(),
 		command.NewBuilder().Parent("context").Name("import").Args(cobra.ExactArgs(2)).Function(cmdContextImport).Flags(cmdContextImportFlags).BuildWithValidation(),
 	)
 }
@@ -98,6 +99,27 @@ func cmdContextExport(api iapi.Api, cli *client.Client, args []string) {
 }
 func cmdContextExportFlags(cmd *cobra.Command) {
 	cmd.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
+}
+
+func cmdContextExportActive(api iapi.Api, cli *client.Client, args []string) {
+	name := ""
+
+	if len(args) == 1 {
+		name = args[0]
+	}
+
+	c, err := cli.Manager.GetActive()
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	encrypted, key, err := cli.Manager.ExportContext(name, c.APIURL)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	fmt.Println(encrypted, key)
 }
 
 func cmdContextImport(api iapi.Api, cli *client.Client, args []string) {
