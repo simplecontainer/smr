@@ -22,7 +22,6 @@ on:
           - all
           - smr
           - smrctl
-          - smrmgr
       test_name:
         description: 'Optional test name to run'
         required: false
