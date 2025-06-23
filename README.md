@@ -272,11 +272,8 @@ smr agent import --node <name> -y <context>
 # View container logs
 smr node logs OR docker logs <simplecontainer_container_id>
 
-# Check node status
-smrctl ps
-
 # Verify cluster connectivity
-smrctl get nodes
+smrctl ps
 ```
 
 ## Resources
