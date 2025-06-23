@@ -70,8 +70,8 @@ Manager(){
   echo "....ctl version:          $(smrctl version)"
   echo "................................................................................................................"
 
-  curl --version 2>&1 /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
-  docker --version 2>&1 /dev/null || echo "Please install docker-ce before proceeding with installing smr!" | exit 1
+  curl --version > /dev/null 2>&1 || echo "Please install curl before proceeding with installing smr!" | exit 1
+  docker --version > /dev/null  2>&1 || echo "Please install docker-ce before proceeding with installing smr!" | exit 1
 
   if [[ ${NODE} != "" ]]; then
     if [[ ! $(smr node create --node "${NODE}" $NODE_ARGS $CLIENT_ARGS) ]]; then
@@ -112,11 +112,11 @@ Start(){
 }
 
 Stop(){
-  smr agent drain
-  smr agent events --wait drain_success
+  smr agent drain --node $NODE
+  smr agent events --node ${NODE} --wait drain_success
   smr node clean --node ${NODE}
 
-  sudo smr agent stop flannel
+  sudo smr agent stop agent
   smr agent stop control
 }
 
@@ -153,7 +153,7 @@ ServiceStop(){
 }
 
 Download(){
-  curl --version 2>&1 /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
+  curl --version > /dev/null 2>&1 || echo "Please install curl before proceeding with installing smr!" | exit 1
 
   ARCH=$(DetectArch)
   PLATFORM="linux-${ARCH}"
