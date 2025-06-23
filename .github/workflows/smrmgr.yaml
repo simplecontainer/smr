@@ -1,4 +1,4 @@
-name: Test smrmgr.sh on Linux distros
+name: smrmgr.sh [test]
 
 on:
   workflow_call:

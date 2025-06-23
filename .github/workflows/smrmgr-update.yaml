@@ -1,4 +1,4 @@
-name: Update smrmgr.sh in latest release
+name: smrmgr.sh [hotfix-release]
 
 on:
   workflow_dispatch:
