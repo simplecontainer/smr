@@ -70,12 +70,12 @@ Manager(){
   echo "....ctl version:          $(smrctl version)"
   echo "................................................................................................................"
 
-  if ! dpkg -s curl &>/dev/null; then
+  if ! IsInstalled -s curl &>/dev/null; then
     echo 'please install curl manually'
     exit 1
   fi
 
-  if ! dpkg -s docker-ce &>/dev/null; then
+  if ! IsInstalled -s docker-ce &>/dev/null; then
     echo 'please install docker manually'
     exit 1
   fi
@@ -300,6 +300,24 @@ DetectArch() {
       exit 1
       ;;
   esac
+}
+
+IsInstalled() {
+  if command -v dpkg &>/dev/null; then
+    # Debian-based (Debian, Ubuntu, etc.)
+    dpkg -s "$1" &>/dev/null
+  elif command -v rpm &>/dev/null; then
+    # RHEL-based (RHEL, CentOS, Fedora, etc.)
+    rpm -q "$1" &>/dev/null
+  elif command -v dnf &>/dev/null; then
+    # For newer RHEL-based systems that use dnf (e.g., Fedora, CentOS 8+)
+    dnf list installed "$1" &>/dev/null
+  elif command -v yum &>/dev/null; then
+    # For older RHEL-based systems using yum
+    yum list installed "$1" &>/dev/null
+  else
+    return 1
+  fi
 }
 
 COMMAND=${1}
