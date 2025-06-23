@@ -270,7 +270,7 @@ smr agent import --node <name> -y <context>
 
 ```bash
 # View container logs
-docker logs <simplecontainer_container_id>
+smr node logs OR docker logs <simplecontainer_container_id>
 
 # Check node status
 smrctl ps
