@@ -70,15 +70,8 @@ Manager(){
   echo "....ctl version:          $(smrctl version)"
   echo "................................................................................................................"
 
-  if ! IsInstalled curl &>/dev/null; then
-    echo 'please install curl manually'
-    exit 1
-  fi
-
-  if ! IsInstalled docker-ce &>/dev/null; then
-    echo 'please install docker manually'
-    exit 1
-  fi
+  curl --version 2&>1 /dev/null || echo "Please install curl before proceeding with installing smr!" | exit 1
+  docker --version 2&>1 /dev/null || echo "Please install docker-ce before proceeding with installing smr!" | exit 1
 
   if [[ ${NODE} != "" ]]; then
     if [[ ! $(smr node create --node "${NODE}" $NODE_ARGS $CLIENT_ARGS) ]]; then
@@ -300,20 +293,6 @@ DetectArch() {
       exit 1
       ;;
   esac
-}
-
-IsInstalled() {
-  if command -v dpkg &>/dev/null; then
-    dpkg -s "$1" &>/dev/null
-  elif command -v rpm &>/dev/null; then
-    rpm -q "$1" &>/dev/null
-  elif command -v dnf &>/dev/null; then
-    dnf list installed "$1" &>/dev/null
-  elif command -v yum &>/dev/null; then
-    yum list installed "$1" &>/dev/null
-  else
-    return 1
-  fi
 }
 
 COMMAND=${1}
