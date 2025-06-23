@@ -38,4 +38,4 @@ jobs:
 
       - name: Upload smrmgr.sh to release
         run: |
-          gh release upload "${{ steps.latest.outputs.tag }}" smrmgr.sh --clobber
+          gh release upload "${{ steps.latest.outputs.tag }}" scripts/production/smrmgr.sh --clobber
