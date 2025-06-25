@@ -144,6 +144,7 @@ ServiceStart(){
   LoadEnvFile "$HOME/nodes/.env"
 
   Start "$@"
+  smr agent events --wait cluster_ready
   smrctl context import $(smr agent export --api $PUBLIC_HOSTNAME:1443)
   smr agent events
 }
