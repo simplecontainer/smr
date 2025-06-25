@@ -145,7 +145,7 @@ ServiceStart(){
 
   Start "$@"
   smr agent events --wait cluster_ready
-  smrctl context import $(smr agent export --api $PUBLIC_HOSTNAME:1443)
+  smrctl context import $(smr agent export --api $DOMAIN:1443)
   smr agent events
 }
 
