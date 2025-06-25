@@ -1,0 +1,41 @@
+name: simplecontainer.unit [hotfix-release]
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-smrmgr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_USER_PAT }}
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Authenticate GitHub CLI
+        run: |
+          echo "${{ secrets.BOT_USER_PAT }}" | gh auth login --with-token
+
+      - name: Read current smr version
+        id: version
+        run: |
+          VERSION=$(cat cmd/smr/version)
+          echo "SMR Version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Get latest release tag
+        id: latest
+        run: |
+          TAG=$(gh release view --json tagName -q .tagName)
+          echo "Latest tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Upload simplecontainer.unit to release
+        run: |
+          gh release upload "${{ steps.latest.outputs.tag }}" scripts/production/systemd/simplecontainer.unit --clobber
