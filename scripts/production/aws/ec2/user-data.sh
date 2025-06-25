@@ -100,5 +100,4 @@ smrmgr start -a $LOCAL_IP -d $PUBLIC_HOSTNAME -s
 smrmgr service-install
 
 sudo systemctl start simplecontainer@${SUDO_USER:-$USER}
-smrctl context import $(smr agent export --api $PUBLIC_HOSTNAME:1443)
 EOF
