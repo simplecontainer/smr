@@ -99,7 +99,7 @@ func (r *Records) Find(domain string) ([]string, error) {
 }
 
 func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
-	if strings.HasSuffix(m.Question[0].Name, ".private") {
+	if strings.HasSuffix(m.Question[0].Name, ".private.") {
 		return LookupLocal(records, m)
 	}
 
@@ -119,13 +119,19 @@ func LookupLocal(records *Records, m *dns.Msg) (*dns.Msg, error) {
 				if err != nil {
 					return m, fmt.Errorf("failed to create RR: %v", err)
 				}
+
 				m.Answer = append(m.Answer, rr)
 			}
 
 			return m, nil
 		}
+
+		if q.Qtype == dns.TypeA {
+			m.Answer = append(m.Answer, nil)
+		}
 	}
-	return m, ErrNotFound
+
+	return m, nil
 }
 
 func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, error) {
