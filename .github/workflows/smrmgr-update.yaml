@@ -32,7 +32,12 @@ jobs:
       - name: Get latest release tag
         id: latest
         run: |
-          TAG=$(gh release view --json tagName -q .tagName)
+          TAG=$(gh release list --limit 100 --json tagName \
+                | jq -r '.[].tagName' \
+                | grep '^smr-v[0-9]\+\.[0-9]\+\.[0-9]\+$' \
+                | sort -V \
+                | tail -n1)
+  
           echo "Latest tag: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
