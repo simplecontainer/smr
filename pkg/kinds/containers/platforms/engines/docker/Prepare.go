@@ -136,12 +136,17 @@ func (container *Docker) PrepareResources(client *clients.Http, user *authentica
 
 		var tmpFile *os.File
 		tmpFile, err = os.CreateTemp("/tmp", container.Name)
+		if err != nil {
+			return err
+		}
+
+		err = tmpFile.Chmod(0666)
 
 		if err != nil {
 			return err
 		}
-		val, ok := container.Resources.Resources[k].Docker.Data.Map.Load(v.Reference.Key)
 
+		val, ok := container.Resources.Resources[k].Docker.Data.Map.Load(v.Reference.Key)
 		if !ok {
 			return errors.New(fmt.Sprintf("key %s doesnt exist in resource %s", v.Reference.Key, v.Reference.Name))
 		}

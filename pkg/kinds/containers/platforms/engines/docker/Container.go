@@ -89,6 +89,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		VolumeInternal: TDVolume.Volume{},
 		Capabilities:   definition.(*v1.ContainersDefinition).Spec.Capabilities,
 		User:           definition.(*v1.ContainersDefinition).Spec.User,
+		GroupAdd:       definition.(*v1.ContainersDefinition).Spec.GroupAdd,
 		Privileged:     definition.(*v1.ContainersDefinition).Spec.Privileged,
 		Definition:     definitionCopy,
 	}
@@ -163,6 +164,7 @@ func (container *Docker) Run() error {
 			DNS:          container.Docker.DNS,
 			Mounts:       container.Volumes.ToMounts(),
 			PortBindings: container.Ports.ToPortMap(),
+			GroupAdd:     container.GroupAdd,
 			NetworkMode:  TDContainer.NetworkMode(container.NetworkMode),
 			Privileged:   container.Privileged,
 			CapAdd:       container.Capabilities,
@@ -173,6 +175,7 @@ func (container *Docker) Run() error {
 		}
 
 		container.DockerID = resp.ID
+
 		defer container.Volumes.RemoveResources()
 		err = container.MountResources()
 

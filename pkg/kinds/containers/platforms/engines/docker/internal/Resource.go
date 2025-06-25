@@ -10,15 +10,8 @@ type Resources struct {
 }
 
 type Resource struct {
-	Reference ResourceReference
+	Reference v1.ContainersResource
 	Docker    ResourceDocker
-}
-
-type ResourceReference struct {
-	Group      string
-	Name       string
-	Key        string
-	MountPoint string
 }
 
 type ResourceDocker struct {
@@ -39,12 +32,7 @@ func NewResources(resources []v1.ContainersResource) *Resources {
 
 func NewResource(resource v1.ContainersResource) *Resource {
 	return &Resource{
-		Reference: ResourceReference{
-			Group:      resource.Group,
-			Name:       resource.Name,
-			Key:        resource.Key,
-			MountPoint: resource.MountPoint,
-		},
+		Reference: resource,
 		Docker: ResourceDocker{
 			Data: smaps.New(),
 		},

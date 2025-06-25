@@ -85,20 +85,6 @@ func cmdList(api iapi.Api, cli *client.Client, args []string) {
 	var objects []json.RawMessage
 
 	switch format.GetKind() {
-	case static.KIND_GITOPS:
-		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
-			static.CATEGORY_STATE, format.GetKind())
-		if err != nil {
-			helpers.PrintAndExit(err, 1)
-		}
-		formaters.Gitops(objects)
-	case static.KIND_CONTAINERS:
-		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
-			static.CATEGORY_STATE, format.GetKind())
-		if err != nil {
-			helpers.PrintAndExit(err, 1)
-		}
-		formaters.Container(objects)
 	default:
 		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(),
 			static.CATEGORY_KIND, format.GetKind())

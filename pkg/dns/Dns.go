@@ -99,9 +99,10 @@ func (r *Records) Find(domain string) ([]string, error) {
 }
 
 func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
-	if strings.HasSuffix(m.Question[0].Name, ".private.") {
+	if strings.HasSuffix(m.Question[0].Name, ".private") {
 		return LookupLocal(records, m)
 	}
+
 	return LookupRemote(records, m)
 }
 

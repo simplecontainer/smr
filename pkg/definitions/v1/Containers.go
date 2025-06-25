@@ -37,6 +37,7 @@ type ContainersInternal struct {
 	Replicas       uint64                     `validate:"required" json:"replicas"`
 	Capabilities   []string                   `json:"capabilities,omitempty"`
 	User           string                     `json:"user,omitempty"`
+	GroupAdd       []string                   `json:"groupAdd,omitempty"`
 	Privileged     bool                       `json:"privileged,omitempty"`
 	NetworkMode    string                     `json:"network_mode,omitempty"`
 	Spread         ContainersSpread           `json:"spread,omitempty"`

@@ -162,7 +162,6 @@ func output(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Co
 			}
 
 			if n > 0 {
-				fmt.Println(buf[:n])
 				err = websocketConn.WriteMessage(websocket.BinaryMessage, buf[:n])
 
 				if err != nil {

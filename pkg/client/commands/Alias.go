@@ -52,8 +52,7 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 		formaters.Container(objects)
 		break
 	default:
-		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_KIND, format.GetKind())
-		formaters.Default(objects)
+		helpers.PrintAndExit(errors.New("ps works only for containers and gitops resources"), 1)
 		break
 	}
 }
