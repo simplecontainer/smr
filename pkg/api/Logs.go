@@ -99,18 +99,10 @@ func proxy(ctx context.Context, cancel context.CancelFunc, c *gin.Context, remot
 	proxy := plain.Create(ctx, cancel, c.Writer, remote)
 
 	c.Writer.WriteHeader(http.StatusOK)
-	err := proxy.Proxy()
-
-	if err != nil {
-		logger.Log.Error("proxy returned error", zap.Error(err))
-	}
-
-	// Say hello back to open connection
-	c.Writer.WriteHeader(http.StatusOK)
 	c.Writer.Write([]byte{0, 0, 0, 0, 0, 0, 0, 0})
 	c.Writer.Flush()
 
-	err = proxy.Proxy()
+	err := proxy.Proxy()
 
 	if err != nil {
 		logger.Log.Error("proxy returned error", zap.Error(err))

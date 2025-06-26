@@ -98,7 +98,7 @@ func (r *Records) Find(domain string) ([]string, error) {
 	return record.Addresses, nil
 }
 
-func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
+func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
 	if strings.HasSuffix(m.Question[0].Name, ".private.") {
 		return LookupLocal(records, m)
 	}
@@ -106,35 +106,40 @@ func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, error) {
 	return LookupRemote(records, m)
 }
 
-func LookupLocal(records *Records, m *dns.Msg) (*dns.Msg, error) {
+func LookupLocal(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
 	for _, q := range m.Question {
 		if q.Qtype == dns.TypeA {
 			addresses, err := records.Find(q.Name)
 			if err != nil {
-				return m, err
+				return m, dns.RcodeNameError, err
 			}
 
+			var rr dns.RR
+
 			for _, ip := range addresses {
-				rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
+				rr, err = dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
 				if err != nil {
-					return m, fmt.Errorf("failed to create RR: %v", err)
+					return m, dns.RcodeServerFailure, fmt.Errorf("failed to create RR: %v", err)
 				}
 
 				m.Answer = append(m.Answer, rr)
 			}
 
-			return m, nil
+			m.Authoritative = true
+
+			return m, m.Rcode, nil
 		}
 
-		if q.Qtype == dns.TypeA {
-			m.Answer = append(m.Answer, nil)
+		if q.Qtype == dns.TypeAAAA {
+			m.Authoritative = true
+			return m, dns.RcodeSuccess, nil
 		}
 	}
 
-	return m, nil
+	return m, m.Rcode, nil
 }
 
-func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, error) {
+func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
 	config := dns.ClientConfig{
 		Servers:  records.Nameservers,
 		Port:     "53",
@@ -148,12 +153,12 @@ func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, error) {
 
 	r, _, err := client.Exchange(m, net.JoinHostPort(config.Servers[0], config.Port))
 	if err != nil {
-		return m, fmt.Errorf("failed to perform DNS exchange: %v", err)
+		return m, dns.RcodeServerFailure, fmt.Errorf("failed to perform DNS exchange: %v", err)
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
-		return r, errors.New("request failed")
+		return r, r.Rcode, errors.New("request failed")
 	}
 
-	return r.SetReply(m), nil
+	return r.SetReply(m), r.Rcode, nil
 }

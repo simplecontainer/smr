@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strings"
@@ -27,7 +28,7 @@ func Http(reader io.ReadCloser, w io.Writer) error {
 				return nil
 			}
 
-			if err == io.ErrClosedPipe || strings.Contains(err.Error(), "closed") {
+			if errors.Is(err, io.ErrClosedPipe) || strings.Contains(err.Error(), "closed") {
 				return nil
 			}
 

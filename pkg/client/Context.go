@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/encrypt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -115,6 +116,11 @@ func (c *ClientContext) GetClient() *http.Client {
 	return c.client
 }
 
+func (c *ClientContext) GetClientNoTimeout() *http.Client {
+	c.client.Timeout = 0
+	return c.client
+}
+
 func (c *ClientContext) setupTLSClient() error {
 	if c.Credentials == nil {
 		return errors.New("credentials are nil")
@@ -161,11 +167,14 @@ func (c *ClientContext) setupTLSClient() error {
 		logger.Log.Warn("TLS certificate verification disabled")
 	}
 
+	dialer := &net.Dialer{
+		Timeout: 5 * c.config.APITimeout,
+	}
+
 	c.client = &http.Client{
-		Timeout: c.config.APITimeout,
 		Transport: &http.Transport{
+			DialContext:     dialer.DialContext,
 			TLSClientConfig: tlsConfig,
-			IdleConnTimeout: 90 * time.Second,
 		},
 	}
 

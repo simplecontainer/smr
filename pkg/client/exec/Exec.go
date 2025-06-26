@@ -27,11 +27,6 @@ func Write(ctx context.Context, conn *websocket.Conn) error {
 				return err
 			}
 
-			// Ctrl-C handling
-			if input == 3 {
-				return err
-			}
-
 			err = conn.WriteMessage(websocket.BinaryMessage, []byte{input})
 
 			if err != nil {

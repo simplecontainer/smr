@@ -18,10 +18,11 @@ func (a *Api) HandleDns(w mdns.ResponseWriter, m *mdns.Msg) {
 			}
 		}(w)
 
-		r, err := dns.ParseQuery(a.DnsCache, m)
+		r, code, err := dns.ParseQuery(a.DnsCache, m)
+		m.Rcode = code
 
 		if err != nil {
-			m.Rcode = mdns.RcodeNameError
+			logger.Log.Error(err.Error())
 		}
 
 		err = w.WriteMsg(r)

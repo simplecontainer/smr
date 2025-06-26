@@ -48,7 +48,12 @@ case "$DISTRO" in
     amzn)
         if grep -q "2023" /etc/os-release; then
             # Amazon Linux 2023
-            dnf install -y docker wireguard-tools curl --skip-broken
+            dnf update -y
+            dnf install -y dnf-plugins-core wireguard-tools curl --skip-broken
+
+            dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+            sed -i 's/$releasever/9/g' /etc/yum.repos.d/docker-ce.repo
+            dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
         else
             # Amazon Linux 2
             amazon-linux-extras enable docker
