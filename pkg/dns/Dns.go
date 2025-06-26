@@ -25,20 +25,33 @@ var (
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func New(agent string, client *clients.Http, user *authentication.User) *Records {
-	ns, err := nameservers.NewfromResolvConf(false)
+	ns, search, err := nameservers.NewfromResolvConf(false)
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to load nameservers: %v", err))
 	}
 
-	return &Records{
+	r := &Records{
 		ARecords:    smaps.New(),
 		Client:      client,
 		User:        user,
 		Nameservers: ns.ToString(),
+		Search:      search,
+		Searcher:    NewTrie(),
 		Lock:        &sync.RWMutex{},
 		Records:     make(chan KV.KV),
 	}
+
+	if len(r.Search) == 0 {
+		r.Searcher.Insert(".private")
+	} else {
+		for _, suffix := range r.Search {
+			parsed := strings.Replace(fmt.Sprintf("private.%s", suffix), "..", ".", 1)
+			r.Searcher.Insert(parsed)
+		}
+	}
+
+	return r
 }
 
 func (r *Records) getRecord(domain string) *ARecord {
@@ -90,6 +103,8 @@ func (r *Records) Remove(bytes []byte, domain string) (bool, error) {
 
 func (r *Records) Find(domain string) ([]string, error) {
 	trimmedDomain := strings.TrimSuffix(domain, ".")
+	fmt.Println("finding", trimmedDomain)
+
 	record := r.getRecord(trimmedDomain)
 
 	if record == nil {
@@ -99,44 +114,64 @@ func (r *Records) Find(domain string) ([]string, error) {
 }
 
 func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
-	if strings.HasSuffix(m.Question[0].Name, ".private.") {
-		return LookupLocal(records, m)
+	for _, q := range m.Question {
+		prefix, local := records.Searcher.EndsWithSuffix(q.Name)
+
+		if local {
+			m.Authoritative = true
+			RR, code, err := LookupLocal(records, prefix, q)
+
+			if err != nil {
+				return m, code, err
+			}
+
+			m.Answer = append(m.Answer, RR...)
+		} else {
+			remote, code, err := LookupRemote(records, m)
+
+			if err != nil {
+				return m, code, err
+			}
+
+			m.Answer = append(m.Answer, remote.Answer...)
+		}
 	}
 
-	return LookupRemote(records, m)
+	if len(m.Answer) == 0 {
+		return m, dns.RcodeNameError, errors.New("answer records empty")
+	}
+
+	return m, dns.RcodeSuccess, nil
 }
 
-func LookupLocal(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
-	for _, q := range m.Question {
-		if q.Qtype == dns.TypeA {
-			addresses, err := records.Find(q.Name)
+func LookupLocal(records *Records, prefix string, q dns.Question) ([]dns.RR, int, error) {
+	switch q.Qtype {
+	case dns.TypeA:
+		addresses, err := records.Find(fmt.Sprintf("%sprivate", prefix))
+		if err != nil {
+			return nil, dns.RcodeNameError, err
+		}
+
+		var RRs []dns.RR
+
+		for _, ip := range addresses {
+			rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
 			if err != nil {
-				return m, dns.RcodeNameError, err
+				return nil, dns.RcodeServerFailure, fmt.Errorf("failed to create RR: %v", err)
 			}
 
-			var rr dns.RR
-
-			for _, ip := range addresses {
-				rr, err = dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
-				if err != nil {
-					return m, dns.RcodeServerFailure, fmt.Errorf("failed to create RR: %v", err)
-				}
-
-				m.Answer = append(m.Answer, rr)
-			}
-
-			m.Authoritative = true
-
-			return m, m.Rcode, nil
+			RRs = append(RRs, rr)
 		}
 
-		if q.Qtype == dns.TypeAAAA {
-			m.Authoritative = true
-			return m, dns.RcodeSuccess, nil
-		}
+		return RRs, dns.RcodeSuccess, nil
+	case dns.TypeAAAA:
+		// Don't return yet — just leave AAAA unanswered.
+		// Optionally set RcodeNameError if AAAA is required.
+	default:
+		return nil, dns.RcodeNotImplemented, errors.New("unsupported record queried")
 	}
 
-	return m, m.Rcode, nil
+	return nil, dns.RcodeSuccess, nil
 }
 
 func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
@@ -157,7 +192,7 @@ func LookupRemote(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
-		return r, r.Rcode, errors.New("request failed")
+		return r, r.Rcode, fmt.Errorf("server responded with %d code", r.Rcode)
 	}
 
 	return r.SetReply(m), r.Rcode, nil

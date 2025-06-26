@@ -14,6 +14,8 @@ type Records struct {
 	User        *authentication.User
 	Lock        *sync.RWMutex
 	Nameservers []string
+	Search      []string
+	Searcher    *Trie
 	Records     chan KV.KV
 }
 

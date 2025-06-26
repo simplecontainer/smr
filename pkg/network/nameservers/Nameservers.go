@@ -32,24 +32,38 @@ func (nameservers *Nameservers) ToString() []string {
 	return tmp
 }
 
-func NewfromResolvConf(ipv6 bool) (*Nameservers, error) {
+func NewfromResolvConf(ipv6 bool) (*Nameservers, []string, error) {
 	file, err := os.Open("/etc/resolv.conf")
 	if err != nil {
-		return nil, fmt.Errorf("could not open /etc/resolv.conf: %w", err)
+		return nil, nil, fmt.Errorf("could not open /etc/resolv.conf: %w", err)
 	}
 	defer file.Close()
 
 	var nameservers = New()
+	var search = []string{}
+
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
 
 		if strings.HasPrefix(line, "nameserver") {
 			parts := strings.Fields(line)
 
 			if len(parts) > 1 {
 				nameservers.Add(net.ParseIP(parts[1]))
+			}
+		}
+
+		if strings.HasPrefix(line, "search") {
+			parts := strings.Fields(line)
+
+			if len(parts) > 1 {
+				search = append(search, parts[1:]...)
 			}
 		}
 	}
@@ -62,7 +76,7 @@ func NewfromResolvConf(ipv6 bool) (*Nameservers, error) {
 		}
 	}
 
-	return nameservers, nil
+	return nameservers, search, nil
 }
 
 func GetDefaultNSv4() []net.IP {
