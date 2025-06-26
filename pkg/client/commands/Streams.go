@@ -192,7 +192,6 @@ func handle(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn
 
 	select {
 	case err := <-client:
-		fmt.Println(err)
 		conn.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "client terminated connection"))
 

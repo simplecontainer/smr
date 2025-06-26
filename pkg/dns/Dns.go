@@ -42,13 +42,11 @@ func New(agent string, client *clients.Http, user *authentication.User) *Records
 		Records:     make(chan KV.KV),
 	}
 
-	r.Searcher.Insert("private.")
+	r.Searcher.Insert(".private")
 
 	for _, suffix := range r.Search {
-		if suffix != "." {
-			parsed := fmt.Sprintf("private.%s.", suffix)
-			r.Searcher.Insert(parsed)
-		}
+		parsed := strings.Replace(fmt.Sprintf(".private.%s", suffix), "..", ".", 1)
+		r.Searcher.Insert(parsed)
 	}
 
 	return r
@@ -147,7 +145,7 @@ func ParseQuery(records *Records, m *dns.Msg) (*dns.Msg, int, error) {
 func LookupLocal(records *Records, prefix string, q dns.Question) ([]dns.RR, int, error) {
 	switch q.Qtype {
 	case dns.TypeA:
-		addresses, err := records.Find(fmt.Sprintf("%sprivate", prefix))
+		addresses, err := records.Find(fmt.Sprintf("%s.private", prefix))
 		if err != nil {
 			return nil, dns.RcodeNameError, err
 		}

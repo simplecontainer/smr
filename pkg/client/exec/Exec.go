@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/gorilla/websocket"
 	"io"
@@ -55,11 +54,11 @@ func Read(ctx context.Context, conn *websocket.Conn) error {
 						if text == io.EOF.Error() {
 							return nil
 						} else {
-							fmt.Println(text)
+							os.Stdout.Write([]byte(text))
 						}
 					}
 
-					return err
+					return nil
 				}
 			}
 
