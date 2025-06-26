@@ -61,7 +61,7 @@ func PrintBytesDemux(ctx context.Context, reader io.ReadCloser) error {
 			}
 
 			if err != nil {
-				return fmt.Errorf("logs streaming stopped", err)
+				return fmt.Errorf("logs streaming stopped %v", err)
 			}
 
 			stream := header[0]
