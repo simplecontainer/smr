@@ -97,7 +97,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 	return container, nil
 }
 
-func IsDaemonRunning() error {
+func IsDaemonRunning() (string, error) {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -111,9 +111,9 @@ func IsDaemonRunning() error {
 		}
 	}(cli)
 
-	_, err = cli.ContainerList(ctx, TDContainer.ListOptions{})
+	version, err := cli.ServerVersion(ctx)
 
-	return err
+	return version.Version, err
 }
 
 func (container *Docker) Run() error {
@@ -217,7 +217,7 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 
 	runtime.ObjectDependencies = make([]f.Format, 0)
 
-	err := container.PrepareConfiguration(client, user, runtime)
+	err := container.PrepareConfiguration(config, client, user, runtime)
 
 	if err != nil {
 		return err

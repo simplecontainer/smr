@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -17,7 +18,7 @@ import (
 	"strconv"
 )
 
-func (container *Docker) PrepareConfiguration(client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
+func (container *Docker) PrepareConfiguration(config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
 	var parsed string
 	var dependencies []f.Format
 	var err error
@@ -30,6 +31,7 @@ func (container *Docker) PrepareConfiguration(client *clients.Http, user *authen
 	}
 
 	runtime.Configuration.Map.Store("name", container.GetGeneratedName())
+	runtime.Configuration.Map.Store("node", config.NodeName)
 	runtime.Configuration.Map.Store("index", strconv.FormatUint(index, 10))
 	runtime.Configuration.Map.Store("fqdn", container.GetDomain(static.CLUSTER_NETWORK))
 	runtime.Configuration.Map.Store("headless", container.GetHeadlessDomain(static.CLUSTER_NETWORK))

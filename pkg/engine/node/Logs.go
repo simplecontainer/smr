@@ -39,7 +39,7 @@ func Logs() {
 
 	switch conf.Platform {
 	case static.PLATFORM_DOCKER:
-		if err = docker.IsDaemonRunning(); err != nil {
+		if _, err = docker.IsDaemonRunning(); err != nil {
 			helpers.PrintAndExit(err, 1)
 		}
 

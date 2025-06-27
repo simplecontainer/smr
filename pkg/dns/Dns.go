@@ -103,7 +103,6 @@ func (r *Records) Remove(bytes []byte, domain string) (bool, error) {
 
 func (r *Records) Find(domain string) ([]string, error) {
 	trimmedDomain := strings.TrimSuffix(domain, ".")
-	fmt.Println("finding", trimmedDomain)
 
 	record := r.getRecord(trimmedDomain)
 

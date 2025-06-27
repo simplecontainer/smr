@@ -1,6 +1,8 @@
 package reconcile
 
 import (
+	"fmt"
+	"github.com/simplecontainer/smr/pkg/metrics"
 	"reflect"
 	"time"
 
@@ -75,6 +77,7 @@ func handleClean(shared *shared.Shared, cw *watcher.Container, existing platform
 		cw.Logger.Error(err.Error())
 		return status.DAEMON_FAILURE, true
 	}
+
 	return status.PREPARE, true
 }
 
@@ -224,6 +227,8 @@ func handleReadinessFailed(shared *shared.Shared, cw *watcher.Container, existin
 func handleRunning(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	shared.Registry.BackOffReset(cw.Container.GetGroup(), cw.Container.GetGeneratedName())
 	cw.Logger.Info("container is running, backoff is cleared - reconciler going to sleep")
+
+	metrics.Containers.Set(1, fmt.Sprintf("container=%s", cw.Container.GetGeneratedName()), fmt.Sprintf("status=%s", status.RUNNING))
 	return status.RUNNING, false
 }
 
@@ -253,15 +258,22 @@ func handleDead(shared *shared.Shared, cw *watcher.Container, existing platforms
 
 func handleDelete(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.AllowPlatformEvents = false
+	metrics.Containers.Set(0, fmt.Sprintf("container=%s", cw.Container.GetGeneratedName()), fmt.Sprintf("status=na"))
 	return "", false
 }
 
 func handleDaemonFailure(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.Logger.Info("container daemon engine failed - reconciler going to sleep")
+
+	metrics.Containers.Set(1, fmt.Sprintf("container=%s", cw.Container.GetGeneratedName()), fmt.Sprintf("status=%s", status.DAEMON_FAILURE))
+
 	return status.DAEMON_FAILURE, false
 }
 
 func handleBackoff(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.Logger.Info("container is in backoff - reconciler going to sleep")
+
+	metrics.Containers.Set(1, fmt.Sprintf("container=%s", cw.Container.GetGeneratedName()), fmt.Sprintf("status=%s", status.BACKOFF))
+
 	return status.BACKOFF, false
 }

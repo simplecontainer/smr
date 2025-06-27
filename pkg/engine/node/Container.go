@@ -27,7 +27,7 @@ func Container() (platforms.IPlatform, error) {
 
 	switch conf.Platform {
 	case static.PLATFORM_DOCKER:
-		if err = docker.IsDaemonRunning(); err != nil {
+		if _, err = docker.IsDaemonRunning(); err != nil {
 			return nil, errors.New("platform unknown")
 		}
 

@@ -20,6 +20,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/wI2L/jsondiff"
@@ -38,10 +39,13 @@ func (containers *Containers) Start() error {
 	// Check if everything alright with the daemon
 	switch containers.Shared.Manager.Config.Platform {
 	case static.PLATFORM_DOCKER:
-		if err := docker.IsDaemonRunning(); err != nil {
+		version, err := docker.IsDaemonRunning()
+		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+
+		metrics.DockerVersion.Increment(fmt.Sprintf("docker_version=%s", version))
 		break
 	}
 

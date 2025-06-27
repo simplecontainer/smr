@@ -22,13 +22,13 @@ func (a *Api) HandleDns(w mdns.ResponseWriter, m *mdns.Msg) {
 		m.SetRcode(m, code)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			logger.Log.Debug(err.Error())
 		}
 
 		err = w.WriteMsg(m)
 
 		if err != nil {
-			logger.Log.Error(err.Error())
+			logger.Log.Debug(err.Error())
 		}
 	}()
 }
