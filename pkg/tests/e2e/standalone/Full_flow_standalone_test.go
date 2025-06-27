@@ -76,10 +76,8 @@ func TestStandaloneMode(t *testing.T) {
 			cli.Root, flags.ExamplesDir))
 	}, "apply tests/minimal/definitions/Containers.yaml")
 
-	nm.RunCommand(t, func() error {
-		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1",
-			status.READY))
-	}, "wait for container ready")
+	cli.Smrctl.RunAndCapture(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1",
+		status.READY))
 
 	nm.RunCommand(t, func() error {
 		return cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
