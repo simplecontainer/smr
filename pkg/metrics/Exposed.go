@@ -9,4 +9,4 @@ var DatabaseRemove = NewCounter("database_remove_total", "Total database set ope
 var DockerVersion = NewCounter("docker_version", "Docker daemon version", []string{"docker_version"})
 var SmrVersion = NewCounter("smr_version", "Simplecontainer version", []string{"smr_version"})
 var Containers = NewGauge("containers", "Total containers running", []string{"container", "status"})
-var ContainersHistory = NewGauge("containers", "Total containers running", []string{"container", "status"})
+var ContainersHistory = NewGauge("containers_history", "Total containers running", []string{"container", "status"})
