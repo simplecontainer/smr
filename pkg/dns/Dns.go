@@ -42,11 +42,13 @@ func New(agent string, client *clients.Http, user *authentication.User) *Records
 		Records:     make(chan KV.KV),
 	}
 
-	r.Searcher.Insert(".private")
+	r.Searcher.Insert(".private.")
 
 	for _, suffix := range r.Search {
-		parsed := strings.Replace(fmt.Sprintf(".private.%s", suffix), "..", ".", 1)
-		r.Searcher.Insert(parsed)
+		if suffix != "." {
+			parsed := strings.Replace(fmt.Sprintf(".private.%s.", suffix), "..", ".", 1)
+			r.Searcher.Insert(parsed)
+		}
 	}
 
 	return r

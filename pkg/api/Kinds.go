@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/wI2L/jsondiff"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -129,6 +130,7 @@ func (a *Api) GetKind(c *gin.Context) {
 	group := c.Param("group")
 	name := c.Param("name")
 
+	metrics.DatabaseGet.Increment()
 	response, err := a.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
 
 	if err != nil {
@@ -158,6 +160,7 @@ func (a *Api) GetKind(c *gin.Context) {
 // @Failure		500	{object}	  contracts.Response
 // @Router		/kind/propose/{prefix}/{category}/{kind}/{group}/{name} [post]
 func (a *Api) ProposeKind(c *gin.Context) {
+	metrics.DatabasePropose.Increment()
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -190,6 +193,7 @@ func (a *Api) ProposeKind(c *gin.Context) {
 // @Failure		500	{object}	  contracts.Response
 // @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [post]
 func (a *Api) SetKind(c *gin.Context) {
+	metrics.DatabaseSet.Increment()
 	data, err := io.ReadAll(c.Request.Body)
 
 	if err != nil {
@@ -225,6 +229,8 @@ func (a *Api) SetKind(c *gin.Context) {
 // @Failure		500	{object}	  contracts.Response
 // @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [delete]
 func (a *Api) DeleteKind(c *gin.Context) {
+	metrics.DatabaseRemove.Increment()
+
 	prefix := c.Param("prefix")
 	version := c.Param("version")
 	category := c.Param("category")
