@@ -1,11 +1,13 @@
 package reconcile
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
+	"github.com/simplecontainer/smr/pkg/metrics"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +26,8 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	// Do not touch container on this node since it is active on another node
 	if containerObj.GetStatus().State.State != status.TRANSFERING {
 		if containerObj.GetStatus().State.State != newState && newState != "" {
+			metrics.Containers.Get().DeletePartialMatch(prometheus.Labels{"container": containerObj.GetGeneratedName()})
+
 			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
 
 			if !transitioned {
@@ -31,6 +35,9 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 					zap.String("old", containerObj.GetStatus().State.State),
 					zap.String("new", newState))
 			}
+
+			metrics.Containers.Set(1, containerObj.GetGeneratedName(), newState)
+			metrics.ContainersHistory.Set(1, containerObj.GetGeneratedName(), newState)
 		}
 
 		cs = GetState(containerWatcher)

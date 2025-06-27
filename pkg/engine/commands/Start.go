@@ -57,7 +57,7 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 	api.GetManager().User = api.GetUser()
 	api.GetVersion().Image = api.GetConfig().NodeImage
 
-	metrics.SmrVersion.Increment(fmt.Sprintf("smr_version=%s", api.GetVersion().Node))
+	metrics.SmrVersion.Increment(api.GetVersion().Node)
 
 	var found error
 

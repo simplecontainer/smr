@@ -45,7 +45,7 @@ func (containers *Containers) Start() error {
 			os.Exit(1)
 		}
 
-		metrics.DockerVersion.Increment(fmt.Sprintf("docker_version=%s", version))
+		metrics.DockerVersion.Increment(version)
 		break
 	}
 
