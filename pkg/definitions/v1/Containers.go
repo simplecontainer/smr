@@ -34,7 +34,7 @@ type ContainersInternal struct {
 	Configuration  map[string]string          `json:"configuration,omitempty"`
 	Resources      []ContainersResource       `json:"resources,omitempty"`
 	Configurations []ContainersConfigurations `json:"configurations,omitempty"`
-	Replicas       uint64                     `validate:"required" json:"replicas"`
+	Replicas       uint64                     `json:"replicas"`
 	Capabilities   []string                   `json:"capabilities,omitempty"`
 	User           string                     `json:"user,omitempty"`
 	GroupAdd       []string                   `json:"groupAdd,omitempty"`

@@ -6,6 +6,7 @@ import (
 	DTTypes "github.com/docker/docker/api/types"
 	DTEvents "github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
@@ -13,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/static"
 )
 
@@ -145,6 +147,10 @@ func HandleDie(shared *shared.Shared, container platforms.IContainer, event ieve
 
 			container.GetStatus().GetPending().Clear()
 			container.GetStatus().SetState(status.DEAD)
+
+			metrics.Containers.Get().DeletePartialMatch(prometheus.Labels{"container": container.GetGeneratedName()})
+			metrics.Containers.Set(1, container.GetGeneratedName(), status.DEAD)
+			metrics.ContainersHistory.Set(1, container.GetGeneratedName(), status.DEAD)
 
 			shared.Watchers.Find(container.GetGroupIdentifier()).ContainerQueue <- container
 		} else {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	TDTypes "github.com/docker/docker/api/types"
@@ -520,6 +521,7 @@ func (container *Docker) Rename(newName string) error {
 		return errors.New("container is not found")
 	}
 }
+
 func (container *Docker) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -558,7 +560,6 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 		return "", nil, nil, errors.New("container is not running")
 	}
 }
-
 func (container *Docker) ExecInspect(ID string) (bool, int, error) {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
@@ -699,6 +700,45 @@ func (container *Docker) InitContainer(definition v1.ContainersInternal, config 
 	}
 
 	return nil
+}
+
+func (container *Docker) Usage() (*TDContainer.StatsResponse, error) {
+	if c, _ := container.Get(); c != nil && c.State == "running" {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+		if err != nil {
+			return nil, err
+		}
+
+		defer func(cli *IDClient.Client) {
+			err = cli.Close()
+			if err != nil {
+				return
+			}
+		}(cli)
+
+		statsReader, err := cli.ContainerStats(ctx, container.DockerID, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get container stats: %w", err)
+		}
+		defer statsReader.Body.Close()
+
+		statsData, err := io.ReadAll(statsReader.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read stats data: %w", err)
+		}
+
+		var stats *TDContainer.StatsResponse
+		if err := json.Unmarshal(statsData, stats); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal stats JSON: %w", err)
+		}
+
+		return stats, nil
+	} else {
+		return nil, errors.New("container is not running")
+	}
 }
 
 func (container *Docker) ToJSON() ([]byte, error) {

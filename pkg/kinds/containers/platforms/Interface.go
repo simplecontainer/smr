@@ -45,6 +45,7 @@ type IContainer interface {
 	GetName() string
 	GetGroup() string
 	GetGroupIdentifier() string
+	GetImageWithTag() string
 	GetNetwork() map[string]net.IP
 	GetDomain(network string) string
 	GetHeadlessDomain(network string) string
@@ -90,6 +91,7 @@ type IPlatform interface {
 	GetGroup() string
 	GetIndex() (uint64, error)
 	GetGroupIdentifier() string
+	GetImageWithTag() string
 	GetNetwork() map[string]net.IP
 	GetDomain(networkName string) string
 	GetHeadlessDomain(networkName string) string

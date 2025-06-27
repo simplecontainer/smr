@@ -103,6 +103,10 @@ func (container *Docker) GetGroupIdentifier() string {
 	return fmt.Sprintf("%s/%s", container.Group, container.GeneratedName)
 }
 
+func (container *Docker) GetImageWithTag() string {
+	return fmt.Sprintf("%s:%s", container.Image, container.Tag)
+}
+
 func (container *Docker) GetDomain(network string) string {
 	return fmt.Sprintf("%s.%s.%s", network, container.GeneratedName, static.SMR_LOCAL_DOMAIN)
 }

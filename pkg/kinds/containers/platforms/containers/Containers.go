@@ -168,7 +168,7 @@ func (c *Container) GetGroup() string {
 func (c *Container) GetGroupIdentifier() string {
 	return c.Platform.GetGroupIdentifier()
 }
-
+func (c *Container) GetImageWithTag() string { return c.Platform.GetImageWithTag() }
 func (c *Container) GetNetwork() map[string]net.IP {
 	return c.GetNetwork()
 }
