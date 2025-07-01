@@ -1,9 +1,9 @@
 package commonv1
 
 type Owner struct {
-	Kind  string
-	Group string
-	Name  string
+	Kind  string `json:"kind,omitempty"`
+	Group string `json:"group,omitempty"`
+	Name  string `json:"name,omitempty"`
 }
 
 func (owner Owner) IsEmpty() bool {

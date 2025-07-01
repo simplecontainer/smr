@@ -15,14 +15,17 @@ import (
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func Resources() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("apply").Args(cobra.ExactArgs(1)).Function(cmdApply).BuildWithValidation(),
-		command.NewBuilder().Parent("smrctl").Name("remove").Args(cobra.ExactArgs(1)).Function(cmdRemove).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("apply").Args(cobra.ExactArgs(1)).Function(cmdApply).Flags(cmdTemplateFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("remove").Args(cobra.ExactArgs(1)).Function(cmdRemove).Flags(cmdTemplateFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("template").Args(cobra.ExactArgs(1)).Function(cmdTemplate).Flags(cmdTemplateFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("list").Args(cobra.ExactArgs(1)).Function(cmdList).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("get").Args(cobra.ExactArgs(1)).Function(cmdGet).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("inspect").Args(cobra.ExactArgs(1)).Function(cmdInspect).BuildWithValidation(),
@@ -30,8 +33,10 @@ func Resources() {
 	)
 }
 
+var set []string
+
 func cmdApply(api iapi.Api, cli *client.Client, args []string) {
-	pack, _, err := determineDefinitions(args[0], cli)
+	pack, _, err := determineDefinitions(args[0], set, cli)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -51,7 +56,7 @@ func cmdApply(api iapi.Api, cli *client.Client, args []string) {
 }
 
 func cmdRemove(api iapi.Api, cli *client.Client, args []string) {
-	pack, format, err := determineDefinitions(args[0], cli)
+	pack, format, err := determineDefinitions(args[0], set, cli)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -74,6 +79,46 @@ func cmdRemove(api iapi.Api, cli *client.Client, args []string) {
 			fmt.Println("object proposed for deleting")
 		}
 	}
+}
+
+func cmdTemplate(api iapi.Api, cli *client.Client, args []string) {
+	pack, _, err := determineDefinitions(args[0], set, cli)
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	if len(pack.Definitions) != 0 {
+		for _, definition := range pack.Definitions {
+			definition.Definition.Definition.SetState(nil)
+			definition.Definition.Definition.SetRuntime(nil)
+
+			bytes, err := definition.Definition.ToJSON()
+
+			if err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+
+			var data map[string]interface{}
+
+			if err := json.Unmarshal(bytes, &data); err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+
+			yamlData, err := yaml.Marshal(data)
+			if err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+
+			fmt.Println(strings.TrimSpace(string(yamlData)))
+			fmt.Println("---")
+		}
+	} else {
+		fmt.Println("specified path is not valid pack")
+	}
+}
+
+func cmdTemplateFlags(cmd *cobra.Command) {
+	cmd.Flags().StringArrayVar(&set, "set", []string{}, "")
 }
 
 func cmdList(api iapi.Api, cli *client.Client, args []string) {
@@ -107,7 +152,7 @@ func cmdEdit(api iapi.Api, cli *client.Client, args []string) {
 	action(cli, args, "edit")
 }
 
-func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, iformat.Format, error) {
+func determineDefinitions(entity string, set []string, cli *client.Client) (*packer.Pack, iformat.Format, error) {
 	var pack = packer.New()
 	var format iformat.Format
 	var err error
@@ -134,7 +179,7 @@ func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, ifor
 			kinds := relations.NewDefinitionRelationRegistry()
 			kinds.InTree()
 
-			pack, err = packer.Read(entity, kinds)
+			pack, err = packer.Read(entity, set, kinds)
 			if err != nil {
 				return nil, format, err
 			}
@@ -147,7 +192,7 @@ func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, ifor
 				return nil, format, err
 			}
 
-			pack.Definitions, err = packer.Parse(definitions)
+			pack.Definitions, err = packer.Parse(entity, definitions, nil, nil)
 			if err != nil {
 				return nil, format, err
 			}
@@ -161,7 +206,7 @@ func determineDefinitions(entity string, cli *client.Client) (*packer.Pack, ifor
 			return nil, format, err
 		}
 
-		pack.Definitions, err = packer.Parse(definitions)
+		pack.Definitions, err = packer.Parse(u.String(), definitions, nil, nil)
 		if err != nil {
 			return nil, format, err
 		}

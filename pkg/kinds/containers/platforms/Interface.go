@@ -22,7 +22,7 @@ type IContainer interface {
 	Run() error
 	PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
-	InitContainer(definitions v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User) error
+	InitContainer(definition *v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User) error
 	MountResources() error
 
 	UpdateDns(dnsCache *dns.Records) error
@@ -50,7 +50,7 @@ type IContainer interface {
 	GetDomain(network string) string
 	GetHeadlessDomain(network string) string
 	GetInit() IPlatform
-	GetInitDefinition() v1.ContainersInternal
+	GetInitDefinition() *v1.ContainersInternal
 
 	IsGhost() bool
 	SetGhost(bool)
@@ -74,7 +74,7 @@ type IPlatform interface {
 	Run() error
 	PreRun(config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error
 	PostRun(config *configuration.Configuration, dnsCache *dns.Records) error
-	InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error
+	InitContainer(definition *v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error
 	MountResources() error
 
 	UpdateDns(dnsCache *dns.Records) error
@@ -96,7 +96,7 @@ type IPlatform interface {
 	GetDomain(networkName string) string
 	GetHeadlessDomain(networkName string) string
 	GetInit() IPlatform
-	GetInitDefinition() v1.ContainersInternal
+	GetInitDefinition() *v1.ContainersInternal
 
 	Start() error
 	Stop(signal string) error

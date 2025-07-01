@@ -23,9 +23,9 @@ Simplecontainer is a container orchestration platform that transforms Docker dae
 
 ### Prerequisites
 
-- Docker installed and running ([Installation Guide](https://docs.docker.com/engine/install/))
+`- Docker installed and running ([Installation Guide](https://docs.docker.com/engine/install/))
 - For WireGuard networking: WireGuard package ([Installation Guide](https://www.wireguard.com/install/))
-
+`
 ### Installation
 
 1. **Download and install tooling(smrmgr.sh, smr, and smrctl):**
@@ -49,6 +49,29 @@ sudo smrmgr start
 smrctl context import $(smr agent export --api localhost:1443)
 smrctl ps
 ```
+
+### Running dashboard
+
+After starting node, dashboard can be started on the local machine.
+
+> [!IMPORTANT]
+> Dashboard doesn't implement any authentication. The path ~/.smrctl will be mounted in the dashboard container.
+> All contexts that are available to the user will be available to the dasboard.
+
+```bash
+smrctl context import $(sudo smr agent export --api $(smr node ip):1443) -y
+git clone https://github.com/simplecontainer/examples.git
+smrctl apply examples/dashboard --set user=$USER
+smrctl ps
+NODE                    RESOURCE                                            IMAGE                                             PORTS                 ENGINE STATE      SMR STATE        
+smr-development-node-1  containers/dashboard/dashboard-dashboard-oss-1      quay.io/simplecontainer/dashboard-oss:latest      8080:3000             running (docker)  running (43s)    
+smr-development-node-1  containers/dashboard/dashboard-proxy-manager-oss-1  quay.io/simplecontainer/proxy-manager-oss:latest  5443:5443, 5480:5480  running (docker)  running (1m18s)  
+```
+
+To access the dashboard open in the browser `http://localhost:8080`.
+
+![Simplecontainer Containers](.github/resources/containers.png)
+![Simplecontainer GitOps](.github/resources/gitops.png)
 
 ### Deploy First Container
 

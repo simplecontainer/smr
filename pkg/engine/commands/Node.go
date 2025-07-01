@@ -17,7 +17,7 @@ func Node() {
 		command.NewBuilder().Parent("node").Name("start").Function(cmdNodeStart).Flags(cmdNodeStartFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("node").Name("clean").Function(cmdNodeClean).Flags(cmdNodeCleanFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("node").Name("logs").Function(cmdNodeLogs).Flags(cmdNodeLogsFlags).BuildWithValidation(),
-		command.NewBuilder().Parent("node").Name("networks").Function(cmdNodeNetworks).Flags(cmdNodeNetworksFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("node").Name("ip").Function(cmdNodeNetworks).Flags(cmdNodeNetworksFlags).BuildWithValidation(),
 	)
 }
 

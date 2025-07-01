@@ -126,7 +126,7 @@ func (n *Node) Start(t *testing.T) error {
 		return fmt.Errorf("failed to start node: %w", err)
 	}
 
-	output, err := n.smr.RunAndCapture(t, engine.NewStringCmd("node networks --network bridge"))
+	output, err := n.smr.RunAndCapture(t, engine.NewStringCmd("node ip --network bridge"))
 	if err != nil {
 		return fmt.Errorf("failed to get node networks: %w", err)
 	}

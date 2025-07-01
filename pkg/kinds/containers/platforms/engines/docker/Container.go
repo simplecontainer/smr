@@ -642,7 +642,7 @@ func (container *Docker) MountResources() error {
 	return nil
 }
 
-func (container *Docker) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
+func (container *Docker) InitContainer(definition *v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User, runtime *types.Runtime) error {
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -221,6 +221,7 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 
 				if c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
 					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
+					request.Definition.GetState().Gitops.Commit = gitops.Commit.Hash
 					request.Definition.GetState().Gitops.AddMessage("success", "object synced successfully")
 
 					if request.Definition.GetState().Gitops.LastSync.IsZero() {

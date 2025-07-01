@@ -119,6 +119,6 @@ func (container *Docker) GetInit() platforms.IPlatform {
 	return container.Init
 }
 
-func (container *Docker) GetInitDefinition() v1.ContainersInternal {
+func (container *Docker) GetInitDefinition() *v1.ContainersInternal {
 	return container.Definition.InitContainer
 }

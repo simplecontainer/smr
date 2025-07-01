@@ -9,33 +9,33 @@ import (
 )
 
 type State struct {
-	Gitops  Gitops
-	Options []*Opts
+	Gitops  *Gitops       `json:"gitops,omitempty"`
+	Options []*Opts       `json:"options,omitempty"`
 	Lock    *sync.RWMutex `json:"-"`
 }
 
 type Gitops struct {
-	Synced   bool
-	Drifted  bool
-	Missing  bool
-	NotOwner bool
-	Error    bool
-	State    string
-	Messages []Message
-	Commit   plumbing.Hash
-	Changes  []jsondiff.Operation
-	LastSync time.Time
+	Synced   bool                 `json:"synced,omitempty"`
+	Drifted  bool                 `json:"drifted,omitempty"`
+	Missing  bool                 `json:"missing,omitempty"`
+	NotOwner bool                 `json:"notOwner,omitempty"`
+	Error    bool                 `json:"error,omitempty"`
+	State    string               `json:"state,omitempty"`
+	Messages []Message            `json:"messages,omitempty"`
+	Commit   plumbing.Hash        `json:"commit,omitempty"`
+	Changes  []jsondiff.Operation `json:"changes,omitempty"`
+	LastSync time.Time            `json:"lastSync,omitempty"`
 }
 
 type Message struct {
-	Category  string
-	Message   string
-	Timestamp time.Time
+	Category  string    `json:"category,omitempty"`
+	Message   string    `json:"message,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
 func NewState() *State {
 	return &State{
-		Gitops:  Gitops{},
+		Gitops:  &Gitops{},
 		Options: make([]*Opts, 0),
 		Lock:    &sync.RWMutex{},
 	}

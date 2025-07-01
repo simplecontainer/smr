@@ -69,12 +69,12 @@ func handleClonedGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 	gitopsObj := gw.Gitops
 	var err error
 	if len(gitopsObj.Pack.Definitions) == 0 {
-		gitopsObj.Pack, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
+		gitopsObj.Pack, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), nil, shared.Manager.Kinds)
 		if err != nil {
 			return status.INVALID_DEFINITIONS, true
 		}
 	} else {
-		tmp, err := packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), shared.Manager.Kinds)
+		tmp, err := packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), nil, shared.Manager.Kinds)
 		if err != nil {
 			return status.INVALID_DEFINITIONS, true
 		}

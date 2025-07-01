@@ -24,7 +24,7 @@ func Node(name string, config *configuration.Configuration, entrypoint []string,
 			Group:  "internal",
 			Labels: nil,
 		},
-		Spec: v1.ContainersInternal{
+		Spec: &v1.ContainersInternal{
 			Image: config.NodeImage,
 			Tag:   config.NodeTag,
 			Envs: []string{

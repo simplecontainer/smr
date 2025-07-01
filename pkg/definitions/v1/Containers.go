@@ -11,18 +11,18 @@ import (
 )
 
 type ContainersDefinition struct {
-	Kind          string             `json:"kind" validate:"required"`
-	Prefix        string             `json:"prefix" validate:"required"`
-	Meta          commonv1.Meta      `json:"meta"  validate:"required"`
-	Spec          ContainersInternal `json:"spec"  validate:"required"`
-	InitContainer ContainersInternal `json:"initContainer,omitempty" validate:"omitempty"`
-	State         *commonv1.State    `json:"state"`
+	Kind          string              `json:"kind" validate:"required"`
+	Prefix        string              `json:"prefix" validate:"required"`
+	Meta          commonv1.Meta       `json:"meta"  validate:"required"`
+	Spec          *ContainersInternal `json:"spec"  validate:"required"`
+	InitContainer *ContainersInternal `json:"initContainer,omitempty"`
+	State         *commonv1.State     `json:"state,omitempty"`
 }
 
 type ContainersInternal struct {
-	Image          string                     `validate:"required" json:"image"`
-	Tag            string                     `validate:"required" json:"tag"`
-	RegistryAuth   string                     `json:"registryAuth"`
+	Image          string                     `validate:"required" json:"image,omitempty"`
+	Tag            string                     `validate:"required" json:"tag,omitempty"`
+	RegistryAuth   string                     `json:"registryAuth,omitempty"`
 	Envs           []string                   `json:"envs,omitempty"`
 	Entrypoint     []string                   `json:"entrypoint,omitempty"`
 	Args           []string                   `json:"args,omitempty"`
@@ -34,13 +34,13 @@ type ContainersInternal struct {
 	Configuration  map[string]string          `json:"configuration,omitempty"`
 	Resources      []ContainersResource       `json:"resources,omitempty"`
 	Configurations []ContainersConfigurations `json:"configurations,omitempty"`
-	Replicas       uint64                     `json:"replicas"`
+	Replicas       uint64                     `json:"replicas,omitempty"`
 	Capabilities   []string                   `json:"capabilities,omitempty"`
 	User           string                     `json:"user,omitempty"`
 	GroupAdd       []string                   `json:"groupAdd,omitempty"`
 	Privileged     bool                       `json:"privileged,omitempty"`
 	NetworkMode    string                     `json:"network_mode,omitempty"`
-	Spread         ContainersSpread           `json:"spread,omitempty"`
+	Spread         *ContainersSpread          `json:"spread,omitempty"`
 	Nodes          []string                   `json:"nodes,omitempty"`
 	Dns            []string                   `json:"dns,omitempty"`
 }
@@ -68,7 +68,7 @@ type ContainersReadiness struct {
 }
 
 type ContainersSpread struct {
-	Spread string   `json:"spread"`
+	Spread string   `json:"spread,omitempty"`
 	Agents []uint64 `json:"agents,omitempty"`
 }
 

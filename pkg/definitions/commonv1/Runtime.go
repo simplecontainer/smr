@@ -1,9 +1,9 @@
 package commonv1
 
 type Runtime struct {
-	Owner    Owner  `json:"owner"`
-	Node     uint64 `json:"node"`
-	NodeName string `json:"nodeName"`
+	Owner    Owner  `json:"owner,omitempty"`
+	Node     uint64 `json:"node,omitempty"`
+	NodeName string `json:"nodeName,omitempty"`
 }
 
 func (runtime *Runtime) SetNode(node uint64) {

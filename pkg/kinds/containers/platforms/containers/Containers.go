@@ -95,7 +95,7 @@ func (c *Container) PreRun(config *configuration.Configuration, client *clients.
 func (c *Container) PostRun(config *configuration.Configuration, dnsCache *dns.Records) error {
 	return c.Platform.PostRun(config, dnsCache)
 }
-func (c *Container) InitContainer(definition v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User) error {
+func (c *Container) InitContainer(definition *v1.ContainersInternal, config *configuration.Configuration, client *clients.Http, user *authentication.User) error {
 	return c.Platform.InitContainer(definition, config, client, user, c.General.Runtime)
 }
 func (c *Container) MountResources() error {
@@ -183,7 +183,7 @@ func (c *Container) GetInit() platforms.IPlatform {
 	return c.Platform.GetInit()
 }
 
-func (c *Container) GetInitDefinition() v1.ContainersInternal {
+func (c *Container) GetInitDefinition() *v1.ContainersInternal {
 	return c.Platform.GetInitDefinition()
 }
 func (c *Container) SetGhost(ghost bool) {

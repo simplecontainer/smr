@@ -372,7 +372,7 @@ func (definition *Definition) FromJson(bytes []byte) error {
 		definition.Definition.SetState(&commonv1.State{
 			Lock:    &sync.RWMutex{},
 			Options: make([]*commonv1.Opts, 0),
-			Gitops: commonv1.Gitops{
+			Gitops: &commonv1.Gitops{
 				Synced:   false,
 				Drifted:  false,
 				Missing:  false,

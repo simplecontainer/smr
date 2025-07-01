@@ -20,7 +20,7 @@ rm -rf ~/nodes/smr-development-node-2  || echo
 rm -rf ~/nodes/smr-development-node-3  || echo
 
 ../production/smrmgr.sh start -n smr-development-node-1 -d localhost -i smr -t "$TAG" -c "--port.control 0.0.0.0:1443 --port.etcd 2379 --port.overlay 0.0.0.0:9212" --
-CLUSTER_DOMAIN_1="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-development-node-1):1443"
+CLUSTER_DOMAIN_1="https://$(smr node ip --node smr-development-node-1):1443"
 
 JOIN_ARGS=$(smr agent export --api $CLUSTER_DOMAIN_1 --node smr-development-node-1)
 smr agent import --node smr-development-node-2 -y $JOIN_ARGS
@@ -28,6 +28,5 @@ smr agent import --node smr-development-node-2 -y $JOIN_ARGS
 ../production/smrmgr.sh start -n smr-development-node-2 -d localhost -i smr -t "$TAG" -j -p "$CLUSTER_DOMAIN_1" -c "--port.control 0.0.0.0:1444 --port.etcd 2380 --port.overlay 0.0.0.0:9213" --
 CLUSTER_DOMAIN_2="$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-development-node-2):1444"
 
-#sleep 5
 #../production/smrmgr.sh start -n smr-development-node-3 -d localhost -c '--port.control 0.0.0.0:1445 --port.etcd 2381 --port.overlay 0.0.0.0:9214' -r smr -t $TAG -j -p $CLUSTER_DOMAIN_1
 #CLUSTER_DOMAIN_2="$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' smr-development-node-2):1444"

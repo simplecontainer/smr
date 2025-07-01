@@ -1,6 +1,7 @@
 package replicas
 
 import (
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -32,6 +33,8 @@ func (replicas *Replicas) GenerateContainers(registry platforms.Registry, defini
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	fmt.Println()
 
 	createContainers := make([]platforms.IContainer, 0)
 	updateContainers := make([]platforms.IContainer, 0)
@@ -95,9 +98,9 @@ func (replicas *Replicas) GetContainersIndexes(registry platforms.Registry, defi
 		return nil, nil, err
 	}
 
-	if definition.Spec.Spread.Spread == "" {
+	if definition.Spec.Spread == nil {
 		// No spread so create only for node who sourced the object
-		replicas.Recalculate(v1.ContainersSpread{
+		replicas.Recalculate(&v1.ContainersSpread{
 			Spread: "specific",
 			Agents: []uint64{definition.GetRuntime().GetNode()},
 		}, definition.Spec.Replicas, indexes)
@@ -108,11 +111,11 @@ func (replicas *Replicas) GetContainersIndexes(registry platforms.Registry, defi
 	return replicas.Create, replicas.Destroy, nil
 }
 
-func (replicas *Replicas) Recalculate(spread v1.ContainersSpread, replicasDefined uint64, existingIndexes []uint64) {
+func (replicas *Replicas) Recalculate(spread *v1.ContainersSpread, replicasDefined uint64, existingIndexes []uint64) {
 	replicas.Create, replicas.Destroy = replicas.GetReplicaNumbers(spread, replicasDefined, existingIndexes)
 }
 
-func (replicas *Replicas) GetReplicaNumbers(spread v1.ContainersSpread, replicasDefined uint64, existingIndexes []uint64) ([]uint64, []uint64) {
+func (replicas *Replicas) GetReplicaNumbers(spread *v1.ContainersSpread, replicasDefined uint64, existingIndexes []uint64) ([]uint64, []uint64) {
 	switch spread.Spread {
 	case containers.SPREAD_SPECIFIC:
 		return Specific(replicasDefined, existingIndexes, spread.Agents, replicas.NodeID)

@@ -6,4 +6,5 @@ type Pack struct {
 	Name        string
 	Version     string
 	Definitions []*common.Request
+	Variables   []byte
 }

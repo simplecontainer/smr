@@ -53,7 +53,6 @@ func cmdSync(api iapi.Api, cli *client.Client, args []string) {
 	bytes, err = event.ToJSON()
 
 	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
-
 }
 
 func cmdRefresh(api iapi.Api, cli *client.Client, args []string) {
