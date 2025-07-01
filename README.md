@@ -46,7 +46,7 @@ sudo smrmgr start
 3. **Configure the CLI client:**
 
 ```bash
-smrctl context import $(sudo smr agent export --api $(smr node ip):1443) -y
+smrctl context import $(smr agent export --api $(smr node ip):1443) -y
 smrctl ps
 ```
 
@@ -59,7 +59,7 @@ After starting node, dashboard can be started on the local machine.
 > All contexts that are available to the user will be available to the dasboard.
 
 ```bash
-smrctl context import $(sudo smr agent export --api $(smr node ip):1443) -y
+smrctl context import $(smr agent export --api $(smr node ip):1443) -y
 git clone https://github.com/simplecontainer/examples.git
 smrctl apply examples/dashboard --set user=$USER
 smrctl ps
