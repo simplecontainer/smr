@@ -46,7 +46,7 @@ sudo smrmgr start
 3. **Configure the CLI client:**
 
 ```bash
-smrctl context import $(smr agent export --api localhost:1443)
+smrctl context import $(sudo smr agent export --api $(smr node ip):1443) -y
 smrctl ps
 ```
 
