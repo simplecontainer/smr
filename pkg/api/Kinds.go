@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
@@ -13,6 +14,34 @@ import (
 	"io"
 	"net/http"
 )
+
+// List godoc
+//
+//	@Summary		List kind objects
+//	@Description	list kind objects in the store
+//	@Tags			database
+//	@Produce		json
+//
+// @Success		200	{object}	  contracts.Response
+// @Failure		400	{object}	  contracts.Response
+// @Failure		404	{object}	  contracts.Response
+// @Failure		500	{object}	  contracts.Response
+// @Router			/kind/{prefix}/{category}/{kind} [get]
+func (a *Api) List(c *gin.Context) {
+	response, err := a.Etcd.Get(c.Request.Context(), fmt.Sprintf("/"), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+	} else {
+		kinds := make([]string, 0)
+
+		for _, kv := range response.Kvs {
+			kinds = append(kinds, string(kv.Key))
+		}
+
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(kinds)))
+	}
+}
 
 // ListKind godoc
 //

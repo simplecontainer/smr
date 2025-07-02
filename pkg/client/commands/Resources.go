@@ -48,7 +48,7 @@ func cmdApply(api iapi.Api, cli *client.Client, args []string) {
 				helpers.PrintAndExit(err, 1)
 			}
 
-			fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
+			fmt.Printf("object proposed for apply: %s\n", definition.Definition.GetKind())
 		}
 	} else {
 		fmt.Println("specified file/url is not valid definition/pack")
@@ -67,7 +67,7 @@ func cmdRemove(api iapi.Api, cli *client.Client, args []string) {
 			if err != nil {
 				helpers.PrintAndExit(err, 1)
 			}
-			fmt.Printf("object applied: %s\n", definition.Definition.GetKind())
+			fmt.Printf("object proposed for deleting: %s\n", definition.Definition.GetKind())
 		}
 	} else {
 		err = resources.Delete(cli.Context, format.GetPrefix(), format.GetVersion(),

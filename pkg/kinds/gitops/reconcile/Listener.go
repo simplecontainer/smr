@@ -45,7 +45,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			}
 			wgChild.Wait()
 
-			err := shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.GetDefinition().GetMeta().Name)
+			err := shared.Registry.Remove(gitopsWatcher.Gitops.GetDefinition().GetPrefix(), gitopsWatcher.Gitops.GetDefinition().GetMeta().Group, gitopsWatcher.Gitops.GetDefinition().GetMeta().Name)
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}

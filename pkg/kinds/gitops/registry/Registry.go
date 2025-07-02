@@ -34,7 +34,7 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 	} else {
 		delete(registry.Gitops, common.GroupIdentifier(group, name))
 
-		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_GITOPS, group, name)
+		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_GITOPS, group, name, name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		err := obj.Propose(format, nil)

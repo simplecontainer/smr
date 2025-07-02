@@ -175,7 +175,7 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 
 		kind := v1.Group("kind")
 		{
-			kind.GET("/", api.ListKind)
+			kind.GET("/", api.List)
 			kind.GET("/:prefix/:version/:category/:kind", api.ListKind)
 			kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKind)
 

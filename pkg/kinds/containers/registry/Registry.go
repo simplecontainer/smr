@@ -12,6 +12,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
+	"strings"
 )
 
 func New(client *clients.Http, user *authentication.User) platforms.Registry {
@@ -36,7 +37,7 @@ func (registry *Registry) Remove(prefix string, group string, name string) error
 	if registry.Containers[common.GroupIdentifier(group, name)] == nil {
 		return errors.New(fmt.Sprintf("container not found: %s", common.GroupIdentifier(group, name)))
 	} else {
-		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, name)
+		format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, registry.extractName(name), name)
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		err := obj.Wait(format, nil)
@@ -65,7 +66,7 @@ func (registry *Registry) FindLocal(group string, name string) platforms.IContai
 }
 
 func (registry *Registry) Find(prefix string, group string, name string) platforms.IContainer {
-	format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, name)
+	format := f.New(prefix, static.CATEGORY_STATE, static.KIND_CONTAINERS, group, registry.extractName(name), name)
 	obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 	registry.ContainersLock.RLock()
@@ -167,4 +168,9 @@ func (registry *Registry) BackOffReset(group string, name string) {
 
 	registry.BackOffTracker[group][name] = 0
 	registry.ContainersLock.Unlock()
+}
+
+func (registry *Registry) extractName(generatedName string) string {
+	tmp := strings.Split(generatedName, "-")
+	return strings.Join(tmp[1:len(tmp)-1], "-")
 }

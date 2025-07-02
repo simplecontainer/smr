@@ -73,6 +73,7 @@ type Api interface {
 	HandleDns(w mdns.ResponseWriter, m *mdns.Msg)
 
 	Kind(c *gin.Context)
+	List(c *gin.Context)
 	ListKind(c *gin.Context)
 	GetKind(c *gin.Context)
 	ProposeKind(c *gin.Context)
