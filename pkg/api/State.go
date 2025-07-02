@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"net/http"
 	"strings"
@@ -32,41 +33,16 @@ func (a *Api) ListState(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-	} else {
-		kinds := make([]json.RawMessage, 0)
-
-		for _, kv := range response.Kvs {
-			tmp := f.NewFromString(strings.TrimPrefix(string(kv.Key), "/"))
-			format = f.New(prefix, version, static.CATEGORY_KIND, kind, tmp.GetGroup(), tmp.GetName())
-
-			definition, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
-
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-				return
-			} else {
-				if len(definition.Kvs) > 0 {
-					var state map[string]json.RawMessage
-					if err = json.Unmarshal(kv.Value, &state); err != nil {
-						c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-					}
-
-					state["Definition"] = definition.Kvs[0].Value
-
-					combined, err := json.Marshal(state)
-
-					if err != nil {
-						c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-						return
-					} else {
-						kinds = append(kinds, combined)
-					}
-				}
-			}
-		}
-
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(kinds)))
+		return
 	}
+
+	states, err := a.join(c, response.Kvs, prefix, version, kind)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(states)))
 }
 
 // @Success		200	{object}	  contracts.Response
@@ -88,38 +64,16 @@ func (a *Api) ListStateGroup(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-	} else {
-		kinds := make([]json.RawMessage, 0)
-
-		for _, kv := range response.Kvs {
-			tmp := f.NewFromString(strings.TrimPrefix(string(kv.Key), "/"))
-			format = f.New(prefix, version, static.CATEGORY_KIND, kind, tmp.GetGroup(), tmp.GetName())
-
-			definition, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
-
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-			} else {
-				var state map[string]json.RawMessage
-				if err = json.Unmarshal(kv.Value, &state); err != nil {
-					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-				}
-
-				state["Definition"] = definition.Kvs[0].Value
-
-				combined, err := json.Marshal(state)
-
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-					return
-				} else {
-					kinds = append(kinds, combined)
-				}
-			}
-		}
-
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(kinds)))
+		return
 	}
+
+	states, err := a.join(c, response.Kvs, prefix, version, kind)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(states)))
 }
 
 // GetState godoc
@@ -151,39 +105,67 @@ func (a *Api) GetState(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-	} else {
-		if len(response.Kvs) == 0 {
-			c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("resource not found"), nil))
-		} else {
-			//var bytes json.RawMessage
-			//bytes, err = json.RawMessage(response.Kvs[0].Value).MarshalJSON()
-
-			bytes := response.Kvs[0].Value
-
-			// Attach definition to the state output
-			format = f.New(prefix, version, static.CATEGORY_KIND, kind, group, name)
-
-			response, err = a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
-
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-			} else {
-				var state map[string]json.RawMessage
-				if err = json.Unmarshal(bytes, &state); err != nil {
-					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-				}
-
-				state["Definition"] = response.Kvs[0].Value
-
-				var combined []byte
-				combined, err = json.Marshal(state)
-
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-				} else {
-					c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, combined))
-				}
-			}
-		}
+		return
 	}
+
+	if len(response.Kvs) == 0 {
+		c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("resource not found"), nil))
+		return
+	}
+
+	state, err := a.join(c, response.Kvs, prefix, version, kind)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, state[0]))
+}
+
+func (a *Api) join(c *gin.Context, kvs []*mvccpb.KeyValue, prefix, version, kind string) ([]json.RawMessage, error) {
+	kinds := make([]json.RawMessage, 0)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+
+	for _, kv := range kvs {
+		tmp := f.NewFromString(strings.TrimPrefix(string(kv.Key), "/"))
+
+		combined, err := a.append(c, kv.Value, prefix, version, kind, tmp.GetGroup(), tmp.GetName())
+		if err != nil {
+			return nil, err
+		}
+
+		kinds = append(kinds, combined)
+	}
+
+	return kinds, nil
+}
+
+func (a *Api) append(c *gin.Context, stateValue []byte, prefix, version, kind, group, name string) (json.RawMessage, error) {
+	format := f.New(prefix, version, static.CATEGORY_KIND, kind, group, name)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+
+	definition, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(definition.Kvs) == 0 {
+		return nil, errors.New("definition not found")
+	}
+
+	var state map[string]json.RawMessage
+	if err = json.Unmarshal(stateValue, &state); err != nil {
+		return nil, err
+	}
+
+	state["Definition"] = definition.Kvs[0].Value
+
+	combined, err := json.Marshal(state)
+	if err != nil {
+		return nil, err
+	}
+
+	return combined, nil
 }
