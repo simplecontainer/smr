@@ -14,7 +14,7 @@ package gitops
 //			return common.Response(http.StatusInternalServerError, static.RESPONSE_INTERNAL_ERROR, err, nil)
 //		}
 //
-//		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, gitopsObj.Definition.GetRuntime().GetNode())
+//		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, gitopsObj.definition.GetRuntime().GetNode())
 //		return common.Response(http.StatusOK, static.RESPONSE_REFRESHED, nil, nil)
 //	} else {
 //		return common.Response(http.StatusNotFound, static.RESPONSE_NOT_FOUND, nil, nil)
@@ -34,7 +34,7 @@ package gitops
 //		}
 //
 //		gitops.Shared.Manager.Replication.EventsC <- KV.NewEncode(event.GetKey(), bytes, gitops.Shared.Manager.Config.KVStore.Node)
-//		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, gitopsObj.Definition.GetRuntime().GetNode())
+//		gitops.Shared.Manager.Cluster.KVStore.Propose(event.GetKey(), bytes, gitopsObj.definition.GetRuntime().GetNode())
 //
 //		return common.Response(http.StatusOK, static.RESPONSE_SYNCED, nil, nil)
 //	} else {

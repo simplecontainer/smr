@@ -1,7 +1,6 @@
 package replicas
 
 import (
-	"fmt"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -33,8 +32,6 @@ func (replicas *Replicas) GenerateContainers(registry platforms.Registry, defini
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	fmt.Println()
 
 	createContainers := make([]platforms.IContainer, 0)
 	updateContainers := make([]platforms.IContainer, 0)

@@ -11,6 +11,11 @@ import (
 )
 
 type Gitops struct {
+	Gitops     *GitopsInternal
+	Definition *v1.GitopsDefinition
+}
+
+type GitopsInternal struct {
 	Git             *internal.Git
 	Node            *node.Node
 	LogPath         string
@@ -24,7 +29,7 @@ type Gitops struct {
 	Status          *status.Status
 	Auth            *Auth
 	Context         string
-	Definition      *v1.GitopsDefinition
+	definition      *v1.GitopsDefinition
 	Pack            *packer.Pack
 	Ghost           bool
 }

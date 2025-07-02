@@ -11,7 +11,7 @@ import (
 
 func (gitops *Gitops) Prepare(client *clients.Http, user *authentication.User) error {
 	obj := objects.New(client.Get(user.Username), user)
-	references, err := gitops.Definition.ResolveReferences(obj)
+	references, err := gitops.GetDefinition().ResolveReferences(obj)
 
 	if err != nil {
 		return err
@@ -20,9 +20,9 @@ func (gitops *Gitops) Prepare(client *clients.Http, user *authentication.User) e
 	for _, reference := range references {
 		switch reference.GetKind() {
 		case static.KIND_HTTPAUTH:
-			return gitops.Git.Auth.Http(reference.(*v1.HttpAuthDefinition))
+			return gitops.Gitops.Git.Auth.Http(reference.(*v1.HttpAuthDefinition))
 		case static.KIND_CERTKEY:
-			return gitops.Git.Auth.Ssh(reference.(*v1.CertKeyDefinition))
+			return gitops.Gitops.Git.Auth.Ssh(reference.(*v1.CertKeyDefinition))
 		default:
 			return errors.New("reference kind is not implemented for this type of object")
 		}

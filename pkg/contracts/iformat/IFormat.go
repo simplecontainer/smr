@@ -12,6 +12,7 @@ type Format interface {
 	GetKind() string
 	GetGroup() string
 	GetName() string
+	GetField() string
 	Shift() Format
 	GetUUID() uuid.UUID
 	ToString() string
@@ -23,6 +24,7 @@ type Format interface {
 }
 
 type ToStringOpts struct {
-	IncludeUUID     bool
-	ExcludeCategory bool
+	IncludeUUID      bool
+	ExcludeCategory  bool
+	AddTrailingSlash bool
 }

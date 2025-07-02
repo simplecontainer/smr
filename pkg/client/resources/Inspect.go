@@ -7,10 +7,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/network"
 	"net/http"
+	"strings"
 )
 
-func Inspect(context *client.ClientContext, prefix string, version string, category string, kind string, group string, name string) (json.RawMessage, error) {
-	response := network.Send(context.GetClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/state/%s/%s/%s", context.APIURL, prefix, version, kind, group, name), http.MethodGet, nil)
+func Inspect(context *client.ClientContext, prefix string, version string, category string, kind string, group string, field string) (json.RawMessage, error) {
+	tmp := strings.Split(field, "-")
+	name := strings.Join(tmp[1:len(tmp)-1], "-")
+
+	response := network.Send(context.GetClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/state/%s/%s/%s/%s", context.APIURL, prefix, version, kind, group, name, field), http.MethodGet, nil)
 
 	if response.HttpStatus != http.StatusOK {
 		return nil, errors.New(response.ErrorExplanation)

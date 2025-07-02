@@ -7,7 +7,6 @@ import (
 	"github.com/rodaine/table"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/containers"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
 	"time"
@@ -34,84 +33,67 @@ func Container(objects []json.RawMessage) {
 	var display = make([]ContainerInformation, 0)
 
 	for _, obj := range objects {
-		var bytes []byte
-		var err error
-
 		var container = make(map[string]interface{})
-		err = json.Unmarshal(obj, &container)
+		err := json.Unmarshal(obj, &container)
 
-		switch container["Type"].(string) {
-		case static.PLATFORM_DOCKER:
-			ghost := &containers.Container{
-				Platform: &docker.Docker{},
-				General:  &containers.General{},
-				Type:     static.PLATFORM_DOCKER,
-			}
-
-			bytes, err = json.Marshal(container)
-
-			if err != nil {
-				continue
-			}
-
-			err = json.Unmarshal(bytes, ghost)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			info := ContainerInformation{
-				Group:         ghost.Platform.GetGroup(),
-				Name:          ghost.Platform.GetName(),
-				GeneratedName: ghost.Platform.GetGeneratedName(),
-				Image:         ghost.Platform.(*docker.Docker).Image,
-				Tag:           ghost.Platform.(*docker.Docker).Tag,
-				IPs:           "",
-				Ports:         "",
-				Dependencies:  "",
-				DockerState:   "",
-				SmrState:      ghost.General.Status.State.State,
-			}
-
-			for _, port := range ghost.Platform.(*docker.Docker).Ports.Ports {
-				if port.Host != "" {
-					info.Ports += fmt.Sprintf("%s:%s, ", port.Host, port.Container)
-				} else {
-					info.Ports += fmt.Sprintf("%s, ", port.Container)
-				}
-			}
-
-			if info.Ports == "" {
-				info.Ports = "-"
-			}
-
-			for _, network := range ghost.Platform.(*docker.Docker).Networks.Networks {
-				if network.Docker.IP != "" {
-					info.IPs += fmt.Sprintf("%s (%s), ", network.Docker.IP, network.Reference.Name)
-				}
-			}
-
-			for _, u := range ghost.Platform.(*docker.Docker).Definition.Spec.Dependencies {
-				info.Dependencies += fmt.Sprintf("%s.%s ", u.Group, u.Name)
-			}
-
-			if info.Dependencies == "" {
-				info.Dependencies = "-"
-			}
-
-			if ghost.Platform.(*docker.Docker).DockerState != "" {
-				info.DockerState = fmt.Sprintf("%s (%s)", ghost.Platform.(*docker.Docker).DockerState, static.PLATFORM_DOCKER)
-			} else {
-				info.DockerState = "-"
-			}
-
-			info.LastUpdate = time.Since(ghost.GetStatus().LastUpdate).Round(time.Second)
-
-			info.NodeURL = ghost.General.Runtime.Node.URL
-			info.NodeName = ghost.General.Runtime.Node.NodeName
-
-			display = append(display, info)
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
 		}
+
+		containerObj, err := containers.NewGhost(container)
+
+		if err != nil {
+			helpers.PrintAndExit(err, 1)
+		}
+
+		info := ContainerInformation{
+			Group:         containerObj.GetGroup(),
+			Name:          containerObj.GetName(),
+			GeneratedName: containerObj.GetGeneratedName(),
+			Image:         containerObj.GetImageWithTag(),
+			IPs:           "",
+			Ports:         "",
+			Dependencies:  "",
+			DockerState:   "",
+			SmrState:      containerObj.GetStatus().State.State,
+		}
+
+		for _, port := range containerObj.GetGlobalDefinition().Spec.Ports {
+			if port.Host != "" {
+				info.Ports += fmt.Sprintf("%s:%s, ", port.Host, port.Container)
+			} else {
+				info.Ports += fmt.Sprintf("%s, ", port.Container)
+			}
+		}
+
+		if info.Ports == "" {
+			info.Ports = "-"
+		}
+
+		for name, ip := range containerObj.GetNetwork() {
+			info.IPs += fmt.Sprintf("%s (%s), ", ip.String(), name)
+		}
+
+		for _, u := range containerObj.GetGlobalDefinition().Spec.Dependencies {
+			info.Dependencies += fmt.Sprintf("%s.%s ", u.Group, u.Name)
+		}
+
+		if info.Dependencies == "" {
+			info.Dependencies = "-"
+		}
+
+		if containerObj.GetEngineState() != "" {
+			info.DockerState = fmt.Sprintf("%s (%s)", containerObj.GetEngineState(), container["Type"])
+		} else {
+			info.DockerState = "-"
+		}
+
+		info.LastUpdate = time.Since(containerObj.GetStatus().LastUpdate).Round(time.Second)
+
+		info.NodeURL = containerObj.GetRuntime().Node.URL
+		info.NodeName = containerObj.GetRuntime().Node.NodeName
+
+		display = append(display, info)
 	}
 
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()

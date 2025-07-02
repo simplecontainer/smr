@@ -34,17 +34,20 @@ type IContainer interface {
 
 	GetReadiness() []*readiness.Readiness
 	GetState() (state.State, error)
+	GetEngineState() string
 	GetRuntime() *types.Runtime
 	GetStatus() *status.Status
 	GetNode() *node.Node
 	GetNodeName() string
 	GetId() string
+	GetGlobalDefinition() *v1.ContainersDefinition
 	GetDefinition() idefinitions.IDefinition
 	GetLabels() map[string]string
 	GetGeneratedName() string
 	GetName() string
 	GetGroup() string
 	GetGroupIdentifier() string
+	GetIndex() (uint64, error)
 	GetImageWithTag() string
 	GetNetwork() map[string]net.IP
 	GetDomain(network string) string
@@ -84,6 +87,7 @@ type IPlatform interface {
 	GetReadiness() []*readiness.Readiness
 
 	GetState() (state.State, error)
+	GetEngineState() string
 	GetId() string
 	GetDefinition() idefinitions.IDefinition
 	GetGeneratedName() string

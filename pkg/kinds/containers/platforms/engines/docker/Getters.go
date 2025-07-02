@@ -53,6 +53,10 @@ func (container *Docker) GetState() (state.State, error) {
 	}, nil
 }
 
+func (container *Docker) GetEngineState() string {
+	return container.DockerState
+}
+
 func (container *Docker) Get() (*TDTypes.Container, error) {
 	dockerContainer, err := internal.Get(container.GeneratedName)
 
@@ -79,7 +83,7 @@ func (container *Docker) GetId() string {
 }
 
 func (container *Docker) GetDefinition() idefinitions.IDefinition {
-	return &container.Definition
+	return &container.definition
 }
 
 func (container *Docker) GetGeneratedName() string {
@@ -120,5 +124,5 @@ func (container *Docker) GetInit() platforms.IPlatform {
 }
 
 func (container *Docker) GetInitDefinition() *v1.ContainersInternal {
-	return container.Definition.InitContainer
+	return container.definition.InitContainer
 }

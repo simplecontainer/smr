@@ -33,8 +33,8 @@ func Gitops(objects []json.RawMessage) {
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, g := range gitopsObjs {
-		certRef := fmt.Sprintf("%s.%s", g.Auth.CertKeyRef.Group, g.Auth.CertKeyRef.Name)
-		httpRef := fmt.Sprintf("%s.%s", g.Auth.HttpAuthRef.Group, g.Auth.HttpAuthRef.Name)
+		certRef := fmt.Sprintf("%s.%s", g.Gitops.Auth.CertKeyRef.Group, g.Gitops.Auth.CertKeyRef.Name)
+		httpRef := fmt.Sprintf("%s.%s", g.Gitops.Auth.HttpAuthRef.Group, g.Gitops.Auth.HttpAuthRef.Name)
 
 		if certRef == "." {
 			certRef = ""
@@ -48,25 +48,25 @@ func Gitops(objects []json.RawMessage) {
 			continue
 		}
 
-		if g.Commit != nil {
+		if g.GetCommit() != nil {
 			tbl.AddRow(
 				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.Definition.Meta.Group, g.Definition.Meta.Name),
-				helpers.CliMask(g.Commit != nil && g.Commit.ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.Git.Repository), fmt.Sprintf("%s (%s)", g.Git.Repository, g.Commit.ID().String()[:7])),
-				g.Git.Revision,
-				helpers.CliMask(g.Status.LastSyncedCommit.IsZero(), "Never synced", g.Status.LastSyncedCommit.String()[:7]),
-				g.AutomaticSync,
-				helpers.CliMask(g.Status.InSync, "InSync", "Drifted"),
-				g.Status.State.State,
+				helpers.CliMask(g.GetCommit() != nil && g.GetCommit().ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.GetGit().Repository), fmt.Sprintf("%s (%s)", g.GetGit().Repository, g.GetCommit().ID().String()[:7])),
+				g.GetGit().Revision,
+				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
+				g.GetAutoSync(),
+				helpers.CliMask(g.GetStatus().InSync, "InSync", "Drifted"),
+				g.GetStatus().State.State,
 			)
 		} else {
 			tbl.AddRow(
 				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.Definition.Meta.Group, g.Definition.Meta.Name),
-				helpers.CliMask(g.Commit != nil && g.Commit.ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.Git.Repository), fmt.Sprintf("%s", g.Git.Repository)),
-				g.Git.Revision,
-				helpers.CliMask(g.Status.LastSyncedCommit.IsZero(), "Never synced", g.Status.LastSyncedCommit.String()[:7]),
-				g.AutomaticSync,
-				helpers.CliMask(g.Status.InSync, "InSync", "Drifted"),
-				g.Status.State.State,
+				helpers.CliMask(g.GetCommit() != nil && g.GetCommit().ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.GetGit().Repository), fmt.Sprintf("%s", g.GetGit().Repository)),
+				g.GetGit().Revision,
+				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
+				g.GetAutoSync(),
+				helpers.CliMask(g.GetStatus().InSync, "InSync", "Drifted"),
+				g.GetStatus().State.State,
 			)
 		}
 	}

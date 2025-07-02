@@ -41,6 +41,10 @@ func (format Unformated) GetName() string {
 	return ""
 }
 
+func (format Unformated) GetField() string {
+	return ""
+}
+
 func (format Unformated) Shift() iformat.Format {
 	return format
 }

@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/version"
 	"net/http"
@@ -48,6 +49,7 @@ type Credentials struct {
 	Cert       *bytes.Buffer
 	Ca         *bytes.Buffer
 	CertBundle string
+	User       *authentication.User
 }
 
 type ClientContext struct {

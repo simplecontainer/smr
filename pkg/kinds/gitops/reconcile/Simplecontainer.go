@@ -27,7 +27,7 @@ var stateHandlers = map[string]StateHandlerFunc{
 }
 
 func Reconcile(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
-	state := gw.Gitops.Status.GetState()
+	state := gw.Gitops.GetStatus().GetState()
 	if handler, ok := stateHandlers[state]; ok {
 		return handler(shared, gw)
 	}
@@ -35,11 +35,10 @@ func Reconcile(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 }
 
 func handleCreated(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
-	gitopsObj := gw.Gitops
-	gw.Logger.Info(fmt.Sprintf("%s is created", gitopsObj.GetName()))
+	gw.Logger.Info(fmt.Sprintf("%s is created", gw.Gitops.GetName()))
 	err := gw.Gitops.Prepare(shared.Client, gw.User)
 	if err != nil {
-		gw.Logger.Error(fmt.Sprintf("%s failed to resolve gitops references and generate auth credentials", gitopsObj.GetName()))
+		gw.Logger.Error(fmt.Sprintf("%s failed to resolve gitops references and generate auth credentials", gw.Gitops.GetName()))
 		gw.Logger.Error(err.Error())
 		return status.INVALID_GIT, true
 	}
@@ -47,38 +46,41 @@ func handleCreated(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 }
 
 func handleCloningGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
-	gitopsObj := gw.Gitops
-	headRemote, err := gitopsObj.Git.RemoteHead()
+	headRemote, err := gw.Gitops.GetGit().RemoteHead()
 	if err != nil {
 		gw.Logger.Error(err.Error())
 		return status.INVALID_GIT, true
 	}
-	if headRemote.IsZero() || gitopsObj.Commit.ID() != headRemote {
+	if headRemote.IsZero() || gw.Gitops.GetCommit().ID() != headRemote {
 		gw.Logger.Info("found new commit on remote - pulling latest")
-		gitopsObj.Commit, err = gw.Gitops.Git.Fetch()
+
+		err = gw.Gitops.SetCommit(gw.Gitops.GetGit().Fetch())
 		if err != nil {
 			gw.Logger.Error(err.Error())
 			return status.INVALID_GIT, true
 		}
+
 		return status.CLONED_GIT, true
 	}
+
 	return status.CLONED_GIT, true
 }
 
 func handleClonedGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
-	gitopsObj := gw.Gitops
 	var err error
-	if len(gitopsObj.Pack.Definitions) == 0 {
-		gitopsObj.Pack, err = packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), nil, shared.Manager.Kinds)
+
+	if len(gw.Gitops.GetPack().Definitions) == 0 {
+		err = gw.Gitops.SetPack(packer.Read(fmt.Sprintf("%s/%s", gw.Gitops.GetGit().Directory, gw.Gitops.GetDirectory()), nil, shared.Manager.Kinds))
 		if err != nil {
 			return status.INVALID_DEFINITIONS, true
 		}
 	} else {
-		tmp, err := packer.Read(fmt.Sprintf("%s/%s", gitopsObj.Git.Directory, gitopsObj.DirectoryPath), nil, shared.Manager.Kinds)
+		tmp, err := packer.Read(fmt.Sprintf("%s/%s", gw.Gitops.GetGit().Directory, gw.Gitops.GetDirectory()), nil, shared.Manager.Kinds)
 		if err != nil {
 			return status.INVALID_DEFINITIONS, true
 		}
-		err = gitopsObj.Update(tmp)
+
+		err = gw.Gitops.Update(tmp)
 		if err != nil {
 			return status.INVALID_DEFINITIONS, true
 		}
@@ -97,10 +99,10 @@ func handleInvalidDefinitions(shared *shared.Shared, gw *watcher.Gitops) (string
 }
 
 func handleSyncing(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
-	gw.Gitops.Status.GetPending().Set(status.PENDING_SYNC)
-	gw.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gw.Gitops.Commit.ID()))
-	if len(gw.Gitops.Pack.Definitions) == 0 {
-		gw.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gw.Gitops.Git.Directory, gw.Gitops.DirectoryPath))
+	gw.Gitops.GetStatus().GetPending().Set(status.PENDING_SYNC)
+	gw.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gw.Gitops.GetCommit().ID()))
+	if len(gw.Gitops.GetPack().Definitions) == 0 {
+		gw.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gw.Gitops.GetGit().Directory, gw.Gitops.GetDirectory()))
 		return status.INVALID_DEFINITIONS, true
 	}
 	errs := []error{}
@@ -111,10 +113,10 @@ func handleSyncing(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 		}
 		return status.INVALID_DEFINITIONS, true
 	}
-	gw.Gitops.GetStatus().LastSyncedCommit = gw.Gitops.Commit.ID()
+	gw.Gitops.GetStatus().LastSyncedCommit = gw.Gitops.GetCommit().ID()
 	gw.Gitops.GetStatus().InSync = true
-	gw.Gitops.ForceSync = false
-	gw.Logger.Info(fmt.Sprintf("commit %s synced", gw.Gitops.Status.LastSyncedCommit))
+	gw.Gitops.SetForceSync(false)
+	gw.Logger.Info(fmt.Sprintf("commit %s synced", gw.Gitops.GetStatus().LastSyncedCommit))
 	return status.INSPECTING, true
 }
 
@@ -133,11 +135,11 @@ func handleInspecting(shared *shared.Shared, gw *watcher.Gitops) (string, bool) 
 }
 
 func handleSyncingState(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
-	gw.Gitops.Status.GetPending().Set(status.PENDING_SYNC)
+	gw.Gitops.GetStatus().GetPending().Set(status.PENDING_SYNC)
 	gw.Logger.Info("attempt to sync state")
 
-	if len(gw.Gitops.Pack.Definitions) == 0 {
-		gw.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gw.Gitops.Git.Directory, gw.Gitops.DirectoryPath))
+	if len(gw.Gitops.GetPack().Definitions) == 0 {
+		gw.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gw.Gitops.GetGit().Directory, gw.Gitops.GetDirectory()))
 		return status.INVALID_DEFINITIONS, true
 	}
 
@@ -174,7 +176,7 @@ func handleDrifted(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 
 func handleDelete(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 	gw.Logger.Info("triggering context cancel")
-	err := gw.Gitops.Status.GetPending().Set(status.PENDING_DELETE)
+	err := gw.Gitops.GetStatus().GetPending().Set(status.PENDING_DELETE)
 	if err != nil {
 		logger.Log.Error("failed to set pending delete state", zap.Error(err))
 	}

@@ -215,7 +215,7 @@ func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectIn
 			return obj, err
 		}
 
-		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
+		if existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
 			existing.SetState(definition.GetState())
 		}
 

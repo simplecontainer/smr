@@ -93,7 +93,7 @@ func TestStandaloneNodeMinimalContainer(t *testing.T) {
 	}, "remove container")
 
 	nm.RunCommand(t, func() error {
-		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/busybox",
+		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1",
 			events.EVENT_DELETED))
 	}, "wait for container deleted")
 

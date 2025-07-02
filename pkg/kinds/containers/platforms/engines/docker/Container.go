@@ -92,7 +92,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		User:           definition.(*v1.ContainersDefinition).Spec.User,
 		GroupAdd:       definition.(*v1.ContainersDefinition).Spec.GroupAdd,
 		Privileged:     definition.(*v1.ContainersDefinition).Spec.Privileged,
-		Definition:     definitionCopy,
+		definition:     definitionCopy, // Holds for local reference inside engine itself
 	}
 
 	return container, nil
@@ -210,8 +210,8 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 		DNS = []string{"127.0.0.1"}
 	}
 
-	if len(container.Definition.Spec.Dns) != 0 {
-		DNS = append(DNS, container.Definition.Spec.Dns...)
+	if len(container.definition.Spec.Dns) != 0 {
+		DNS = append(DNS, container.definition.Spec.Dns...)
 	}
 
 	container.Docker.DNS = DNS
@@ -260,7 +260,7 @@ func (container *Docker) PreRun(config *configuration.Configuration, client *cli
 		return err
 	}
 
-	for _, depends := range container.Definition.Spec.Dependencies {
+	for _, depends := range container.definition.Spec.Dependencies {
 		runtime.ObjectDependencies = append(runtime.ObjectDependencies, f.New(static.SMR_PREFIX, static.CATEGORY_KIND, static.KIND_CONTAINERS, depends.Group, depends.Name))
 	}
 

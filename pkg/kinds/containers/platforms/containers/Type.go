@@ -1,6 +1,7 @@
 package containers
 
 import (
+	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
@@ -8,11 +9,12 @@ import (
 )
 
 type Container struct {
-	Platform platforms.IPlatform
-	General  *General
-	Type     string
-	ghost    bool
-	Lock     sync.RWMutex
+	Definition *v1.ContainersDefinition
+	Platform   platforms.IPlatform
+	General    *General
+	Type       string
+	ghost      bool
+	Lock       sync.RWMutex
 }
 
 type General struct {
