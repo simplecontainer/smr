@@ -75,7 +75,6 @@ type Api interface {
 	Kind(c *gin.Context)
 	List(c *gin.Context)
 	ListKind(c *gin.Context)
-	ListKindGroup(c *gin.Context)
 	GetKind(c *gin.Context)
 	ProposeKind(c *gin.Context)
 	CompareKind(c *gin.Context)
@@ -83,7 +82,6 @@ type Api interface {
 	DeleteKind(c *gin.Context)
 
 	ListState(c *gin.Context)
-	ListStateGroup(c *gin.Context)
 	GetState(c *gin.Context)
 
 	ProposeKey(c *gin.Context)

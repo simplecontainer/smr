@@ -25,36 +25,6 @@ func (a *Api) ListState(c *gin.Context) {
 	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
-
-	format := f.New(prefix, version, category, kind)
-	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
-	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-		return
-	}
-
-	states, err := a.join(c, response.Kvs, prefix, version, kind)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
-		return
-	}
-
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, "", nil, network.ToJSON(states)))
-}
-
-// @Success		200	{object}	  contracts.Response
-// @Failure		400	{object}	  contracts.Response
-// @Failure		404	{object}	  contracts.Response
-// @Failure		500	{object}	  contracts.Response
-// @Router		/kind/{prefix}/{category}/{kind}/{group} [get]
-func (a *Api) ListStateGroup(c *gin.Context) {
-	prefix := c.Param("prefix")
-	version := c.Param("version")
-	category := c.Param("category")
-	kind := c.Param("kind")
 	group := c.Param("group")
 
 	format := f.New(prefix, version, category, kind, group)

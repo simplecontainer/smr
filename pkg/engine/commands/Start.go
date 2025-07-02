@@ -177,7 +177,7 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 		{
 			kind.GET("/", api.List)
 			kind.GET("/:prefix/:version/:category/:kind", api.ListKind)
-			kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKindGroup)
+			kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKind)
 
 			// Without field
 			kind.POST("/propose/:prefix/:version/:category/:kind/:group/:name", api.ProposeKind)
@@ -199,7 +199,7 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 		state := v1.Group("state")
 		{
 			state.GET("/:prefix/:version/:category/:kind", api.ListState)
-			state.GET("/:prefix/:version/:category/:kind/:group", api.ListStateGroup)
+			state.GET("/:prefix/:version/:category/:kind/:group", api.ListState)
 			state.GET("/:prefix/:version/:category/:kind/:group/:name/:field", api.GetState)
 		}
 

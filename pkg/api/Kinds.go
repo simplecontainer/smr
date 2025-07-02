@@ -45,32 +45,6 @@ func (a *Api) ListKind(c *gin.Context) {
 	send(c, response, err, nil)
 }
 
-// ListKindGroup godoc
-//
-//	@Summary		List kind objects for group
-//	@Description	list kind objects in the store for specific group
-//	@Tags			database
-//	@Produce		json
-//
-// @Success		200	{object}	  contracts.Response
-// @Failure		400	{object}	  contracts.Response
-// @Failure		404	{object}	  contracts.Response
-// @Failure		500	{object}	  contracts.Response
-// @Router		/kind/{prefix}/{category}/{kind}/{group} [get]
-func (a *Api) ListKindGroup(c *gin.Context) {
-	prefix := c.Param("prefix")
-	version := c.Param("version")
-	category := c.Param("category")
-	kind := c.Param("kind")
-	group := c.Param("group")
-
-	format := f.New(prefix, version, category, kind, group)
-	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
-	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
-	send(c, response, err, nil)
-}
-
 // GetKind godoc
 //
 //	@Summary		Get specific kind
