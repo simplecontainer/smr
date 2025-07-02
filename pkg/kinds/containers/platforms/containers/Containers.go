@@ -132,6 +132,7 @@ func (c *Container) GetReadiness() []*readiness.Readiness {
 func (c *Container) GetState() (state.State, error) {
 	return c.Platform.GetState()
 }
+func (c *Container) GetEngineState() string { return c.Platform.GetEngineState() }
 func (c *Container) GetId() string {
 	return c.GetId()
 }
@@ -150,6 +151,9 @@ func (c *Container) GetNodeName() string {
 	return c.General.Runtime.Node.NodeName
 }
 
+func (c *Container) GetGlobalDefinition() *v1.ContainersDefinition {
+	return c.Definition
+}
 func (c *Container) GetDefinition() idefinitions.IDefinition {
 	return c.Platform.GetDefinition()
 }
@@ -170,7 +174,7 @@ func (c *Container) GetGroupIdentifier() string {
 }
 func (c *Container) GetImageWithTag() string { return c.Platform.GetImageWithTag() }
 func (c *Container) GetNetwork() map[string]net.IP {
-	return c.GetNetwork()
+	return c.Platform.GetNetwork()
 }
 func (c *Container) GetDomain(network string) string {
 	return c.Platform.GetDomain(network)
@@ -178,6 +182,8 @@ func (c *Container) GetDomain(network string) string {
 func (c *Container) GetHeadlessDomain(network string) string {
 	return c.Platform.GetHeadlessDomain(network)
 }
+
+func (c *Container) GetIndex() (uint64, error) { return c.Platform.GetIndex() }
 
 func (c *Container) GetInit() platforms.IPlatform {
 	return c.Platform.GetInit()

@@ -11,14 +11,14 @@ import (
 )
 
 func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
-	if gitopsWatcher.Done || gitopsWatcher.Gitops.Status.PendingDelete {
+	if gitopsWatcher.Done || gitopsWatcher.Gitops.Gitops.Status.PendingDelete {
 		return
 	}
 
 	gitopsObj := gitopsWatcher.Gitops
 
-	if gitopsObj.ForceClone {
-		gitopsObj.ForceClone = false
+	if gitopsObj.Gitops.ForceClone {
+		gitopsObj.SetForceClone(false)
 		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 	}
 
@@ -55,7 +55,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	} else {
 		switch gitopsObj.GetStatus().GetState() {
 		case status.DRIFTED, status.INSYNC:
-			gitopsWatcher.Gitops.Status.GetPending().Clear()
+			gitopsWatcher.Gitops.Gitops.Status.GetPending().Clear()
 			gitopsWatcher.Ticker.Stop()
 		case status.DELETE:
 			gitopsWatcher.Ticker.Stop()
@@ -63,7 +63,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			break
 		default:
 			if gitopsObj.GetStatus().GetCategory() == status.CATEGORY_END {
-				gitopsWatcher.Gitops.Status.GetPending().Clear()
+				gitopsWatcher.Gitops.Gitops.Status.GetPending().Clear()
 
 				events.Dispatch(
 					events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),

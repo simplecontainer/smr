@@ -178,6 +178,14 @@ func (c *ClientContext) setupTLSClient() error {
 		},
 	}
 
+	//crt, err := x509.ParseCertificate(c.Credentials.Cert.Bytes())
+	//
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//c.Credentials.User = &authentication.User{Username: crt.Subject.CommonName}
+
 	return nil
 }
 

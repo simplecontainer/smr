@@ -29,7 +29,7 @@ func New(elements ...string) Format {
 func NewFromString(data string) Format {
 	UUID, f := parseUUID(data)
 
-	elements, nonEmptyCount, err := buildElements(strings.SplitN(f, "/", 6))
+	elements, nonEmptyCount, err := buildElements(strings.SplitN(f, "/", 7))
 	format := Format{
 		Elements: elements,
 		Elems:    nonEmptyCount,
@@ -75,11 +75,15 @@ func Build(arg string, group string) (iformat.Format, error) {
 		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s", split[0], split[1], split[2], split[3], split[4]))
 		break
 	case 6:
-		// prefix/category/kind/group/name
+		// prefix/version/category/kind/group/name
 		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s/%s", split[0], split[1], split[2], split[3], split[4], split[5]))
 		break
+	case 7:
+		// prefix/category/kind/group/name/field
+		format = NewFromString(fmt.Sprintf("%s/%s/%s/%s/%s/%s/%s", split[0], split[1], split[2], split[3], split[4], split[5], split[6]))
+		break
 	default:
-		err = errors.New("valid formats are: [prefix/category/kind/group/name, category/kind/group/name, kind/group/name, kind/name, kind]")
+		err = errors.New("valid formats are: [prefix/category/kind/group/name/field, prefix/category/kind/group/name, category/kind/group/name, kind/group/name, kind/name, kind]")
 	}
 
 	if arg == "" {
@@ -90,7 +94,7 @@ func Build(arg string, group string) (iformat.Format, error) {
 }
 
 func buildElements(splitted []string) ([]string, int, error) {
-	var size = 6
+	var size = 7
 
 	elements := make([]string, size)
 
@@ -160,6 +164,10 @@ func (format Format) GetName() string {
 	return format.Elements[5]
 }
 
+func (format Format) GetField() string {
+	return format.Elements[6]
+}
+
 func (format Format) GetType() string {
 	return format.Type
 }
@@ -196,7 +204,7 @@ func (format Format) GetUUID() uuid.UUID {
 }
 
 func (format Format) IsValid() bool {
-	split := strings.SplitN(format.ToString(), "/", 6)
+	split := strings.SplitN(format.ToString(), "/", 7)
 
 	if len(split) > 0 {
 		for _, element := range split {
@@ -212,7 +220,7 @@ func (format Format) IsValid() bool {
 }
 
 func (format Format) Compliant() bool {
-	return format.Elems == 6
+	return format.Elems >= 6 && format.Elems <= 7
 }
 
 func (format Format) ToString() string {
@@ -234,25 +242,33 @@ func DefaultToStringOpts() *iformat.ToStringOpts {
 }
 
 func (format Format) ToStringWithOpts(opts *iformat.ToStringOpts) string {
-	output := ""
+	var builder strings.Builder
 
-	for k, s := range format.Elements {
-		if s == "" {
+	builder.Grow(64)
+
+	for i, element := range format.Elements {
+		if element == "" {
 			continue
 		}
 
-		if k == 2 && opts.ExcludeCategory {
+		if i == 2 && opts.ExcludeCategory {
 			continue
 		}
 
-		output += fmt.Sprintf("%s/", s)
+		builder.WriteString(element)
+		builder.WriteByte('/')
 	}
 
-	if opts.IncludeUUID {
-		return fmt.Sprintf("%s%s", format.UUID, strings.TrimSuffix(output, "/"))
-	}
+	path := strings.TrimSuffix(builder.String(), "/")
 
-	return strings.TrimSuffix(output, "/")
+	switch {
+	case opts.IncludeUUID:
+		return format.UUID.String() + path
+	case opts.AddTrailingSlash:
+		return "/" + path
+	default:
+		return path
+	}
 }
 
 func (format Format) ToStringWithUUID() string {

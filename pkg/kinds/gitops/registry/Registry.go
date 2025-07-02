@@ -66,7 +66,7 @@ func (registry *Registry) Sync(group string, name string) error {
 	registry.GitopsLock.RUnlock()
 
 	if ok {
-		format := f.New(gitopsObj.Definition.GetPrefix(), static.CATEGORY_STATE, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName())
+		format := f.New(gitopsObj.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_GITOPS, gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj.GetName())
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		bytes, err := gitopsObj.ToJSON()

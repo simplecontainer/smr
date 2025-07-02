@@ -21,7 +21,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			close(gitopsWatcher.GitopsQueue)
 
 			var wgChild sync.WaitGroup
-			for _, request := range gitopsWatcher.Gitops.Pack.Definitions {
+			for _, request := range gitopsWatcher.Gitops.Gitops.Pack.Definitions {
 				if !request.Definition.GetState().Gitops.LastSync.IsZero() {
 					wgChild.Add(1)
 
@@ -45,7 +45,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			}
 			wgChild.Wait()
 
-			err := shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.Definition.Meta.Name)
+			err := shared.Registry.Remove(gitopsWatcher.Gitops.Definition.GetPrefix(), gitopsWatcher.Gitops.Definition.Meta.Group, gitopsWatcher.Gitops.GetDefinition().GetMeta().Name)
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}
@@ -79,7 +79,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 			}()
 			break
 		case <-gitopsWatcher.Poller.C:
-			gitopsWatcher.Gitops.ForceClone = true
+			gitopsWatcher.Gitops.SetForceClone(true)
 			gitopsWatcher.Ticker.Reset(5 * time.Second)
 			break
 		}

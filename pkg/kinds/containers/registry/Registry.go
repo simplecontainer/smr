@@ -121,7 +121,7 @@ func (registry *Registry) Sync(group string, name string) error {
 	registry.ContainersLock.RUnlock()
 
 	if ok {
-		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetGeneratedName())
+		format := f.New(container.GetDefinition().GetPrefix(), static.CATEGORY_STATE, static.KIND_CONTAINERS, container.GetGroup(), container.GetName(), container.GetGeneratedName())
 		obj := objects.New(registry.Client.Clients[registry.User.Username], registry.User)
 
 		bytes, err := container.ToJSON()

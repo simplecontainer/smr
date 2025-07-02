@@ -200,6 +200,8 @@ func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectIn
 		return obj, err
 	}
 
+	fmt.Println("adding state")
+
 	if obj.Exists() {
 		var bytes []byte
 		bytes, err = definition.Definition.ToJSON()
@@ -215,7 +217,7 @@ func (definition *Definition) State(format iformat.Format, obj iobjects.ObjectIn
 			return obj, err
 		}
 
-		if !existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
+		if existing.GetRuntime().GetOwner().IsEqual(definition.GetRuntime().GetOwner()) {
 			existing.SetState(definition.GetState())
 		}
 

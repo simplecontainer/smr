@@ -38,31 +38,33 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 	}
 
 	gitops := &Gitops{
-		Git:             internal.NewGit(definition, logpath),
-		LogPath:         logpath,
-		DirectoryPath:   definition.Spec.DirectoryPath,
-		PoolingInterval: duration,
-		AutomaticSync:   definition.Spec.AutomaticSync,
-		Context:         definition.Spec.Context,
-		Pack:            packer.New(),
-		Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node.NodeID),
-		Commit: &object.Commit{
-			Hash:         plumbing.Hash{},
-			Author:       object.Signature{},
-			Committer:    object.Signature{},
-			MergeTag:     "",
-			PGPSignature: "",
-			Message:      "",
-			TreeHash:     plumbing.Hash{},
-			ParentHashes: nil,
-			Encoding:     "",
+		Gitops: &GitopsInternal{
+			Git:             internal.NewGit(definition, logpath),
+			LogPath:         logpath,
+			DirectoryPath:   definition.Spec.DirectoryPath,
+			PoolingInterval: duration,
+			AutomaticSync:   definition.Spec.AutomaticSync,
+			Context:         definition.Spec.Context,
+			Pack:            packer.New(),
+			Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node.NodeID),
+			Commit: &object.Commit{
+				Hash:         plumbing.Hash{},
+				Author:       object.Signature{},
+				Committer:    object.Signature{},
+				MergeTag:     "",
+				PGPSignature: "",
+				Message:      "",
+				TreeHash:     plumbing.Hash{},
+				ParentHashes: nil,
+				Encoding:     "",
+			},
+			Status: status.New(),
+			Auth: &Auth{
+				CertKeyRef:  definition.Spec.CertKeyRef,
+				HttpAuthRef: definition.Spec.HttpAuthRef,
+			},
+			definition: definition,
 		},
-		Status: status.New(),
-		Auth: &Auth{
-			CertKeyRef:  definition.Spec.CertKeyRef,
-			HttpAuthRef: definition.Spec.HttpAuthRef,
-		},
-		Definition: definition,
 	}
 
 	return gitops
@@ -72,10 +74,10 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *clients.Http, user *authe
 	var requests = make([]*common.Request, 0)
 	var errs = make([]error, 0)
 
-	for k, request := range gitops.Pack.Definitions {
+	for k, request := range gitops.Gitops.Pack.Definitions {
 		logger.Info("syncing object", zap.String("object", request.Definition.GetMeta().Name))
 
-		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.GetDefinition().GetMeta().Group, gitops.GetDefinition().GetMeta().Name)
 
 		action := request.Definition.GetState().GetOpt("action").Value
 		request.Definition.GetState().ClearOpt("action")
@@ -93,7 +95,7 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *clients.Http, user *authe
 			request.ProposeRemove(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 			logger.Info("object proposed for remove", zap.String("object", request.Definition.GetMeta().Name))
 
-			gitops.Pack.Definitions = helpers.RemoveElement(gitops.Pack.Definitions, k)
+			gitops.Gitops.Pack.Definitions = helpers.RemoveElement(gitops.Gitops.Pack.Definitions, k)
 			break
 		}
 	}
@@ -105,10 +107,10 @@ func (gitops *Gitops) SyncState(logger *zap.Logger, client *clients.Http, user *
 	var requests = make([]*common.Request, 0)
 	var errs = make([]error, 0)
 
-	for _, request := range gitops.Pack.Definitions {
+	for _, request := range gitops.Gitops.Pack.Definitions {
 		logger.Info("syncing object", zap.String("object", request.Definition.GetMeta().Name))
 
-		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
+		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.GetDefinition().GetMeta().Group, gitops.GetDefinition().GetMeta().Name)
 
 		action := request.Definition.GetState().GetOpt("action").Value
 		request.Definition.GetState().ClearOpt("action")
@@ -129,16 +131,16 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 	var flagError bool
 	var errs = make([]error, 0)
 
-	for _, request := range gitops.Pack.Definitions {
+	for _, request := range gitops.Gitops.Pack.Definitions {
 		if !request.Definition.GetState().GetOpt("action").IsEmpty() {
 			if request.Definition.GetState().GetOpt("action").Value == static.REMOVE_KIND {
 				continue
 			}
 		}
 
-		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.Definition.Meta.Group, gitops.Definition.Meta.Name)
-		request.Definition.GetRuntime().SetNode(gitops.Definition.GetRuntime().GetNode())
-		request.Definition.GetRuntime().SetNodeName(gitops.Definition.GetRuntime().GetNodeName())
+		request.Definition.GetRuntime().SetOwner(static.KIND_GITOPS, gitops.GetDefinition().GetMeta().Group, gitops.GetDefinition().GetMeta().Name)
+		request.Definition.GetRuntime().SetNode(gitops.GetDefinition().GetRuntime().GetNode())
+		request.Definition.GetRuntime().SetNodeName(gitops.GetDefinition().GetRuntime().GetNodeName())
 
 		obj, err := request.Compare(client, user)
 
@@ -154,6 +156,8 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 
 				flagError = true
 			}
+
+			request.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 		}
 
 		if obj.ChangeDetected() {
@@ -207,6 +211,7 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 				}
 
 				request.Definition.GetState().AddOpt("action", static.STATE_KIND)
+				request.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 			}
 		} else {
 			if obj.Exists() {
@@ -221,7 +226,7 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 
 				if c.GetRuntime().GetOwner().IsEqual(request.Definition.GetRuntime().GetOwner()) {
 					request.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
-					request.Definition.GetState().Gitops.Commit = gitops.Commit.Hash
+					request.Definition.GetState().Gitops.Commit = gitops.Gitops.Commit.Hash
 					request.Definition.GetState().Gitops.AddMessage("success", "object synced successfully")
 
 					if request.Definition.GetState().Gitops.LastSync.IsZero() {
@@ -229,10 +234,12 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 					}
 
 					request.Definition.GetState().AddOpt("action", static.STATE_KIND)
+					request.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 				}
 			} else {
 				request.Definition.GetState().Gitops.AddMessage("neutral", "object is not found on the cluster")
 				request.Definition.GetState().Gitops.Set(commonv1.GITOPS_MISSING, true)
+				request.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 			}
 		}
 	}
@@ -252,22 +259,22 @@ func (gitops *Gitops) Update(pack *packer.Pack) error {
 	var err error
 
 	for _, req := range pack.Definitions {
-		for k, definition := range gitops.Pack.Definitions {
+		for k, definition := range gitops.Gitops.Pack.Definitions {
 			if definition.Definition.IsOf(req.Definition) {
-				err = req.Definition.Patch(gitops.Pack.Definitions[k].Definition)
-				req.Definition.SetState(gitops.Pack.Definitions[k].Definition.GetState())
+				err = req.Definition.Patch(gitops.Gitops.Pack.Definitions[k].Definition)
+				req.Definition.SetState(gitops.Gitops.Pack.Definitions[k].Definition.GetState())
 
 				if err != nil {
 					definition.Definition.GetState().Gitops.AddError(err)
 				} else {
 					if !definition.Definition.IsOf(req.Definition) {
-						gitops.Pack.Definitions[k].Definition.GetState().AddOpt("action", "remove")
+						gitops.Gitops.Pack.Definitions[k].Definition.GetState().AddOpt("action", "remove")
 
 						req.Definition.GetState().AddOpt("action", "apply")
-						gitops.Pack.Definitions = append(gitops.Pack.Definitions, req)
+						gitops.Gitops.Pack.Definitions = append(gitops.Gitops.Pack.Definitions, req)
 					} else {
 						req.Definition.GetState().AddOpt("action", "apply")
-						gitops.Pack.Definitions[k] = req
+						gitops.Gitops.Pack.Definitions[k] = req
 					}
 				}
 			}
@@ -275,11 +282,11 @@ func (gitops *Gitops) Update(pack *packer.Pack) error {
 
 		if req.Definition.GetState().GetOpt("action").IsEmpty() {
 			req.Definition.GetState().AddOpt("action", "apply")
-			gitops.Pack.Definitions = append(gitops.Pack.Definitions, req)
+			gitops.Gitops.Pack.Definitions = append(gitops.Gitops.Pack.Definitions, req)
 		}
 	}
 
-	for k, definition := range gitops.Pack.Definitions {
+	for k, definition := range gitops.Gitops.Pack.Definitions {
 		missing := true
 
 		for _, req := range pack.Definitions {
@@ -289,7 +296,7 @@ func (gitops *Gitops) Update(pack *packer.Pack) error {
 		}
 
 		if missing {
-			gitops.Pack.Definitions[k].Definition.GetState().AddOpt("action", "remove")
+			gitops.Gitops.Pack.Definitions[k].Definition.GetState().AddOpt("action", "remove")
 		}
 	}
 
@@ -297,7 +304,7 @@ func (gitops *Gitops) Update(pack *packer.Pack) error {
 }
 
 func (gitops *Gitops) ShouldSync() bool {
-	return gitops.AutomaticSync || gitops.ForceSync
+	return gitops.GetAutoSync() || gitops.GetForceSync()
 }
 
 func (gitops *Gitops) ToJSON() ([]byte, error) {

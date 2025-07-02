@@ -178,12 +178,29 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 			kind.GET("/", api.List)
 			kind.GET("/:prefix/:version/:category/:kind", api.ListKind)
 			kind.GET("/:prefix/:version/:category/:kind/:group", api.ListKindGroup)
-			kind.GET("/:prefix/:version/:category/:kind/:group/:name", api.GetKind)
+
+			// Without field
 			kind.POST("/propose/:prefix/:version/:category/:kind/:group/:name", api.ProposeKind)
 			kind.POST("/compare/:prefix/:version/:category/:kind/:group/:name", api.CompareKind)
+			kind.GET("/:prefix/:version/:category/:kind/:group/:name", api.GetKind)
 			kind.POST("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
 			kind.PUT("/:prefix/:version/:category/:kind/:group/:name", api.SetKind)
 			kind.DELETE("/:prefix/:version/:category/:kind/:group/:name", api.DeleteKind)
+
+			// With field
+			kind.POST("/propose/:prefix/:version/:category/:kind/:group/:name/:field", api.ProposeKind)
+			kind.POST("/compare/:prefix/:version/:category/:kind/:group/:name/:field", api.CompareKind)
+			kind.GET("/:prefix/:version/:category/:kind/:group/:name/:field", api.GetKind)
+			kind.POST("/:prefix/:version/:category/:kind/:group/:name/:field", api.SetKind)
+			kind.PUT("/:prefix/:version/:category/:kind/:group/:name/:field", api.SetKind)
+			kind.DELETE("/:prefix/:version/:category/:kind/:group/:name/:field", api.DeleteKind)
+		}
+
+		state := v1.Group("state")
+		{
+			state.GET("/:prefix/:version/:category/:kind", api.ListState)
+			state.GET("/:prefix/:version/:category/:kind/:group", api.ListStateGroup)
+			state.GET("/:prefix/:version/:category/:kind/:group/:name/:field", api.GetState)
 		}
 
 		key := v1.Group("key")

@@ -61,7 +61,10 @@ func (a *Api) ListKind(c *gin.Context) {
 	category := c.Param("category")
 	kind := c.Param("kind")
 
-	response, err := a.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s", prefix, version, category, kind), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	format := f.New(prefix, version, category, kind)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -95,7 +98,10 @@ func (a *Api) ListKindGroup(c *gin.Context) {
 	kind := c.Param("kind")
 	group := c.Param("group")
 
-	response, err := a.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s", prefix, version, category, kind, group), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	format := f.New(prefix, version, category, kind, group)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -123,15 +129,19 @@ func (a *Api) ListKindGroup(c *gin.Context) {
 // @Failure		500	{object}	  contracts.Response
 // @Router		/kind/{prefix}/{category}/{kind}/{group}/{name} [get]
 func (a *Api) GetKind(c *gin.Context) {
+	metrics.DatabaseGet.Increment()
 	prefix := c.Param("prefix")
 	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
+	field := c.Param("field")
 
-	metrics.DatabaseGet.Increment()
-	response, err := a.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+	format := f.New(prefix, version, category, kind, group, name, field)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -172,11 +182,12 @@ func (a *Api) ProposeKind(c *gin.Context) {
 		kind := c.Param("kind")
 		group := c.Param("group")
 		name := c.Param("name")
+		field := c.Param("field")
 
-		format := f.New(prefix, version, category, kind, group, name)
+		format := f.New(prefix, version, category, kind, group, name, field)
 		a.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, a.Cluster.Node.NodeID)
 
-		c.JSON(http.StatusOK, common.Response(http.StatusOK, fmt.Sprintf("%s/%s/%s/%s proposed", category, kind, group, name), nil, nil))
+		c.JSON(http.StatusOK, common.Response(http.StatusOK, format.ToString(), nil, nil))
 	}
 }
 
@@ -205,8 +216,12 @@ func (a *Api) SetKind(c *gin.Context) {
 		kind := c.Param("kind")
 		group := c.Param("group")
 		name := c.Param("name")
+		field := c.Param("field")
 
-		_, err = a.Etcd.Put(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name), string(data))
+		format := f.New(prefix, version, category, kind, group, name, field)
+		opts := f.DefaultToStringOpts()
+		opts.AddTrailingSlash = true
+		_, err = a.Etcd.Put(c.Request.Context(), format.ToStringWithOpts(opts), string(data))
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -237,8 +252,12 @@ func (a *Api) DeleteKind(c *gin.Context) {
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
+	field := c.Param("field")
 
-	_, err := a.Etcd.Delete(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+	format := f.New(prefix, version, category, kind, group, name, field)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+	_, err := a.Etcd.Delete(c.Request.Context(), format.ToStringWithOpts(opts))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
@@ -266,8 +285,12 @@ func (a *Api) CompareKind(c *gin.Context) {
 	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
+	field := c.Param("field")
 
-	response, err := a.Etcd.Get(c.Request.Context(), fmt.Sprintf("/%s/%s/%s/%s/%s/%s", prefix, version, category, kind, group, name))
+	format := f.New(prefix, version, category, kind, group, name, field)
+	opts := f.DefaultToStringOpts()
+	opts.AddTrailingSlash = true
+	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))

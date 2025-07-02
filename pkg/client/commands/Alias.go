@@ -44,7 +44,7 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 
 	switch format.GetKind() {
 	case static.KIND_GITOPS:
-		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
+		objects, err = resources.ListState(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
 
 		if err != nil {
 			helpers.PrintAndExit(err, 1)
@@ -53,7 +53,7 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 		formaters.Gitops(objects)
 		break
 	case static.KIND_CONTAINERS:
-		objects, err = resources.ListKind(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
+		objects, err = resources.ListState(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
 
 		if err != nil {
 			helpers.PrintAndExit(err, 1)

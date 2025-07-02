@@ -63,13 +63,13 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 				gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				w.Gitops.Status.SetState(status.CREATED)
+				w.Gitops.GetStatus().SetState(status.CREATED)
 				w.GitopsQueue <- gitopsObj
 			} else {
 				existingWatcher.Gitops = gitopsObj
 				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				existingWatcher.Gitops.Status.SetState(status.CREATED)
+				existingWatcher.Gitops.GetStatus().SetState(status.CREATED)
 				existingWatcher.GitopsQueue <- gitopsObj
 			}
 		}
@@ -79,7 +79,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 		w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
 
 		w.Logger.Info("new gitops object created")
-		w.Gitops.Status.SetState(status.CREATED)
+		w.Gitops.GetStatus().SetState(status.CREATED)
 
 		gitops.Shared.Registry.AddOrUpdate(w.Gitops.GetGroup(), w.Gitops.GetName(), w.Gitops)
 		gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
@@ -153,11 +153,11 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+			if gitopsWatcher.Gitops.GetStatus().GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
 				return nil
 			}
 
-			gitopsObj.ForceClone = true
+			gitopsObj.SetForceClone(true)
 			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
@@ -172,11 +172,11 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+			if gitopsWatcher.Gitops.GetStatus().GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
 				return nil
 			}
 
-			gitopsObj.ForceSync = true
+			gitopsObj.SetForceSync(true)
 			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
@@ -191,7 +191,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			if gitopsWatcher.Gitops.Status.GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+			if gitopsWatcher.Gitops.GetStatus().GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
 				return nil
 			}
 

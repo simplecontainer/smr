@@ -82,6 +82,10 @@ type Api interface {
 	SetKind(c *gin.Context)
 	DeleteKind(c *gin.Context)
 
+	ListState(c *gin.Context)
+	ListStateGroup(c *gin.Context)
+	GetState(c *gin.Context)
+
 	ProposeKey(c *gin.Context)
 	SetKey(c *gin.Context)
 	RemoveKey(c *gin.Context)

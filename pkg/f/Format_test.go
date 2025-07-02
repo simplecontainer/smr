@@ -62,10 +62,17 @@ func TestBuild(t *testing.T) {
 		},
 		{
 			name:        "Real world example",
-			arg:         "simplecontainer.io/v1/kind/containers/example/example-busybox-1",
+			arg:         "simplecontainer.io/v1/state/containers/example/busybox/example-busybox-1",
 			group:       "flag-group",
 			expectError: false,
-			expected:    "simplecontainer.io/v1/kind/containers/example/example-busybox-1",
+			expected:    "simplecontainer.io/v1/state/containers/example/busybox/example-busybox-1",
+		},
+		{
+			name:        "Real world example",
+			arg:         "simplecontainer.io/v1/kind/containers/example/busybox/",
+			group:       "flag-group",
+			expectError: false,
+			expected:    "simplecontainer.io/v1/kind/containers/example/busybox",
 		},
 		{
 			name:        "Real world example 2",
@@ -117,6 +124,11 @@ func TestNewFromString(t *testing.T) {
 			valid:    true,
 		},
 		{
+			input:    "simplecontainer.io/v1/kind/network/internal/cluster",
+			expected: "simplecontainer.io/v1/kind/network/internal/cluster",
+			valid:    true,
+		},
+		{
 			input:    "prefix/category/kind",
 			expected: "prefix/category/kind",
 			valid:    true,
@@ -148,7 +160,7 @@ func TestNewFromString(t *testing.T) {
 
 // TestFormatGetters tests the getter methods
 func TestFormatGetters(t *testing.T) {
-	format := NewFromString("prefix/version/category/kind/group/name")
+	format := NewFromString("prefix/version/category/kind/group/name/field")
 
 	assert.Equal(t, "prefix", format.GetPrefix())
 	assert.Equal(t, "version", format.GetVersion())
@@ -156,12 +168,13 @@ func TestFormatGetters(t *testing.T) {
 	assert.Equal(t, "kind", format.GetKind())
 	assert.Equal(t, "group", format.GetGroup())
 	assert.Equal(t, "name", format.GetName())
+	assert.Equal(t, "field", format.GetField())
 	assert.Equal(t, TYPE_FORMATED, format.GetType())
 }
 
 // TestShift tests the Shift function
 func TestShift(t *testing.T) {
-	format := NewFromString("a/b/c")
+	format := NewFromString("a/b/c/d")
 	shifted := format.Shift()
 
 	// Expected result would be a -> kind, b -> group, c -> name
@@ -169,6 +182,7 @@ func TestShift(t *testing.T) {
 	assert.Equal(t, "a", shifted.GetKind())
 	assert.Equal(t, "b", shifted.GetGroup())
 	assert.Equal(t, "c", shifted.GetName())
+	assert.Equal(t, "d", shifted.GetField())
 }
 
 // TestUUID tests UUID handling
