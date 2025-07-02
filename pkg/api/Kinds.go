@@ -21,16 +21,6 @@ import (
 //	@Tags			database
 //	@Produce		json
 
-// @Success		200	{object}	  contracts.Response
-// @Failure		400	{object}	  contracts.Response
-// @Failure		404	{object}	  contracts.Response
-// @Failure		500	{object}	  contracts.Response
-// @Router			/kind/{prefix}/{category}/{kind} [get]
-func (a *Api) List(c *gin.Context) {
-	response, err := a.Etcd.Get(c.Request.Context(), f.New().ToStringWithOpts(f.DefaultToStringOpts()), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
-	send(c, response, err, nil)
-}
-
 // ListKind godoc
 func (a *Api) ListKind(c *gin.Context) {
 	prefix := c.Param("prefix")
