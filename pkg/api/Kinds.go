@@ -20,8 +20,6 @@ import (
 //	@Description	list kind objects in the store
 //	@Tags			database
 //	@Produce		json
-
-// ListKind godoc
 func (a *Api) ListKind(c *gin.Context) {
 	prefix := c.Param("prefix")
 	version := c.Param("version")
