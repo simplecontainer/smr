@@ -61,7 +61,7 @@ func PrintBytesDemux(ctx context.Context, reader io.ReadCloser) error {
 			}
 
 			if err != nil {
-				return fmt.Errorf("logs streaming stopped %v", err)
+				return err
 			}
 
 			stream := header[0]
@@ -80,7 +80,7 @@ func PrintBytesDemux(ctx context.Context, reader io.ReadCloser) error {
 			case 1:
 				os.Stdout.Write(payload)
 			case 2:
-				red.Fprintf(os.Stderr, "%s", payload)
+				os.Stdout.Write(payload)
 			default:
 				// unknown stream, ignore or log
 			}

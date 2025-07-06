@@ -45,6 +45,8 @@ func NewImplementation(kind string) idefinitions.IDefinition {
 		def = &v1.NetworkDefinition{}
 	case static.KIND_SECRET:
 		def = &v1.SecretDefinition{}
+	case static.KIND_VOLUME:
+		def = &v1.VolumeDefinition{}
 	default:
 		def = nil
 	}

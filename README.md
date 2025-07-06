@@ -23,9 +23,9 @@ Simplecontainer is a container orchestration platform that transforms Docker dae
 
 ### Prerequisites
 
-`- Docker installed and running ([Installation Guide](https://docs.docker.com/engine/install/))
+- Docker installed and running ([Installation Guide](https://docs.docker.com/engine/install/))
 - For WireGuard networking: WireGuard package ([Installation Guide](https://www.wireguard.com/install/))
-`
+
 ### Installation
 
 1. **Download and install tooling(smrmgr.sh, smr, and smrctl):**

@@ -271,7 +271,7 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 		Handler:      router,
 		TLSConfig:    tlsConfig,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 0,
 	}
 
 	server.TLSConfig.GetCertificate = api.GetKeys().Reloader.GetCertificateFunc()

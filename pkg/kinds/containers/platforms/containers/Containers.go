@@ -86,6 +86,22 @@ func NewGhost(state map[string]interface{}) (platforms.IContainer, error) {
 	return nil, errors.New("type is not defined")
 }
 
+func NewEmpty(platform string) (platforms.IContainer, error) {
+	switch platform {
+	case static.PLATFORM_DOCKER:
+		empty := &Container{
+			Platform: &docker.Docker{},
+			General:  &General{},
+			Type:     static.PLATFORM_DOCKER,
+			ghost:    true,
+		}
+
+		return empty, nil
+	default:
+		return nil, errors.New("container platform is not implemented")
+	}
+}
+
 func (c *Container) Run() error {
 	return c.Platform.Run()
 }
@@ -199,6 +215,13 @@ func (c *Container) IsGhost() bool {
 	return c.ghost
 }
 
+func (c *Container) CreateVolume(definition *v1.VolumeDefinition) error {
+	return c.Platform.CreateVolume(definition)
+}
+func (c *Container) DeleteVolume(id string, force bool) error {
+	return c.Platform.DeleteVolume(id, force)
+}
+
 func (c *Container) Start() error {
 	return c.Platform.Start()
 }
@@ -217,8 +240,8 @@ func (c *Container) Delete() error {
 func (c *Container) Rename(newName string) error {
 	return c.Platform.Rename(newName)
 }
-func (c *Container) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
-	return c.Platform.Exec(ctx, command, interactive)
+func (c *Container) Exec(ctx context.Context, command []string, interactive bool, height string, width string) (string, *bufio.Reader, net.Conn, error) {
+	return c.Platform.Exec(ctx, command, interactive, height, width)
 }
 func (c *Container) ExecInspect(ID string) (bool, int, error) {
 	return c.Platform.ExecInspect(ID)

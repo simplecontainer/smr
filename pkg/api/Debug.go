@@ -122,7 +122,7 @@ func (a *Api) Debug(c *gin.Context) {
 		var reader io.ReadCloser
 
 		PATH := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
-		reader, err = tail.File(c.Request.Context(), PATH, follow)
+		reader, err = tail.File(ctx, PATH, follow)
 
 		if err != nil {
 			stream.ByeWithStatus(w, http.StatusBadRequest, err)

@@ -12,7 +12,7 @@ func NewDefinitionRelationRegistry() *RelationRegistry {
 
 func (defRegistry *RelationRegistry) InTree() {
 	defRegistry.Register("network", emptyDependencies)
-	defRegistry.Register("containers", []string{"network", "resource", "configuration", "certkey"})
+	defRegistry.Register("containers", []string{"network", "volume", "resource", "configuration", "certkey"})
 	defRegistry.Register("gitops", []string{"certkey", "httpauth"})
 	defRegistry.Register("configuration", []string{"secret"})
 	defRegistry.Register("resource", []string{"configuration"})
@@ -21,6 +21,7 @@ func (defRegistry *RelationRegistry) InTree() {
 	defRegistry.Register("custom", emptyDependencies)
 	defRegistry.Register("secret", emptyDependencies)
 	defRegistry.Register("node", emptyDependencies)
+	defRegistry.Register("volume", emptyDependencies)
 }
 
 func (defRegistry *RelationRegistry) Register(kind string, dependencies []string) {

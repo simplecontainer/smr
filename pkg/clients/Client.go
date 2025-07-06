@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 func NewHttpClients() *Http {
@@ -126,8 +127,18 @@ func GenerateHttpClient(ca *keys.CA, client *keys.Client) (*http.Client, error) 
 	CAPool := x509.NewCertPool()
 	CAPool.AddCert(ca.Certificate)
 
+	dialer := &net.Dialer{
+		Timeout: 5 * time.Second,
+	}
+
 	return &http.Client{
+		Timeout: 0,
 		Transport: &http.Transport{
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			DialContext:           dialer.DialContext,
 			TLSClientConfig: &tls.Config{
 				RootCAs:      CAPool,
 				Certificates: []tls.Certificate{cert},

@@ -14,6 +14,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/node"
 	"github.com/simplecontainer/smr/pkg/kinds/resource"
 	"github.com/simplecontainer/smr/pkg/kinds/secret"
+	"github.com/simplecontainer/smr/pkg/kinds/volume"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 )
@@ -40,6 +41,8 @@ func New(kind string, mgr *manager.Manager) (ikinds.Kind, error) {
 		return resource.New(mgr), nil
 	case "secret":
 		return secret.New(mgr), nil
+	case "volume":
+		return volume.New(mgr), nil
 	default:
 		return nil, errors.New(fmt.Sprintf("%s kind does not exist", kind))
 	}

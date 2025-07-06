@@ -52,7 +52,10 @@ func (a *Api) Logs(c *gin.Context) {
 	}
 
 	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
+	defer func() {
+		logger.Log.Info("proxy context cancel called")
+		cancel()
+	}()
 
 	if container.IsGhost() {
 		client, ok := a.Manager.Http.Clients[container.GetRuntime().Node.NodeName]
@@ -78,9 +81,9 @@ func (a *Api) Logs(c *gin.Context) {
 			var reader io.ReadCloser
 
 			if which == "init" {
-				reader, err = container.GetInit().Logs(c.Request.Context(), follow)
+				reader, err = container.GetInit().Logs(ctx, follow)
 			} else {
-				reader, err = container.Logs(c.Request.Context(), follow)
+				reader, err = container.Logs(ctx, follow)
 			}
 
 			if err != nil {

@@ -38,6 +38,8 @@ func (a *Api) Exec(c *gin.Context) {
 	group := c.Param("group")
 	name := c.Param("name")
 	command := c.Request.Header.Get("command")
+	height := c.Request.Header.Get("height")
+	width := c.Request.Header.Get("width")
 
 	interactive, err := strconv.ParseBool(c.Param("interactive"))
 	if err != nil {
@@ -83,7 +85,7 @@ func (a *Api) Exec(c *gin.Context) {
 			logger.Log.Debug("remote exec closed with success")
 		}
 	} else {
-		err = localExec(c, conn, container, command, interactive)
+		err = localExec(c, conn, container, command, interactive, height, width)
 
 		if err != nil && !errors.Is(err, io.EOF) {
 			logger.Log.Debug("local exec session closed with error", zap.Error(err))
@@ -110,7 +112,7 @@ func remoteExec(c *gin.Context, conn *websocket.Conn, url string, httpClient *cl
 	}
 }
 
-func localExec(c *gin.Context, clientConn *websocket.Conn, container platforms.IContainer, command string, interactive bool) error {
+func localExec(c *gin.Context, clientConn *websocket.Conn, container platforms.IContainer, command string, interactive bool, height string, width string) error {
 	ctx, fn := context.WithCancel(c)
 
 	parsed := strings.TrimPrefix(command, "/")
@@ -120,7 +122,7 @@ func localExec(c *gin.Context, clientConn *websocket.Conn, container platforms.I
 	}
 
 	var proxy *exec.Session
-	proxy, err = exec.Create(ctx, fn, clientConn, container, execArgs, interactive)
+	proxy, err = exec.Create(ctx, fn, clientConn, container, execArgs, interactive, height, width)
 
 	if err != nil {
 		return err

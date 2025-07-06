@@ -58,6 +58,9 @@ type IContainer interface {
 	IsGhost() bool
 	SetGhost(bool)
 
+	CreateVolume(definition *v1.VolumeDefinition) error
+	DeleteVolume(id string, force bool) error
+
 	Start() error
 	Stop(signal string) error
 	Kill(signal string) error
@@ -65,7 +68,7 @@ type IContainer interface {
 	Delete() error
 	Wait(string) error
 	Rename(newName string) error
-	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
+	Exec(ctx context.Context, command []string, interactive bool, height string, width string) (string, *bufio.Reader, net.Conn, error)
 	ExecInspect(string) (bool, int, error)
 	Logs(context.Context, bool) (io.ReadCloser, error)
 	Clean() error
@@ -102,13 +105,16 @@ type IPlatform interface {
 	GetInit() IPlatform
 	GetInitDefinition() *v1.ContainersInternal
 
+	CreateVolume(definition *v1.VolumeDefinition) error
+	DeleteVolume(id string, force bool) error
+
 	Start() error
 	Stop(signal string) error
 	Kill(signal string) error
 	Restart() error
 	Delete() error
 	Rename(newName string) error
-	Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error)
+	Exec(ctx context.Context, command []string, interactive bool, height string, width string) (string, *bufio.Reader, net.Conn, error)
 	ExecInspect(string) (bool, int, error)
 	Logs(context.Context, bool) (io.ReadCloser, error)
 	Wait(string) error

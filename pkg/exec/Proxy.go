@@ -14,8 +14,9 @@ import (
 	"time"
 )
 
-func Create(c context.Context, cancel context.CancelFunc, clientConn *websocket.Conn, container platforms.IContainer, command []string, interactive bool) (*Session, error) {
-	execID, reader, execConn, err := container.Exec(c, command, interactive)
+func Create(c context.Context, cancel context.CancelFunc, clientConn *websocket.Conn, container platforms.IContainer,
+	command []string, interactive bool, height string, width string) (*Session, error) {
+	execID, reader, execConn, err := container.Exec(c, command, interactive, height, width)
 
 	if err != nil {
 		if clientConn != nil {

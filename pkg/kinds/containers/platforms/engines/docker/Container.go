@@ -522,7 +522,7 @@ func (container *Docker) Rename(newName string) error {
 	}
 }
 
-func (container *Docker) Exec(ctx context.Context, command []string, interactive bool) (string, *bufio.Reader, net.Conn, error) {
+func (container *Docker) Exec(ctx context.Context, command []string, interactive bool, height string, width string) (string, *bufio.Reader, net.Conn, error) {
 	if c, _ := container.Get(); c != nil && c.State == "running" {
 		cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
@@ -553,6 +553,29 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 		resp, err := cli.ContainerExecAttach(ctx, exec.ID, TDTypes.ExecStartCheck{})
 		if err != nil {
 			return "", nil, nil, err
+		}
+
+		if interactive {
+			h, err := strconv.ParseUint(height, 10, 16)
+			if err != nil {
+				return "", nil, nil, err
+			}
+
+			w, err := strconv.ParseUint(width, 10, 16)
+			if err != nil {
+				return "", nil, nil, err
+			}
+
+			err = cli.ContainerExecResize(ctx, exec.ID, TDContainer.ResizeOptions{
+				Height: uint(h),
+				Width:  uint(w),
+			})
+
+			if err != nil {
+				if err != nil {
+					return "", nil, nil, err
+				}
+			}
 		}
 
 		return exec.ID, resp.Reader, resp.Conn, nil

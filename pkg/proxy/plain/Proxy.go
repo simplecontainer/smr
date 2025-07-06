@@ -28,7 +28,7 @@ func Dial(ctx context.Context, cancel context.CancelFunc, client *http.Client, U
 		return nil, errors.New("nil client provided")
 	}
 
-	resp, err := network.Raw(client, URL, http.MethodGet, nil)
+	resp, err := network.Raw(ctx, client, URL, http.MethodGet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote endpoint: %w", err)
 	}

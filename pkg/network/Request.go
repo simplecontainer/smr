@@ -82,7 +82,7 @@ func Send(client *http.Client, URL string, method string, data []byte) *irespons
 	return &response
 }
 
-func Raw(client *http.Client, URL string, method string, data interface{}) (*http.Response, error) {
+func Raw(ctx context.Context, client *http.Client, URL string, method string, data interface{}) (*http.Response, error) {
 	var req *http.Request
 	var err error
 
@@ -102,7 +102,7 @@ func Raw(client *http.Client, URL string, method string, data interface{}) (*htt
 			return nil, err
 		}
 
-		req, err = http.NewRequest(method, URL, bytes.NewBuffer(marshaled))
+		req, err = http.NewRequestWithContext(ctx, method, URL, bytes.NewBuffer(marshaled))
 
 		if err != nil {
 			return nil, err
@@ -110,7 +110,7 @@ func Raw(client *http.Client, URL string, method string, data interface{}) (*htt
 
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, err = http.NewRequest(method, URL, nil)
+		req, err = http.NewRequestWithContext(ctx, method, URL, nil)
 
 		if err != nil {
 			return nil, err

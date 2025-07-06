@@ -116,7 +116,7 @@ func SolveReadiness(client *clients.Http, user *authentication.User, container p
 			var session *exec.Session
 			var result types.ExecResult
 
-			session, err = exec.Create(r.Ctx, r.Cancel, nil, container, r.Command, false)
+			session, err = exec.Create(r.Ctx, r.Cancel, nil, container, r.Command, false, "", "")
 
 			if err != nil {
 				return errors.New("readiness command failed")

@@ -70,6 +70,7 @@ const (
 const (
 	KIND_NODE          = "node"
 	KIND_CONTAINERS    = "containers"
+	KIND_VOLUME        = "volume"
 	KIND_CONFIGURATION = "configuration"
 	KIND_RESOURCE      = "resource"
 	KIND_CERTKEY       = "certkey"

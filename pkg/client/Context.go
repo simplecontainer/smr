@@ -168,7 +168,14 @@ func (c *ClientContext) setupTLSClient() error {
 	}
 
 	dialer := &net.Dialer{
-		Timeout: 5 * c.config.APITimeout,
+		Timeout:   5 * c.config.APITimeout,
+		KeepAlive: 1 * c.config.APITimeout,
+		KeepAliveConfig: net.KeepAliveConfig{
+			Enable:   true,
+			Idle:     0,
+			Interval: 0,
+			Count:    0,
+		},
 	}
 
 	c.client = &http.Client{
@@ -177,14 +184,6 @@ func (c *ClientContext) setupTLSClient() error {
 			TLSClientConfig: tlsConfig,
 		},
 	}
-
-	//crt, err := x509.ParseCertificate(c.Credentials.Cert.Bytes())
-	//
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//c.Credentials.User = &authentication.User{Username: crt.Subject.CommonName}
 
 	return nil
 }

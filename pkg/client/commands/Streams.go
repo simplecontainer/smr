@@ -39,14 +39,14 @@ func cmdDebug(api iapi.Api, cli *client.Client, args []string) {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := network.Raw(ctx, cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
@@ -74,21 +74,21 @@ func cmdLogs(api iapi.Api, cli *client.Client, args []string) {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	resp, err := network.Raw(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := network.Raw(ctx, cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	go func() {
 		<-sigChan
-		resp.Body.Close()
 		cancel()
+		resp.Body.Close()
 	}()
 
 	if resp.StatusCode == 200 {
@@ -121,8 +121,16 @@ func cmdExec(api iapi.Api, cli *client.Client, args []string) {
 
 	url := fmt.Sprintf("%s/api/v1/exec/%s/%s", cli.Context.APIURL, format.ToString(), strconv.FormatBool(interactive))
 
+	width, height, err := term.GetSize(int(os.Stdin.Fd()))
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
 	requestHeaders := http.Header{}
 	requestHeaders.Add("command", command)
+	requestHeaders.Add("width", strconv.Itoa(width))
+	requestHeaders.Add("height", strconv.Itoa(height))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -171,6 +179,22 @@ func handle(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn
 			}
 
 			defer term.Restore(fd, oldState)
+
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGWINCH)
+			go func() {
+				for range sigCh {
+					width, height, err := term.GetSize(fd)
+					if err != nil {
+						logger.Log.Warn("failed to get terminal size", zap.Error(err))
+						continue
+					}
+
+					logger.Log.Debug("terminal resized", zap.Int("cols", width), zap.Int("rows", height))
+				}
+			}()
+
+			syscall.Kill(syscall.Getpid(), syscall.SIGWINCH)
 		}
 
 		go func() {
