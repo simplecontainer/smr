@@ -1,318 +1,687 @@
 #!/bin/bash
-set -e
+#
+# SMR Manager - Modular management script for simplecontainer
+# Author: Your Name
+# Version: 2.0.0
+#
 
-Manager(){
-  NODE=""
-  DOMAIN=""
-  IP=""
-  NODE_ARGS="--listen 0.0.0.0:1443"
-  CLIENT_ARGS="--port.control 0.0.0.0:1443 --port.overlay 0.0.0.0:9212"
-  JOIN=false
-  PEER=""
-  IMAGE="quay.io/simplecontainer/smr"
-  TAG=$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version)
-  SERVICE="false"
+set -euo pipefail
 
-  echo "All arguments: $*"
+# ============================================================================
+# CONSTANTS AND CONFIGURATION
+# ============================================================================
 
-  # With value on the left side with colon!
-  # Without value on right side without colon!
-  while getopts "a:c:d:h:i:n:p:t:js" option; do
-  case $option in
-      n) NODE=$OPTARG ;;
-      d) DOMAIN=$OPTARG ;;
-      a) IP=$OPTARG ;;
-      c) CLIENT_ARGS=$OPTARG ;;
-      i) IMAGE=$OPTARG ;;
-      t) TAG=$OPTARG ;;
-      j) JOIN="true" ;;
-      p) PEER=$OPTARG ;;
-      s) SERVICE="true" ;;
-      h) HelpStart && exit ;;
-      \?) echo "Invalid option: -$OPTARG" ;;
-      :) echo "Option -$OPTARG requires an argument." ;;
-   esac
-  done
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_NAME="$(basename "$0")"
+readonly SCRIPT_VERSION="2.0.0"
 
-  if [[ ${NODE} == "" ]]; then
-    NODE="simplecontainer-node-1"
-  fi
+# Default configuration
+readonly DEFAULT_REGISTRY="http://localhost:8000"
+readonly DEFAULT_IMAGE="quay.io/simplecontainer/smr"
+readonly DEFAULT_NODE_NAME="simplecontainer-node-1"
+readonly DEFAULT_DOMAIN="localhost"
+readonly DEFAULT_NODE_ARGS="--listen 0.0.0.0:1443"
+readonly DEFAULT_CLIENT_ARGS="--port.control 0.0.0.0:1443 --port.overlay 0.0.0.0:9212"
+readonly NODES_DIR="$HOME/nodes"
+readonly ENV_FILE="$NODES_DIR/.env"
 
-  if [[ $DOMAIN == "" ]]; then
-    DOMAIN="localhost"
-  fi
+# URLs
+readonly VERSION_URL="https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version"
+readonly SMRCTL_VERSION_URL="https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smrctl/version"
+readonly SYSTEMD_UNIT_NAME="simplecontainer@.service"
+readonly SYSTEMD_UNIT_PATH="/etc/systemd/system/${SYSTEMD_UNIT_NAME}"
 
-  NODE_ARGS="--image ${IMAGE} --tag ${TAG} --node ${NODE} ${NODE_ARGS}"
+# ============================================================================
+# GLOBAL VARIABLES
+# ============================================================================
 
-  [[ -n "$DOMAIN" ]] && NODE_ARGS+=" --domain ${DOMAIN}"
-  [[ -n "$IP" ]] && NODE_ARGS+=" --ip ${IP}"
-  [[ -n "$PEER" && "$JOIN" == true ]] && NODE_ARGS+=" --join --peer ${PEER}"
+# Node configuration
+declare -g NODE_NAME=""
+declare -g DOMAIN=""
+declare -g IP_ADDRESS=""
+declare -g NODE_ARGS=""
+declare -g CLIENT_ARGS=""
+declare -g JOIN_CLUSTER="false"
+declare -g PEER_ADDRESS=""
+declare -g DOCKER_IMAGE=""
+declare -g DOCKER_TAG=""
+declare -g INSTALL_SERVICE="false"
+declare -g TOKEN=""
+declare -g ACTION=""
 
-  echo "..Node info....................................................................................................."
-  echo "....Agent name:           $NODE"
-  echo "....Node:                 $DOMAIN"
-  echo "....Image:                $IMAGE"
-  echo "....Tag:                  $TAG"
-  echo "....Domain:               $DOMAIN"
-  echo "....IP:                   $IP"
-  echo "....Node args:            $NODE_ARGS"
-  echo "....Client args:          $CLIENT_ARGS"
-  echo "....Service install:      $SERVICE"
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 
-  if [[ $JOIN == "true" ]]; then
-    echo "....Join:                 $JOIN"
-    echo "....Peer:                 $PEER"
-  else
-    echo "....Join:                 false"
-  fi
+log() {
+    local level="$1"
+    shift
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] [$level] $*" >&2
+}
 
-  echo "....smr version:          $(smr version)"
-  echo "....ctl version:          $(smrctl version)"
-  echo "................................................................................................................"
+log_info() {
+    log "INFO" "$@"
+}
 
-  curl --version > /dev/null 2>&1 || echo "Please install curl before proceeding with installing smr!" | exit 1
-  docker --version > /dev/null  2>&1 || echo "Please install docker-ce before proceeding with installing smr!" | exit 1
+log_error() {
+    log "ERROR" "$@"
+}
 
-  if [[ ${NODE} != "" ]]; then
-    if [[ ! $(smr node create --node "${NODE}" $NODE_ARGS $CLIENT_ARGS) ]]; then
-      echo "failed to create node configuration"
-      exit 2
+log_debug() {
+    if [[ "${DEBUG:-false}" == "true" ]]; then
+        log "DEBUG" "$@"
+    fi
+}
+
+die() {
+    log_error "$@"
+    exit 1
+}
+
+check_dependencies() {
+    local missing_deps=()
+
+    command -v curl >/dev/null 2>&1 || missing_deps+=("curl")
+    command -v docker >/dev/null 2>&1 || missing_deps+=("docker")
+    command -v smr >/dev/null 2>&1 || missing_deps+=("smr")
+    command -v smrctl >/dev/null 2>&1 || missing_deps+=("smrctl")
+
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        die "Missing dependencies: ${missing_deps[*]}. Please install them first."
+    fi
+}
+
+validate_input() {
+    local input="$1"
+    local pattern="$2"
+    local description="$3"
+
+    if [[ ! $input =~ $pattern ]]; then
+        die "Invalid $description: $input"
+    fi
+}
+
+create_directory() {
+    local dir="$1"
+    if [[ ! -d "$dir" ]]; then
+        mkdir -p "$dir" || die "Failed to create directory: $dir"
+        log_info "Created directory: $dir"
+    fi
+}
+
+fetch_latest_version() {
+    local url="$1"
+    local version
+    version=$(curl -sL "$url" --fail) || die "Failed to fetch version from $url"
+    echo "$version"
+}
+
+# ============================================================================
+# ARCHITECTURE DETECTION
+# ============================================================================
+
+detect_architecture() {
+    local arch=""
+
+    if command -v uname >/dev/null 2>&1; then
+        arch="$(uname -m 2>/dev/null)"
+    elif command -v dpkg >/dev/null 2>&1; then
+        arch="$(dpkg --print-architecture 2>/dev/null)"
+    elif command -v arch >/dev/null 2>&1; then
+        arch="$(arch 2>/dev/null)"
     fi
 
-    touch ~/nodes/${NODE}/logs/cluster.log || (echo "failed to create log file: ~/smr/logs/cluster.log" && exit 2)
-    touch ~/nodes/${NODE}/logs/control.log || (echo "failed to create log file: ~/smr/logs/control.log" && exit 2)
+    case "$arch" in
+        x86_64|amd64)
+            echo "amd64"
+            ;;
+        aarch64|arm64)
+            echo "arm64"
+            ;;
+        armv8*|armv7*|armv6*|armhf)
+            echo "arm64"
+            ;;
+        *)
+            die "Unknown or unsupported architecture: '$arch'"
+            ;;
+    esac
+}
 
-    if [[ $SERVICE == "false" ]]; then
-      Start
+# ============================================================================
+# CONFIGURATION MANAGEMENT
+# ============================================================================
 
-      echo "tail flannel logs at: tail -f ~/nodes/${NODE}/logs/cluster.log"
-      echo "tail control logs at: tail -f ~/nodes/${NODE}/logs/control.log"
-      echo "waiting for cluster to be ready..."
+initialize_defaults() {
+    NODE_NAME="${NODE_NAME:-$DEFAULT_NODE_NAME}"
+    DOMAIN="${DOMAIN:-$DEFAULT_DOMAIN}"
+    NODE_ARGS="${NODE_ARGS:-$DEFAULT_NODE_ARGS}"
+    CLIENT_ARGS="${CLIENT_ARGS:-$DEFAULT_CLIENT_ARGS}"
+    DOCKER_IMAGE="${DOCKER_IMAGE:-$DEFAULT_IMAGE}"
+    DOCKER_TAG="${DOCKER_TAG:-$(fetch_latest_version "$VERSION_URL")}"
+}
 
-      smr agent events --wait cluster_started --node "$NODE"
+parse_arguments() {
+    local OPTIND
+    while getopts "n:d:a:c:i:t:jp:sT:A:h" option; do
+        case $option in
+            n) NODE_NAME="$OPTARG" ;;
+            d) DOMAIN="$OPTARG" ;;
+            a) IP_ADDRESS="$OPTARG" ;;
+            c) CLIENT_ARGS="$OPTARG" ;;
+            i) DOCKER_IMAGE="$OPTARG" ;;
+            t) DOCKER_TAG="$OPTARG" ;;
+            j) JOIN_CLUSTER="true" ;;
+            p) PEER_ADDRESS="$OPTARG" ;;
+            s) INSTALL_SERVICE="true" ;;
+            T) TOKEN="$OPTARG" ;;
+            A) ACTION="$OPTARG" ;;
+            h) show_help && exit 0 ;;
+            \?) die "Invalid option: -$OPTARG" ;;
+            :) die "Option -$OPTARG requires an argument." ;;
+        esac
+    done
+}
+
+validate_configuration() {
+    [[ -n "$NODE_NAME" ]] || die "Node name is required"
+    [[ -n "$DOMAIN" ]] || die "Domain is required"
+    [[ -n "$DOCKER_IMAGE" ]] || die "Docker image is required"
+    [[ -n "$DOCKER_TAG" ]] || die "Docker tag is required"
+
+    # Validate domain format
+    validate_input "$DOMAIN" '^[a-zA-Z0-9.-]+$' "domain"
+
+    # Validate IP address if provided
+    if [[ -n "$IP_ADDRESS" ]]; then
+        validate_input "$IP_ADDRESS" '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' "IP address"
     fi
 
-    SaveCurrentEnvToFile "$HOME/nodes/.env"
-  else
-    HelpStart
-  fi
+    # Validate join configuration
+    if [[ "$JOIN_CLUSTER" == "true" && -z "$PEER_ADDRESS" ]]; then
+        die "Peer address is required when joining a cluster"
+    fi
 }
 
-Start(){
-  smr node start --node "${NODE}" -y
+build_node_arguments() {
+    local args="--image ${DOCKER_IMAGE} --tag ${DOCKER_TAG} --node ${NODE_NAME} ${NODE_ARGS}"
 
-  if [[ $DOMAIN == "localhost" ]]; then
-    RAFT_URL="https://$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' $NODE):9212"
-  else
-    RAFT_URL="https://${DOMAIN}:9212"
-  fi
+    [[ -n "$DOMAIN" ]] && args+=" --domain ${DOMAIN}"
+    [[ -n "$IP_ADDRESS" ]] && args+=" --ip ${IP_ADDRESS}"
+    [[ "$JOIN_CLUSTER" == "true" && -n "$PEER_ADDRESS" ]] && args+=" --join --peer ${PEER_ADDRESS}"
 
-  sudo nohup smr agent start --node "${NODE}" --raft "${RAFT_URL}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/cluster.log &
-  nohup smr agent control --node "${NODE}" </dev/null 2>&1 | stdbuf -o0 grep "" > ~/nodes/${NODE}/logs/control.log &
+    echo "$args"
 }
 
-Stop(){
-  smr agent drain --node $NODE
-  smr agent events --node ${NODE} --wait drain_success
-  smr node clean --node ${NODE}
+# ============================================================================
+# ENVIRONMENT MANAGEMENT
+# ============================================================================
 
-  sudo smr agent stop agent
-  smr agent stop control
-}
-
-ServiceInstall(){
-  LoadEnvFile "$HOME/nodes/.env"
-
-  UNIT_NAME="simplecontainer@.service"
-  UNIT_PATH="/etc/systemd/system/${UNIT_NAME}"
-
-  VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version --fail)}
-  UNIT_FILE=$(curl -sL https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/simplecontainer.unit --fail)
-
-  if [[ -z "$UNIT_FILE" ]]; then
-    echo "Failed to download systemd unit file"
-    exit 1
-  fi
-
-  echo "$UNIT_FILE" | sudo tee "$UNIT_PATH" > /dev/null
-
-  sudo systemctl daemon-reload
-  sudo systemctl enable simplecontainer@${SUDO_USER:-$USER}
-}
-
-ServiceStart(){
-  LoadEnvFile "$HOME/nodes/.env"
-
-  Start "$@"
-  smr agent events --wait cluster_started
-  smrctl context import $(smr agent export --api $DOMAIN:1443)
-  smr agent events
-}
-
-ServiceStop(){
-  LoadEnvFile "$HOME/nodes/.env"
-  Stop "$@"
-}
-
-Download(){
-  curl --version > /dev/null 2>&1 || echo "Please install curl before proceeding with installing smr!" | exit 1
-
-  ARCH=$(DetectArch)
-  PLATFORM="linux-${ARCH}"
-
-  VERSION_SMR=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smr/version --fail)}
-  VERSION_CTL=${2:-$(curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/cmd/smrctl/version)}
-
-  echo "Downloading smr:$VERSION_SMR and smrctl:$VERSION_CTL binary. They will be installed at /usr/local/bin/smr"
-  echo "Downloading: https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/smr-$PLATFORM"
-
-  curl -Lo smr https://github.com/simplecontainer/smr/releases/download/smr-$VERSION_SMR/smr-$PLATFORM --fail
-  chmod +x smr
-
-  if ! ./smr --help > /dev/null 2>&1 && ! ./smr --version > /dev/null 2>&1; then
-    echo "smr is not executable or cannot run."
-    exit 1
-  fi
-
-  echo "Downloading https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM"
-  curl -Lo smrctl https://github.com/simplecontainer/smr/releases/download/smrctl-$VERSION_CTL/smrctl-$PLATFORM --fail
-  chmod +x smrctl
-
-  if ! ./smrctl --help > /dev/null 2>&1 && ! ./smrctl --version > /dev/null 2>&1; then
-    echo "smrctl is not executable or cannot run."
-    exit 1
-  fi
-
-  sudo mv smr /usr/local/bin/smr
-  sudo mv smrctl /usr/local/bin/smrctl
-
-  echo "smr and smrctl have been successfully installed to /usr/local/bin."
-}
-
-HelpStart(){
-  echo """
-Usage: smrmgr.sh start [options]
-
-Options:
-  -n <node>         Set node name (e.g., node-1)
-  -d <domain>       Set domain (e.g., example.com)
-  -a <ip address>   Set IP address (e.g., 192.168.1.10)
-  -c <args>         Set additional client arguments (e.g., "--foo bar")
-  -i <image>        Set Docker image (e.g., myrepo/myimage)
-  -t <tag>          Set Docker image tag (e.g., latest)
-  -j                Join an existing cluster (no value needed)
-  -p <peer>         Set peer address (e.g., 192.168.1.20)
-  -s                Install as a systemd service (no value needed)
-  -h                Show this help message and exit
-
-Examples:
-  smrmgr.sh -n node-1 -d mydomain.com -a 10.0.0.1 -i myrepo/myimage -t latest -s
-  smrmgr.sh -n node-2 -j -p 10.0.0.1
-"""
-}
-
-SaveCurrentEnvToFile() {
-    local env_file="${1:-.env}"
-    local vars_to_save=(
-        "NODE"
-        "DOMAIN"
-        "IP"
-        "NODE_ARGS"
-        "CLIENT_ARGS"
-        "JOIN"
-        "SERVICE"
-        "PEER"
-        "IMAGE"
-        "TAG"
-    )
-
+save_environment() {
+    local env_file="${1:-$ENV_FILE}"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    {
-        echo "# SMR Manager Configuration"
-        echo "# Generated on: $timestamp"
-        echo ""
+    create_directory "$(dirname "$env_file")"
 
-        for var in "${vars_to_save[@]}"; do
-            if [[ -n "${!var}" ]]; then
-                echo "${var}=\"${!var}\""
-            else
-                echo "# ${var}=\"\""
-            fi
-        done
+    cat > "$env_file" << EOF
+# SMR Manager Configuration
+# Generated on: $timestamp
+# Script version: $SCRIPT_VERSION
 
-        echo ""
-        echo "# System Info"
-        echo "SMR_VERSION=\"$(smr version 2>/dev/null || echo 'not available')\""
-        echo "SMRCTL_VERSION=\"$(smrctl version 2>/dev/null || echo 'not available')\""
-        echo "TIMESTAMP=\"$timestamp\""
+NODE_NAME="$NODE_NAME"
+DOMAIN="$DOMAIN"
+IP_ADDRESS="$IP_ADDRESS"
+NODE_ARGS="$NODE_ARGS"
+CLIENT_ARGS="$CLIENT_ARGS"
+JOIN_CLUSTER="$JOIN_CLUSTER"
+PEER_ADDRESS="$PEER_ADDRESS"
+DOCKER_IMAGE="$DOCKER_IMAGE"
+DOCKER_TAG="$DOCKER_TAG"
+INSTALL_SERVICE="$INSTALL_SERVICE"
 
-    } > "$env_file"
+# System Info
+SMR_VERSION="$(smr version 2>/dev/null || echo 'not available')"
+SMRCTL_VERSION="$(smrctl version 2>/dev/null || echo 'not available')"
+TIMESTAMP="$timestamp"
+EOF
 
-    echo "Environment variables saved to: $env_file"
+    log_info "Environment saved to: $env_file"
 }
 
-LoadEnvFile() {
-    local env_file="${1:-.env}"
+load_environment() {
+    local env_file="${1:-$ENV_FILE}"
 
     if [[ -f "$env_file" ]]; then
-        echo "Loading environment from: $env_file"
+        log_info "Loading environment from: $env_file"
+        # shellcheck source=/dev/null
         source "$env_file"
-        echo "Environment loaded successfully"
+        log_info "Environment loaded successfully"
     else
-        echo "Error: $env_file not found"
+        log_error "Environment file not found: $env_file"
         return 1
     fi
 }
 
-DetectArch() {
-  ARCH=""
+# ============================================================================
+# NODE MANAGEMENT
+# ============================================================================
 
-  if command -v uname >/dev/null 2>&1; then
-    ARCH="$(uname -m 2>/dev/null)"
-  fi
+create_node() {
+    local node_args
+    node_args=$(build_node_arguments)
 
-  if [ -z "$ARCH" ] && command -v dpkg >/dev/null 2>&1; then
-    ARCH="$(dpkg --print-architecture 2>/dev/null)"
-  fi
+    log_info "Creating node with arguments: $node_args"
 
-  if [ -z "$ARCH" ] && command -v arch >/dev/null 2>&1; then
-    ARCH="$(arch 2>/dev/null)"
-  fi
+    if ! smr node create --node "$NODE_NAME" $node_args $CLIENT_ARGS; then
+        die "Failed to create node configuration"
+    fi
 
-  case "$ARCH" in
-    x86_64 | amd64)
-      echo "amd64"
-      ;;
-    aarch64 | arm64)
-      echo "arm64"
-      ;;
-    armv8* | armv7* | armv6* | armhf)
-      echo "arm64"  # adjust here if you want separate armv7l, etc.
-      ;;
-    *)
-      echo "Error: Unknown or unsupported architecture: '$ARCH'" >&2
-      exit 1
-      ;;
-  esac
+    # Create log directories
+    local log_dir="$NODES_DIR/$NODE_NAME/logs"
+    create_directory "$log_dir"
+
+    touch "$log_dir/cluster.log" || die "Failed to create cluster log file"
+    touch "$log_dir/control.log" || die "Failed to create control log file"
+
+    log_info "Node '$NODE_NAME' created successfully"
 }
 
-COMMAND=${1}
-shift
+start_node() {
+    log_info "Starting node: $NODE_NAME"
 
-case "$COMMAND" in
-    "install")
-      Download "$@";;
-    "start")
-      Manager "$@";;
-    "stop")
-      Stop "$@";;
-    "service-start")
-      ServiceStart "$@";;
-    "service-stop")
-      ServiceStop "$@";;
-    "service-install")
-      ServiceInstall "$@";;
-    *)
-      echo "Available commands are: install, start, stop, service-start, service-stop" ;;
-esac
+    smr node start --node "$NODE_NAME" -y || die "Failed to start node"
+
+    local raft_url
+    if [[ "$DOMAIN" == "localhost" ]]; then
+        local container_ip
+        container_ip=$(docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' "$NODE_NAME")
+        raft_url="https://${container_ip}:9212"
+    else
+        raft_url="https://${DOMAIN}:9212"
+    fi
+
+    log_info "Starting SMR agent with RAFT URL: $raft_url"
+
+    # Start cluster agent
+    sudo nohup smr agent start --node "$NODE_NAME" --raft "$raft_url" \
+        </dev/null 2>&1 | stdbuf -o0 grep "" > "$NODES_DIR/$NODE_NAME/logs/cluster.log" &
+
+    # Start control agent
+    nohup smr agent control --node "$NODE_NAME" \
+        </dev/null 2>&1 | stdbuf -o0 grep "" > "$NODES_DIR/$NODE_NAME/logs/control.log" &
+
+    log_info "Node '$NODE_NAME' started successfully"
+}
+
+stop_node() {
+    log_info "Stopping node: $NODE_NAME"
+
+    smr agent drain --node "$NODE_NAME" || log_error "Failed to drain node"
+    smr agent events --node "$NODE_NAME" --wait drain_success || log_error "Failed to wait for drain completion"
+    smr node clean --node "$NODE_NAME" || log_error "Failed to clean node"
+
+    sudo smr agent stop agent || log_error "Failed to stop agent"
+    smr agent stop control || log_error "Failed to stop control"
+
+    log_info "Node '$NODE_NAME' stopped successfully"
+}
+
+# ============================================================================
+# CLUSTER MANAGEMENT
+# ============================================================================
+
+wait_for_cluster_ready() {
+    log_info "Waiting for cluster to be ready..."
+    smr agent events --wait cluster_started --node "$NODE_NAME" || die "Cluster failed to start"
+    log_info "Cluster is ready"
+}
+
+show_cluster_info() {
+    echo
+    echo "================================================================================================"
+    echo "Node Information"
+    echo "================================================================================================"
+    echo "Agent name:           $NODE_NAME"
+    echo "Domain:               $DOMAIN"
+    echo "Image:                $DOCKER_IMAGE"
+    echo "Tag:                  $DOCKER_TAG"
+    echo "IP Address:           ${IP_ADDRESS:-'auto-detected'}"
+    echo "Join cluster:         $JOIN_CLUSTER"
+    echo "Peer address:         ${PEER_ADDRESS:-'N/A'}"
+    echo "Service install:      $INSTALL_SERVICE"
+
+    # Only show TOKEN and ACTION if they're set (first-time startup only)
+    if [[ -n "$TOKEN" ]]; then
+        echo "Token:                ${TOKEN:0:8}..."
+    fi
+    if [[ -n "$ACTION" ]]; then
+        echo "Action:               $ACTION"
+    fi
+
+    echo "SMR version:          $(smr version 2>/dev/null || echo 'not available')"
+    echo "SMRCTL version:       $(smrctl version 2>/dev/null || echo 'not available')"
+    echo "================================================================================================"
+    echo
+    echo "Log files:"
+    echo "  Cluster: tail -f $NODES_DIR/$NODE_NAME/logs/cluster.log"
+    echo "  Control: tail -f $NODES_DIR/$NODE_NAME/logs/control.log"
+    echo "================================================================================================"
+}
+
+# ============================================================================
+# SERVICE MANAGEMENT
+# ============================================================================
+
+install_systemd_service() {
+    log_info "Installing systemd service..."
+
+    load_environment || die "Failed to load environment for service installation"
+
+    local version_smr
+    version_smr=$(fetch_latest_version "$VERSION_URL")
+
+    local unit_file
+    unit_file=$(curl -sL "https://github.com/simplecontainer/smr/releases/download/smr-$version_smr/simplecontainer.unit" --fail) || \
+        die "Failed to download systemd unit file"
+
+    echo "$unit_file" | sudo tee "$SYSTEMD_UNIT_PATH" > /dev/null || \
+        die "Failed to write systemd unit file"
+
+    sudo systemctl daemon-reload || die "Failed to reload systemd daemon"
+    sudo systemctl enable "simplecontainer@${SUDO_USER:-$USER}" || die "Failed to enable service"
+
+    log_info "Systemd service installed successfully"
+}
+
+service_start() {
+    # Parse arguments to get TOKEN and ACTION for first-time startup
+    parse_arguments "$@"
+
+    log_info "Starting systemd service..."
+
+    load_environment || die "Failed to load environment"
+
+    if [[ -n "$ACTION" ]]; then
+        log_info "Performing action: $ACTION"
+
+        # TOKEN and ACTION are available here from parse_arguments only on the bootstrap-start!
+        # Use them for first-time startup logic
+        if [[ -n "$TOKEN" ]]; then
+            log_info "Using authentication token for service startup"
+        else
+          die "Token is needed when providing action."
+        fi
+
+        case "$ACTION" in
+            standalone)
+                start_node
+                wait_for_cluster_ready
+
+                smrctl context import --y $(smr agent export --node "$NODE_NAME" --api "$DOMAIN:1443") || \
+                    log_error "Failed to import context"
+
+                smrctl context export active --upload --token $TOKEN --api "$DOMAIN:1443" --registry "$DEFAULT_REGISTRY" || \
+                    log_error "Failed to export context to the registry"
+                ;;
+            cluster-leader)
+                start_node
+                wait_for_cluster_ready
+
+                smrctl context import --y $(smr agent export --node "$NODE_NAME" --api "$DOMAIN:1443") || \
+                    log_error "Failed to import context"
+
+                smrctl context export active --upload --token $TOKEN --api "$DOMAIN:1443" --registry "$DEFAULT_REGISTRY" || \
+                    log_error "Failed to export context to the registry"
+                ;;
+            cluster-join)
+                smrctl context import --download --token $TOKEN  --registry "$DEFAULT_REGISTRY" --y || \
+                    log_error "Failed to import context from the registry to the smrctl"
+
+                smr agent import --node "$NODE_NAME" --y $(smrctl context export active) || \
+                    log_error "Failed to import context from the registry to the smr agent"
+
+                start_node
+                wait_for_cluster_ready
+
+                smrctl context import $(smr agent export --api "$DOMAIN:1443") || \
+                    log_error "Failed to import context"
+                ;;
+            *)
+                # Default case (catch-all)
+                die "Invalid action selected!"
+                ;;
+        esac
+
+        sudo systemctl unset-environment TOKEN ACTION
+    else
+      start_node
+      wait_for_cluster_ready
+
+      smrctl context import $(smr agent export --node "$NODE_NAME" --api "$DOMAIN:1443") || \
+          log_error "Failed to import context"
+    fi
+
+    log_info "Service started successfully - now listening events and outputting in journal!"
+    smr agent events || log_error "Failed to show agent events"
+}
+
+service_stop() {
+    log_info "Stopping systemd service..."
+
+    load_environment || die "Failed to load environment"
+    stop_node
+
+    log_info "Service stopped successfully"
+}
+
+service_install() {
+    install_systemd_service "$@"
+}
+
+# ============================================================================
+# INSTALLATION MANAGEMENT
+# ============================================================================
+
+download_binaries() {
+    local version_smr="${1:-$(fetch_latest_version "$VERSION_URL")}"
+    local version_ctl="${2:-$(fetch_latest_version "$SMRCTL_VERSION_URL")}"
+    local arch
+    arch=$(detect_architecture)
+    local platform="linux-${arch}"
+
+    log_info "Downloading smr:$version_smr and smrctl:$version_ctl for platform: $platform"
+
+    # Download smr
+    local smr_url="https://github.com/simplecontainer/smr/releases/download/smr-$version_smr/smr-$platform"
+    log_info "Downloading: $smr_url"
+
+    curl -Lo smr "$smr_url" --fail || die "Failed to download smr binary"
+    chmod +x smr || die "Failed to make smr executable"
+
+    # Verify smr binary
+    if ! ./smr --help >/dev/null 2>&1 && ! ./smr --version >/dev/null 2>&1; then
+        die "Downloaded smr binary is not executable or cannot run"
+    fi
+
+    # Download smrctl
+    local smrctl_url="https://github.com/simplecontainer/smr/releases/download/smrctl-$version_ctl/smrctl-$platform"
+    log_info "Downloading: $smrctl_url"
+
+    curl -Lo smrctl "$smrctl_url" --fail || die "Failed to download smrctl binary"
+    chmod +x smrctl || die "Failed to make smrctl executable"
+
+    # Verify smrctl binary
+    if ! ./smrctl --help >/dev/null 2>&1 && ! ./smrctl --version >/dev/null 2>&1; then
+        die "Downloaded smrctl binary is not executable or cannot run"
+    fi
+
+    # Install binaries
+    sudo mv smr /usr/local/bin/smr || die "Failed to install smr"
+    sudo mv smrctl /usr/local/bin/smrctl || die "Failed to install smrctl"
+
+    log_info "Binaries installed successfully to /usr/local/bin"
+}
+
+# ============================================================================
+# MAIN FUNCTIONS
+# ============================================================================
+
+cmd_start() {
+    parse_arguments "$@"
+    initialize_defaults
+    validate_configuration
+    check_dependencies
+
+    show_cluster_info
+
+    create_node
+
+    if [[ "$INSTALL_SERVICE" == "false" ]]; then
+        start_node
+        wait_for_cluster_ready
+
+        echo
+        echo "Node started successfully!"
+        echo "Log files are available at:"
+        echo "  Cluster: tail -f $NODES_DIR/$NODE_NAME/logs/cluster.log"
+        echo "  Control: tail -f $NODES_DIR/$NODE_NAME/logs/control.log"
+    fi
+
+    save_environment
+}
+
+cmd_stop() {
+    parse_arguments "$@"
+    load_environment || die "Failed to load environment"
+    stop_node
+}
+
+cmd_install() {
+    local version_smr="${1:-}"
+    local version_ctl="${2:-}"
+
+    check_dependencies() {
+        command -v curl >/dev/null 2>&1 || die "Please install curl before proceeding"
+    }
+
+    check_dependencies
+    download_binaries "$version_smr" "$version_ctl"
+}
+
+cmd_service_install() {
+    install_systemd_service
+}
+
+cmd_service_start() {
+    service_start
+}
+
+cmd_service_stop() {
+    service_stop
+}
+
+show_help() {
+    cat << EOF
+SMR Manager - Version $SCRIPT_VERSION
+A modular management script for simplecontainer
+
+USAGE:
+    $SCRIPT_NAME <command> [options]
+
+COMMANDS:
+    install                 Download and install smr and smrctl binaries
+    start                   Start a new node or join existing cluster
+    stop                    Stop the current node
+    service-install         Install systemd service
+    service-start           Start the systemd service
+    service-stop            Stop the systemd service
+
+START OPTIONS:
+    -n <node>              Set node name (default: $DEFAULT_NODE_NAME)
+    -d <domain>            Set domain (default: $DEFAULT_DOMAIN)
+    -a <ip>                Set IP address (auto-detected if not specified)
+    -c <args>              Set additional client arguments
+    -i <image>             Set Docker image (default: $DEFAULT_IMAGE)
+    -t <tag>               Set Docker image tag (default: latest from repo)
+    -j                     Join an existing cluster
+    -p <peer>              Set peer address (required when joining)
+    -s                     Install as systemd service
+    -T <token>             Set authentication token (first-time startup only)
+    -A <action>            Set action to perform (first-time startup only)
+    -h                     Show this help message
+
+EXAMPLES:
+    # Install binaries
+    $SCRIPT_NAME install
+
+    # Start a new cluster
+    $SCRIPT_NAME start -n node-1 -d mydomain.com -a 10.0.0.1
+
+    # Join an existing cluster
+    $SCRIPT_NAME start -n node-2 -j -p 10.0.0.1
+
+    # Start with custom image and service installation
+    $SCRIPT_NAME start -n node-1 -i myrepo/myimage -t latest -s
+
+    # Start with token and action (first-time startup)
+    $SCRIPT_NAME start -n node-1 -T mytoken123 -A deploy
+
+    # Install systemd service
+    $SCRIPT_NAME service-install
+
+    # Start service with token/action (first-time startup used with app.simplecontainer.io only)
+    $SCRIPT_NAME service-start -T mytoken123 -A bootstrap
+
+    # Subsequent service starts (no token/action needed)
+    $SCRIPT_NAME service-start
+
+ENVIRONMENT:
+    DEBUG=true             Enable debug logging
+    NODES_DIR              Override nodes directory (default: ~/nodes)
+
+For more information, visit: https://github.com/simplecontainer/smr
+EOF
+}
+
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
+
+main() {
+    local command="${1:-help}"
+    shift || true
+
+    case "$command" in
+        install)
+            cmd_install "$@"
+            ;;
+        start)
+            cmd_start "$@"
+            ;;
+        stop)
+            cmd_stop "$@"
+            ;;
+        service-install)
+            cmd_service_install "$@"
+            ;;
+        service-start)
+            cmd_service_start "$@"
+            ;;
+        service-stop)
+            cmd_service_stop "$@"
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            echo "Unknown command: $command"
+            echo "Run '$SCRIPT_NAME help' for usage information"
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

@@ -127,3 +127,43 @@ func Raw(ctx context.Context, client *http.Client, URL string, method string, da
 
 	return resp, nil
 }
+
+func Http(ctx context.Context, client *http.Client, URL string, method string, data interface{}, headers map[string]string) (*http.Response, error) {
+	var req *http.Request
+	var err error
+
+	if data != nil {
+		var marshaled []byte
+
+		// Handle data type: if it's a string, use it directly; otherwise marshal to JSON
+		switch v := data.(type) {
+		case string:
+			marshaled = []byte(v)
+		default:
+			marshaled, err = json.Marshal(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		req, err = http.NewRequestWithContext(ctx, method, URL, bytes.NewBuffer(marshaled))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, URL, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	if _, exists := headers["Content-Type"]; !exists {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	return client.Do(req)
+}

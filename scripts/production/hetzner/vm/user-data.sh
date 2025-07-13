@@ -38,8 +38,11 @@ runcmd:
   - su - node -c "sudo smrmgr install"
 
   # Get Hetzner metadata
+  - export TOKEN={{ .token }}
+  - export ACTION={{ .action }}
   - LOCAL_IP=$(curl -s http://169.254.169.254/metadata/local-ipv4)
   - PUBLIC_HOSTNAME=$(curl -s http://169.254.169.254/metadata/hostname)
   - su - node -c "smrmgr start -a $LOCAL_IP -d $PUBLIC_HOSTNAME -s"
   - su - node -c "smrmgr service-install"
+  - su - node -c "sudo systemctl set-environment TOKEN="$TOKEN" ACTION="$ACTION"
   - su - node -c "sudo systemctl start simplecontainer@node"

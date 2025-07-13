@@ -628,6 +628,57 @@ func (c *ClientContext) Export() (string, string, error) {
 	return encrypted, key, nil
 }
 
+func Upload(token string, registry string, data string) (string, error) {
+	resp, err := network.Http(
+		context.Background(),
+		http.DefaultClient,
+		fmt.Sprintf("%s/api/v1/store/upload", registry),
+		"POST",
+		map[string]string{"context": data},
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", token),
+		},
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
+func Download(token string, registry string) (string, error) {
+	resp, err := network.Http(
+		context.Background(),
+		http.DefaultClient,
+		fmt.Sprintf("%s/api/v1/store/download", registry),
+		"POST",
+		nil,
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", token),
+		},
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
+
 func Import(cfg *Config, encrypted, key string) (*ClientContext, error) {
 	if cfg == nil {
 		return nil, errors.New("config cannot be nil")
@@ -1033,6 +1084,14 @@ func (m *Manager) ExportContext(name string, api string) (string, string, error)
 	ctx.config = m.config
 
 	return ctx.Export()
+}
+
+func (m *Manager) Upload(token string, registry string, data string) (string, error) {
+	return Upload(token, registry, data)
+}
+
+func (m *Manager) Download(token string, registry string) (string, error) {
+	return Download(token, registry)
 }
 
 func BundleToCredentials(bundle interface{}) (*Credentials, error) {

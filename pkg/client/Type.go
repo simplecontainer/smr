@@ -17,6 +17,23 @@ type Client struct {
 	Version *version.VersionClient
 }
 
+type Config struct {
+	RootDir     string
+	APITimeout  time.Duration
+	MaxRetries  int
+	RetryDelay  time.Duration
+	UseInsecure bool
+	InMemory    bool
+}
+
+type Credentials struct {
+	PrivateKey *bytes.Buffer
+	Cert       *bytes.Buffer
+	Ca         *bytes.Buffer
+	CertBundle string
+	User       *authentication.User
+}
+
 type Storage interface {
 	Save(ctx *ClientContext) error
 	Load(name string) (*ClientContext, error)
@@ -33,23 +50,6 @@ type FileStorage struct {
 type MemoryStorage struct {
 	contexts      map[string]*ClientContext // Map of context name to context
 	activeContext string                    // Name of active context
-}
-
-type Config struct {
-	RootDir     string
-	APITimeout  time.Duration
-	MaxRetries  int
-	RetryDelay  time.Duration
-	UseInsecure bool
-	InMemory    bool
-}
-
-type Credentials struct {
-	PrivateKey *bytes.Buffer
-	Cert       *bytes.Buffer
-	Ca         *bytes.Buffer
-	CertBundle string
-	User       *authentication.User
 }
 
 type ClientContext struct {
