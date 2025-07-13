@@ -102,6 +102,7 @@ func (a *Api) join(c *gin.Context, kvs []*mvccpb.KeyValue, prefix, version, kind
 
 		combined, err := a.append(c, kv.Value, prefix, version, kind, tmp.GetGroup(), tmp.GetName())
 		if err != nil {
+			kinds = append(kinds, kv.Value)
 			continue
 		}
 

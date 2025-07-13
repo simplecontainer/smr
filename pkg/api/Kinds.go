@@ -54,8 +54,9 @@ func (a *Api) ListKind(c *gin.Context) {
 	version := c.Param("version")
 	category := c.Param("category")
 	kind := c.Param("kind")
+	group := c.Param("group")
 
-	format := f.New(prefix, version, category, kind)
+	format := f.New(prefix, version, category, kind, group)
 	opts := f.DefaultToStringOpts()
 	opts.AddTrailingSlash = true
 	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))

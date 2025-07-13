@@ -88,9 +88,11 @@ func TestStandaloneNodeMinimalContainer(t *testing.T) {
 		return cli.Smrctl.Run(t, engine.NewStringCmd("ps"))
 	}, "ps command")
 
-	nm.RunCommand(t, func() error {
-		return cli.Smrctl.Run(t, engine.NewStringCmd("remove simplecontainer.io/v1/kind/containers/example/busybox"))
-	}, "remove container")
+	go func() {
+		nm.RunCommand(t, func() error {
+			return cli.Smrctl.Run(t, engine.NewStringCmd("remove simplecontainer.io/v1/kind/containers/example/busybox"))
+		}, "remove container")
+	}()
 
 	nm.RunCommand(t, func() error {
 		return cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s --resource simplecontainer.io/v1/kind/containers/example/example-busybox-1",
