@@ -21,7 +21,6 @@ func New() *Status {
 func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[*State](gograph.Directed())
 
-	pending := gograph.NewVertex(&State{PENDING, INITIAL, CATEGORY_PRERUN})
 	clean := gograph.NewVertex(&State{CLEAN, INITIAL, CATEGORY_CLEAN})
 	dependsFailed := gograph.NewVertex(&State{DEPENDS_FAILED, INITIAL, CATEGORY_PRERUN})
 	transfering := gograph.NewVertex(&State{TRANSFERING, INITIAL, CATEGORY_PRERUN})
@@ -48,6 +47,7 @@ func (status *Status) CreateGraph() {
 	pendingDelete := gograph.NewVertex(&State{PENDING_DELETE, INITIAL, CATEGORY_END})
 	daemonFailure := gograph.NewVertex(&State{DAEMON_FAILURE, INITIAL, CATEGORY_END})
 	initFailed := gograph.NewVertex(&State{INIT_FAILED, INITIAL, CATEGORY_END})
+	pending := gograph.NewVertex(&State{PENDING, INITIAL, CATEGORY_END})
 
 	status.StateMachine.AddEdge(transfering, created)
 

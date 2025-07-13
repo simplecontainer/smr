@@ -22,7 +22,7 @@ var stateHandlers = map[string]StateHandlerFunc{
 	status.CREATED:            handleCreated,
 	status.CLEAN:              handleClean,
 	status.PREPARE:            handlePrepare,
-	status.PENDING:            handlePrepare,
+	status.PENDING:            handlePending,
 	status.DEPENDS_CHECKING:   handleDependsChecking,
 	status.DEPENDS_SOLVED:     handleDependsSolved,
 	status.INIT:               handleInit,
@@ -265,4 +265,9 @@ func handleDaemonFailure(shared *shared.Shared, cw *watcher.Container, existing 
 func handleBackoff(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.Logger.Info("container is in backoff - reconciler going to sleep")
 	return status.BACKOFF, false
+}
+
+func handlePending(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.Logger.Info("container is waiting for external updates - reconciler going to sleep")
+	return status.PENDING, false
 }

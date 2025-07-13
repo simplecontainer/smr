@@ -24,6 +24,8 @@ func (container *Docker) PrepareConfiguration(config *configuration.Configuratio
 	var err error
 	var index uint64
 
+	fmt.Println(container.GetGeneratedName())
+
 	index, err = container.GetIndex()
 
 	if err != nil {

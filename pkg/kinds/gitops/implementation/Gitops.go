@@ -189,6 +189,7 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 					if strings.HasPrefix(change.Path, "/meta/runtime/") || strings.HasPrefix(change.Path, "/state/") {
 						continue
 					} else {
+						fmt.Println("change", change)
 						changes = append(changes, change)
 					}
 				}

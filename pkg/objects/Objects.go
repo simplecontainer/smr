@@ -168,7 +168,7 @@ func (obj *Object) Find(format iformat.Format) error {
 func (obj *Object) FindMany(format iformat.Format) ([]iobjects.ObjectInterface, error) {
 	var objects = make([]iobjects.ObjectInterface, 0)
 
-	URL := fmt.Sprintf("%s/api/v1/kind/%s", obj.client.API, format.ToString())
+	URL := fmt.Sprintf("%s/api/v1/%s/%s", obj.client.API, format.GetCategory(), format.ToString())
 	response := network.Send(obj.client.Http, URL, "GET", nil)
 
 	logger.Log.Debug("object find many", zap.String("URL", URL))

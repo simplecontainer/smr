@@ -19,19 +19,19 @@ func Lookup(placeholder string, client *clients.Http, user *authentication.User,
 		return placeholder, errors.New("depth is too big consider restructuring definition files")
 	}
 
-	format := f.NewFromString(placeholder)
+	format, err := f.Build(placeholder, "")
 
-	if !format.Compliant() {
-		format = format.Shift().(f.Format)
+	if err != nil {
+		return "", err
 	}
 
 	// Handle case when format is specified in kind compliant format
 	// eg:
-	//	simplecontainer.io/v1/kind/configuration/group/name:element
-	//  simplecontainer.io/v1/kind/secret/group/name:element
-	//  configuration/group/name:element (missing prefix)
-	//  secret/group/name:element (missing prefix)
-	//  runtime/container/configuration:element (not kind but container runtime)
+	//	simplecontainer.io/v1/kind/configuration/group/name/id:element
+	//  simplecontainer.io/v1/kind/secret/group/name/id:element
+	//  configuration/group/name/id:element (missing prefix)
+	//  secret/group/name/id:element (missing prefix)
+	//  runtime/container/configuration/id:element (not kind but container runtime)
 
 	switch format.GetKind() {
 	case "secret":

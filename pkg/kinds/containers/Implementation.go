@@ -189,7 +189,13 @@ func (containers *Containers) Event(event ievents.Event) error {
 	case events.EVENT_DEPENDENCY:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
+				err := containerWatcher.Container.GetStatus().SetState(status.CHANGE)
+				if err != nil {
+					containerWatcher.Logger.Error(err.Error())
+					return err
+				}
+
+				containerWatcher.Logger.Info("responding to change")
 				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
 			}
 		}
@@ -198,7 +204,13 @@ func (containers *Containers) Event(event ievents.Event) error {
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				containerWatcher.Container.GetStatus().TransitionState(containerWatcher.Container.GetGroup(), containerWatcher.Container.GetGeneratedName(), status.CHANGE)
+				err := containerWatcher.Container.GetStatus().SetState(status.CHANGE)
+				if err != nil {
+					containerWatcher.Logger.Error(err.Error())
+					return err
+				}
+
+				containerWatcher.Logger.Info("responding to change")
 				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
 			}
 		}
