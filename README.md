@@ -306,6 +306,7 @@ smrctl ps
 - **Blog**: [blog.simplecontainer.io](https://blog.simplecontainer.io)
 - **Container Registry**: [quay.io/repository/simplecontainer/smr](https://quay.io/repository/simplecontainer/smr)
 - **Source Code**: [github.com/simplecontainer/smr](https://github.com/simplecontainer/smr)
+- **Dashboard**: [github.com/simplecontainer/smr](https://github.com/simplecontainer/dashboard)
 - **Examples**: [github.com/simplecontainer/examples](https://github.com/simplecontainer/examples)
 
 ## Contributing
