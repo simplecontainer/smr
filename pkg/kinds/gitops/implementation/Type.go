@@ -2,6 +2,7 @@ package implementation
 
 import (
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/simplecontainer/smr/pkg/contracts/iformat"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
@@ -18,6 +19,7 @@ type Gitops struct {
 type GitopsInternal struct {
 	Git             *internal.Git
 	Node            *node.Node
+	PatchQueue      *QueueTS
 	LogPath         string
 	DirectoryPath   string
 	PoolingInterval time.Duration
@@ -35,11 +37,16 @@ type GitopsInternal struct {
 }
 
 type Auth struct {
-	CertKeyRef  v1.GitopsCertKeyRef
-	HttpAuthRef v1.GitopsHttpauthRef
+	CertKeyRef  *v1.GitopsCertKeyRef
+	HttpAuthRef *v1.GitopsHttpauthRef
 }
 
 type FileKind struct {
 	File string
 	Kind string
+}
+
+type Commit struct {
+	Format iformat.Format
+	Patch  []byte
 }

@@ -242,7 +242,7 @@ func (a *Api) CompareKind(c *gin.Context) {
 	format := f.New(prefix, version, category, kind, group, name, field)
 	opts := f.DefaultToStringOpts()
 	opts.AddTrailingSlash = true
-	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil || len(response.Kvs) == 0 {
 		c.JSON(http.StatusNotFound, common.Response(http.StatusNotFound, "", errors.New("resource not found"), nil))

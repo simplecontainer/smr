@@ -24,6 +24,7 @@ func (status *Status) CreateGraph() {
 	syncing := gograph.NewVertex(&StatusState{SYNCING, CATEGORY_WHILERUN})
 	syncingstate := gograph.NewVertex(&StatusState{SYNCING_STATE, CATEGORY_WHILERUN})
 	inspecting := gograph.NewVertex(&StatusState{INSPECTING, CATEGORY_WHILERUN})
+	pushing_changes := gograph.NewVertex(&StatusState{COMMIT_GIT, CATEGORY_WHILERUN})
 	cloning := gograph.NewVertex(&StatusState{CLONING_GIT, CATEGORY_WHILERUN})
 	cloned := gograph.NewVertex(&StatusState{CLONED_GIT, CATEGORY_WHILERUN})
 	pendingDelete := gograph.NewVertex(&StatusState{DELETE, CATEGORY_END})
@@ -65,13 +66,18 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(drifted, syncing)
 	status.StateMachine.AddEdge(drifted, inspecting)
+	status.StateMachine.AddEdge(drifted, pushing_changes)
 
 	status.StateMachine.AddEdge(invaliddefinitions, cloning)
 	status.StateMachine.AddEdge(invalidgit, cloning)
 	status.StateMachine.AddEdge(insync, cloning)
 	status.StateMachine.AddEdge(created, cloning)
 
+	status.StateMachine.AddEdge(pushing_changes, cloning)
+	status.StateMachine.AddEdge(pushing_changes, invalidgit)
+
 	status.StateMachine.AddEdge(insync, inspecting)
+	status.StateMachine.AddEdge(insync, pushing_changes)
 
 	status.StateMachine.AddEdge(drifted, pendingDelete)
 	status.StateMachine.AddEdge(insync, pendingDelete)
@@ -82,6 +88,8 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(cloned, pendingDelete)
 	status.StateMachine.AddEdge(invaliddefinitions, pendingDelete)
 	status.StateMachine.AddEdge(invalidgit, pendingDelete)
+	status.StateMachine.AddEdge(pushing_changes, pendingDelete)
+
 }
 
 func (status *Status) GetPending() *Pending {

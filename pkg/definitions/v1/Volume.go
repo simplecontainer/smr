@@ -13,7 +13,7 @@ import (
 type VolumeDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta"  validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta"  validate:"required"`
 	Spec   *VolumeInternal `json:"spec"  validate:"required"`
 	State  *commonv1.State `json:"state,omitempty"`
 }
@@ -21,6 +21,21 @@ type VolumeDefinition struct {
 type VolumeInternal struct {
 	Driver     string            `json:"driver"`
 	DriverOpts map[string]string `json:"driver_opts"`
+}
+
+func NewVolume() *VolumeDefinition {
+	return &VolumeDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  &VolumeInternal{},
+		State: nil,
+	}
 }
 
 func (volume *VolumeDefinition) GetPrefix() string {
@@ -35,7 +50,7 @@ func (volume *VolumeDefinition) GetRuntime() *commonv1.Runtime {
 	return volume.Meta.Runtime
 }
 
-func (volume *VolumeDefinition) GetMeta() commonv1.Meta {
+func (volume *VolumeDefinition) GetMeta() *commonv1.Meta {
 	return volume.Meta
 }
 
@@ -60,6 +75,11 @@ func (volume *VolumeDefinition) FromJson(bytes []byte) error {
 }
 
 func (volume *VolumeDefinition) ToJSON() ([]byte, error) {
+	bytes, err := json.Marshal(volume)
+	return bytes, err
+}
+
+func (volume *VolumeDefinition) ToYAML() ([]byte, error) {
 	bytes, err := json.Marshal(volume)
 	return bytes, err
 }

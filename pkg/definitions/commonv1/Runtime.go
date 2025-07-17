@@ -1,7 +1,7 @@
 package commonv1
 
 type Runtime struct {
-	Owner    Owner  `json:"owner,omitempty"`
+	Owner    *Owner `json:"owner,omitempty"`
 	Node     uint64 `json:"node,omitempty"`
 	NodeName string `json:"nodeName,omitempty"`
 }
@@ -28,6 +28,6 @@ func (runtime *Runtime) SetOwner(kind string, group string, name string) {
 	runtime.Owner.Name = name
 }
 
-func (runtime *Runtime) GetOwner() Owner {
+func (runtime *Runtime) GetOwner() *Owner {
 	return runtime.Owner
 }

@@ -47,6 +47,7 @@ func NewFromString(data string) Format {
 func Build(arg string, group string) (iformat.Format, error) {
 	// Build proper format from arg based on info provided
 	// Default to prefix=simplecontainer.io, category=kind if missing
+	// Group argument is used only for case 2 - ignore in others (it can be set with flag --g)
 
 	var format iformat.Format
 	var err error = nil

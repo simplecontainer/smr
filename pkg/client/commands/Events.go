@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/cobra"
@@ -18,11 +19,43 @@ import (
 
 func Events() {
 	Commands = append(Commands,
+		command.NewBuilder().Parent("smrctl").Name("commit").Function(cmdCommit).Flags(cmdCommitFlags).Args(cobra.ExactArgs(3)).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("events").Function(cmdEvents).Flags(cmdEventsFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("sync").Args(cobra.ExactArgs(1)).Function(cmdSync).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("refresh").Args(cobra.ExactArgs(1)).Function(cmdRefresh).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("restart").Args(cobra.ExactArgs(1)).Function(cmdRestart).BuildWithValidation(),
 	)
+}
+
+func cmdCommit(api iapi.Api, cli *client.Client, args []string) {
+	format, err := f.Build(args[0], cli.Group)
+
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	commit := implementation.NewCommit()
+
+	err = commit.Parse(args[1], args[2])
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	bytes, err := commit.ToJson()
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	event := events.New(events.EVENT_COMMIT, static.KIND_GITOPS, static.SMR_PREFIX, static.KIND_GITOPS, format.GetGroup(), format.GetName(), bytes)
+
+	bytes, err = event.ToJSON()
+
+	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
+}
+func cmdCommitFlags(cmd *cobra.Command) {
+	cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmd.Flags().String("wait", "", "Wait for specific event")
+	cmd.Flags().String("resource", "", "Specify resource you want to track")
 }
 
 func cmdEvents(api iapi.Api, cli *client.Client, args []string) {

@@ -33,8 +33,16 @@ func Gitops(objects []json.RawMessage) {
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 	for _, g := range gitopsObjs {
-		certRef := fmt.Sprintf("%s.%s", g.Gitops.Auth.CertKeyRef.Group, g.Gitops.Auth.CertKeyRef.Name)
-		httpRef := fmt.Sprintf("%s.%s", g.Gitops.Auth.HttpAuthRef.Group, g.Gitops.Auth.HttpAuthRef.Name)
+		var httpRef string
+		var certRef string
+
+		if g.Gitops.Auth.CertKeyRef != nil {
+			certRef = fmt.Sprintf("%s.%s", g.Gitops.Auth.CertKeyRef.Group, g.Gitops.Auth.CertKeyRef.Name)
+		}
+
+		if g.Gitops.Auth.HttpAuthRef != nil {
+			httpRef = fmt.Sprintf("%s.%s", g.Gitops.Auth.HttpAuthRef.Group, g.Gitops.Auth.HttpAuthRef.Name)
+		}
 
 		if certRef == "." {
 			certRef = ""

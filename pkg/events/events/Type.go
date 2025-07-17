@@ -14,20 +14,22 @@ type Event struct {
 	Data   []byte
 }
 
+// Gitops events
+const EVENT_COMMIT = "commit"
+const EVENT_REFRESH = "refresh"
+const EVENT_SYNC = "sync"
+
+// Container events
+const EVENT_RESTART = "restart"
+
+// Shared events
 const EVENT_INSPECT = "inspect"
 const EVENT_CHANGED = "changed"
 const EVENT_CHANGE = "change"
-const EVENT_RESTART = "restart"
 const EVENT_DELETED = "deleted"
 const EVENT_STOP = "stop"
 const EVENT_RECREATE = "recreate"
-const EVENT_SYNC = "sync"
-const EVENT_REFRESH = "refresh"
 const EVENT_DEPENDENCY = "refresh"
-
-const EVENT_CONTROL_START = "upgrade_start"
-const EVENT_CONTROL_FAILED = "upgrade_failed"
-const EVENT_CONTROL_SUCCESS = "upgrade_success"
 
 const EVENT_DRAIN_STARTED = "drain_started"
 const EVENT_DRAIN_FAILED = "drain_failed"

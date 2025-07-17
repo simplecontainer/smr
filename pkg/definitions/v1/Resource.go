@@ -8,18 +8,34 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type ResourceDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
 	Spec   ResourceSpec    `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
 }
 
 type ResourceSpec struct {
 	Data map[string]string `json:"data"`
+}
+
+func NewResource() *ResourceDefinition {
+	return &ResourceDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  ResourceSpec{},
+		State: nil,
+	}
 }
 
 func (resource *ResourceDefinition) GetPrefix() string {
@@ -34,7 +50,7 @@ func (resource *ResourceDefinition) GetRuntime() *commonv1.Runtime {
 	return resource.Meta.Runtime
 }
 
-func (resource *ResourceDefinition) GetMeta() commonv1.Meta {
+func (resource *ResourceDefinition) GetMeta() *commonv1.Meta {
 	return resource.Meta
 }
 
@@ -60,6 +76,11 @@ func (resource *ResourceDefinition) FromJson(bytes []byte) error {
 
 func (resource *ResourceDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(resource)
+	return bytes, err
+}
+
+func (resource *ResourceDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(resource)
 	return bytes, err
 }
 

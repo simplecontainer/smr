@@ -57,7 +57,7 @@ func (a *Api) Propose(c *gin.Context) {
 
 					if request.Definition.GetRuntime() == nil {
 						request.Definition.SetRuntime(&commonv1.Runtime{
-							Owner:    commonv1.Owner{},
+							Owner:    &commonv1.Owner{},
 							Node:     a.Cluster.Node.NodeID,
 							NodeName: a.Cluster.Node.NodeName,
 						})

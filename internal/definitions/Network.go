@@ -10,7 +10,7 @@ func ClusterNetwork(subnetCIDR string) *v1.NetworkDefinition {
 	definition := &v1.NetworkDefinition{
 		Kind:   static.KIND_NETWORK,
 		Prefix: static.SMR_PREFIX,
-		Meta: commonv1.Meta{
+		Meta: &commonv1.Meta{
 			Group: "internal",
 			Name:  "cluster",
 		},

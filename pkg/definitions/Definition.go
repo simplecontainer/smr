@@ -28,32 +28,32 @@ func NewImplementation(kind string) idefinitions.IDefinition {
 
 	switch kind {
 	case static.KIND_GITOPS:
-		def = &v1.GitopsDefinition{}
+		def = v1.NewGitops()
 	case static.KIND_CONTAINERS:
-		def = &v1.ContainersDefinition{}
+		def = v1.NewContainers()
 	case static.KIND_CONFIGURATION:
-		def = &v1.ConfigurationDefinition{}
+		def = v1.NewConfiguration()
 	case static.KIND_RESOURCE:
-		def = &v1.ResourceDefinition{}
+		def = v1.NewResource()
 	case static.KIND_HTTPAUTH:
-		def = &v1.HttpAuthDefinition{}
+		def = v1.NewHttpAuth()
 	case static.KIND_CERTKEY:
-		def = &v1.CertKeyDefinition{}
+		def = v1.NewCertKey()
 	case static.KIND_CUSTOM:
-		def = &v1.CustomDefinition{}
+		def = v1.NewCustom()
 	case static.KIND_NETWORK:
-		def = &v1.NetworkDefinition{}
+		def = v1.NewNetwork()
 	case static.KIND_SECRET:
-		def = &v1.SecretDefinition{}
+		def = v1.NewSecret()
 	case static.KIND_VOLUME:
-		def = &v1.VolumeDefinition{}
+		def = v1.NewVolume()
 	default:
 		def = nil
 	}
 
 	if def != nil {
 		def.SetRuntime(&commonv1.Runtime{
-			Owner: commonv1.Owner{},
+			Owner: &commonv1.Owner{},
 			Node:  0,
 		})
 
@@ -148,6 +148,15 @@ func (definition *Definition) UnmarshalJSON(data []byte) error {
 		definition.Definition = tmp
 	case static.KIND_SECRET:
 		tmp := &v1.SecretDefinition{}
+
+		err := json.Unmarshal(raw.Definition, tmp)
+		if err != nil {
+			return err
+		}
+
+		definition.Definition = tmp
+	case static.KIND_VOLUME:
+		tmp := &v1.VolumeDefinition{}
 
 		err := json.Unmarshal(raw.Definition, tmp)
 		if err != nil {
@@ -294,7 +303,7 @@ func (definition *Definition) GetPrefix() string {
 	return definition.Definition.GetPrefix()
 }
 
-func (definition *Definition) GetMeta() commonv1.Meta {
+func (definition *Definition) GetMeta() *commonv1.Meta {
 	return definition.Definition.GetMeta()
 }
 
@@ -329,25 +338,44 @@ func (definition *Definition) Patch(current idefinitions.IDefinition) error {
 	var err error
 
 	newDefinition, err = definition.Definition.ToJSON()
-
 	if err != nil {
 		return err
 	}
 
 	currentDefinition, err = current.ToJSON()
-
 	if err != nil {
 		return err
 	}
 
 	patch, err = jsonpatch.CreateMergePatch(currentDefinition, newDefinition)
-
 	if err != nil {
 		return err
 	}
 
 	modified, err = jsonpatch.MergePatch(currentDefinition, patch)
+	if err != nil {
+		return err
+	}
 
+	return definition.FromJson(modified)
+}
+
+func (definition *Definition) PatchJSON(patch []byte) error {
+	var currentDefinition []byte
+	var modified []byte
+	var err error
+
+	currentDefinition, err = definition.ToJSON()
+	if err != nil {
+		return err
+	}
+
+	patch, err = jsonpatch.CreateMergePatch(currentDefinition, patch)
+	if err != nil {
+		return err
+	}
+
+	modified, err = jsonpatch.MergePatch(currentDefinition, patch)
 	if err != nil {
 		return err
 	}
@@ -365,7 +393,7 @@ func (definition *Definition) FromJson(bytes []byte) error {
 	// Protect if json unmarshal nilify runtime
 	if definition.GetRuntime() == nil {
 		definition.SetRuntime(&commonv1.Runtime{
-			Owner: commonv1.Owner{},
+			Owner: &commonv1.Owner{},
 			Node:  0,
 		})
 	}
@@ -394,6 +422,10 @@ func (definition *Definition) FromJson(bytes []byte) error {
 
 func (definition *Definition) ToJSON() ([]byte, error) {
 	return definition.Definition.ToJSON()
+}
+
+func (definition *Definition) ToYAML() ([]byte, error) {
+	return definition.Definition.ToYAML()
 }
 
 func (definition *Definition) ToJSONForUser() ([]byte, error) {
