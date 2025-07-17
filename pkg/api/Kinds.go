@@ -58,6 +58,7 @@ func (a *Api) ListKind(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group)
 	opts := f.DefaultToStringOpts()
+	opts.AddPrefixSlash = true
 	opts.AddTrailingSlash = true
 	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 	send(c, response, err, nil)
@@ -87,7 +88,7 @@ func (a *Api) GetKind(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group, name, field)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil || len(response.Kvs) == 0 {
@@ -171,7 +172,7 @@ func (a *Api) SetKind(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group, name, field)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 	_, err = a.Etcd.Put(c.Request.Context(), format.ToStringWithOpts(opts), string(data))
 
 	if err != nil {
@@ -207,7 +208,7 @@ func (a *Api) DeleteKind(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group, name, field)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 	_, err := a.Etcd.Delete(c.Request.Context(), format.ToStringWithOpts(opts))
 
 	if err != nil {
@@ -241,7 +242,7 @@ func (a *Api) CompareKind(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group, name, field)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil || len(response.Kvs) == 0 {

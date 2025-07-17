@@ -27,4 +27,5 @@ type ToStringOpts struct {
 	IncludeUUID      bool
 	ExcludeCategory  bool
 	AddTrailingSlash bool
+	AddPrefixSlash   bool
 }

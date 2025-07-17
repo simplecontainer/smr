@@ -262,14 +262,19 @@ func (format Format) ToStringWithOpts(opts *iformat.ToStringOpts) string {
 
 	path := strings.TrimSuffix(builder.String(), "/")
 
-	switch {
-	case opts.IncludeUUID:
-		return format.UUID.String() + path
-	case opts.AddTrailingSlash:
-		return "/" + path
-	default:
-		return path
+	if opts.IncludeUUID {
+		path = format.UUID.String() + path
 	}
+
+	if opts.AddPrefixSlash {
+		path = "/" + path
+	}
+
+	if opts.AddTrailingSlash {
+		path = path + "/"
+	}
+
+	return path
 }
 
 func (format Format) ToStringWithUUID() string {

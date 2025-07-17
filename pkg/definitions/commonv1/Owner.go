@@ -1,9 +1,9 @@
 package commonv1
 
 type Owner struct {
-	Kind  string `json:"kind,omitempty"`
-	Group string `json:"group,omitempty"`
-	Name  string `json:"name,omitempty"`
+	Kind  string `json:"kind,omitempty" yaml:"kind,omitempty"`
+	Group string `json:"group,omitempty" yaml:"group,omitempty"`
+	Name  string `json:"name,omitempty" yaml:"name,omitempty"`
 }
 
 func (o *Owner) GetKind() string {

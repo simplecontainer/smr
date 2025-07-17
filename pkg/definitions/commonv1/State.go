@@ -9,28 +9,28 @@ import (
 )
 
 type State struct {
-	Gitops  *Gitops       `json:"gitops,omitempty"`
-	Options []*Opts       `json:"options,omitempty"`
-	Lock    *sync.RWMutex `json:"-"`
+	Gitops  *Gitops       `json:"gitops,omitempty" yaml:"gitops,omitempty"`
+	Options []*Opts       `json:"options,omitempty" yaml:"options,omitempty"`
+	Lock    *sync.RWMutex `json:"-" yaml:"-"`
 }
 
 type Gitops struct {
-	Synced   bool                 `json:"synced,omitempty"`
-	Drifted  bool                 `json:"drifted,omitempty"`
-	Missing  bool                 `json:"missing,omitempty"`
-	NotOwner bool                 `json:"notOwner,omitempty"`
-	Error    bool                 `json:"error,omitempty"`
-	State    string               `json:"state,omitempty"`
-	Messages []Message            `json:"messages,omitempty"`
-	Commit   plumbing.Hash        `json:"commit,omitempty"`
-	Changes  []jsondiff.Operation `json:"changes,omitempty"`
-	LastSync time.Time            `json:"lastSync,omitempty"`
+	Synced   bool                 `json:"synced,omitempty" yaml:"synced,omitempty"`
+	Drifted  bool                 `json:"drifted,omitempty" yaml:"drifted,omitempty"`
+	Missing  bool                 `json:"missing,omitempty" yaml:"missing,omitempty"`
+	NotOwner bool                 `json:"notOwner,omitempty" yaml:"notOwner,omitempty"`
+	Error    bool                 `json:"error,omitempty" yaml:"error,omitempty"`
+	State    string               `json:"state,omitempty" yaml:"state,omitempty"`
+	Messages []Message            `json:"messages,omitempty" yaml:"messages,omitempty"`
+	Commit   plumbing.Hash        `json:"commit,omitempty" yaml:"commit,omitempty"`
+	Changes  []jsondiff.Operation `json:"changes,omitempty" yaml:"changes,omitempty"`
+	LastSync time.Time            `json:"lastSync,omitempty" yaml:"lastSync,omitempty"`
 }
 
 type Message struct {
-	Category  string    `json:"category,omitempty"`
-	Message   string    `json:"message,omitempty"`
-	Timestamp time.Time `json:"timestamp,omitempty"`
+	Category  string    `json:"category,omitempty" yaml:"category,omitempty"`
+	Message   string    `json:"message,omitempty" yaml:"message,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty" yaml:"timestamp,omitempty"`
 }
 
 func NewState() *State {
