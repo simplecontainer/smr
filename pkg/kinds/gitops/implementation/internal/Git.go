@@ -8,6 +8,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"os"
 	"path"
 	"time"
@@ -122,8 +123,7 @@ func (g *Git) Commit(message string) error {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
 
-	fmt.Printf("Commit created: %s\n", commit.String())
-
+	logger.Log.Info(fmt.Sprintf("commit created by GitOps controller: %s (%s)", g.Repository, commit.String()))
 	return nil
 }
 
@@ -171,8 +171,7 @@ func (g *Git) CommitFiles(message string, files []string) error {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
 
-	fmt.Printf("Commit created: %s\n", commit.String())
-
+	logger.Log.Info(fmt.Sprintf("commit created by GitOps controller: %s (%s)", g.Repository, commit.String()))
 	return nil
 }
 
@@ -195,19 +194,17 @@ func (g *Git) Push() error {
 		Progress:   file,
 	})
 	if err != nil {
-		// Handle specific Git errors
-		if err == git.NoErrAlreadyUpToDate {
+		if errors.Is(err, git.NoErrAlreadyUpToDate) {
 			fmt.Println("Repository is already up to date")
 			return nil
 		}
 		return fmt.Errorf("failed to push to remote: %w", err)
 	}
 
-	fmt.Println("Successfully pushed to origin")
+	logger.Log.Info(fmt.Sprintf("successfully pushed to origin %s", g.Repository))
 	return nil
 }
 
-// Alternative: Push to specific remote and branch
 func (g *Git) PushToRemote(remoteName, refSpec string) error {
 	file, err := g.LogOpen()
 	if err != nil {
@@ -240,7 +237,7 @@ func (g *Git) PushToRemote(remoteName, refSpec string) error {
 		return fmt.Errorf("failed to push to %s: %w", remoteName, err)
 	}
 
-	fmt.Printf("Successfully pushed to %s\n", remoteName)
+	logger.Log.Info(fmt.Sprintf("successfully pushed to origin %s", g.Repository))
 	return nil
 }
 
