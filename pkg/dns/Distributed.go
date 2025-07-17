@@ -43,7 +43,7 @@ func (r *Records) Propose(domain string, ip string, action uint8) error {
 
 	bytes, err := json.Marshal(Distributed{
 		Domain:   d.ToString(),
-		Headless: d.ToHeadles(),
+		Headless: d.ToHeadless(),
 		IP:       ip,
 		Action:   action,
 	})

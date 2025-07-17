@@ -186,29 +186,18 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 }
 func (containers *Containers) Event(event ievents.Event) error {
 	switch event.GetType() {
-	case events.EVENT_DEPENDENCY:
-		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
-			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				err := containerWatcher.Container.GetStatus().SetState(status.CHANGE)
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-					return err
-				}
-
-				containerWatcher.Logger.Info("responding to change")
-				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
-			}
-		}
-
-		return nil
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
+				fmt.Println("HAS DEPENDENCY ON IT!")
+
 				err := containerWatcher.Container.GetStatus().SetState(status.CHANGE)
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 					return err
 				}
+
+				fmt.Println("RESPONDING TO CHANGE NOW")
 
 				containerWatcher.Logger.Info("responding to change")
 				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container

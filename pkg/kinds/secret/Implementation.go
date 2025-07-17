@@ -81,5 +81,15 @@ func (secret *Secret) Delete(user *authentication.User, definition []byte, agent
 }
 
 func (secret *Secret) Event(event ievents.Event) error {
-	return nil
+	switch event.GetType() {
+	case events.EVENT_CHANGE:
+		err := secret.Shared.Manager.KindsRegistry[static.KIND_CONTAINERS].Event(event)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	default:
+		return nil
+	}
 }

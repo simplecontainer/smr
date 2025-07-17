@@ -70,7 +70,6 @@ func (domain Domain) ToString() string {
 	return fmt.Sprintf("%s.%s.%s", domain.Network, domain.Identifier, domain.TLD)
 }
 
-func (domain Domain) ToHeadles() string {
-	tmp := strings.Split(domain.Identifier, "-")
-	return fmt.Sprintf("%s.%s.%s.%s", domain.Network, tmp[0], tmp[1], domain.TLD)
+func (domain Domain) ToHeadless() string {
+	return fmt.Sprintf("%s.%s.%s", domain.Network, domain.Identifier, domain.TLD)
 }

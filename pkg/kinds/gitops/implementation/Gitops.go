@@ -79,9 +79,6 @@ func (gitops *Gitops) Commit(logger *zap.Logger, client *clients.Http, user *aut
 		return errors.New(fmt.Sprintf("kind is not defined as definition: %s", commit.Format.GetKind()))
 	}
 
-	fmt.Println("PATCH!")
-	fmt.Println(string(commit.Patch))
-
 	clone.Definition.GetMeta().SetName(commit.Format.GetName())
 	clone.Definition.GetMeta().SetGroup(commit.Format.GetGroup())
 

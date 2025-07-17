@@ -3,7 +3,6 @@ package v1
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
@@ -111,8 +110,6 @@ func (gitops *GitopsDefinition) ResolveReferences(obj iobjects.ObjectInterface) 
 	}
 
 	if gitops.Spec.CertKeyRef != nil {
-		fmt.Println(gitops.Spec.CertKeyRef)
-
 		format := f.New(gitops.Spec.CertKeyRef.Prefix, "kind", static.KIND_CERTKEY, gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name)
 
 		obj.Find(format)

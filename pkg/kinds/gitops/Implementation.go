@@ -185,7 +185,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			}
 
 			gitopsObj.SetForceClone(true)
-			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
+			gitopsObj.GetStatus().SetState(status.CREATED)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
