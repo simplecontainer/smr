@@ -91,7 +91,12 @@ func TestBuild(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tc.expected, format.ToString())
+
+				if format != nil {
+					assert.Equal(t, tc.expected, format.ToString())
+				} else {
+					t.Fail()
+				}
 			}
 		})
 	}

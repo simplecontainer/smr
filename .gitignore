@@ -13,3 +13,4 @@
 !Dockerfile
 !cmd/smr/version
 !*/
+pkg/traefik/**

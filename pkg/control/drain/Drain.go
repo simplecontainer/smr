@@ -111,6 +111,13 @@ func (c *Command) Node(api iapi.Api, params map[string]string) error {
 					Context: bytes,
 				}
 
+				logger.Log.Info("node trigger snapshot before shutting down raft", zap.Uint64("node", c.NodeID()))
+				err = api.GetCluster().RaftNode.ForceSnapshot()
+
+				if err != nil {
+					logger.Log.Error("failed to trigger snapshot", zap.Error(err))
+				}
+
 				api.GetCluster().NodeConf <- *api.GetCluster().Node
 			}
 			break

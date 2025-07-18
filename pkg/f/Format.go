@@ -47,6 +47,7 @@ func NewFromString(data string) Format {
 func Build(arg string, group string) (iformat.Format, error) {
 	// Build proper format from arg based on info provided
 	// Default to prefix=simplecontainer.io, category=kind if missing
+	// Group argument is used only for case 2 - ignore in others (it can be set with flag --g)
 
 	var format iformat.Format
 	var err error = nil
@@ -261,14 +262,19 @@ func (format Format) ToStringWithOpts(opts *iformat.ToStringOpts) string {
 
 	path := strings.TrimSuffix(builder.String(), "/")
 
-	switch {
-	case opts.IncludeUUID:
-		return format.UUID.String() + path
-	case opts.AddTrailingSlash:
-		return "/" + path
-	default:
-		return path
+	if opts.IncludeUUID {
+		path = format.UUID.String() + path
 	}
+
+	if opts.AddPrefixSlash {
+		path = "/" + path
+	}
+
+	if opts.AddTrailingSlash {
+		path = path + "/"
+	}
+
+	return path
 }
 
 func (format Format) ToStringWithUUID() string {

@@ -282,6 +282,12 @@ func (container *Docker) UpdateDns(dnsCache *dns.Records) error {
 			if err != nil {
 				return err
 			}
+
+			err = dnsCache.Propose(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP, dns.AddRecord)
+
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -294,6 +300,12 @@ func (container *Docker) RemoveDns(dnsCache *dns.Records, networkId string) erro
 		for _, network := range container.Networks.Networks {
 			if network.Docker.NetworkId == networkId {
 				err := dnsCache.Propose(container.GetDomain(network.Reference.Name), network.Docker.IP, dns.RemoveRecord)
+
+				if err != nil {
+					return err
+				}
+
+				err = dnsCache.Propose(container.GetHeadlessDomain(network.Reference.Name), network.Docker.IP, dns.RemoveRecord)
 
 				if err != nil {
 					return err

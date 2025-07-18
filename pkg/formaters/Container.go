@@ -108,7 +108,7 @@ func Container(objects []json.RawMessage) {
 			tbl.AddRow(
 				fmt.Sprintf("%s", container.NodeName),
 				fmt.Sprintf("%s/%s/%s", static.KIND_CONTAINERS, helpers.CliRemoveComa(container.Group), helpers.CliRemoveComa(container.GeneratedName)),
-				fmt.Sprintf("%s:%s", container.Image, container.Tag),
+				fmt.Sprintf("%s", container.Image),
 				helpers.CliRemoveComa(container.Ports),
 				container.DockerState,
 				fmt.Sprintf("%s%s (%s)", container.SmrState, helpers.CliMask(container.Recreated, " (*)", ""), container.LastUpdate),

@@ -143,6 +143,33 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 }
 func (gitops *Gitops) Event(event ievents.Event) error {
 	switch event.GetType() {
+	case events.EVENT_COMMIT:
+		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
+
+		if gitopsObj == nil {
+			return nil
+		}
+
+		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
+
+		if gitopsWatcher != nil {
+			if gitopsWatcher.Gitops.GetStatus().GetPending().Is(status.PENDING_SYNC, status.PENDING_DELETE) {
+				return nil
+			}
+
+			commit := implementation.NewCommit()
+
+			err := commit.FromJson(event.GetData())
+
+			if err != nil {
+				return err
+			}
+
+			gitopsObj.GetQueue().Insert(commit)
+			gitopsObj.GetStatus().SetState(status.COMMIT_GIT)
+			gitopsWatcher.GitopsQueue <- gitopsObj
+		}
+		break
 	case events.EVENT_REFRESH:
 		gitopsObj := gitops.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
@@ -158,7 +185,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			}
 
 			gitopsObj.SetForceClone(true)
-			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
+			gitopsObj.GetStatus().SetState(status.CREATED)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break

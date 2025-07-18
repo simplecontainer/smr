@@ -7,14 +7,30 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type CustomDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
 	Spec   map[string]any  `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
+}
+
+func NewCustom() *CustomDefinition {
+	return &CustomDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  map[string]any{},
+		State: nil,
+	}
 }
 
 func (custom *CustomDefinition) GetPrefix() string {
@@ -29,7 +45,7 @@ func (custom *CustomDefinition) GetRuntime() *commonv1.Runtime {
 	return custom.Meta.Runtime
 }
 
-func (custom *CustomDefinition) GetMeta() commonv1.Meta {
+func (custom *CustomDefinition) GetMeta() *commonv1.Meta {
 	return custom.Meta
 }
 
@@ -55,6 +71,11 @@ func (custom *CustomDefinition) FromJson(bytes []byte) error {
 
 func (custom *CustomDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(custom)
+	return bytes, err
+}
+
+func (custom *CustomDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(custom)
 	return bytes, err
 }
 

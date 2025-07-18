@@ -15,6 +15,7 @@ type StateHandlerFunc func(shared *shared.Shared, gw *watcher.Gitops) (string, b
 var stateHandlers = map[string]StateHandlerFunc{
 	status.CREATED:             handleCreated,
 	status.CLONING_GIT:         handleCloningGit,
+	status.COMMIT_GIT:          handleCommitGit,
 	status.CLONED_GIT:          handleClonedGit,
 	status.INVALID_GIT:         handleInvalidGit,
 	status.INVALID_DEFINITIONS: handleInvalidDefinitions,
@@ -66,6 +67,26 @@ func handleCloningGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) 
 	return status.CLONED_GIT, true
 }
 
+func handleCommitGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
+	if !gw.Gitops.GetQueue().IsEmpty() {
+		err := gw.Gitops.Commit(gw.Logger, shared.Client, gw.User, gw.Gitops.GetQueue().Pop())
+
+		if err != nil {
+			gw.Logger.Error(err.Error())
+			return status.INVALID_GIT, true
+		} else {
+			if !gw.Gitops.GetQueue().IsEmpty() {
+				return status.COMMIT_GIT, true
+			} else {
+				gw.Gitops.SetForceClone(true)
+				return status.CLONING_GIT, true
+			}
+		}
+	} else {
+		return status.CLONING_GIT, true
+	}
+}
+
 func handleClonedGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 	var err error
 
@@ -101,10 +122,12 @@ func handleInvalidDefinitions(shared *shared.Shared, gw *watcher.Gitops) (string
 func handleSyncing(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 	gw.Gitops.GetStatus().GetPending().Set(status.PENDING_SYNC)
 	gw.Logger.Info(fmt.Sprintf("attempt to sync commit %s", gw.Gitops.GetCommit().ID()))
+
 	if len(gw.Gitops.GetPack().Definitions) == 0 {
 		gw.Logger.Error(fmt.Sprintf("no valid definitions found: %s/%s", gw.Gitops.GetGit().Directory, gw.Gitops.GetDirectory()))
 		return status.INVALID_DEFINITIONS, true
 	}
+
 	errs := []error{}
 	_, errs = gw.Gitops.Sync(gw.Logger, shared.Client, gw.User)
 	if len(errs) > 0 {
@@ -113,6 +136,7 @@ func handleSyncing(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 		}
 		return status.INVALID_DEFINITIONS, true
 	}
+
 	gw.Gitops.GetStatus().LastSyncedCommit = gw.Gitops.GetCommit().ID()
 	gw.Gitops.GetStatus().InSync = true
 	gw.Gitops.SetForceSync(false)

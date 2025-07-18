@@ -63,8 +63,6 @@ func Create(api iapi.Api) {
 		Etcd:    viper.GetString("port.etcd"),
 	}
 
-	fmt.Println(api.GetConfig())
-
 	err = startup.Save(api.GetConfig(), environment, 0750)
 
 	if err != nil {

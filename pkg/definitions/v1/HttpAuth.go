@@ -8,12 +8,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type HttpAuthDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
 	Spec   HttpAuthSpec    `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
 }
@@ -21,6 +22,21 @@ type HttpAuthDefinition struct {
 type HttpAuthSpec struct {
 	Username string
 	Password string
+}
+
+func NewHttpAuth() *HttpAuthDefinition {
+	return &HttpAuthDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  HttpAuthSpec{},
+		State: nil,
+	}
 }
 
 func (httpauth *HttpAuthDefinition) GetPrefix() string {
@@ -35,7 +51,7 @@ func (httpauth *HttpAuthDefinition) GetRuntime() *commonv1.Runtime {
 	return httpauth.Meta.Runtime
 }
 
-func (httpauth *HttpAuthDefinition) GetMeta() commonv1.Meta {
+func (httpauth *HttpAuthDefinition) GetMeta() *commonv1.Meta {
 	return httpauth.Meta
 }
 
@@ -61,6 +77,11 @@ func (httpauth *HttpAuthDefinition) FromJson(bytes []byte) error {
 
 func (httpauth *HttpAuthDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(httpauth)
+	return bytes, err
+}
+
+func (httpauth *HttpAuthDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(httpauth)
 	return bytes, err
 }
 

@@ -105,7 +105,7 @@ func New(t *testing.T, opts Options) (*Node, error) {
 
 	node.smr = engine.NewEngineWithOptions(fmt.Sprintf("%s", node.BinaryPath), engineOptions)
 	node.flannel = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
-	node.control = engine.NewEngineWithOptions(fmt.Sprintf(node.BinaryPath), engineOptions)
+	node.control = engine.NewEngineWithOptions(fmt.Sprintf("%s", node.BinaryPath), engineOptions)
 	node.sudo = engine.NewEngineWithOptions(fmt.Sprintf("sudo %s", node.BinaryPath), engineOptions)
 
 	return node, nil
@@ -118,12 +118,12 @@ func (n *Node) Start(t *testing.T) error {
 	t.Logf("[NODE] Starting node %s", n.Name)
 
 	createCmd := n.buildCreateCommand()
-	if err := n.smr.Run(t, engine.NewStringCmd(createCmd)); err != nil {
-		return fmt.Errorf("failed to create node: %w", err)
+	if err := n.smr.Run(t, engine.NewStringCmd("%s", createCmd)); err != nil {
+		return fmt.Errorf("failed to create node: %v", err)
 	}
 
-	if err := n.smr.Run(t, engine.NewStringCmd("node start -y")); err != nil {
-		return fmt.Errorf("failed to start node: %w", err)
+	if err := n.smr.Run(t, engine.NewStringCmd("%s", "node start -y")); err != nil {
+		return fmt.Errorf("failed to start node: %v", err)
 	}
 
 	output, err := n.smr.RunAndCapture(t, engine.NewStringCmd("node ip --network bridge"))
@@ -138,7 +138,7 @@ func (n *Node) Start(t *testing.T) error {
 	t.Logf("[NODE] Node IP: %s", n.IP)
 
 	contextCmd := fmt.Sprintf("agent export --api localhost:%d", n.Ports.Control)
-	output, err = n.sudo.RunAndCapture(t, engine.NewStringCmd(contextCmd))
+	output, err = n.sudo.RunAndCapture(t, engine.NewStringCmd("%s", contextCmd))
 	if err != nil {
 		return fmt.Errorf("failed to export agent context: %w", err)
 	}
@@ -146,13 +146,13 @@ func (n *Node) Start(t *testing.T) error {
 
 	go func() {
 		agentCmd := fmt.Sprintf("agent start --raft https://%s:%d", n.IP, n.Ports.Overlay)
-		if err := n.flannel.RunBackground(t, engine.NewStringCmd(agentCmd)); err != nil {
-			t.Logf(fmt.Errorf("failed to start agent: %w", err).Error())
+		if err := n.flannel.RunBackground(t, engine.NewStringCmd("%s", agentCmd)); err != nil {
+			t.Logf("failed to start agent: %v", err)
 			t.Fail()
 		}
 
-		if err := n.control.RunBackground(t, engine.NewStringCmd("agent control")); err != nil {
-			t.Logf(fmt.Errorf("failed to start agent: %w", err).Error())
+		if err := n.control.RunBackground(t, engine.NewStringCmd("%s", "agent control")); err != nil {
+			t.Logf("failed to start agent: %v", err)
 			t.Fail()
 		}
 	}()
@@ -180,7 +180,7 @@ func (n *Node) WaitForEvent(t *testing.T, eventName string, timeout time.Duratio
 
 	go func() {
 		cmd := fmt.Sprintf("agent events --wait %s", eventName)
-		if err := n.sudo.Run(t, engine.NewStringCmd(cmd)); err != nil {
+		if err := n.sudo.Run(t, engine.NewStringCmd("%s", cmd)); err != nil {
 			errCh <- fmt.Errorf("error waiting for event %s: %w", eventName, err)
 			return
 		}
@@ -205,7 +205,7 @@ func (n *Node) Import(t *testing.T, context string) error {
 
 	t.Logf("[NODE] Importing agent context for node %s", n.Name)
 	cmd := fmt.Sprintf("agent import -y %s", context)
-	if err := n.sudo.Run(t, engine.NewStringCmd(cmd)); err != nil {
+	if err := n.sudo.Run(t, engine.NewStringCmd("%s", cmd)); err != nil {
 		return fmt.Errorf("failed to import agent context: %w", err)
 	}
 	return nil
@@ -259,7 +259,7 @@ func (n *Node) Clean(t *testing.T) error {
 
 func (n *Node) RunCommand(t *testing.T, command string) (string, error) {
 	t.Logf("[NODE] Running command on node %s: %s", n.Name, command)
-	output, err := n.sudo.RunAndCapture(t, engine.NewStringCmd(command))
+	output, err := n.sudo.RunAndCapture(t, engine.NewStringCmd("%s", command))
 	if err != nil {
 		return "", fmt.Errorf("command execution failed: %w", err)
 	}

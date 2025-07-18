@@ -42,3 +42,7 @@ func (gitops *Gitops) GetCommit() *object.Commit { return gitops.Gitops.Commit }
 func (gitops *Gitops) GetGroupIdentifier() string {
 	return fmt.Sprintf("%s/%s", gitops.Gitops.definition.Meta.Group, gitops.Gitops.definition.Meta.Name)
 }
+
+func (gitops *Gitops) GetQueue() *QueueTS {
+	return gitops.Gitops.PatchQueue
+}

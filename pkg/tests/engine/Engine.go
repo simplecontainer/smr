@@ -45,13 +45,13 @@ func (s SliceCmd) String() string {
 	return strings.Join([]string(s), " ")
 }
 
-type EngineOptions struct {
+type Options struct {
 	FailOnError bool
 	Suffix      string
 }
 
-func DefaultEngineOptions() EngineOptions {
-	return EngineOptions{
+func DefaultEngineOptions() Options {
+	return Options{
 		FailOnError: true,
 	}
 }
@@ -61,10 +61,10 @@ type Engine struct {
 	cmd     *exec.Cmd
 	stdout  *bytes.Buffer
 	stderr  *bytes.Buffer
-	options EngineOptions
+	options Options
 }
 
-func NewEngineWithOptions(binary string, options EngineOptions) *Engine {
+func NewEngineWithOptions(binary string, options Options) *Engine {
 	cmdParts, err := shellwords.Parse(binary)
 	if err != nil {
 		cmdParts = strings.Fields(binary)
@@ -79,7 +79,7 @@ func NewEngineWithOptions(binary string, options EngineOptions) *Engine {
 	}
 }
 
-func NewEngineFromSliceWithOptions(cmdParts []string, options EngineOptions) *Engine {
+func NewEngineFromSliceWithOptions(cmdParts []string, options Options) *Engine {
 	return &Engine{
 		command: cmdParts,
 		stdout:  &bytes.Buffer{},
@@ -201,7 +201,8 @@ func (e *Engine) RunBackground(t *testing.T, command ...CmdSource) error {
 		} else {
 			t.Errorf("%s", errorMsg)
 		}
-		return fmt.Errorf(errorMsg)
+
+		return fmt.Errorf("%s", errorMsg)
 	}
 
 	fullCmd, cmdStr, err := e.prepareCommand(t, command...)

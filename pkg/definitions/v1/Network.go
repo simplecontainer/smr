@@ -7,12 +7,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type NetworkDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
 	Spec   NetworkSpec     `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
 }
@@ -20,6 +21,21 @@ type NetworkDefinition struct {
 type NetworkSpec struct {
 	Driver          string
 	IPV4AddressPool string
+}
+
+func NewNetwork() *NetworkDefinition {
+	return &NetworkDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  NetworkSpec{},
+		State: nil,
+	}
 }
 
 func (network *NetworkDefinition) GetPrefix() string {
@@ -34,7 +50,7 @@ func (network *NetworkDefinition) GetRuntime() *commonv1.Runtime {
 	return network.Meta.Runtime
 }
 
-func (network *NetworkDefinition) GetMeta() commonv1.Meta {
+func (network *NetworkDefinition) GetMeta() *commonv1.Meta {
 	return network.Meta
 }
 
@@ -60,6 +76,11 @@ func (network *NetworkDefinition) FromJson(bytes []byte) error {
 
 func (network *NetworkDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(network)
+	return bytes, err
+}
+
+func (network *NetworkDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(network)
 	return bytes, err
 }
 

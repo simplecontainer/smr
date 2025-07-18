@@ -9,26 +9,27 @@ import (
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type GitopsDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
-	Spec   GitopsSpec      `json:"spec" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
+	Spec   *GitopsSpec     `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
 }
 
 type GitopsSpec struct {
-	RepoURL         string            `json:"repoURL"`
-	Revision        string            `json:"revision"`
-	DirectoryPath   string            `json:"directoryPath"`
-	PoolingInterval string            `json:"poolingInterval"`
-	AutomaticSync   bool              `json:"automaticSync"`
-	API             string            `json:"API"`
-	Context         string            `json:"context"`
-	CertKeyRef      GitopsCertKeyRef  `json:"certKeyRef"`
-	HttpAuthRef     GitopsHttpauthRef `json:"httpAuthRef"`
+	RepoURL         string             `json:"repoURL"`
+	Revision        string             `json:"revision"`
+	DirectoryPath   string             `json:"directoryPath"`
+	PoolingInterval string             `json:"poolingInterval"`
+	AutomaticSync   bool               `json:"automaticSync"`
+	API             string             `json:"API"`
+	Context         string             `json:"context"`
+	CertKeyRef      *GitopsCertKeyRef  `json:"certKeyRef"`
+	HttpAuthRef     *GitopsHttpauthRef `json:"httpAuthRef"`
 }
 
 type GitopsCertKeyRef struct {
@@ -43,6 +44,21 @@ type GitopsHttpauthRef struct {
 	Name   string
 }
 
+func NewGitops() *GitopsDefinition {
+	return &GitopsDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  &GitopsSpec{},
+		State: nil,
+	}
+}
+
 func (gitops *GitopsDefinition) GetPrefix() string {
 	return gitops.Prefix
 }
@@ -55,7 +71,7 @@ func (gitops *GitopsDefinition) GetRuntime() *commonv1.Runtime {
 	return gitops.Meta.Runtime
 }
 
-func (gitops *GitopsDefinition) GetMeta() commonv1.Meta {
+func (gitops *GitopsDefinition) GetMeta() *commonv1.Meta {
 	return gitops.Meta
 }
 
@@ -74,7 +90,7 @@ func (gitops *GitopsDefinition) GetKind() string {
 func (gitops *GitopsDefinition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
 	references := make([]idefinitions.IDefinition, 0)
 
-	if gitops.Spec.HttpAuthRef.Group != "" && gitops.Spec.HttpAuthRef.Name != "" {
+	if gitops.Spec.HttpAuthRef != nil {
 		format := f.New(gitops.Spec.HttpAuthRef.Prefix, "kind", static.KIND_HTTPAUTH, gitops.Spec.HttpAuthRef.Group, gitops.Spec.HttpAuthRef.Name)
 		obj.Find(format)
 
@@ -93,13 +109,13 @@ func (gitops *GitopsDefinition) ResolveReferences(obj iobjects.ObjectInterface) 
 		references = append(references, httpauth)
 	}
 
-	if gitops.Spec.CertKeyRef.Group != "" && gitops.Spec.CertKeyRef.Name != "" {
+	if gitops.Spec.CertKeyRef != nil {
 		format := f.New(gitops.Spec.CertKeyRef.Prefix, "kind", static.KIND_CERTKEY, gitops.Spec.CertKeyRef.Group, gitops.Spec.CertKeyRef.Name)
 
 		obj.Find(format)
 
 		if !obj.Exists() {
-			return references, errors.New("gitops reference httpauth not found")
+			return references, errors.New("gitops reference certkey not found")
 		}
 
 		certkey := &CertKeyDefinition{}
@@ -122,6 +138,11 @@ func (gitops *GitopsDefinition) FromJson(bytes []byte) error {
 
 func (gitops *GitopsDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(gitops)
+	return bytes, err
+}
+
+func (gitops *GitopsDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(gitops)
 	return bytes, err
 }
 

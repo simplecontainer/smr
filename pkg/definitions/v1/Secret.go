@@ -7,18 +7,34 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type SecretDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
 	Spec   SecretSpec      `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
 }
 
 type SecretSpec struct {
 	Data map[string]string `json:"data" validate:"required"`
+}
+
+func NewSecret() *SecretDefinition {
+	return &SecretDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  SecretSpec{},
+		State: nil,
+	}
 }
 
 func (secret *SecretDefinition) GetPrefix() string {
@@ -33,7 +49,7 @@ func (secret *SecretDefinition) GetRuntime() *commonv1.Runtime {
 	return secret.Meta.Runtime
 }
 
-func (secret *SecretDefinition) GetMeta() commonv1.Meta {
+func (secret *SecretDefinition) GetMeta() *commonv1.Meta {
 	return secret.Meta
 }
 
@@ -59,6 +75,11 @@ func (secret *SecretDefinition) FromJson(bytes []byte) error {
 
 func (secret *SecretDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(secret)
+	return bytes, err
+}
+
+func (secret *SecretDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(secret)
 	return bytes, err
 }
 

@@ -86,5 +86,15 @@ func (config *Config) Delete(user *authentication.User, definition []byte, agent
 }
 
 func (config *Config) Event(event ievents.Event) error {
-	return nil
+	switch event.GetType() {
+	case events.EVENT_CHANGE:
+		err := config.Shared.Manager.KindsRegistry[static.KIND_CONTAINERS].Event(event)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	default:
+		return nil
+	}
 }

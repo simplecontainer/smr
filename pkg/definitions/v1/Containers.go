@@ -8,41 +8,57 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type ContainersDefinition struct {
-	Kind          string              `json:"kind" validate:"required"`
-	Prefix        string              `json:"prefix" validate:"required"`
-	Meta          commonv1.Meta       `json:"meta"  validate:"required"`
-	Spec          *ContainersInternal `json:"spec"  validate:"required"`
-	InitContainer *ContainersInternal `json:"initContainer,omitempty"`
-	State         *commonv1.State     `json:"state,omitempty"`
+	Kind          string              `json:"kind" yaml:"kind" validate:"required"`
+	Prefix        string              `json:"prefix" yaml:"prefix" validate:"required"`
+	Meta          *commonv1.Meta      `json:"meta" yaml:"meta" validate:"required"`
+	Spec          *ContainersInternal `json:"spec" yaml:"spec" validate:"required"`
+	InitContainer *ContainersInternal `json:"initContainer,omitempty" yaml:"initContainer,omitempty"`
+	State         *commonv1.State     `json:"state,omitempty" yaml:"state,omitempty"`
 }
 
 type ContainersInternal struct {
-	Image          string                     `validate:"required" json:"image,omitempty"`
-	Tag            string                     `validate:"required" json:"tag,omitempty"`
-	RegistryAuth   string                     `json:"registryAuth,omitempty"`
-	Envs           []string                   `json:"envs,omitempty"`
-	Entrypoint     []string                   `json:"entrypoint,omitempty"`
-	Args           []string                   `json:"args,omitempty"`
-	Dependencies   []ContainersDependsOn      `json:"dependencies,omitempty"`
-	Readiness      []ContainersReadiness      `json:"readiness,omitempty"`
-	Networks       []ContainersNetwork        `json:"networks,omitempty"`
-	Ports          []ContainersPort           `json:"ports,omitempty"`
-	Volumes        []ContainersVolume         `json:"volumes,omitempty"`
-	Configuration  map[string]string          `json:"configuration,omitempty"`
-	Resources      []ContainersResource       `json:"resources,omitempty"`
-	Configurations []ContainersConfigurations `json:"configurations,omitempty"`
-	Replicas       uint64                     `json:"replicas,omitempty"`
-	Capabilities   []string                   `json:"capabilities,omitempty"`
-	User           string                     `json:"user,omitempty"`
-	GroupAdd       []string                   `json:"groupAdd,omitempty"`
-	Privileged     bool                       `json:"privileged,omitempty"`
-	NetworkMode    string                     `json:"network_mode,omitempty"`
-	Spread         *ContainersSpread          `json:"spread,omitempty"`
-	Nodes          []string                   `json:"nodes,omitempty"`
-	Dns            []string                   `json:"dns,omitempty"`
+	Image          string                     `json:"image,omitempty" yaml:"image,omitempty" validate:"required"`
+	Tag            string                     `json:"tag,omitempty" yaml:"tag,omitempty" validate:"required"`
+	RegistryAuth   string                     `json:"registryAuth,omitempty" yaml:"registryAuth,omitempty"`
+	Envs           []string                   `json:"envs,omitempty" yaml:"envs,omitempty"`
+	Entrypoint     []string                   `json:"entrypoint,omitempty" yaml:"entrypoint,omitempty"`
+	Args           []string                   `json:"args,omitempty" yaml:"args,omitempty"`
+	Dependencies   []ContainersDependsOn      `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Readiness      []ContainersReadiness      `json:"readiness,omitempty" yaml:"readiness,omitempty"`
+	Networks       []ContainersNetwork        `json:"networks,omitempty" yaml:"networks,omitempty"`
+	Ports          []ContainersPort           `json:"ports,omitempty" yaml:"ports,omitempty"`
+	Volumes        []ContainersVolume         `json:"volumes,omitempty" yaml:"volumes,omitempty"`
+	Configuration  map[string]string          `json:"configuration,omitempty" yaml:"configuration,omitempty"`
+	Resources      []ContainersResource       `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Configurations []ContainersConfigurations `json:"configurations,omitempty" yaml:"configurations,omitempty"`
+	Replicas       uint64                     `json:"replicas,omitempty" yaml:"replicas,omitempty"`
+	Capabilities   []string                   `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	User           string                     `json:"user,omitempty" yaml:"user,omitempty"`
+	GroupAdd       []string                   `json:"groupAdd,omitempty" yaml:"groupAdd,omitempty"`
+	Privileged     bool                       `json:"privileged,omitempty" yaml:"privileged,omitempty"`
+	NetworkMode    string                     `json:"network_mode,omitempty" yaml:"network_mode,omitempty"`
+	Spread         *ContainersSpread          `json:"spread,omitempty" yaml:"spread,omitempty"`
+	Nodes          []string                   `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	Dns            []string                   `json:"dns,omitempty" yaml:"dns,omitempty"`
+}
+
+func NewContainers() *ContainersDefinition {
+	return &ContainersDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  &ContainersInternal{},
+		State: nil,
+	}
 }
 
 type ContainersRegistryAuth struct {
@@ -114,7 +130,7 @@ func (containers *ContainersDefinition) GetRuntime() *commonv1.Runtime {
 	return containers.Meta.Runtime
 }
 
-func (containers *ContainersDefinition) GetMeta() commonv1.Meta {
+func (containers *ContainersDefinition) GetMeta() *commonv1.Meta {
 	return containers.Meta
 }
 
@@ -140,6 +156,11 @@ func (containers *ContainersDefinition) FromJson(bytes []byte) error {
 
 func (containers *ContainersDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(containers)
+	return bytes, err
+}
+
+func (containers *ContainersDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(containers)
 	return bytes, err
 }
 

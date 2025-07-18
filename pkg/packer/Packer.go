@@ -18,11 +18,11 @@ func New() *Pack {
 	return &Pack{
 		Name:        "",
 		Version:     "",
-		Definitions: make([]*common.Request, 0),
+		Definitions: make([]*Definition, 0),
 	}
 }
 
-func Parse(name string, bytes []byte, variables []byte, set []string) ([]*common.Request, error) {
+func Parse(name string, bytes []byte, variables []byte, set []string) ([]*Definition, error) {
 	parsed, err := ParseYAML(name, bytes, variables, set)
 
 	if err != nil {
@@ -30,7 +30,7 @@ func Parse(name string, bytes []byte, variables []byte, set []string) ([]*common
 	}
 
 	var request *common.Request
-	requests := make([]*common.Request, 0)
+	requests := make([]*Definition, 0)
 	definition := v1.CommonDefinition{}
 
 	for _, jsonRaw := range parsed {
@@ -52,7 +52,10 @@ func Parse(name string, bytes []byte, variables []byte, set []string) ([]*common
 			return requests, err
 		}
 
-		requests = append(requests, request)
+		requests = append(requests, &Definition{
+			File:       name,
+			Definition: request,
+		})
 	}
 
 	return requests, nil

@@ -2,12 +2,10 @@ package api
 
 import (
 	"crypto/tls"
-	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/cluster"
 	"github.com/simplecontainer/smr/pkg/configuration"
-	"github.com/simplecontainer/smr/pkg/distributed"
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/etcd"
 	"github.com/simplecontainer/smr/pkg/keys"
@@ -88,14 +86,8 @@ func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster
 	raftNode := &raft.RaftNode{}
 	rn, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, a.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
 
-	a.Replication = distributed.New(a.Manager.Http.Clients[a.User.Username], a.User, a.Cluster.Node.NodeName, n)
-	a.Replication.EventsC = make(chan KV.KV)
-	a.Replication.DnsUpdatesC = a.DnsCache.Records
-
-	a.Manager.Replication = a.Replication
-
 	var err error
-	a.Cluster.KVStore, err = raft.NewKVStore(<-snapshotterReady, proposeC, commitC, errorC, a.Replication.DataC, insyncC, join, cluster.Replay, n)
+	a.Cluster.KVStore, err = raft.NewKVStore(a.Etcd, <-snapshotterReady, proposeC, commitC, errorC, a.Replication.DataC, insyncC, join, cluster.Replay, n)
 
 	if err != nil {
 		return err

@@ -6,18 +6,34 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
+	"gopkg.in/yaml.v3"
 )
 
 type CommonDefinition struct {
 	Kind   string          `json:"kind" validate:"required"`
 	Prefix string          `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta   `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta  `json:"meta" validate:"required"`
 	Spec   CommonSpec      `json:"spec" validate:"required"`
 	State  *commonv1.State `json:"state"`
 }
 
 type CommonSpec struct {
 	Data map[string]any
+}
+
+func NewCommon() *CommonDefinition {
+	return &CommonDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  CommonSpec{},
+		State: nil,
+	}
 }
 
 func (common *CommonDefinition) SetRuntime(runtime *commonv1.Runtime) {
@@ -32,7 +48,7 @@ func (common *CommonDefinition) GetPrefix() string {
 	return common.Prefix
 }
 
-func (common *CommonDefinition) GetMeta() commonv1.Meta {
+func (common *CommonDefinition) GetMeta() *commonv1.Meta {
 	return common.Meta
 }
 
@@ -58,6 +74,11 @@ func (common *CommonDefinition) FromJson(bytes []byte) error {
 
 func (common *CommonDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(common)
+	return bytes, err
+}
+
+func (common *CommonDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(common)
 	return bytes, err
 }
 

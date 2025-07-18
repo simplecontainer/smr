@@ -198,7 +198,7 @@ func (status *Status) SetState(state string) error {
 
 	status.State = st
 
-	return errors.New("failed to set state")
+	return nil
 }
 
 func (status *Status) TransitionState(group string, container string, destination string) bool {

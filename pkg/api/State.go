@@ -29,7 +29,7 @@ func (a *Api) ListState(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts), clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 
 	if err != nil {
@@ -70,7 +70,7 @@ func (a *Api) GetState(c *gin.Context) {
 
 	format := f.New(prefix, version, category, kind, group, name, field)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 	response, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
 
 	if err != nil {
@@ -95,7 +95,7 @@ func (a *Api) GetState(c *gin.Context) {
 func (a *Api) join(c *gin.Context, kvs []*mvccpb.KeyValue, prefix, version, kind string) ([]json.RawMessage, error) {
 	kinds := make([]json.RawMessage, 0)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 
 	for _, kv := range kvs {
 		tmp := f.NewFromString(strings.TrimPrefix(string(kv.Key), "/"))
@@ -115,7 +115,7 @@ func (a *Api) join(c *gin.Context, kvs []*mvccpb.KeyValue, prefix, version, kind
 func (a *Api) append(c *gin.Context, stateValue []byte, prefix, version, kind, group, name string) (json.RawMessage, error) {
 	format := f.New(prefix, version, static.CATEGORY_KIND, kind, group, name)
 	opts := f.DefaultToStringOpts()
-	opts.AddTrailingSlash = true
+	opts.AddPrefixSlash = true
 
 	definition, err := a.Etcd.Get(c.Request.Context(), format.ToStringWithOpts(opts))
 	if err != nil {

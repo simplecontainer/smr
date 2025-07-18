@@ -22,14 +22,14 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 
 			var wgChild sync.WaitGroup
 			for _, request := range gitopsWatcher.Gitops.Gitops.Pack.Definitions {
-				if !request.Definition.GetState().Gitops.LastSync.IsZero() {
+				if !request.Definition.Definition.GetState().Gitops.LastSync.IsZero() {
 					wgChild.Add(1)
 
 					go func() {
-						format := f.New(request.Definition.GetPrefix(), request.Definition.GetKind(), request.Definition.GetMeta().Group, request.Definition.GetMeta().Name)
+						format := f.New(request.Definition.Definition.GetPrefix(), request.Definition.Definition.GetKind(), request.Definition.Definition.GetMeta().Group, request.Definition.Definition.GetMeta().Name)
 						shared.Manager.Replication.Informer.AddCh(format.ToString())
 
-						err := request.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
+						err := request.Definition.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
 
 						if err != nil {
 							logger.Log.Error(err.Error())

@@ -3,7 +3,6 @@ package packer
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/relations"
 	"gopkg.in/yaml.v3"
 	"io/fs"
@@ -33,8 +32,8 @@ func Read(path string, set []string, relations *relations.RelationRegistry) (*Pa
 		return pack, err
 	}
 
-	var requests []*common.Request
-	ordered := make([]*common.Request, 0)
+	var requests []*Definition
+	ordered := make([]*Definition, 0)
 
 	var values []byte
 
@@ -68,16 +67,16 @@ func Read(path string, set []string, relations *relations.RelationRegistry) (*Pa
 				position := -1
 
 				for index, element := range ordered {
-					deps := relations.GetDependencies(element.Kind)
+					deps := relations.GetDependencies(element.Definition.Kind)
 
 					for _, dp := range deps {
-						if request.Definition.GetKind() == dp {
+						if request.Definition.Definition.GetKind() == dp {
 							position = index
 						}
 					}
 				}
 
-				if request.Definition.GetKind() != "" {
+				if request.Definition.Definition.GetKind() != "" {
 					if position != -1 {
 						ordered = append(ordered[:position+1], ordered[position:]...)
 						ordered[position] = request

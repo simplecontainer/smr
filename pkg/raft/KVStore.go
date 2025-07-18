@@ -16,15 +16,20 @@ package raft
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -40,16 +45,21 @@ type KVStore struct {
 	Node        *node.Node
 	mu          sync.RWMutex
 	snapshotter *snap.Snapshotter
+
+	etcdClient    *clientv3.Client
+	CommittedKeys sync.Map
 }
 
-func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, replay bool, node *node.Node) (*KVStore, error) {
+func NewKVStore(etcdclient *clientv3.Client, snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, replay bool, node *node.Node) (*KVStore, error) {
 	s := &KVStore{
-		proposeC:    proposeC,
-		DataC:       dataC,
-		InSyncC:     insyncC,
-		snapshotter: snapshotter,
-		Replay:      replay,
-		Node:        node,
+		etcdClient:    etcdclient,
+		CommittedKeys: sync.Map{},
+		proposeC:      proposeC,
+		DataC:         dataC,
+		InSyncC:       insyncC,
+		snapshotter:   snapshotter,
+		Replay:        replay,
+		Node:          node,
 	}
 
 	snapshot, err := s.loadSnapshot()
@@ -60,6 +70,7 @@ func NewKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <
 
 	if snapshot != nil {
 		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+
 		if err = s.recoverFromSnapshot(snapshot.Data); err != nil {
 			return nil, err
 		}
@@ -127,7 +138,15 @@ func (s *KVStore) GetSnapshot() ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return json.Marshal([]byte{})
+	references := make(map[string]string)
+
+	s.CommittedKeys.Range(func(key, value any) bool {
+		k := key.(string)
+		references[k] = fmt.Sprintf("ref::%s", k)
+		return true
+	})
+
+	return json.Marshal(references)
 }
 
 func (s *KVStore) loadSnapshot() (*raftpb.Snapshot, error) {
@@ -142,18 +161,45 @@ func (s *KVStore) loadSnapshot() (*raftpb.Snapshot, error) {
 }
 
 func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
-	var store map[string]string
-	if err := json.Unmarshal(snapshot, &store); err != nil {
+	var references map[string]string
+	if err := json.Unmarshal(snapshot, &references); err != nil {
 		return err
 	}
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	for _, v := range store {
-		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(v)), s.Node.NodeID)
+	for _, ref := range references {
+		if !strings.HasPrefix(ref, "ref::") {
+			continue
+		}
+
+		actualKey := strings.TrimPrefix(ref, "ref::")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		resp, err := s.etcdClient.Get(ctx, actualKey)
+		cancel()
+
+		if err != nil {
+			logger.Log.Info("failed to resolve reference from etcd", zap.String("reference", actualKey), zap.Error(err))
+			continue
+		}
+
+		if len(resp.Kvs) == 0 {
+			logger.Log.Info("reference not found in etcd", zap.String("reference", actualKey))
+			continue
+		}
+
+		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBuffer(resp.Kvs[0].Value)), s.Node.NodeID)
+		s.CommittedKeys.Store(actualKey, true)
 	}
 
-	s.mu.Unlock()
+	return nil
+}
 
+func (s *KVStore) Close() error {
+	if s.etcdClient != nil {
+		return s.etcdClient.Close()
+	}
 	return nil
 }

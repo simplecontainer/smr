@@ -7,12 +7,13 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/iobjects"
 	"github.com/simplecontainer/smr/pkg/definitions/commonv1"
 	"github.com/simplecontainer/smr/pkg/static"
+	"gopkg.in/yaml.v3"
 )
 
 type ConfigurationDefinition struct {
 	Kind   string            `json:"kind" validate:"required"`
 	Prefix string            `json:"prefix" validate:"required"`
-	Meta   commonv1.Meta     `json:"meta" validate:"required"`
+	Meta   *commonv1.Meta    `json:"meta" validate:"required"`
 	Spec   ConfigurationSpec `json:"spec" validate:"required"`
 	State  *commonv1.State   `json:"state"`
 }
@@ -27,6 +28,21 @@ type ConfigurationSpec struct {
 	Data map[string]string `json:"data"`
 }
 
+func NewConfiguration() *ConfigurationDefinition {
+	return &ConfigurationDefinition{
+		Kind:   "",
+		Prefix: "",
+		Meta: &commonv1.Meta{
+			Group:   "",
+			Name:    "",
+			Labels:  nil,
+			Runtime: &commonv1.Runtime{},
+		},
+		Spec:  ConfigurationSpec{},
+		State: nil,
+	}
+}
+
 func (configuration *ConfigurationDefinition) GetPrefix() string {
 	return configuration.Prefix
 }
@@ -39,7 +55,7 @@ func (configuration *ConfigurationDefinition) GetRuntime() *commonv1.Runtime {
 	return configuration.Meta.Runtime
 }
 
-func (configuration *ConfigurationDefinition) GetMeta() commonv1.Meta {
+func (configuration *ConfigurationDefinition) GetMeta() *commonv1.Meta {
 	return configuration.Meta
 }
 
@@ -65,6 +81,11 @@ func (configuration *ConfigurationDefinition) FromJson(bytes []byte) error {
 
 func (configuration *ConfigurationDefinition) ToJSON() ([]byte, error) {
 	bytes, err := json.Marshal(configuration)
+	return bytes, err
+}
+
+func (configuration *ConfigurationDefinition) ToYAML() ([]byte, error) {
+	bytes, err := yaml.Marshal(configuration)
 	return bytes, err
 }
 

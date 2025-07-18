@@ -19,7 +19,7 @@ func Node(name string, config *configuration.Configuration, entrypoint []string,
 	}
 
 	container := &v1.ContainersDefinition{
-		Meta: commonv1.Meta{
+		Meta: &commonv1.Meta{
 			Name:   name,
 			Group:  "internal",
 			Labels: nil,
