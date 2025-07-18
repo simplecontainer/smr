@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-func New(client *clients.Client, user *authentication.User, nodeName string, node *node.Node) *Replication {
+func New(client *clients.Client, user *authentication.User, node *node.Node) *Replication {
 	return &Replication{
 		Client:     client,
 		Node:       node,

@@ -180,6 +180,7 @@ func (a *Api) SetKind(c *gin.Context) {
 		return
 	}
 
+	a.Cluster.KVStore.CommittedKeys.Store(format.ToStringWithOpts(opts), true)
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "object stored", nil, network.ToJSON(data)))
 }
 

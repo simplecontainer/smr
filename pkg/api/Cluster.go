@@ -186,6 +186,9 @@ func (a *Api) StartCluster(c *gin.Context) {
 		return
 	}
 
+	a.SetupReplication()
+	go a.Replication.ListenData(a.Config.NodeName)
+
 	err = a.SetupCluster(tlsConfig, a.Cluster.Node, a.Cluster, a.Config.KVStore.Join)
 
 	if err != nil {
@@ -194,6 +197,8 @@ func (a *Api) StartCluster(c *gin.Context) {
 	}
 
 	a.SaveClusterConfiguration()
+
+	go a.ListenNode()
 
 	if a.Cluster.Replay {
 		go func() {
@@ -223,8 +228,6 @@ func (a *Api) StartCluster(c *gin.Context) {
 	}
 
 	go events.Listen(a.Manager.KindsRegistry, a.Replication.EventsC, a.Replication.Informer, a.Wss)
-	go a.ListenNode()
-	go a.Replication.ListenData(a.Config.NodeName)
 
 	err = flannel.Setup(c, a.Etcd, cmd.Data()["cidr"], cmd.Data()["backend"])
 

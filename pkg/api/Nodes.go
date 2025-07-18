@@ -222,7 +222,7 @@ func (a *Api) ListenNode() {
 							if a.Cluster.RaftNode.IsLeader.Load() {
 								logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", a.Cluster.Peers().Nodes[0].NodeID))
 
-								ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+								ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 								a.Cluster.RaftNode.TransferLeadership(ctx, a.Cluster.Peers().Nodes[0].NodeID)
 
 								ticker := time.NewTicker(5 * time.Millisecond)
@@ -245,6 +245,8 @@ func (a *Api) ListenNode() {
 						}
 
 						go func() {
+							// Will never run if NodeFinalizer <- node
+							// which is fine
 							<-a.Cluster.RaftNode.Done()
 
 							logger.Log.Info("raft is stopped")

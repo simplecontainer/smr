@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -54,11 +55,14 @@ type RaftNode struct {
 	snapshotIndex uint64
 	appliedIndex  uint64
 
-	node        raft.Node
-	IsLeader    atomic.Bool
-	raftStorage *raft.MemoryStorage
-	wal         *wal.WAL
-	started     time.Time
+	node                raft.Node
+	IsLeader            atomic.Bool
+	raftStorage         *raft.MemoryStorage
+	wal                 *wal.WAL
+	lastReplayedIndex   uint64
+	firstReadyProcessed bool
+	isRestart           bool
+	started             time.Time
 
 	snapshotter      *snap.Snapshotter
 	snapshotterReady chan *snap.Snapshotter // signals when snapshotter is ready
@@ -167,6 +171,11 @@ func (rc *RaftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 			s := string(ents[i].Data)
 			data = append(data, s)
 		case raftpb.EntryConfChange:
+			if ents[i].Index <= rc.lastReplayedIndex {
+				logger.Log.Info("ignoring ConfChange entry  (before last replayed index)", zap.Uint64("index", ents[i].Index), zap.Uint64("last replayed index", rc.lastReplayedIndex))
+				continue
+			}
+
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
 			rc.confState = *rc.node.ApplyConfChange(cc)
@@ -281,6 +290,10 @@ func (rc *RaftNode) replayWAL() *wal.WAL {
 	// append to storage so raft starts at the right place in log
 	rc.raftStorage.Append(ents)
 
+	if len(ents) > 0 {
+		rc.lastReplayedIndex = ents[len(ents)-1].Index
+	}
+
 	return w
 }
 
@@ -322,6 +335,7 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	}
 
 	if oldwal || rc.join {
+		rc.isRestart = true
 		rc.node = raft.RestartNode(c)
 	} else {
 		rc.node = raft.StartNode(c, rpeers)
@@ -402,7 +416,56 @@ func (rc *RaftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	rc.appliedIndex = snapshotToSave.Metadata.Index
 }
 
-var snapshotCatchUpEntriesN uint64 = 10000
+var snapshotCatchUpEntriesN uint64 = 100
+
+func (rc *RaftNode) GetWALSize() (int64, error) {
+	walFiles, err := os.ReadDir(rc.waldir)
+	if err != nil {
+		return 0, err
+	}
+
+	var totalSize int64
+	for _, file := range walFiles {
+		if !file.IsDir() {
+			info, err := file.Info()
+			if err != nil {
+				continue
+			}
+			totalSize += info.Size()
+		}
+	}
+	return totalSize, nil
+}
+
+func (rc *RaftNode) ForceSnapshot() error {
+	data, err := rc.getSnapshot()
+	if err != nil {
+		return err
+	}
+
+	snap, err := rc.raftStorage.CreateSnapshot(rc.appliedIndex, &rc.confState, data)
+	if err != nil {
+		return err
+	}
+
+	if err := rc.saveSnap(snap); err != nil {
+		return err
+	}
+
+	compactIndex := uint64(1)
+	if rc.appliedIndex > 10 {
+		compactIndex = rc.appliedIndex - 50
+	}
+
+	if err := rc.raftStorage.Compact(compactIndex); err != nil {
+		if !errors.Is(err, raft.ErrCompacted) {
+			return err
+		}
+	}
+
+	rc.snapshotIndex = rc.appliedIndex
+	return nil
+}
 
 func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
@@ -431,16 +494,18 @@ func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		panic(err)
 	}
 
+	// More aggressive compaction - keep fewer entries
 	compactIndex := uint64(1)
 	if rc.appliedIndex > snapshotCatchUpEntriesN {
 		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
 	}
+
 	if err := rc.raftStorage.Compact(compactIndex); err != nil {
 		if !errors.Is(err, raft.ErrCompacted) {
 			panic(err)
 		}
 	} else {
-		log.Printf("compacted log at index %d", compactIndex)
+		log.Printf("compacted log at index %d (kept only %d entries)", compactIndex, snapshotCatchUpEntriesN)
 	}
 
 	rc.snapshotIndex = rc.appliedIndex
@@ -448,6 +513,14 @@ func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 
 func (rc *RaftNode) TransferLeadership(ctx context.Context, nodeID uint64) {
 	rc.node.TransferLeadership(ctx, uint64(rc.id), nodeID)
+}
+
+func (rc *RaftNode) OnLeadershipChange(isLeader bool) {
+	if isLeader {
+		log.Printf("node %d is now the leader", rc.id)
+	} else {
+		log.Printf("node %d is no longer the leader", rc.id)
+	}
 }
 
 func (rc *RaftNode) serveChannels() {
@@ -507,8 +580,28 @@ func (rc *RaftNode) serveChannels() {
 		case <-ticker.C:
 			rc.node.Tick()
 
-		// store raft entries to wal, then publish over commit channel
+			// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():
+			if !rc.firstReadyProcessed && rc.isRestart {
+				rc.rebuildPeersFromCluster()
+				rc.firstReadyProcessed = true
+			}
+
+			if rd.SoftState != nil {
+				if rd.SoftState.RaftState == raft.StateLeader {
+					if !rc.IsLeader.Load() {
+						rc.OnLeadershipChange(true)
+						rc.IsLeader.Store(true)
+					}
+				} else if rd.SoftState.RaftState == raft.StateFollower {
+					if rc.IsLeader.Load() {
+						log.Printf("node %d is no longer the leader", rc.id)
+						rc.OnLeadershipChange(false)
+						rc.IsLeader.Store(false)
+					}
+				}
+			}
+
 			// Must save the snapshot file and WAL snapshot entry before saving any other entries
 			// or hardstate to ensure that recovery after a snapshot restore is possible.
 			if !raft.IsEmptySnap(rd.Snapshot) {
@@ -563,7 +656,7 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 }
 
 func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
-	fmt.Println(fmt.Sprintf("Starting raft listener at %s", rc.Peers.ToString()[rc.id-1]))
+	logger.Log.Info(fmt.Sprintf("Starting raft listener at %s", rc.Peers.ToString()[rc.id-1]))
 
 	url, err := url.Parse(rc.Peers.ToString()[rc.id-1])
 	if err != nil {
@@ -605,4 +698,20 @@ func (rc *RaftNode) ReportUnreachable(id uint64) {
 }
 func (rc *RaftNode) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	rc.node.ReportSnapshot(id, status)
+}
+
+func (rc *RaftNode) rebuildPeersFromCluster() {
+	rc.logger.Info("rebuilding peers from the configuration", zap.String("cluster", strings.Join(rc.Peers.ToString(), ", ")))
+
+	for _, peer := range rc.Peers.Nodes {
+		if peer.NodeID != uint64(rc.id) {
+			rc.logger.Info("adding node as peer", zap.Uint64("node", peer.NodeID))
+
+			rc.node.ApplyConfChange(raftpb.ConfChange{
+				Type:   raftpb.ConfChangeAddNode,
+				ID:     peer.NodeID,
+				NodeID: peer.NodeID,
+			})
+		}
+	}
 }
