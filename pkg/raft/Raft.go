@@ -453,7 +453,7 @@ func (rc *RaftNode) ForceSnapshot() error {
 	}
 
 	compactIndex := uint64(1)
-	if rc.appliedIndex > 10 {
+	if rc.appliedIndex > 50 {
 		compactIndex = rc.appliedIndex - 50
 	}
 
