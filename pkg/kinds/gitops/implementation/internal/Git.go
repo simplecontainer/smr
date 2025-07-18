@@ -79,54 +79,6 @@ func (g *Git) Clone() error {
 	return nil
 }
 
-func (g *Git) Commit(message string) error {
-	file, err := g.LogOpen()
-	if err != nil {
-		return err
-	}
-	defer g.LogClose(file)
-
-	repository, err := git.PlainOpen(g.Directory)
-	if err != nil {
-		return fmt.Errorf("failed to open repository: %w", err)
-	}
-
-	workTree, err := repository.Worktree()
-	if err != nil {
-		return fmt.Errorf("failed to get working tree: %w", err)
-	}
-
-	err = workTree.AddWithOptions(&git.AddOptions{
-		All: true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to add files: %w", err)
-	}
-
-	status, err := workTree.Status()
-	if err != nil {
-		return fmt.Errorf("failed to get status: %w", err)
-	}
-
-	if status.IsClean() {
-		return fmt.Errorf("no changes to commit")
-	}
-
-	commit, err := workTree.Commit(message, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "simplecontainer-bot",
-			Email: "bot@simplecontainer.io",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to commit: %w", err)
-	}
-
-	logger.Log.Info(fmt.Sprintf("commit created by GitOps controller: %s (%s)", g.Repository, commit.String()))
-	return nil
-}
-
 func (g *Git) CommitFiles(message string, files []string) error {
 	file, err := g.LogOpen()
 	if err != nil {
