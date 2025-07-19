@@ -108,12 +108,12 @@ func (gitops *Gitops) Commit(logger *zap.Logger, client *clients.Http, user *aut
 				return err
 			}
 
-			err = os.WriteFile(fmt.Sprintf("%s/definitions/%s", gitops.Gitops.Git.Directory, def.File), bytes, 0777)
+			err = os.WriteFile(fmt.Sprintf("%s/%s/definitions/%s", gitops.Gitops.Git.Directory, gitops.Gitops.DirectoryPath, def.File), bytes, 0777)
 			if err != nil {
 				return err
 			}
 
-			err = gitops.Gitops.Git.CommitFiles("gitops bot update", []string{fmt.Sprintf("definitions/%s", def.File)})
+			err = gitops.Gitops.Git.CommitFiles("gitops bot update", []string{fmt.Sprintf("%s/definitions/%s", gitops.Gitops.DirectoryPath, def.File)})
 			if err != nil {
 				return err
 			}
