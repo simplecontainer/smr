@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"reflect"
 	"time"
 
@@ -131,6 +132,7 @@ func handleDependsSolved(shared *shared.Shared, cw *watcher.Container, existing 
 		return status.INIT, true
 	}
 
+	cw.Container.GetImageState().SetStatus(image.StatusPulling)
 	return status.START, true
 }
 

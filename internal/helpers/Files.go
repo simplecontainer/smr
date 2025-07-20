@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -23,4 +25,20 @@ func WaitForFileToAppear(ctx context.Context, path string, interval time.Duratio
 			}
 		}
 	}
+}
+
+func GetSanitizedDirectoryPath(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	cleanPath := filepath.Clean(path)
+	cleanPath = strings.ReplaceAll(cleanPath, "..", "")
+	cleanPath = strings.Trim(cleanPath, "/")
+
+	if filepath.IsAbs(cleanPath) {
+		cleanPath = strings.TrimPrefix(cleanPath, "/")
+	}
+
+	return cleanPath
 }

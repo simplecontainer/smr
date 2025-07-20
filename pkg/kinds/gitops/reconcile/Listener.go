@@ -8,6 +8,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/packer"
 	"github.com/simplecontainer/smr/pkg/queue"
+	"os"
 	"sync"
 	"time"
 )
@@ -74,7 +75,13 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 					logger.Log.Error(err.Error())
 				}
 
+				directory := gitopsWatcher.Gitops.Gitops.Git.Directory
 				shared.Watchers.Remove(gitopsWatcher.Gitops.GetGroupIdentifier())
+
+				err = os.RemoveAll(directory)
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
 
 				events.DispatchGroup([]events.Event{
 					events.NewKindEvent(events.EVENT_DELETED, gitopsWatcher.Gitops.GetDefinition(), nil),

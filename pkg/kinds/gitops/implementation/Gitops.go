@@ -50,7 +50,7 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) (
 			Group:           definition.Meta.Group,
 			Name:            definition.Meta.Name,
 			PatchQueue:      NewQueueTS(),
-			DirectoryPath:   definition.Spec.DirectoryPath,
+			DirectoryPath:   helpers.GetSanitizedDirectoryPath(definition.Spec.DirectoryPath),
 			PoolingInterval: duration,
 			AutomaticSync:   definition.Spec.AutomaticSync,
 			Context:         definition.Spec.Context,

@@ -23,10 +23,6 @@ func GetLogLevel(level string) zapcore.Level {
 	return zap.InfoLevel
 }
 
-func SplitClean(c rune) bool {
-	return c == ','
-}
-
 func Confirm(message string) bool {
 	ask := promptui.Select{
 		Label: fmt.Sprintf("%s [y/n]", message),

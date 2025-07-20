@@ -8,6 +8,8 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
 	"github.com/simplecontainer/smr/pkg/packer"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func (gitops *Gitops) GetDefinition() idefinitions.IDefinition {
@@ -41,24 +43,38 @@ func (gitops *Gitops) GetGit() *internal.Git { return gitops.Gitops.Git }
 func (gitops *Gitops) GetCommit() *object.Commit { return gitops.Gitops.Commit }
 
 func (gitops *Gitops) GetFilePath(file string) (*FilePath, error) {
-	var path string
-	var relative string
+	gitDir := filepath.Clean(gitops.Gitops.Git.Directory)
+	dirPath := strings.Trim(filepath.Clean(gitops.Gitops.DirectoryPath), "/")
+	fileName := strings.Trim(filepath.Clean(file), "/")
 
-	if gitops.Gitops.DirectoryPath == "/" {
-		path = fmt.Sprintf("%s/definitions/%s", gitops.Gitops.Git.Directory, file)
-		relative = fmt.Sprintf("definitions/%s", file)
-	} else {
-		path = fmt.Sprintf("%s/%s/definitions/%s", gitops.Gitops.Git.Directory, gitops.Gitops.DirectoryPath, file)
-		relative = fmt.Sprintf("%s/definitions/%s", gitops.Gitops.DirectoryPath, file)
+	if strings.Contains(fileName, "..") {
+		return nil, fmt.Errorf("invalid file name: path traversal not allowed")
 	}
 
-	if _, err := os.Stat(path); err != nil {
-		return nil, err
+	var relativePath string
+	if dirPath == "" || dirPath == "." {
+		relativePath = filepath.Join("definitions", fileName)
+	} else {
+		relativePath = filepath.Join(dirPath, "definitions", fileName)
+	}
+
+	absolutePath := filepath.Join(gitDir, relativePath)
+
+	if absGitDir, err := filepath.Abs(gitDir); err == nil {
+		if absPath, err := filepath.Abs(absolutePath); err == nil {
+			if !strings.HasPrefix(absPath, absGitDir) {
+				return nil, fmt.Errorf("file path is outside git directory")
+			}
+		}
+	}
+
+	if _, err := os.Stat(absolutePath); err != nil {
+		return nil, fmt.Errorf("file not found: %w", err)
 	}
 
 	return &FilePath{
-		Absolute: path,
-		Relative: relative,
+		Absolute: absolutePath,
+		Relative: relativePath,
 	}, nil
 }
 

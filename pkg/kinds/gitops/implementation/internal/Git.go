@@ -7,10 +7,10 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/simplecontainer/smr/internal/helpers"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"os"
 	"path"
 	"time"
@@ -29,10 +29,18 @@ type Git struct {
 }
 
 func NewGit(definition *v1.GitopsDefinition, logpath string) (*Git, error) {
-	directory := fmt.Sprintf("/tmp/%s", rand.String(10))
-	path := fmt.Sprintf("%s/%s", directory, path.Base(definition.Spec.RepoURL))
+	directory := fmt.Sprintf("/tmp/gitops/%s/%s", definition.GetMeta().Group, definition.GetMeta().Name)
+	absolute := fmt.Sprintf("%s/%s", directory, helpers.GetSanitizedDirectoryPath(path.Base(definition.Spec.RepoURL)))
 
-	err := os.MkdirAll(directory, 0755)
+	if _, err := os.Stat(directory); err == nil {
+		err = os.RemoveAll(directory)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err := os.MkdirAll(directory, 0750)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +48,7 @@ func NewGit(definition *v1.GitopsDefinition, logpath string) (*Git, error) {
 	return &Git{
 		Repository: definition.Spec.RepoURL,
 		Revision:   definition.Spec.Revision,
-		Directory:  path,
+		Directory:  absolute,
 		LogPath:    logpath,
 		Auth:       NewAuth(),
 	}, nil
@@ -94,8 +102,6 @@ func (g *Git) CommitFiles(logger *zap.Logger, message string, files []string) er
 	}
 	defer g.LogClose(file)
 
-	fmt.Println("Opening git directory", g.Directory)
-
 	repository, err := git.PlainOpen(g.Directory)
 	if err != nil {
 		return fmt.Errorf("failed to open repository: %w", err)
@@ -106,6 +112,22 @@ func (g *Git) CommitFiles(logger *zap.Logger, message string, files []string) er
 		return fmt.Errorf("failed to get working tree: %w", err)
 	}
 
+	status, err := workTree.Status()
+	if err != nil {
+		return fmt.Errorf("failed to get status: %w", err)
+	}
+
+	for _, file := range files {
+		fileStatus, exists := status[file]
+		if !exists {
+			continue
+		}
+
+		if fileStatus.Staging == git.Untracked || fileStatus.Worktree == git.Deleted {
+			return fmt.Errorf("only modifications allowed - file %s has unsupported changes", file)
+		}
+	}
+
 	for _, file := range files {
 		_, err = workTree.Add(file)
 		if err != nil {
@@ -113,7 +135,7 @@ func (g *Git) CommitFiles(logger *zap.Logger, message string, files []string) er
 		}
 	}
 
-	status, err := workTree.Status()
+	status, err = workTree.Status()
 	if err != nil {
 		return fmt.Errorf("failed to get status: %w", err)
 	}
