@@ -43,10 +43,6 @@ func (config *Config) Apply(user *authentication.User, definition []byte, agent 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (config *Config) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
-}
-
 func (config *Config) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONFIGURATION, definition)
 

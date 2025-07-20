@@ -40,10 +40,6 @@ func (certkey *Certkey) Apply(user *authentication.User, definition []byte, agen
 	}
 }
 
-func (certkey *Certkey) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
-}
-
 func (certkey *Certkey) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CERTKEY, definition)
 

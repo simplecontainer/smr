@@ -21,10 +21,6 @@ func (node *Node) Apply(user *authentication.User, definition []byte, agent stri
 	return common.Response(http.StatusOK, "object can't be applied", nil, nil), nil
 }
 
-func (node *Node) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
-}
-
 func (node *Node) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	return common.Response(http.StatusOK, "object can't be stated", nil, nil), nil
 }

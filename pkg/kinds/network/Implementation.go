@@ -86,10 +86,6 @@ func (network *Network) createErrorResponse(status int, message string, err erro
 	return common.Response(status, message, err, nil), err
 }
 
-func (network *Network) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
-}
-
 func (network *Network) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_NETWORK, definition)
 

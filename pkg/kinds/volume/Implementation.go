@@ -53,10 +53,6 @@ func (volume *Volume) Apply(user *authentication.User, definition []byte, agent 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
 }
 
-func (volume *Volume) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
-}
-
 func (volume *Volume) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_VOLUME, definition)
 

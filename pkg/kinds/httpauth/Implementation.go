@@ -39,9 +39,6 @@ func (httpauth *Httpauth) Apply(user *authentication.User, definition []byte, ag
 		return common.Response(http.StatusOK, "object applied", nil, nil), nil
 	}
 }
-func (httpauth *Httpauth) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
-}
 func (httpauth *Httpauth) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_HTTPAUTH, definition)
 

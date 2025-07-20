@@ -4,7 +4,7 @@ go 1.24.0
 
 toolchain go1.24.5
 
-replace github.com/simplecontainer/smr => ../smr
+//replace github.com/simplecontainer/smr => ../smr
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
@@ -49,6 +49,7 @@ require (
 	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
+	k8s.io/apimachinery v0.31.1
 	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 )
 
@@ -204,7 +205,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	k8s.io/apimachinery v0.31.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
