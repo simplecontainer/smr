@@ -92,7 +92,7 @@ func TestStandaloneMode(t *testing.T) {
 	nm.RunCommand(t, func() error {
 		for {
 			cli.Smrctl.SetFailOnError(false)
-			err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_CLUSTER_REPLAYED))
+			err = cli.Smrctl.Run(t, engine.NewStringCmd("events --wait %s", events.EVENT_CLUSTER_STARTED))
 
 			if err == nil {
 				break
