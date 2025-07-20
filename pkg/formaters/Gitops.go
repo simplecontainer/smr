@@ -58,7 +58,7 @@ func Gitops(objects []json.RawMessage) {
 
 		if g.GetCommit() != nil {
 			tbl.AddRow(
-				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.Definition.Meta.Group, g.Definition.Meta.Name),
+				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
 				helpers.CliMask(g.GetCommit() != nil && g.GetCommit().ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.GetGit().Repository), fmt.Sprintf("%s (%s)", g.GetGit().Repository, g.GetCommit().ID().String()[:7])),
 				g.GetGit().Revision,
 				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
@@ -68,7 +68,7 @@ func Gitops(objects []json.RawMessage) {
 			)
 		} else {
 			tbl.AddRow(
-				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.Definition.Meta.Group, g.Definition.Meta.Name),
+				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
 				helpers.CliMask(g.GetCommit() != nil && g.GetCommit().ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.GetGit().Repository), fmt.Sprintf("%s", g.GetGit().Repository)),
 				g.GetGit().Revision,
 				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),

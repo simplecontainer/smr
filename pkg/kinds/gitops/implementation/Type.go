@@ -3,6 +3,7 @@ package implementation
 import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/simplecontainer/smr/pkg/contracts/iformat"
+	"github.com/simplecontainer/smr/pkg/definitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/implementation/internal"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/status"
@@ -19,6 +20,8 @@ type Gitops struct {
 type GitopsInternal struct {
 	Git             *internal.Git
 	Node            *node.Node
+	Group           string
+	Name            string
 	PatchQueue      *QueueTS
 	LogPath         string
 	DirectoryPath   string
@@ -46,7 +49,14 @@ type FileKind struct {
 	Kind string
 }
 
+type FilePath struct {
+	Absolute string
+	Relative string
+}
+
 type Commit struct {
-	Format iformat.Format
-	Patch  []byte
+	Format  iformat.Format
+	Patch   []byte
+	Message string
+	Clone   *definitions.Definition
 }

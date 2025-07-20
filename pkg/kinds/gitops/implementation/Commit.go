@@ -3,8 +3,12 @@ package implementation
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
+	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
+	"github.com/simplecontainer/smr/pkg/definitions"
 	"github.com/simplecontainer/smr/pkg/f"
 	"gopkg.in/yaml.v3"
+	"os"
 )
 
 func NewCommit() *Commit {
@@ -64,4 +68,54 @@ func (c *Commit) UnmarshalJSON(data []byte) error {
 	c.Format = &concreteFormat
 	c.Patch = temp.Patch
 	return nil
+}
+
+func (c *Commit) GenerateClone() error {
+	c.Clone = definitions.New(c.Format.GetKind())
+
+	if c.Clone.Definition == nil {
+		return errors.New(fmt.Sprintf("kind is not defined as definition: %s", c.Format.GetKind()))
+	}
+
+	c.Clone.Definition.GetMeta().SetName(c.Format.GetName())
+	c.Clone.Definition.GetMeta().SetGroup(c.Format.GetGroup())
+
+	return nil
+}
+
+func (c *Commit) ApplyPatch(definition idefinitions.IDefinition) ([]byte, error) {
+	bytes, err := definition.ToJSON()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Clone.FromJson(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Clone.PatchJSON(c.Patch)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Clone.SetState(nil)
+	c.Clone.SetRuntime(nil)
+
+	bytes, err = c.Clone.ToYAML()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(bytes) == 0 {
+		return nil, errors.New("gitops controller doesn't allow patches that result in 0 bytes")
+	}
+
+	c.Message = fmt.Sprintf("applied patch on the definition %s/%s/%s", definition.GetKind(), definition.GetMeta().GetGroup(), definition.GetMeta().GetName())
+	return bytes, nil
+}
+
+func (c *Commit) WriteFile(path string, bytes []byte) error {
+	return os.WriteFile(path, bytes, 0600)
 }

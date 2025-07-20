@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/simplecontainer/smr/pkg/channels"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
@@ -85,15 +86,14 @@ var defaultSnapshotCount uint64 = 10000
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func NewRaftNode(raftnode *RaftNode, keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange, nodeUpdateC chan node.Node) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
+func NewRaftNode(keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, getSnapshot func() ([]byte, error), channels *channels.Cluster) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *Commit)
 	errorC := make(chan error)
 
-	raftnode = &RaftNode{
-		proposeC:    proposeC,
-		confChangeC: confChangeC,
-		nodeUpdate:  nodeUpdateC,
+	raftnode := &RaftNode{
+		proposeC:    channels.Propose,
+		confChangeC: channels.ConfChange,
+		nodeUpdate:  channels.NodeUpdate,
 		commitC:     commitC,
 		errorC:      errorC,
 		id:          int(id),
@@ -234,11 +234,11 @@ func (rc *RaftNode) loadSnapshot() *raftpb.Snapshot {
 	if wal.Exist(rc.waldir) {
 		walSnaps, err := wal.ValidSnapshotEntries(rc.logger, rc.waldir)
 		if err != nil {
-			log.Fatalf("raftexample: error listing snapshots (%v)", err)
+			log.Fatalf("raft: error listing snapshots (%v)", err)
 		}
 		snapshot, err := rc.snapshotter.LoadNewestAvailable(walSnaps)
 		if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
-			log.Fatalf("raftexample: error loading snapshot (%v)", err)
+			log.Fatalf("raft: error loading snapshot (%v)", err)
 		}
 		return snapshot
 	}
@@ -249,12 +249,12 @@ func (rc *RaftNode) loadSnapshot() *raftpb.Snapshot {
 func (rc *RaftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	if !wal.Exist(rc.waldir) {
 		if err := os.Mkdir(rc.waldir, 0750); err != nil {
-			log.Fatalf("raftexample: cannot create dir for wal (%v)", err)
+			log.Fatalf("raft: cannot create dir for wal (%v)", err)
 		}
 
 		w, err := wal.Create(zap.NewExample(), rc.waldir, nil)
 		if err != nil {
-			log.Fatalf("raftexample: create wal error (%v)", err)
+			log.Fatalf("raft: create wal error (%v)", err)
 		}
 		w.Close()
 	}
@@ -266,7 +266,7 @@ func (rc *RaftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
 	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
 	if err != nil {
-		log.Fatalf("raftexample: error loading wal (%v)", err)
+		log.Fatalf("raft: error loading wal (%v)", err)
 	}
 
 	return w
@@ -279,7 +279,7 @@ func (rc *RaftNode) replayWAL() *wal.WAL {
 	w := rc.openWAL(snapshot)
 	_, st, ents, err := w.ReadAll()
 	if err != nil {
-		log.Fatalf("raftexample: failed to read WAL (%v)", err)
+		log.Fatalf("raft: failed to read WAL (%v)", err)
 	}
 	rc.raftStorage = raft.NewMemoryStorage()
 	if snapshot != nil {

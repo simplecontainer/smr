@@ -36,8 +36,12 @@ func (RepositoryWatcher *RepositoryWatcher) Drain() {
 	defer RepositoryWatcher.Lock.Unlock()
 
 	for _, watcher := range RepositoryWatcher.Repositories {
-		watcher.Gitops.GetStatus().SetState(status.PENDING_DELETE)
-		watcher.GitopsQueue <- watcher.Gitops
+		if watcher.Gitops.GetDefinition().GetMeta().GetRuntime() != nil &&
+			watcher.Gitops.GetDefinition().GetMeta().GetRuntime().GetOwner() != nil &&
+			watcher.Gitops.GetDefinition().GetMeta().GetRuntime().GetOwner().IsEmpty() {
+			watcher.Gitops.GetStatus().SetState(status.DELETE)
+			watcher.GitopsQueue <- watcher.Gitops
+		}
 	}
 }
 

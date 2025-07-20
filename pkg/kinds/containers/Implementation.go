@@ -10,7 +10,6 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/events/platform/listener"
-	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
@@ -21,7 +20,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/metrics"
-	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/wI2L/jsondiff"
 	"net/http"
@@ -68,8 +66,12 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 	obj, err := request.Apply(containers.Shared.Client, user)
 
-	if !obj.ChangeDetected() {
-		return common.Response(http.StatusOK, static.RESPONSE_APPLIED, nil, nil), nil
+	if request.Definition.GetState() != nil || !request.Definition.GetState().GetOpt("replay").IsEmpty() {
+		request.Definition.GetState().ClearOpt("replay")
+	} else {
+		if !obj.ChangeDetected() {
+			return common.Response(http.StatusOK, static.RESPONSE_APPLIED, nil, nil), nil
+		}
 	}
 
 	if err != nil {
@@ -105,32 +107,6 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
-}
-func (containers *Containers) Replay(user *authentication.User) (iresponse.Response, error) {
-	obj := objects.New(containers.Shared.Client.Clients[user.Username], user)
-
-	format := f.NewFromString(fmt.Sprintf("%s/kind/%s", static.SMR_PREFIX, static.KIND_CONTAINERS))
-	objs, _ := obj.FindMany(format)
-
-	for _, o := range objs {
-		request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, o.GetDefinitionByte())
-
-		if err != nil {
-			return common.Response(http.StatusBadRequest, "invalid definition sent", err, nil), err
-		}
-
-		create, _, _, err := GenerateContainers(containers.Shared, request.Definition.Definition.(*v1.ContainersDefinition), obj.GetDiff())
-
-		if err != nil {
-			return common.Response(http.StatusInternalServerError, "failed to generate replica counts", err, nil), err
-		}
-
-		if len(create) > 0 {
-			containers.Create(create, false, user)
-		}
-	}
-
-	return common.Response(http.StatusOK, "containers replayed", nil, nil), nil
 }
 func (containers *Containers) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_CONTAINERS, definition)

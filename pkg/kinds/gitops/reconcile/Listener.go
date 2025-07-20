@@ -2,86 +2,114 @@ package reconcile
 
 import (
 	"github.com/simplecontainer/smr/pkg/events/events"
-	"github.com/simplecontainer/smr/pkg/f"
+	f "github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"github.com/simplecontainer/smr/pkg/packer"
+	"github.com/simplecontainer/smr/pkg/queue"
 	"sync"
 	"time"
 )
 
 func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops, pauseHandler func(gitops *watcher.Gitops) error) {
+	workerQueue := queue.NewPriorityWorkerQueue(1)
+	workerQueue.Start()
+	defer workerQueue.Stop()
+
 	lock := &sync.Mutex{}
 
 	for {
 		select {
 		case <-gitopsWatcher.Ctx.Done():
-			gitopsWatcher.Ticker.Stop()
-			gitopsWatcher.Done = true
-			close(gitopsWatcher.GitopsQueue)
-
-			var wgChild sync.WaitGroup
-			for _, request := range gitopsWatcher.Gitops.Gitops.Pack.Definitions {
-				if !request.Definition.Definition.GetState().Gitops.LastSync.IsZero() {
-					wgChild.Add(1)
-
-					go func() {
-						format := f.New(request.Definition.Definition.GetPrefix(), request.Definition.Definition.GetKind(), request.Definition.Definition.GetMeta().Group, request.Definition.Definition.GetMeta().Name)
-						shared.Manager.Replication.Informer.AddCh(format.ToString())
-
-						err := request.Definition.ProposeRemove(shared.Manager.Http.Clients[shared.Manager.User.Username].Http, shared.Manager.Http.Clients[shared.Manager.User.Username].API)
-
-						if err != nil {
-							logger.Log.Error(err.Error())
-						}
-
-						select {
-						case <-shared.Manager.Replication.Informer.GetCh(format.ToString()):
-							wgChild.Done()
-							break
-						}
-					}()
-				}
-			}
-			wgChild.Wait()
-
-			err := shared.Registry.Remove(gitopsWatcher.Gitops.GetDefinition().GetPrefix(), gitopsWatcher.Gitops.GetDefinition().GetMeta().Group, gitopsWatcher.Gitops.GetDefinition().GetMeta().Name)
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-
-			shared.Watchers.Remove(gitopsWatcher.Gitops.GetGroupIdentifier())
-
-			events.DispatchGroup([]events.Event{
-				events.NewKindEvent(events.EVENT_DELETED, gitopsWatcher.Gitops.GetDefinition(), nil),
-				events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
-			}, shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode())
-
-			gitopsWatcher = nil
-			return
-		case <-gitopsWatcher.GitopsQueue:
-			go func() {
+			workerQueue.Submit(queue.WorkTypeCleanup, queue.PriorityCleanup, func() {
 				lock.Lock()
+				defer lock.Unlock()
+
+				gitopsWatcher.Ticker.Stop()
+				gitopsWatcher.Done = true
+				close(gitopsWatcher.GitopsQueue)
+
+				var wgChild sync.WaitGroup
+				for _, request := range gitopsWatcher.Gitops.Gitops.Pack.Definitions {
+					if !request.Definition.Definition.GetState().Gitops.LastSync.IsZero() {
+						wgChild.Add(1)
+
+						go func(req *packer.Definition) { // capture request in closure
+							defer wgChild.Done()
+
+							format := f.New(
+								req.Definition.Definition.GetPrefix(),
+								req.Definition.Definition.GetKind(),
+								req.Definition.Definition.GetMeta().Group,
+								req.Definition.Definition.GetMeta().Name,
+							)
+
+							shared.Manager.Replication.Informer.AddCh(format.ToString())
+
+							err := req.Definition.ProposeRemove(
+								shared.Manager.Http.Clients[shared.Manager.User.Username].Http,
+								shared.Manager.Http.Clients[shared.Manager.User.Username].API,
+							)
+
+							if err != nil {
+								logger.Log.Error(err.Error())
+							}
+
+							select {
+							case <-shared.Manager.Replication.Informer.GetCh(format.ToString()):
+								return
+							}
+						}(request)
+					}
+				}
+				wgChild.Wait()
+
+				err := shared.Registry.Remove(
+					gitopsWatcher.Gitops.GetDefinition().GetPrefix(),
+					gitopsWatcher.Gitops.GetDefinition().GetMeta().Group,
+					gitopsWatcher.Gitops.GetDefinition().GetMeta().Name,
+				)
+				if err != nil {
+					logger.Log.Error(err.Error())
+				}
+
+				shared.Watchers.Remove(gitopsWatcher.Gitops.GetGroupIdentifier())
+
+				events.DispatchGroup([]events.Event{
+					events.NewKindEvent(events.EVENT_DELETED, gitopsWatcher.Gitops.GetDefinition(), nil),
+					events.NewKindEvent(events.EVENT_INSPECT, gitopsWatcher.Gitops.GetDefinition(), nil),
+				}, shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode())
+
+				gitopsWatcher = nil
+			})
+
+			return
+
+		case <-gitopsWatcher.GitopsQueue:
+			workerQueue.Submit(queue.WorkTypeNormal, queue.PriorityNormal, func() {
+				lock.Lock()
+				defer lock.Unlock()
 				Gitops(shared, gitopsWatcher)
-				lock.Unlock()
-			}()
-			break
+			})
+
 		case <-gitopsWatcher.Ticker.C:
-			go func() {
+			workerQueue.Submit(queue.WorkTypeTicker, queue.PriorityTicker, func() {
 				gitopsWatcher.Ticker.Stop()
 				lock.Lock()
+				defer lock.Unlock()
 
 				if !gitopsWatcher.Done {
 					Gitops(shared, gitopsWatcher)
 				}
+			})
 
-				lock.Unlock()
-			}()
-			break
 		case <-gitopsWatcher.Poller.C:
-			gitopsWatcher.Gitops.SetForceClone(true)
-			gitopsWatcher.Ticker.Reset(5 * time.Second)
-			break
+			workerQueue.Submit(queue.WorkTypeTicker, queue.PriorityTicker, func() {
+				// No lock needed for these operations as they're atomic
+				gitopsWatcher.Gitops.SetForceClone(true)
+				gitopsWatcher.Ticker.Reset(5 * time.Second)
+			})
 		}
 	}
 }

@@ -18,8 +18,10 @@ var stateHandlers = map[string]StateHandlerFunc{
 	status.COMMIT_GIT:          handleCommitGit,
 	status.CLONED_GIT:          handleClonedGit,
 	status.INVALID_GIT:         handleInvalidGit,
+	status.INVALID_GIT_PUSH:    handleInvalidGitPush,
 	status.INVALID_DEFINITIONS: handleInvalidDefinitions,
 	status.SYNCING:             handleSyncing,
+	status.GIT_PUSH_SUCCESS:    handleGitPushSuccess,
 	status.INSPECTING:          handleInspecting,
 	status.SYNCING_STATE:       handleSyncingState,
 	status.INSYNC:              handleInSync,
@@ -47,11 +49,20 @@ func handleCreated(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 }
 
 func handleCloningGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
+	if gw.Gitops.GetCommit().Hash.IsZero() {
+		err := gw.Gitops.GetGit().Clone()
+
+		if err != nil {
+			return status.INVALID_GIT, true
+		}
+	}
+
 	headRemote, err := gw.Gitops.GetGit().RemoteHead()
 	if err != nil {
 		gw.Logger.Error(err.Error())
 		return status.INVALID_GIT, true
 	}
+
 	if headRemote.IsZero() || gw.Gitops.GetCommit().ID() != headRemote {
 		gw.Logger.Info("found new commit on remote - pulling latest")
 
@@ -73,7 +84,7 @@ func handleCommitGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 
 		if err != nil {
 			gw.Logger.Error(err.Error())
-			return status.INVALID_GIT, true
+			return status.INVALID_GIT_PUSH, true
 		} else {
 			if !gw.Gitops.GetQueue().IsEmpty() {
 				return status.COMMIT_GIT, true
@@ -114,9 +125,20 @@ func handleInvalidGit(shared *shared.Shared, gw *watcher.Gitops) (string, bool) 
 	return status.INVALID_GIT, false
 }
 
+func handleInvalidGitPush(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
+	gw.Logger.Info("git commit and push failed")
+	return status.INVALID_GIT_PUSH, false
+}
+
 func handleInvalidDefinitions(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
 	gw.Logger.Info("definitions are invalid")
 	return status.INVALID_DEFINITIONS, false
+}
+
+func handleGitPushSuccess(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {
+	gw.Logger.Info("patch applied with success")
+	gw.Gitops.SetForceClone(true)
+	return status.CLONING_GIT, false
 }
 
 func handleSyncing(shared *shared.Shared, gw *watcher.Gitops) (string, bool) {

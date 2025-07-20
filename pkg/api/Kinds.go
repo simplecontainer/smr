@@ -138,7 +138,7 @@ func (a *Api) ProposeKind(c *gin.Context) {
 	format := f.New(prefix, version, category, kind, group, name, field)
 	a.Cluster.KVStore.Propose(format.ToStringWithUUID(), data, a.Cluster.Node.NodeID)
 
-	c.JSON(http.StatusOK, common.Response(http.StatusOK, format.ToString(), nil, nil))
+	c.JSON(http.StatusOK, common.Response(http.StatusOK, fmt.Sprintf("proposed for action: %s", format.ToString()), nil, nil))
 }
 
 // SetKind godoc
@@ -180,7 +180,10 @@ func (a *Api) SetKind(c *gin.Context) {
 		return
 	}
 
-	a.Cluster.KVStore.CommittedKeys.Store(format.ToStringWithOpts(opts), true)
+	if !a.Cluster.Replay {
+		a.Cluster.KVStore.CommittedKeys.Store(format.ToStringWithOpts(opts), true)
+	}
+
 	c.JSON(http.StatusOK, common.Response(http.StatusOK, "object stored", nil, network.ToJSON(data)))
 }
 

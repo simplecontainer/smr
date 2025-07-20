@@ -38,6 +38,14 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 
 	obj, err := request.Apply(gitops.Shared.Client, user)
 
+	if request.Definition.GetState() != nil || !request.Definition.GetState().GetOpt("replay").IsEmpty() {
+		request.Definition.GetState().ClearOpt("replay")
+	} else {
+		if !obj.ChangeDetected() {
+			return common.Response(http.StatusOK, static.RESPONSE_APPLIED, nil, nil), nil
+		}
+	}
+
 	if err != nil {
 		return common.Response(http.StatusBadRequest, "", err, nil), err
 	}
@@ -51,30 +59,36 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 	}
 
 	if obj.Exists() {
-		if obj.ChangeDetected() {
-			gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition), gitops.Shared.Manager.Config)
+		gitopsObj, err := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition), gitops.Shared.Manager.Config)
 
-			if existingWatcher == nil {
-				w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
-				go reconcile.HandleTickerAndEvents(gitops.Shared, w, func(w *watcher.Gitops) error {
-					return nil
-				})
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, "", err, nil), err
+		}
 
-				gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
-				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
+		if existingWatcher == nil {
+			w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
+			go reconcile.HandleTickerAndEvents(gitops.Shared, w, func(w *watcher.Gitops) error {
+				return nil
+			})
 
-				w.Gitops.GetStatus().SetState(status.CREATED)
-				w.GitopsQueue <- gitopsObj
-			} else {
-				existingWatcher.Gitops = gitopsObj
-				gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
+			gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
+			gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-				existingWatcher.Gitops.GetStatus().SetState(status.CREATED)
-				existingWatcher.GitopsQueue <- gitopsObj
-			}
+			w.Gitops.GetStatus().SetState(status.CREATED)
+			w.GitopsQueue <- gitopsObj
+		} else {
+			existingWatcher.Gitops = gitopsObj
+			gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
+
+			existingWatcher.Gitops.GetStatus().SetState(status.CREATED)
+			existingWatcher.GitopsQueue <- gitopsObj
 		}
 	} else {
-		gitopsObj := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition), gitops.Shared.Manager.Config)
+		gitopsObj, err := implementation.New(request.Definition.Definition.(*v1.GitopsDefinition), gitops.Shared.Manager.Config)
+
+		if err != nil {
+			return common.Response(http.StatusInternalServerError, "", err, nil), err
+		}
 
 		w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
 
@@ -92,9 +106,6 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 	}
 
 	return common.Response(http.StatusOK, "object applied", nil, nil), nil
-}
-func (gitops *Gitops) Replay(user *authentication.User) (iresponse.Response, error) {
-	return iresponse.Response{}, nil
 }
 func (gitops *Gitops) State(user *authentication.User, definition []byte, agent string) (iresponse.Response, error) {
 	request, err := common.NewRequestFromJson(static.KIND_GITOPS, definition)

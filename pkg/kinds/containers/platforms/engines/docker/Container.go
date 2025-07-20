@@ -21,6 +21,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/smaps"
@@ -71,6 +72,7 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 		GeneratedName:  name,
 		Labels:         internal.NewLabels(definition.(*v1.ContainersDefinition).Meta.Labels),
 		Group:          definition.(*v1.ContainersDefinition).Meta.Group,
+		ImageState:     &image.ImageState{},
 		Image:          definition.(*v1.ContainersDefinition).Spec.Image,
 		Tag:            definition.(*v1.ContainersDefinition).Spec.Tag,
 		RegistryAuth:   definition.(*v1.ContainersDefinition).Spec.RegistryAuth,

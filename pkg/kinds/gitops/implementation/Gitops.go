@@ -22,12 +22,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/wI2L/jsondiff"
 	"go.uber.org/zap"
-	"os"
 	"strings"
 	"time"
 )
 
-func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *Gitops {
+func New(definition *v1.GitopsDefinition, config *configuration.Configuration) (*Gitops, error) {
 	format := f.New(definition.GetPrefix(), "kind", static.KIND_GITOPS, definition.GetMeta().Group, definition.GetMeta().Name)
 	logpath := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
 
@@ -38,10 +37,18 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 		duration = time.Second * 360
 	}
 
+	var git *internal.Git
+	git, err = internal.NewGit(definition, logpath)
+	if err != nil {
+		return nil, err
+	}
+
 	gitops := &Gitops{
 		Gitops: &GitopsInternal{
-			Git:             internal.NewGit(definition, logpath),
+			Git:             git,
 			LogPath:         logpath,
+			Group:           definition.Meta.Group,
+			Name:            definition.Meta.Name,
 			PatchQueue:      NewQueueTS(),
 			DirectoryPath:   definition.Spec.DirectoryPath,
 			PoolingInterval: duration,
@@ -69,56 +76,47 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) *
 		},
 	}
 
-	return gitops
+	return gitops, nil
 }
 
 func (gitops *Gitops) Commit(logger *zap.Logger, client *clients.Http, user *authentication.User, commit *Commit) error {
-	clone := definitions.New(commit.Format.GetKind())
-
-	if clone.Definition == nil {
-		return errors.New(fmt.Sprintf("kind is not defined as definition: %s", commit.Format.GetKind()))
+	err := commit.GenerateClone()
+	if err != nil {
+		return err
 	}
 
-	clone.Definition.GetMeta().SetName(commit.Format.GetName())
-	clone.Definition.GetMeta().SetGroup(commit.Format.GetGroup())
-
 	for _, def := range gitops.Gitops.Pack.Definitions {
-		if def.Definition.Definition.IsOf(def.Definition.Definition) {
-			bytes, err := def.Definition.Definition.ToJSON()
+		if def.Definition.Definition.IsOf(commit.Clone.Definition) {
+			var bytes []byte
+			bytes, err = commit.ApplyPatch(def.Definition.Definition)
 
 			if err != nil {
 				return err
 			}
 
-			err = clone.FromJson(bytes)
+			var filepath *FilePath
+			filepath, err = gitops.GetFilePath(def.File)
+
 			if err != nil {
 				return err
 			}
 
-			err = clone.PatchJSON(commit.Patch)
+			_, err = gitops.Gitops.Git.Fetch()
 			if err != nil {
 				return err
 			}
 
-			clone.SetState(nil)
-			clone.SetRuntime(nil)
-
-			bytes, err = clone.ToYAML()
+			err = commit.WriteFile(filepath.Absolute, bytes)
 			if err != nil {
 				return err
 			}
 
-			err = os.WriteFile(fmt.Sprintf("%s/%s/definitions/%s", gitops.Gitops.Git.Directory, gitops.Gitops.DirectoryPath, def.File), bytes, 0777)
+			err = gitops.Gitops.Git.CommitFiles(logger, commit.Message, []string{filepath.Relative})
 			if err != nil {
 				return err
 			}
 
-			err = gitops.Gitops.Git.CommitFiles("gitops bot update", []string{fmt.Sprintf("%s/definitions/%s", gitops.Gitops.DirectoryPath, def.File)})
-			if err != nil {
-				return err
-			}
-
-			return gitops.Gitops.Git.Push()
+			return gitops.Gitops.Git.Push(logger)
 		}
 	}
 

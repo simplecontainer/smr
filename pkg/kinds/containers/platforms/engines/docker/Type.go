@@ -4,6 +4,7 @@ import (
 	TDVolume "github.com/docker/docker/api/types/volume"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"sync"
 )
@@ -16,6 +17,7 @@ type Docker struct {
 	GeneratedName  string
 	Labels         *internal.Labels
 	Group          string
+	ImageState     *image.ImageState
 	Image          string
 	Tag            string
 	Replicas       uint64

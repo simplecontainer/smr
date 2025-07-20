@@ -50,7 +50,7 @@ func Container(objects []json.RawMessage) {
 			Group:         containerObj.GetGroup(),
 			Name:          containerObj.GetName(),
 			GeneratedName: containerObj.GetGeneratedName(),
-			Image:         containerObj.GetImageWithTag(),
+			Image:         fmt.Sprintf("%s (%s)", containerObj.GetImageWithTag(), containerObj.GetImageState().String()),
 			IPs:           "",
 			Ports:         "",
 			Dependencies:  "",
@@ -58,28 +58,30 @@ func Container(objects []json.RawMessage) {
 			SmrState:      containerObj.GetStatus().State.State,
 		}
 
-		for _, port := range containerObj.GetGlobalDefinition().Spec.Ports {
-			if port.Host != "" {
-				info.Ports += fmt.Sprintf("%s:%s, ", port.Host, port.Container)
-			} else {
-				info.Ports += fmt.Sprintf("%s, ", port.Container)
+		if containerObj.GetGlobalDefinition() != nil {
+			for _, port := range containerObj.GetGlobalDefinition().Spec.Ports {
+				if port.Host != "" {
+					info.Ports += fmt.Sprintf("%s:%s, ", port.Host, port.Container)
+				} else {
+					info.Ports += fmt.Sprintf("%s, ", port.Container)
+				}
 			}
-		}
 
-		if info.Ports == "" {
-			info.Ports = "-"
-		}
+			if info.Ports == "" {
+				info.Ports = "-"
+			}
 
-		for name, ip := range containerObj.GetNetwork() {
-			info.IPs += fmt.Sprintf("%s (%s), ", ip.String(), name)
-		}
+			for name, ip := range containerObj.GetNetwork() {
+				info.IPs += fmt.Sprintf("%s (%s), ", ip.String(), name)
+			}
 
-		for _, u := range containerObj.GetGlobalDefinition().Spec.Dependencies {
-			info.Dependencies += fmt.Sprintf("%s.%s ", u.Group, u.Name)
-		}
+			for _, u := range containerObj.GetGlobalDefinition().Spec.Dependencies {
+				info.Dependencies += fmt.Sprintf("%s.%s ", u.Group, u.Name)
+			}
 
-		if info.Dependencies == "" {
-			info.Dependencies = "-"
+			if info.Dependencies == "" {
+				info.Dependencies = "-"
+			}
 		}
 
 		if containerObj.GetEngineState() != "" {

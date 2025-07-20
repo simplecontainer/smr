@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/KV"
+	"github.com/simplecontainer/smr/pkg/channels"
+	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -37,11 +39,10 @@ import (
 
 // a key-value store backed by raft
 type KVStore struct {
-	proposeC    chan<- string // channel for proposing updates
 	DataC       chan KV.KV
-	InSyncC     chan bool
-	Replay      bool
-	ConfChangeC chan<- raftpb.ConfChange // channel for proposing updates
+	Restore     []*KV.KV
+	ConfChangeC chan raftpb.ConfChange
+	channels    *channels.Cluster
 	Node        *node.Node
 	mu          sync.RWMutex
 	snapshotter *snap.Snapshotter
@@ -50,15 +51,13 @@ type KVStore struct {
 	CommittedKeys sync.Map
 }
 
-func NewKVStore(etcdclient *clientv3.Client, snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, insyncC chan bool, join bool, replay bool, node *node.Node) (*KVStore, error) {
+func NewKVStore(etcdclient *clientv3.Client, snapshotter *snap.Snapshotter, channels *channels.Cluster, commitC <-chan *Commit, errorC <-chan error, dataC chan KV.KV, node *node.Node, replay bool) (*KVStore, error) {
 	s := &KVStore{
 		etcdClient:    etcdclient,
 		CommittedKeys: sync.Map{},
-		proposeC:      proposeC,
+		channels:      channels,
 		DataC:         dataC,
-		InSyncC:       insyncC,
 		snapshotter:   snapshotter,
-		Replay:        replay,
 		Node:          node,
 	}
 
@@ -69,14 +68,15 @@ func NewKVStore(etcdclient *clientv3.Client, snapshotter *snap.Snapshotter, prop
 	}
 
 	if snapshot != nil {
-		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+		logger.Log.Info(fmt.Sprintf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index))
 
 		if err = s.recoverFromSnapshot(snapshot.Data); err != nil {
 			return nil, err
 		}
+
+		logger.Log.Info("recovered from snapshot - proceed")
 	}
 
-	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s, nil
 }
@@ -88,7 +88,7 @@ func (s *KVStore) Propose(k string, v []byte, node uint64) {
 		log.Fatal(err)
 	}
 
-	s.proposeC <- buf.String()
+	s.channels.Propose <- buf.String()
 }
 
 func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
@@ -117,11 +117,6 @@ func (s *KVStore) readCommits(commitC <-chan *Commit, errorC <-chan error) {
 				s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBufferString(data)), s.Node.NodeID)
 			}
 
-			if s.Replay {
-				s.Replay = false
-				s.InSyncC <- true
-			}
-
 			s.mu.Unlock()
 
 			close(commit.applyDoneC)
@@ -143,6 +138,7 @@ func (s *KVStore) GetSnapshot() ([]byte, error) {
 	s.CommittedKeys.Range(func(key, value any) bool {
 		k := key.(string)
 		references[k] = fmt.Sprintf("ref::%s", k)
+
 		return true
 	})
 
@@ -190,8 +186,17 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 			continue
 		}
 
-		s.DataC <- KV.NewDecode(gob.NewDecoder(bytes.NewBuffer(resp.Kvs[0].Value)), s.Node.NodeID)
-		s.CommittedKeys.Store(actualKey, true)
+		format := f.NewFromString(strings.TrimPrefix(actualKey, "/"))
+
+		value := &KV.KV{
+			Key:    format.ToStringWithUUID(),
+			Val:    resp.Kvs[0].Value,
+			Node:   s.Node.NodeID,
+			Local:  true,
+			Replay: true,
+		}
+
+		s.Restore = append(s.Restore, value)
 	}
 
 	return nil

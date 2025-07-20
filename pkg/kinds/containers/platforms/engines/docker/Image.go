@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/docker/docker/api/types/image"
+	TDImage "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"io"
 	"os"
 	"strings"
@@ -18,7 +19,9 @@ import (
 
 func (container *Docker) PullImage(ctx context.Context, cli *client.Client) error {
 	if container.CheckIfImagePresent(ctx, cli) != nil {
-		pullOpts := image.PullOptions{
+		container.ImageState.SetStatus(image.StatusPulling)
+
+		pullOpts := TDImage.PullOptions{
 			All:           false,
 			RegistryAuth:  "",
 			PrivilegeFunc: nil,
@@ -31,12 +34,14 @@ func (container *Docker) PullImage(ctx context.Context, cli *client.Client) erro
 			pullOpts, err = container.GetDockerAuth()
 
 			if err != nil {
+				container.ImageState.SetStatus(image.StatusFailed)
 				return err
 			}
 		}
 
 		reader, err := cli.ImagePull(ctx, container.Image+":"+container.Tag, pullOpts)
 		if err != nil {
+			container.ImageState.SetStatus(image.StatusFailed)
 			return err
 		}
 
@@ -53,6 +58,7 @@ func (container *Docker) PullImage(ctx context.Context, cli *client.Client) erro
 			}
 
 			if err != nil {
+				container.ImageState.SetStatus(image.StatusFailed)
 				return err
 			}
 		}
@@ -64,14 +70,16 @@ func (container *Docker) PullImage(ctx context.Context, cli *client.Client) erro
 			}
 		}(reader)
 
+		container.ImageState.SetStatus(image.StatusPulled)
 		return nil
 	} else {
+		container.ImageState.SetStatus(image.StatusPulled)
 		return nil
 	}
 }
 
 func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Client) error {
-	images, err := cli.ImageList(ctx, image.ListOptions{
+	images, err := cli.ImageList(ctx, TDImage.ListOptions{
 		All: true,
 	})
 
@@ -95,21 +103,21 @@ func (container *Docker) CheckIfImagePresent(ctx context.Context, cli *client.Cl
 	return errors.New("image not present")
 }
 
-func (container *Docker) GetDockerAuth() (image.PullOptions, error) {
+func (container *Docker) GetDockerAuth() (TDImage.PullOptions, error) {
 	auth, err := decodeAuth(container.RegistryAuth)
 
 	if err != nil {
-		return image.PullOptions{}, err
+		return TDImage.PullOptions{}, err
 	}
 
 	var encoded string
 	encoded, err = registry.EncodeAuthConfig(auth)
 
 	if err != nil {
-		return image.PullOptions{}, err
+		return TDImage.PullOptions{}, err
 	}
 
-	return image.PullOptions{
+	return TDImage.PullOptions{
 		RegistryAuth: encoded,
 	}, nil
 }

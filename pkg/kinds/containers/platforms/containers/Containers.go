@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -188,7 +189,8 @@ func (c *Container) GetGroup() string {
 func (c *Container) GetGroupIdentifier() string {
 	return c.Platform.GetGroupIdentifier()
 }
-func (c *Container) GetImageWithTag() string { return c.Platform.GetImageWithTag() }
+func (c *Container) GetImageState() *image.ImageState { return c.Platform.GetImageState() }
+func (c *Container) GetImageWithTag() string          { return c.Platform.GetImageWithTag() }
 func (c *Container) GetNetwork() map[string]net.IP {
 	return c.Platform.GetNetwork()
 }

@@ -19,8 +19,8 @@ import (
 
 func Events() {
 	Commands = append(Commands,
-		command.NewBuilder().Parent("smrctl").Name("commit").Function(cmdCommit).Flags(cmdCommitFlags).Args(cobra.ExactArgs(3)).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("events").Function(cmdEvents).Flags(cmdEventsFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("smrctl").Name("commit").Function(cmdCommit).Flags(cmdCommitFlags).Args(cobra.ExactArgs(3)).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("sync").Args(cobra.ExactArgs(1)).Function(cmdSync).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("refresh").Args(cobra.ExactArgs(1)).Function(cmdRefresh).BuildWithValidation(),
 		command.NewBuilder().Parent("smrctl").Name("restart").Args(cobra.ExactArgs(1)).Function(cmdRestart).BuildWithValidation(),

@@ -1,11 +1,13 @@
 package cluster
 
 import (
+	"github.com/simplecontainer/smr/pkg/channels"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 )
 
 type Cluster struct {
+	Channels      *channels.Cluster
 	Node          *node.Node
 	Cluster       *node.Nodes
 	InSync        chan bool

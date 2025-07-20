@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"sync"
 )
 
@@ -29,7 +30,12 @@ func (ContainerWatcher *Containers) Drain() {
 	defer ContainerWatcher.Lock.Unlock()
 
 	for _, watcher := range ContainerWatcher.Watchers {
-		watcher.DeleteC <- watcher.Container
+		if watcher.Container.GetDefinition().GetMeta().GetRuntime() != nil &&
+			watcher.Container.GetDefinition().GetMeta().GetRuntime().GetOwner() != nil &&
+			watcher.Container.GetDefinition().GetMeta().GetRuntime().GetOwner().IsEmpty() {
+			watcher.Container.GetStatus().SetState(status.DELETE)
+			watcher.DeleteC <- watcher.Container
+		}
 	}
 }
 

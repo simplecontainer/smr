@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/dns"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
@@ -48,6 +49,7 @@ type IContainer interface {
 	GetGroup() string
 	GetGroupIdentifier() string
 	GetIndex() (uint64, error)
+	GetImageState() *image.ImageState
 	GetImageWithTag() string
 	GetNetwork() map[string]net.IP
 	GetDomain(network string) string
@@ -98,6 +100,7 @@ type IPlatform interface {
 	GetGroup() string
 	GetIndex() (uint64, error)
 	GetGroupIdentifier() string
+	GetImageState() *image.ImageState
 	GetImageWithTag() string
 	GetNetwork() map[string]net.IP
 	GetDomain(networkName string) string

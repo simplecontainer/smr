@@ -24,14 +24,16 @@ func (status *Status) CreateGraph() {
 	syncing := gograph.NewVertex(&StatusState{SYNCING, CATEGORY_WHILERUN})
 	syncingstate := gograph.NewVertex(&StatusState{SYNCING_STATE, CATEGORY_WHILERUN})
 	inspecting := gograph.NewVertex(&StatusState{INSPECTING, CATEGORY_WHILERUN})
-	pushing_changes := gograph.NewVertex(&StatusState{COMMIT_GIT, CATEGORY_WHILERUN})
+	pushingchanges := gograph.NewVertex(&StatusState{COMMIT_GIT, CATEGORY_WHILERUN})
 	cloning := gograph.NewVertex(&StatusState{CLONING_GIT, CATEGORY_WHILERUN})
 	cloned := gograph.NewVertex(&StatusState{CLONED_GIT, CATEGORY_WHILERUN})
-	pendingDelete := gograph.NewVertex(&StatusState{DELETE, CATEGORY_END})
+	pushsuccess := gograph.NewVertex(&StatusState{GIT_PUSH_SUCCESS, CATEGORY_WHILERUN})
+	pendingdelete := gograph.NewVertex(&StatusState{DELETE, CATEGORY_END})
 	insync := gograph.NewVertex(&StatusState{INSYNC, CATEGORY_END})
 	drifted := gograph.NewVertex(&StatusState{DRIFTED, CATEGORY_END})
 	backoff := gograph.NewVertex(&StatusState{BACKOFF, CATEGORY_END})
 	invalidgit := gograph.NewVertex(&StatusState{INVALID_GIT, CATEGORY_END})
+	invalidpush := gograph.NewVertex(&StatusState{INVALID_GIT_PUSH, CATEGORY_END})
 	invaliddefinitions := gograph.NewVertex(&StatusState{INVALID_DEFINITIONS, CATEGORY_END})
 
 	status.StateMachine.AddEdge(created, syncing)
@@ -66,29 +68,35 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(drifted, syncing)
 	status.StateMachine.AddEdge(drifted, inspecting)
-	status.StateMachine.AddEdge(drifted, pushing_changes)
 
 	status.StateMachine.AddEdge(invaliddefinitions, cloning)
 	status.StateMachine.AddEdge(invalidgit, cloning)
 	status.StateMachine.AddEdge(insync, cloning)
 	status.StateMachine.AddEdge(created, cloning)
 
-	status.StateMachine.AddEdge(pushing_changes, cloning)
-	status.StateMachine.AddEdge(pushing_changes, invalidgit)
+	status.StateMachine.AddEdge(pushingchanges, cloning)
+	status.StateMachine.AddEdge(pushingchanges, invalidpush)
+	status.StateMachine.AddEdge(pushingchanges, pushsuccess)
+
+	status.StateMachine.AddEdge(pushsuccess, cloning)
+
+	status.StateMachine.AddEdge(invalidpush, inspecting)
+	status.StateMachine.AddEdge(invalidpush, syncing)
 
 	status.StateMachine.AddEdge(insync, inspecting)
-	status.StateMachine.AddEdge(insync, pushing_changes)
+	status.StateMachine.AddEdge(insync, pushingchanges)
 
-	status.StateMachine.AddEdge(drifted, pendingDelete)
-	status.StateMachine.AddEdge(insync, pendingDelete)
-	status.StateMachine.AddEdge(inspecting, pendingDelete)
-	status.StateMachine.AddEdge(syncing, pendingDelete)
-	status.StateMachine.AddEdge(created, pendingDelete)
-	status.StateMachine.AddEdge(cloning, pendingDelete)
-	status.StateMachine.AddEdge(cloned, pendingDelete)
-	status.StateMachine.AddEdge(invaliddefinitions, pendingDelete)
-	status.StateMachine.AddEdge(invalidgit, pendingDelete)
-	status.StateMachine.AddEdge(pushing_changes, pendingDelete)
+	status.StateMachine.AddEdge(drifted, pendingdelete)
+	status.StateMachine.AddEdge(insync, pendingdelete)
+	status.StateMachine.AddEdge(inspecting, pendingdelete)
+	status.StateMachine.AddEdge(syncing, pendingdelete)
+	status.StateMachine.AddEdge(created, pendingdelete)
+	status.StateMachine.AddEdge(cloning, pendingdelete)
+	status.StateMachine.AddEdge(cloned, pendingdelete)
+	status.StateMachine.AddEdge(invaliddefinitions, pendingdelete)
+	status.StateMachine.AddEdge(invalidgit, pendingdelete)
+	status.StateMachine.AddEdge(pushingchanges, pendingdelete)
+	status.StateMachine.AddEdge(pushsuccess, pendingdelete)
 
 }
 

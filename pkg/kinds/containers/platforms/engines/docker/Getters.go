@@ -7,6 +7,7 @@ import (
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
 	"github.com/simplecontainer/smr/pkg/static"
@@ -105,6 +106,10 @@ func (container *Docker) GetIndex() (uint64, error) {
 
 func (container *Docker) GetGroupIdentifier() string {
 	return fmt.Sprintf("%s/%s", container.Group, container.GeneratedName)
+}
+
+func (container *Docker) GetImageState() *image.ImageState {
+	return container.ImageState
 }
 
 func (container *Docker) GetImageWithTag() string {

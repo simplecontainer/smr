@@ -60,7 +60,9 @@ func (a *Api) SetKey(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, common.Response(http.StatusInternalServerError, "", err, nil))
 		} else {
-			a.Cluster.KVStore.CommittedKeys.Store(key, true)
+			if !a.Cluster.Replay {
+				a.Cluster.KVStore.CommittedKeys.Store(key, true)
+			}
 
 			c.JSON(http.StatusOK, common.Response(http.StatusOK, "key stored", nil, network.ToJSON(data)))
 		}

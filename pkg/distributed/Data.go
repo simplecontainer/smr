@@ -91,6 +91,10 @@ func (replication *Replication) HandleObject(format iformat.Format, data KV.KV) 
 	action := request.Definition.GetState().GetOpt("action").Value
 	request.Definition.GetState().ClearOpt("action")
 
+	if data.Replay {
+		request.Definition.GetState().AddOpt("replay", "true")
+	}
+
 	switch action {
 	case static.STATE_KIND:
 		helpers.LogIfError(request.AttemptState(replication.Client.Http, replication.Client.API))

@@ -9,6 +9,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/logger"
+	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"os"
 	"path"
 	"time"
@@ -26,16 +28,22 @@ type Git struct {
 	Auth       *Auth `json:"-"`
 }
 
-func NewGit(definition *v1.GitopsDefinition, logpath string) *Git {
-	directory := fmt.Sprintf("/tmp/%s", path.Base(definition.Spec.RepoURL))
+func NewGit(definition *v1.GitopsDefinition, logpath string) (*Git, error) {
+	directory := fmt.Sprintf("/tmp/%s", rand.String(10))
+	path := fmt.Sprintf("%s/%s", directory, path.Base(definition.Spec.RepoURL))
+
+	err := os.MkdirAll(directory, 0755)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Git{
 		Repository: definition.Spec.RepoURL,
 		Revision:   definition.Spec.Revision,
-		Directory:  directory,
+		Directory:  path,
 		LogPath:    logpath,
 		Auth:       NewAuth(),
-	}
+	}, nil
 }
 
 func (g *Git) Fetch() (*object.Commit, error) {
@@ -79,12 +87,14 @@ func (g *Git) Clone() error {
 	return nil
 }
 
-func (g *Git) CommitFiles(message string, files []string) error {
+func (g *Git) CommitFiles(logger *zap.Logger, message string, files []string) error {
 	file, err := g.LogOpen()
 	if err != nil {
 		return err
 	}
 	defer g.LogClose(file)
+
+	fmt.Println("Opening git directory", g.Directory)
 
 	repository, err := git.PlainOpen(g.Directory)
 	if err != nil {
@@ -109,7 +119,8 @@ func (g *Git) CommitFiles(message string, files []string) error {
 	}
 
 	if status.IsClean() {
-		return fmt.Errorf("no changes to commit")
+		logger.Info("work directory clean - nothing to commit")
+		return nil
 	}
 
 	commit, err := workTree.Commit(message, &git.CommitOptions{
@@ -119,15 +130,16 @@ func (g *Git) CommitFiles(message string, files []string) error {
 			When:  time.Now(),
 		},
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
 
-	logger.Log.Info(fmt.Sprintf("commit created by GitOps controller: %s (%s)", g.Repository, commit.String()))
+	logger.Info(fmt.Sprintf("commit created by gitops controller: %s (%s)", g.Repository, commit.String()))
 	return nil
 }
 
-func (g *Git) Push() error {
+func (g *Git) Push(logger *zap.Logger) error {
 	file, err := g.LogOpen()
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
@@ -153,7 +165,7 @@ func (g *Git) Push() error {
 		return fmt.Errorf("failed to push to remote: %w", err)
 	}
 
-	logger.Log.Info(fmt.Sprintf("successfully pushed to origin %s", g.Repository))
+	logger.Info(fmt.Sprintf("successfully pushed to origin %s", g.Repository))
 	return nil
 }
 
@@ -232,32 +244,38 @@ func (g *Git) Pull() (*object.Commit, error) {
 
 func (g *Git) RemoteHead() (plumbing.Hash, error) {
 	repository, err := git.PlainOpen(g.Directory)
-
 	if err != nil {
-		return plumbing.Hash{}, nil
+		return plumbing.Hash{}, fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	remotes, err := repository.Remotes()
-
+	remote, err := repository.Remote("origin")
 	if err != nil {
-		return plumbing.Hash{}, err
-	}
-
-	remote := git.NewRemote(repository.Storer, remotes[0].Config())
-
-	if err != nil {
-		return plumbing.Hash{}, err
+		return plumbing.Hash{}, fmt.Errorf("failed to get origin remote: %w", err)
 	}
 
 	refs, err := remote.List(&git.ListOptions{
 		Auth: g.Auth.Auth,
 	})
-
-	if len(refs) > 0 {
-		return refs[0].Hash(), nil
-	} else {
-		return plumbing.Hash{}, errors.New("refs empty list")
+	if err != nil {
+		return plumbing.Hash{}, fmt.Errorf("failed to list origin refs: %w", err)
 	}
+
+	if len(refs) == 0 {
+		return plumbing.Hash{}, errors.New("no refs found in origin remote")
+	}
+
+	if g.Revision == "" {
+		return plumbing.Hash{}, errors.New("revision/branch must be specified")
+	}
+
+	targetRef := fmt.Sprintf("refs/heads/%s", g.Revision)
+	for _, ref := range refs {
+		if ref.Name().String() == targetRef {
+			return ref.Hash(), nil
+		}
+	}
+
+	return plumbing.Hash{}, fmt.Errorf("branch '%s' not found in origin remote", g.Revision)
 }
 
 func (g *Git) LogOpen() (*os.File, error) {

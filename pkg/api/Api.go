@@ -15,7 +15,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/wss"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"sync"
 	"time"
 )
@@ -75,30 +74,42 @@ func (a *Api) SetupEtcd() {
 }
 
 func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error {
-	proposeC := make(chan string)
-	insyncC := make(chan bool)
-	confChangeC := make(chan raftpb.ConfChange)
-	nodeUpdate := make(chan node.Node)
-	nodeFinalizer := make(chan node.Node)
-
 	getSnapshot := func() ([]byte, error) { return a.Cluster.KVStore.GetSnapshot() }
-
-	raftNode := &raft.RaftNode{}
-	rn, commitC, errorC, snapshotterReady := raft.NewRaftNode(raftNode, a.Keys, TLSConfig, n.NodeID, cluster.Cluster, join, getSnapshot, proposeC, confChangeC, nodeUpdate)
+	raftNode, commitC, errorC, snapshotterReady := raft.NewRaftNode(
+		a.Keys,
+		TLSConfig,
+		n.NodeID,
+		cluster.Cluster,
+		join,
+		getSnapshot,
+		cluster.Channels,
+	)
 
 	var err error
-	a.Cluster.KVStore, err = raft.NewKVStore(a.Etcd, <-snapshotterReady, proposeC, commitC, errorC, a.Replication.DataC, insyncC, join, cluster.Replay, n)
+	a.Cluster.KVStore, err = raft.NewKVStore(a.Etcd, <-snapshotterReady, cluster.Channels, commitC, errorC, a.Replication.DataC, n, a.Cluster.Replay)
 
 	if err != nil {
 		return err
 	}
 
-	a.Cluster.RaftNode = rn
-	a.Cluster.KVStore.ConfChangeC = confChangeC
+	if a.Cluster.Replay {
+		if len(a.Cluster.KVStore.Restore) > 0 {
+			for i, v := range a.Cluster.KVStore.Restore {
+				a.Replication.DataC <- *v
+				a.Cluster.KVStore.Restore[i] = nil
+			}
+		}
+
+		a.Cluster.KVStore.Restore = nil
+		a.Cluster.Replay = false
+	}
+
+	a.Cluster.RaftNode = raftNode
 	a.Cluster.KVStore.Node = n
-	a.Cluster.InSync = insyncC
-	a.Cluster.NodeConf = nodeUpdate
-	a.Cluster.NodeFinalizer = nodeFinalizer
+	a.Cluster.KVStore.ConfChangeC = a.Cluster.Channels.ConfChange
+	a.Cluster.InSync = a.Cluster.Channels.Insync
+	a.Cluster.NodeConf = a.Cluster.Channels.NodeUpdate
+	a.Cluster.NodeFinalizer = a.Cluster.Channels.NodeFinalizer
 
 	a.Manager.Cluster = a.Cluster
 

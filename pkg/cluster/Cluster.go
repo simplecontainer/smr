@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"errors"
+	"github.com/simplecontainer/smr/pkg/channels"
 	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/node"
 )
@@ -10,9 +11,10 @@ func New() *Cluster {
 	nodes := node.NewNodes()
 
 	return &Cluster{
-		Node:    node.NewNode(),
-		Cluster: nodes,
-		Replay:  false,
+		Node:     node.NewNode(),
+		Cluster:  nodes,
+		Channels: channels.NewCluster(),
+		Replay:   false,
 	}
 }
 
@@ -50,8 +52,9 @@ func Restore(config *configuration.Configuration) (*Cluster, error) {
 			URL:      config.KVStore.URL,
 			API:      config.KVStore.API,
 		},
-		Cluster: cluster,
-		Replay:  config.KVStore.Replay,
-		Join:    config.KVStore.Join,
+		Channels: channels.NewCluster(),
+		Cluster:  cluster,
+		Replay:   config.KVStore.Replay,
+		Join:     config.KVStore.Join,
 	}, nil
 }
