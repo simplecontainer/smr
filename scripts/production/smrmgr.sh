@@ -36,18 +36,18 @@ readonly SYSTEMD_UNIT_PATH="/etc/systemd/system/${SYSTEMD_UNIT_NAME}"
 # ============================================================================
 
 # Node configuration
-declare -g NODE_NAME=""
-declare -g DOMAIN=""
-declare -g IP_ADDRESS=""
-declare -g NODE_ARGS=""
-declare -g CLIENT_ARGS=""
-declare -g JOIN_CLUSTER="false"
-declare -g PEER_ADDRESS=""
-declare -g DOCKER_IMAGE=""
-declare -g DOCKER_TAG=""
-declare -g INSTALL_SERVICE="false"
-declare -g TOKEN=""
-declare -g ACTION=""
+declare -g NODE_NAME="${NODE_NAME:-}"
+declare -g DOMAIN="${DOMAIN:-}"
+declare -g IP_ADDRESS="${IP_ADDRESS:-}"
+declare -g NODE_ARGS="${NODE_ARGS:-}"
+declare -g CLIENT_ARGS="${CLIENT_ARGS:-}"
+declare -g JOIN_CLUSTER="${JOIN_CLUSTER:-false}"
+declare -g PEER_ADDRESS="${PEER_ADDRESS:-}"
+declare -g DOCKER_IMAGE="${DOCKER_IMAGE:-}"
+declare -g DOCKER_TAG="${DOCKER_TAG:-}"
+declare -g INSTALL_SERVICE="${INSTALL_SERVICE:-false}"
+declare -g TOKEN="${TOKEN:-}"
+declare -g ACTION="${ACTION:-}"
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -162,19 +162,6 @@ initialize_defaults() {
 }
 
 parse_arguments() {
-    # Initialize from environment variables first (as defaults)
-    NODE_NAME="${NODE_NAME:-}"
-    DOMAIN="${DOMAIN:-}"
-    IP_ADDRESS="${IP_ADDRESS:-}"
-    CLIENT_ARGS="${CLIENT_ARGS:-}"
-    DOCKER_IMAGE="${DOCKER_IMAGE:-}"
-    DOCKER_TAG="${DOCKER_TAG:-}"
-    JOIN_CLUSTER="${JOIN_CLUSTER:-false}"
-    PEER_ADDRESS="${PEER_ADDRESS:-}"
-    INSTALL_SERVICE="${INSTALL_SERVICE:-false}"
-    TOKEN="${TOKEN:-}"
-    ACTION="${ACTION:-}"
-
     local OPTIND
     while getopts "n:d:a:c:i:t:jp:sT:A:h" option; do
         case $option in
@@ -202,15 +189,12 @@ validate_configuration() {
     [[ -n "$DOCKER_IMAGE" ]] || die "Docker image is required"
     [[ -n "$DOCKER_TAG" ]] || die "Docker tag is required"
 
-    # Validate domain format
     validate_input "$DOMAIN" '^[a-zA-Z0-9.-]+$' "domain"
 
-    # Validate IP address if provided
     if [[ -n "$IP_ADDRESS" ]]; then
         validate_input "$IP_ADDRESS" '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' "IP address"
     fi
 
-    # Validate join configuration
     if [[ "$JOIN_CLUSTER" == "true" && -z "$PEER_ADDRESS" ]]; then
         die "Peer address is required when joining a cluster"
     fi
@@ -407,9 +391,6 @@ install_systemd_service() {
 }
 
 service_start() {
-    # Parse arguments to get TOKEN and ACTION for first-time startup
-    parse_arguments "$@"
-
     log_info "Starting systemd service..."
 
     load_environment || die "Failed to load environment"
@@ -586,7 +567,8 @@ cmd_service_install() {
 }
 
 cmd_service_start() {
-    service_start
+  parse_arguments "$@"
+  service_start
 }
 
 cmd_service_stop() {
