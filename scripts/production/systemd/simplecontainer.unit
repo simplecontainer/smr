@@ -10,7 +10,7 @@ Group=docker
 Environment=HOME=/home/%i
 PassEnvironment=TOKEN ACTION
 WorkingDirectory=/home/%i
-ExecStart=/usr/local/bin/smrmgr service-start
+ExecStart=/bin/bash -c 'exec /usr/local/bin/smrmgr service-start ${TOKEN:+-T "$TOKEN"} ${ACTION:+-A "$ACTION"}'
 ExecStop=/usr/local/bin/smrmgr service-stop
 Restart=on-failure
 TimeoutStartSec=60

@@ -16,7 +16,7 @@ readonly SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_VERSION="2.0.0"
 
 # Default configuration
-readonly DEFAULT_REGISTRY="http://localhost:8000"
+readonly DEFAULT_REGISTRY="http://api.simplecontainer.io"
 readonly DEFAULT_IMAGE="quay.io/simplecontainer/smr"
 readonly DEFAULT_NODE_NAME="simplecontainer-node-1"
 readonly DEFAULT_DOMAIN="localhost"
