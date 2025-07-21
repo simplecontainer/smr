@@ -162,6 +162,19 @@ initialize_defaults() {
 }
 
 parse_arguments() {
+    # Initialize from environment variables first (as defaults)
+    NODE_NAME="${NODE_NAME:-}"
+    DOMAIN="${DOMAIN:-}"
+    IP_ADDRESS="${IP_ADDRESS:-}"
+    CLIENT_ARGS="${CLIENT_ARGS:-}"
+    DOCKER_IMAGE="${DOCKER_IMAGE:-}"
+    DOCKER_TAG="${DOCKER_TAG:-}"
+    JOIN_CLUSTER="${JOIN_CLUSTER:-false}"
+    PEER_ADDRESS="${PEER_ADDRESS:-}"
+    INSTALL_SERVICE="${INSTALL_SERVICE:-false}"
+    TOKEN="${TOKEN:-}"
+    ACTION="${ACTION:-}"
+
     local OPTIND
     while getopts "n:d:a:c:i:t:jp:sT:A:h" option; do
         case $option in
