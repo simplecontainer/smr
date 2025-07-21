@@ -97,13 +97,13 @@ func (replication *Replication) HandleObject(format iformat.Format, data KV.KV) 
 
 	switch action {
 	case static.STATE_KIND:
-		helpers.LogIfError(request.AttemptState(replication.Client.Http, replication.Client.API))
+		helpers.LogIfError(request.AttemptState(replication.Client.Http, "https://localhost:1443"))
 		break
 	case static.REMOVE_KIND:
-		helpers.LogIfError(request.AttemptRemove(replication.Client.Http, replication.Client.API))
+		helpers.LogIfError(request.AttemptRemove(replication.Client.Http, "https://localhost:1443"))
 		break
 	default:
-		helpers.LogIfError(request.AttemptApply(replication.Client.Http, replication.Client.API))
+		helpers.LogIfError(request.AttemptApply(replication.Client.Http, "https://localhost:1443"))
 		break
 	}
 }

@@ -417,7 +417,7 @@ service_start() {
                 start_node
                 wait_for_cluster_ready
 
-                smrctl context import --y $(smr agent export --node "$NODE_NAME" --api "$DOMAIN:1443") || \
+                smrctl context import --y $(smr agent export --node "$NODE_NAME") || \
                     log_error "Failed to import context"
 
                 smrctl context export active --upload --token $TOKEN --api "$DOMAIN:1443" --registry "$DEFAULT_REGISTRY" || \
@@ -427,7 +427,7 @@ service_start() {
                 start_node
                 wait_for_cluster_ready
 
-                smrctl context import --y $(smr agent export --node "$NODE_NAME" --api "$DOMAIN:1443") || \
+                smrctl context import --y $(smr agent export --node "$NODE_NAME") || \
                     log_error "Failed to import context"
 
                 smrctl context export active --upload --token $TOKEN --api "$DOMAIN:1443" --registry "$DEFAULT_REGISTRY" || \
