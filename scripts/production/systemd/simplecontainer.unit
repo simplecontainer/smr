@@ -8,6 +8,8 @@ Type=simple
 User=%i
 Group=docker
 Environment=HOME=/home/%i
+Environment=TOKEN
+Environment=ACTION
 WorkingDirectory=/home/%i
 ExecStart=/usr/local/bin/smrmgr service-start
 ExecStop=/usr/local/bin/smrmgr service-stop
