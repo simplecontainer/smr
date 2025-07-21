@@ -132,7 +132,12 @@ func cmdContextExportActive(api iapi.Api, cli *client.Client, args []string) {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	encrypted, key, err := cli.Manager.ExportContext(name, c.APIURL)
+	APIURL := c.APIURL
+	if viper.GetString("api") != "" {
+		APIURL = viper.GetString("api")
+	}
+
+	encrypted, key, err := cli.Manager.ExportContext(name, APIURL)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -151,7 +156,7 @@ func cmdContextExportActive(api iapi.Api, cli *client.Client, args []string) {
 }
 
 func cmdContextExportActiveFlags(cmd *cobra.Command) {
-	cmd.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
+	cmd.Flags().String("api", "", "Public/private facing endpoint for control plane. eg example.com:1443")
 	cmd.Flags().String("registry", "https://app.simplecontainer.io", "Registry for context sharing")
 	cmd.Flags().String("token", "", "Token for authentication and authorization")
 	cmd.Flags().Bool("upload", false, "Upload context export on the specified registry")
