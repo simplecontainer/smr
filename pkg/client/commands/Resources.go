@@ -43,7 +43,7 @@ func cmdApply(api iapi.Api, cli *client.Client, args []string) {
 
 	if len(pack.Definitions) != 0 {
 		for _, definition := range pack.Definitions {
-			err = definition.Definition.ProposeApply(cli.Context.GetClient(), cli.Context.APIURL)
+			err = definition.Definition.ProposeApply(cli.Context.GetHTTPClient(), cli.Context.APIURL)
 			if err != nil {
 				helpers.PrintAndExit(err, 1)
 			}
@@ -63,7 +63,7 @@ func cmdRemove(api iapi.Api, cli *client.Client, args []string) {
 
 	if len(pack.Definitions) != 0 {
 		for _, definition := range pack.Definitions {
-			err = definition.Definition.ProposeRemove(cli.Context.GetClient(), cli.Context.APIURL)
+			err = definition.Definition.ProposeRemove(cli.Context.GetHTTPClient(), cli.Context.APIURL)
 			if err != nil {
 				helpers.PrintAndExit(err, 1)
 			}

@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/network"
 	"net/http"
 )
 
-func Delete(context *client.ClientContext, prefix string, version string, category string, kind string, group string, name string) error {
-	response := network.Send(context.GetClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodGet, nil)
+func Delete(context *contexts.ClientContext, prefix string, version string, category string, kind string, group string, name string) error {
+	response := network.Send(context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodGet, nil)
 
 	object := json.RawMessage{}
 
@@ -34,7 +34,7 @@ func Delete(context *client.ClientContext, prefix string, version string, catego
 			return err
 		}
 
-		return request.ProposeRemove(context.GetClient(), context.APIURL)
+		return request.ProposeRemove(context.GetHTTPClient(), context.APIURL)
 	} else {
 		return errors.New(response.ErrorExplanation)
 	}

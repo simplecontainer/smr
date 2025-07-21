@@ -21,7 +21,7 @@ import (
 func (c *Client) Events(ctx context.Context, cancel context.CancelFunc, event string, identifier string, handle func(context.Context, context.CancelFunc, string, string, func() error, *websocket.Conn) error) error {
 	url := fmt.Sprintf("%s/events", c.Context.APIURL)
 
-	conn, cancelWSS, err := wss.Request(ctx, c.Context.GetClient(), nil, url)
+	conn, cancelWSS, err := wss.Request(ctx, c.Context.GetHTTPClient(), nil, url)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

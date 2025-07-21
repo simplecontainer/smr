@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/f"
@@ -118,8 +119,8 @@ func cmdRestart(api iapi.Api, cli *client.Client, args []string) {
 	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
 }
 
-func Event(context *client.ClientContext, prefix string, version string, category string, kind string, group string, name string, data []byte) {
-	response := network.Send(context.GetClient(), fmt.Sprintf("%s/api/v1/kind/propose/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodPost, data)
+func Event(context *contexts.ClientContext, prefix string, version string, category string, kind string, group string, name string, data []byte) {
+	response := network.Send(context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/kind/propose/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodPost, data)
 
 	if response.Success {
 		fmt.Println(response.Explanation)

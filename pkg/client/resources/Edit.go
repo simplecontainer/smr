@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/simplecontainer/smr/internal/helpers"
-	"github.com/simplecontainer/smr/pkg/client"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/network"
 	"net/http"
 )
 
-func Edit(context *client.ClientContext, prefix string, version string, category string, kind string, group string, name string) (json.RawMessage, error) {
-	response := network.Send(context.GetClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodGet, nil)
+func Edit(context *contexts.ClientContext, prefix string, version string, category string, kind string, group string, name string) (json.RawMessage, error) {
+	response := network.Send(context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodGet, nil)
 
 	object := json.RawMessage{}
 
@@ -41,7 +41,7 @@ func Edit(context *client.ClientContext, prefix string, version string, category
 	}
 
 	if changed {
-		err = request.ProposeApply(context.GetClient(), context.APIURL)
+		err = request.ProposeApply(context.GetHTTPClient(), context.APIURL)
 		return data, err
 	}
 

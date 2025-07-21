@@ -11,9 +11,11 @@ import (
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -31,7 +33,7 @@ func Context() {
 
 func cmdContext(api iapi.Api, cli *client.Client, args []string) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
-	activeCtx, err := client.LoadActive(client.DefaultConfig(environment.ClientDirectory))
+	activeCtx, err := contexts.LoadActive(contexts.DefaultConfig(environment.ClientDirectory))
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
@@ -42,15 +44,15 @@ func cmdContext(api iapi.Api, cli *client.Client, args []string) {
 
 func cmdContextSwitch(api iapi.Api, cli *client.Client, args []string) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
-	contexts, err := cli.Manager.ListContexts()
+	contextList, err := cli.Manager.ListContexts()
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
 
 	if len(args) > 0 {
-		var activeCtx *client.ClientContext
-		activeCtx, err = client.LoadByName(args[0], client.DefaultConfig(environment.ClientDirectory))
+		var activeCtx *contexts.ClientContext
+		activeCtx, err = contexts.LoadByName(args[0], contexts.DefaultConfig(environment.ClientDirectory))
 
 		if err != nil {
 			helpers.PrintAndExit(err, 1)
@@ -66,7 +68,7 @@ func cmdContextSwitch(api iapi.Api, cli *client.Client, args []string) {
 	} else {
 		prompt := promptui.Select{
 			Label: "Select a context",
-			Items: contexts,
+			Items: contextList,
 		}
 
 		var result string
@@ -207,6 +209,17 @@ func cmdContextImport(api iapi.Api, cli *client.Client, args []string) {
 			helpers.PrintAndExit(errors.New("imported context has no API URL"), 1)
 		}
 
+		if viper.GetString("name") == "" {
+			parsed, err := url.Parse(cli.Context.APIURL)
+			if err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+
+			cli.Context.Name = parsed.Hostname()
+		} else {
+			cli.Context.Name = viper.GetString("name")
+		}
+
 		connCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -229,5 +242,6 @@ func cmdContextImportFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 	cmd.Flags().String("registry", "https://app.simplecontainer.io", "Registry for context sharing")
 	cmd.Flags().String("token", "", "Token for authentication and authorization")
+	cmd.Flags().String("name", "", "Override context name")
 	cmd.Flags().Bool("download", false, "Download context export from the specified registry")
 }

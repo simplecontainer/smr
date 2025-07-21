@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/contracts/icommand"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -38,7 +39,7 @@ func Run(cli *client.Client, c *cobra.Command) {
 			Args:  cmd.GetArgs(),
 			PreRunE: func(c *cobra.Command, args []string) error {
 				var err error
-				cli.Context, err = client.LoadActive(client.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
+				cli.Context, err = contexts.LoadActive(contexts.DefaultConfig(configuration.NewEnvironment(configuration.WithHostConfig()).ClientDirectory))
 
 				if err != nil {
 					switch c.Name() {

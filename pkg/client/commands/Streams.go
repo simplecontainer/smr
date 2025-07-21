@@ -42,7 +42,7 @@ func cmdDebug(api iapi.Api, cli *client.Client, args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := network.Raw(ctx, cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
+	resp, err := network.Raw(ctx, cli.Context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/debug/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
@@ -77,7 +77,7 @@ func cmdLogs(api iapi.Api, cli *client.Client, args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := network.Raw(ctx, cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
+	resp, err := network.Raw(ctx, cli.Context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/logs/%s/%s/%s", cli.Context.APIURL, format.ToString(), viper.GetString("container"), strconv.FormatBool(viper.GetBool("follow"))), http.MethodGet, nil)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
@@ -135,7 +135,7 @@ func cmdExec(api iapi.Api, cli *client.Client, args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetClient(), requestHeaders, url)
+	conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetHTTPClient(), requestHeaders, url)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
