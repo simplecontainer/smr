@@ -156,7 +156,7 @@ func processSubnetEvent(ctx context.Context, cli *clientv3.Client, c *client.Cli
 	processedEvents[eventKey] = eventValue
 
 	response := network.Send(
-		c.Context.GetClient(),
+		c.Context.GetHTTPClient(),
 		fmt.Sprintf("%s/api/v1/key/propose/%s", c.Context.APIURL, event.Kv.Key),
 		http.MethodPost,
 		event.Kv.Value,
@@ -201,7 +201,7 @@ func createNetworkObject(c *client.Client, subnetKey []byte) error {
 		return errors.Wrap(err, "failed to parse network definition")
 	}
 
-	if err := req.ProposeApply(c.Context.GetClient(), c.Context.APIURL); err != nil {
+	if err := req.ProposeApply(c.Context.GetHTTPClient(), c.Context.APIURL); err != nil {
 		return errors.Wrap(err, "failed to apply network object")
 	}
 

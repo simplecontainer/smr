@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/contracts/icontrol"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/startup"
@@ -25,7 +26,7 @@ func Start(batch icontrol.Batch) {
 
 	cli := client.New(conf, environment.NodeDirectory)
 
-	cli.Context, err = client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
+	cli.Context, err = contexts.LoadActive(contexts.DefaultConfig(environment.NodeDirectory))
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
@@ -44,7 +45,7 @@ func Start(batch icontrol.Batch) {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	response := network.Send(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/cluster/start", fmt.Sprintf("https://localhost:%s", port)), http.MethodPost, data)
+	response := network.Send(cli.Context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/cluster/start", fmt.Sprintf("https://localhost:%s", port)), http.MethodPost, data)
 
 	if response.HttpStatus == http.StatusOK || response.ErrorExplanation == static.CLUSTER_STARTED {
 		if response.HttpStatus == http.StatusOK {

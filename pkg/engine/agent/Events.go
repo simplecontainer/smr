@@ -5,6 +5,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/startup"
 	"github.com/spf13/viper"
 )
@@ -18,7 +19,7 @@ func Events() {
 	}
 
 	cli := client.New(conf, environment.NodeDirectory)
-	cli.Context, err = client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
+	cli.Context, err = contexts.LoadActive(contexts.DefaultConfig(environment.NodeDirectory))
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)

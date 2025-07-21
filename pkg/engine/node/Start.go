@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/startup"
@@ -103,8 +104,8 @@ func SetupAccess() {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	var credentials *client.Credentials
-	credentials, err = client.BundleToCredentials(bundle)
+	var credentials *contexts.Credentials
+	credentials, err = contexts.BundleToCredentials(bundle)
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)

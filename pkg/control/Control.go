@@ -53,7 +53,7 @@ func (b *CommandBatch) Apply(ctx context.Context, cli *client.Client) (*irespons
 		return nil, err
 	}
 
-	response := network.Send(cli.Context.GetClient(), fmt.Sprintf("%s/api/v1/cluster/control", cli.Context.APIURL), http.MethodPost, bytes)
+	response := network.Send(cli.Context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/cluster/control", cli.Context.APIURL), http.MethodPost, bytes)
 
 	object := json.RawMessage{}
 

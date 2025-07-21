@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/contracts/icontrol"
 	"github.com/simplecontainer/smr/pkg/startup"
 )
@@ -19,7 +20,7 @@ func Batch(batch icontrol.Batch) {
 	}
 
 	cli := client.New(conf, environment.NodeDirectory)
-	cli.Context, err = client.LoadActive(client.DefaultConfig(environment.NodeDirectory))
+	cli.Context, err = contexts.LoadActive(contexts.DefaultConfig(environment.NodeDirectory))
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
