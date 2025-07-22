@@ -24,6 +24,14 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	gitopsWatcher.Logger.Info("reconcile", zap.String("gitops", gitopsObj.GetName()), zap.String("status", fmt.Sprintf("%v", gitopsObj.GetStatus().State)))
 
+	if !gitopsWatcher.Gitops.GetStatus().IsQueueEmpty() {
+		err := gitopsObj.GetStatus().TransitionToNext()
+		if err != nil {
+			gitopsWatcher.Logger.Error("failed to transition state", zap.Error(err))
+			return
+		}
+	}
+
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
 
 	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
@@ -74,6 +82,10 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 			} else {
 				gitopsWatcher.Ticker.Reset(5 * time.Second)
 			}
+		}
+
+		if !gitopsWatcher.Gitops.GetStatus().IsQueueEmpty() {
+			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 	}
 }

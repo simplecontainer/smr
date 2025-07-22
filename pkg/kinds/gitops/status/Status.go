@@ -2,13 +2,15 @@ package status
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hmdsefi/gograph"
 	"time"
 )
 
 func New() *Status {
 	s := &Status{
-		State:      &StatusState{},
+		State:      &StatusState{CREATED, CATEGORY_PRERUN},
+		StateQueue: make([]*StatusState, 0),
 		Pending:    NewPending(),
 		LastUpdate: time.Now(),
 	}
@@ -97,27 +99,132 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(invalidgit, pendingdelete)
 	status.StateMachine.AddEdge(pushingchanges, pendingdelete)
 	status.StateMachine.AddEdge(pushsuccess, pendingdelete)
-
 }
 
 func (status *Status) GetPending() *Pending {
 	return status.Pending
 }
 
-func (status *Status) SetState(state string) error {
+func (status *Status) QueueState(state string) error {
 	st, err := status.TypeFromString(state)
-
 	if err != nil {
 		return err
 	}
 
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
+	status.StateQueue = append(status.StateQueue, st)
+	return nil
+}
+
+// QueueStates adds multiple states to the queue (thread-safe)
+func (status *Status) QueueStates(states []string) error {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
+	for _, state := range states {
+		st, err := status.TypeFromString(state)
+		if err != nil {
+			return err
+		}
+		status.StateQueue = append(status.StateQueue, st)
+	}
+	return nil
+}
+
+// PopState removes and returns the first state from the queue (thread-safe)
+func (status *Status) PopState() (*StatusState, error) {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
+	if len(status.StateQueue) == 0 {
+		return nil, errors.New("queue is empty")
+	}
+
+	// Get the first state
+	state := status.StateQueue[0]
+
+	// Remove it from the queue
+	status.StateQueue = status.StateQueue[1:]
+
+	return state, nil
+}
+
+// PeekState returns the first state from the queue without removing it (thread-safe)
+func (status *Status) PeekState() (*StatusState, error) {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
+	if len(status.StateQueue) == 0 {
+		return nil, errors.New("queue is empty")
+	}
+	return status.StateQueue[0], nil
+}
+
+// GetQueueLength returns the current number of states in the queue (thread-safe)
+func (status *Status) GetQueueLength() int {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
+	return len(status.StateQueue)
+}
+
+func (status *Status) IsQueueEmpty() bool {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
+	return len(status.StateQueue) == 0
+}
+
+func (status *Status) ClearQueue() {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
+	status.StateQueue = status.StateQueue[:0]
+}
+
+func (status *Status) SetState(state string) error {
+	st, err := status.TypeFromString(state)
+	if err != nil {
+		return err
+	}
+
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
 	status.State = st
 	status.LastUpdate = time.Now()
+	return nil
+}
 
-	return errors.New("failed to set state")
+func (status *Status) TransitionToNext() error {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
+	if len(status.StateQueue) == 0 {
+		return errors.New("no states in queue to transition to")
+	}
+
+	nextState := status.StateQueue[0]
+
+	if !status.canTransitionToUnsafe(nextState.State) {
+		return errors.New(fmt.Sprintf("invalid transition from %s to %s", status.State.State, nextState.State))
+	}
+
+	status.StateQueue = status.StateQueue[1:]
+
+	status.State = nextState
+	status.Reconciling = false
+	status.LastUpdate = time.Now()
+
+	return nil
 }
 
 func (status *Status) TransitionState(group string, name string, destination string) bool {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
 	currentVertex := status.StateMachine.GetAllVerticesByID(status.State)
 
 	if len(currentVertex) > 0 {
@@ -129,6 +236,11 @@ func (status *Status) TransitionState(group string, name string, destination str
 				status.Reconciling = false
 				status.LastUpdate = time.Now()
 
+				// If the destination matches the next state in queue, pop it
+				if len(status.StateQueue) > 0 && status.StateQueue[0].State == destination {
+					status.StateQueue = status.StateQueue[1:] // Remove the state from queue since we've transitioned to it
+				}
+
 				return true
 			}
 		}
@@ -138,6 +250,33 @@ func (status *Status) TransitionState(group string, name string, destination str
 		}
 
 		return true
+	}
+
+	return false
+}
+
+func (status *Status) canTransitionTo(destination string) bool {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
+	return status.canTransitionToUnsafe(destination)
+}
+
+func (status *Status) canTransitionToUnsafe(destination string) bool {
+	if status.State.State == destination {
+		return true
+	}
+
+	currentVertex := status.StateMachine.GetAllVerticesByID(status.State)
+
+	if len(currentVertex) > 0 {
+		edges := status.StateMachine.EdgesOf(currentVertex[0])
+
+		for _, edge := range edges {
+			if edge.Destination().Label().State == destination {
+				return true
+			}
+		}
 	}
 
 	return false
@@ -156,13 +295,48 @@ func (status *Status) TypeFromString(state string) (*StatusState, error) {
 }
 
 func (status *Status) GetState() string {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
 	return status.State.State
 }
 
 func (status *Status) GetCategory() int8 {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
 	return status.State.category
 }
 
 func (status *Status) IfStateIs(state string) bool {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
 	return status.State.State == state
+}
+
+func (status *Status) GetStateSnapshot() StatusState {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
+	return StatusState{
+		State:    status.State.State,
+		category: status.State.category,
+	}
+}
+
+func (status *Status) GetQueueSnapshot() []*StatusState {
+	status.mu.RLock()
+	defer status.mu.RUnlock()
+
+	// Create a deep copy of the queue
+	snapshot := make([]*StatusState, len(status.StateQueue))
+	for i, state := range status.StateQueue {
+		snapshot[i] = &StatusState{
+			State:    state.State,
+			category: state.category,
+		}
+	}
+
+	return snapshot
 }

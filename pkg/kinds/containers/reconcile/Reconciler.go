@@ -20,6 +20,14 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 	cs := GetState(containerWatcher)
 
+	if !containerObj.GetStatus().IsQueueEmpty() {
+		err := containerObj.GetStatus().TransitionToNext()
+		if err != nil {
+			containerWatcher.Logger.Error("failed to transition state", zap.Error(err))
+			return
+		}
+	}
+
 	existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 	newState, reconcile := Reconcile(shared, containerWatcher, existing, cs.State, cs.Error)
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# SMR Manager - Modular management script for simplecontainer
-# Author: Your Name
-# Version: 2.0.0
+# Smrmgr - management script for simplecontainer
+# Author: Adnan Selimovic (adnn.selimovic@gmail.com)
+# Version: 0.0.1
 #
 
 set -euo pipefail
@@ -355,8 +355,8 @@ show_cluster_info() {
         echo "Action:               $ACTION"
     fi
 
-    echo "SMR version:          $(smr version 2>/dev/null || echo 'not available')"
-    echo "SMRCTL version:       $(smrctl version 2>/dev/null || echo 'not available')"
+    echo "smr version:          $(smr version 2>/dev/null || echo 'not available')"
+    echo "smrctl version:       $(smrctl version 2>/dev/null || echo 'not available')"
     echo "================================================================================================"
     echo
     echo "Log files:"

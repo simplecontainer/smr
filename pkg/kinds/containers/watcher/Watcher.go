@@ -31,7 +31,7 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 
 	loggerObj := logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{path}, []string{path})
 
-	containerObj.GetStatus().SetState(startState)
+	containerObj.GetStatus().QueueState(startState)
 
 	watcher := &Container{
 		Container:           containerObj,

@@ -86,7 +86,7 @@ var defaultSnapshotCount uint64 = 10000
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func NewRaftNode(keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, getSnapshot func() ([]byte, error), channels *channels.Cluster) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
+func NewRaftNode(keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, replay bool, getSnapshot func() ([]byte, error), channels *channels.Cluster) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *Commit)
 	errorC := make(chan error)
 
@@ -99,6 +99,7 @@ func NewRaftNode(keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.
 		id:          int(id),
 		Peers:       peers,
 		join:        join,
+		isRestart:   replay,
 		waldir:      fmt.Sprintf("/home/node/persistent/smr-%d", id),
 		snapdir:     fmt.Sprintf("/home/node/persistent/smr-%d-snap", id),
 		getSnapshot: getSnapshot,
@@ -335,7 +336,6 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	}
 
 	if oldwal || rc.join {
-		rc.isRestart = true
 		rc.node = raft.RestartNode(c)
 	} else {
 		rc.node = raft.StartNode(c, rpeers)

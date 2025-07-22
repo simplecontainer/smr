@@ -80,7 +80,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 			existingWatcher.Gitops = gitopsObj
 			gitops.Shared.Registry.AddOrUpdate(gitopsObj.GetGroup(), gitopsObj.GetName(), gitopsObj)
 
-			existingWatcher.Gitops.GetStatus().SetState(status.CREATED)
+			existingWatcher.Gitops.GetStatus().QueueState(status.CREATED)
 			existingWatcher.GitopsQueue <- gitopsObj
 		}
 	} else {
@@ -93,7 +93,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 		w := watcher.New(gitopsObj, gitops.Shared.Manager, user)
 
 		w.Logger.Info("new gitops object created")
-		w.Gitops.GetStatus().SetState(status.CREATED)
+		w.Gitops.GetStatus().QueueState(status.CREATED)
 
 		gitops.Shared.Registry.AddOrUpdate(w.Gitops.GetGroup(), w.Gitops.GetName(), w.Gitops)
 		gitops.Shared.Watchers.AddOrUpdate(GroupIdentifier, w)
@@ -143,7 +143,7 @@ func (gitops *Gitops) Delete(user *authentication.User, definition []byte, agent
 		gitopsWatcher := gitops.Shared.Watchers.Find(gitopsObj.GetGroupIdentifier())
 
 		if gitopsWatcher != nil {
-			gitopsObj.GetStatus().TransitionState(gitopsWatcher.Gitops.GetGroup(), gitopsWatcher.Gitops.GetName(), status.DELETE)
+			gitopsObj.GetStatus().QueueState(status.DELETE)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 
 			return common.Response(http.StatusOK, static.RESPONSE_DELETED, nil, nil), nil
@@ -177,7 +177,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			}
 
 			gitopsObj.GetQueue().Insert(commit)
-			gitopsObj.GetStatus().SetState(status.COMMIT_GIT)
+			gitopsObj.GetStatus().QueueState(status.COMMIT_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
@@ -196,7 +196,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			}
 
 			gitopsObj.SetForceClone(true)
-			gitopsObj.GetStatus().SetState(status.CREATED)
+			gitopsObj.GetStatus().QueueState(status.CREATED)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
@@ -215,7 +215,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 			}
 
 			gitopsObj.SetForceSync(true)
-			gitopsObj.GetStatus().SetState(status.CLONING_GIT)
+			gitopsObj.GetStatus().QueueState(status.CLONING_GIT)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break
@@ -233,7 +233,7 @@ func (gitops *Gitops) Event(event ievents.Event) error {
 				return nil
 			}
 
-			gitopsObj.GetStatus().SetState(status.INSPECTING)
+			gitopsObj.GetStatus().QueueState(status.INSPECTING)
 			gitopsWatcher.GitopsQueue <- gitopsObj
 		}
 		break

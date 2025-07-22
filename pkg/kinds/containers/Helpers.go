@@ -48,7 +48,7 @@ func (containers *Containers) Update(cs []platforms.IContainer, exists bool) {
 			if existingContainer != nil {
 				existingWatcher.Ticker.Stop()
 
-				containerObj.GetStatus().SetState(status.CREATED)
+				containerObj.GetStatus().QueueState(status.CREATED)
 				containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
 				existingWatcher.Container = containerObj

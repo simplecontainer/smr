@@ -3,11 +3,13 @@ package status
 import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/hmdsefi/gograph"
+	"sync"
 	"time"
 )
 
 type Status struct {
 	State            *StatusState                `json:"state"`
+	StateQueue       []*StatusState              `json:"state_queue"` // Queue of pending states
 	Pending          *Pending                    `json:"pending"`
 	StateMachine     gograph.Graph[*StatusState] `json:"-"`
 	Reconciling      bool
@@ -15,6 +17,7 @@ type Status struct {
 	InSync           bool
 	LastSyncedCommit plumbing.Hash
 	LastUpdate       time.Time
+	mu               sync.RWMutex `json:"-"` // Mutex for thread safety
 }
 
 type StatusState struct {

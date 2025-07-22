@@ -2,11 +2,13 @@ package status
 
 import (
 	"github.com/hmdsefi/gograph"
+	"sync"
 	"time"
 )
 
 type Status struct {
 	State                       *State   `json:"state"`
+	StateQueue                  []*State `json:"state_queue"`
 	Pending                     *Pending `json:"pending"`
 	LastReadiness               bool
 	LastReadinessTimestamp      time.Time
@@ -16,12 +18,13 @@ type Status struct {
 	LastDependsStartedTimestamp time.Time
 	StateMachine                gograph.Graph[*State] `json:"-"`
 	LastUpdate                  time.Time
+	mu                          sync.RWMutex `json:"-"` // Mutex for thread safety
 }
 
 type State struct {
-	State         string
-	PreviousState string
-	category      int8
+	State         string `json:"state"`
+	PreviousState string `json:"previous_state"`
+	category      int8   `json:"category"`
 }
 
 type Pending struct {

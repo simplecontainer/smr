@@ -165,7 +165,7 @@ func (containers *Containers) Event(event ievents.Event) error {
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				err := containerWatcher.Container.GetStatus().SetState(status.CHANGE)
+				err := containerWatcher.Container.GetStatus().QueueState(status.CHANGE)
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 					return err
@@ -187,7 +187,7 @@ func (containers *Containers) Event(event ievents.Event) error {
 		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
 
 		if !containerW.Done {
-			containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetGeneratedName(), status.RESTART)
+			containerObj.GetStatus().QueueState(status.RESTART)
 			containerW.ContainerQueue <- containerObj
 		}
 

@@ -81,6 +81,7 @@ func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster
 		n.NodeID,
 		cluster.Cluster,
 		join,
+		a.Cluster.Replay,
 		getSnapshot,
 		cluster.Channels,
 	)

@@ -177,12 +177,12 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 		cancel()
 
 		if err != nil {
-			logger.Log.Info("failed to resolve reference from etcd", zap.String("reference", actualKey), zap.Error(err))
+			logger.Log.Debug("failed to resolve reference from etcd", zap.String("reference", actualKey), zap.Error(err))
 			continue
 		}
 
 		if len(resp.Kvs) == 0 {
-			logger.Log.Info("reference not found in etcd", zap.String("reference", actualKey))
+			logger.Log.Debug("reference not found in etcd", zap.String("reference", actualKey))
 			continue
 		}
 
@@ -196,6 +196,7 @@ func (s *KVStore) recoverFromSnapshot(snapshot []byte) error {
 			Replay: true,
 		}
 
+		logger.Log.Debug("reference recovered from the etcd", zap.String("reference", actualKey))
 		s.Restore = append(s.Restore, value)
 	}
 
