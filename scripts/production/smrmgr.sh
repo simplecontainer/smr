@@ -456,7 +456,7 @@ service_start() {
     fi
 
     log_info "Service started successfully - now listening events and outputting in journal!"
-    smr agent events || log_error "Failed to show agent events"
+    smr agent events --node $NODE_NAME || log_error "Failed to show agent events"
 }
 
 service_stop() {
