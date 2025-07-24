@@ -74,13 +74,16 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 				}
 
 				containerWatcher = nil
-				lock = nil
 			})
 
 			return
 
 		case <-containerWatcher.ContainerQueue:
 			workerQueue.Submit(queue.WorkTypeNormal, queue.PriorityNormal, func() {
+				if lock == nil || containerWatcher == nil {
+					return
+				}
+
 				lock.Lock()
 				defer lock.Unlock()
 				Containers(shared, containerWatcher)
@@ -88,6 +91,10 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 
 		case <-containerWatcher.Ticker.C:
 			workerQueue.Submit(queue.WorkTypeTicker, queue.PriorityTicker, func() {
+				if lock == nil || containerWatcher == nil {
+					return
+				}
+
 				containerWatcher.Ticker.Stop()
 				lock.Lock()
 				defer lock.Unlock()
@@ -100,6 +107,10 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 		case <-containerWatcher.DeleteC:
 			if pauseHandler(containerWatcher) == nil {
 				workerQueue.Submit(queue.WorkTypeDelete, queue.PriorityDelete, func() {
+					if lock == nil || containerWatcher == nil {
+						return
+					}
+
 					containerWatcher.ReconcileCancel()
 
 					lock.Lock()

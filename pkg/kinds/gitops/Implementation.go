@@ -38,7 +38,7 @@ func (gitops *Gitops) Apply(user *authentication.User, definition []byte, agent 
 
 	obj, err := request.Apply(gitops.Shared.Client, user)
 
-	if request.Definition.GetState() != nil || !request.Definition.GetState().GetOpt("replay").IsEmpty() {
+	if request.Definition.GetState() != nil && !request.Definition.GetState().GetOpt("replay").IsEmpty() {
 		request.Definition.GetState().ClearOpt("replay")
 	} else {
 		if !obj.ChangeDetected() {

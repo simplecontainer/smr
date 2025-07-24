@@ -66,7 +66,7 @@ func (containers *Containers) Apply(user *authentication.User, definition []byte
 
 	obj, err := request.Apply(containers.Shared.Client, user)
 
-	if request.Definition.GetState() != nil || !request.Definition.GetState().GetOpt("replay").IsEmpty() {
+	if request.Definition.GetState() != nil && !request.Definition.GetState().GetOpt("replay").IsEmpty() {
 		request.Definition.GetState().ClearOpt("replay")
 	} else {
 		if !obj.ChangeDetected() {

@@ -89,12 +89,17 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 				}, shared, gitopsWatcher.Gitops.GetDefinition().GetRuntime().GetNode())
 
 				gitopsWatcher = nil
+				lock = nil
 			})
 
 			return
 
 		case <-gitopsWatcher.GitopsQueue:
 			workerQueue.Submit(queue.WorkTypeNormal, queue.PriorityNormal, func() {
+				if lock == nil || gitopsWatcher == nil {
+					return
+				}
+
 				lock.Lock()
 				defer lock.Unlock()
 				Gitops(shared, gitopsWatcher)
@@ -102,6 +107,10 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 
 		case <-gitopsWatcher.Ticker.C:
 			workerQueue.Submit(queue.WorkTypeTicker, queue.PriorityTicker, func() {
+				if lock == nil || gitopsWatcher == nil {
+					return
+				}
+
 				gitopsWatcher.Ticker.Stop()
 				lock.Lock()
 				defer lock.Unlock()
@@ -113,7 +122,10 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 
 		case <-gitopsWatcher.Poller.C:
 			workerQueue.Submit(queue.WorkTypeTicker, queue.PriorityTicker, func() {
-				// No lock needed for these operations as they're atomic
+				if lock == nil || gitopsWatcher == nil {
+					return
+				}
+
 				gitopsWatcher.Gitops.SetForceClone(true)
 				gitopsWatcher.Ticker.Reset(5 * time.Second)
 			})
