@@ -12,6 +12,7 @@ Simplecontainer is a container orchestration platform that transforms Docker dae
 ### Key Features
 
 - **GitOps Deployment**: Deploy containers using Git repositories as the source of truth
+- **Bidirectional GitOps Controller**: Gitops controller enables interface for applying patches to the git
 - **Overlay Networking**: Secure container communication using Flannel with WireGuard encryption
 - **Multi-Node Clustering**: Scale across multiple Docker daemons with RAFT consensus
 - **Dependency Management**: Reliable container startup ordering with readiness probes
