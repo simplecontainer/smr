@@ -1,14 +1,12 @@
 package template
 
 import (
-	"encoding/base64"
 	"errors"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"strings"
-	"text/template"
 )
 
 func Parse(name string, value string, client *clients.Http, user *authentication.User, runtime *smaps.Smap, depth int) (string, []f.Format, error) {
@@ -23,26 +21,13 @@ func Parse(name string, value string, client *clients.Http, user *authentication
 		})
 	}
 
-	t := New(name, value, variables, template.FuncMap{
-		"fqdn": func(name string) (string, error) {
-			return FQDN(name), nil
-		},
-		"lookup": func(placeholder string) (string, error) {
-			return Lookup(placeholder, client, user, runtime, dependencies, depth)
-		},
-		"base64decode": func(input string) (string, error) {
-			decoded, err := base64.StdEncoding.DecodeString(input)
-
-			if err != nil {
-				return input, err
-			}
-
-			return string(decoded), nil
-		},
-		"base64encode": func(input string) string {
-			return base64.StdEncoding.EncodeToString([]byte(input))
-		},
+	fm := NewFunctionManager()
+	// Add your specific functions that need to talk to the state
+	fm.AddFunction("lookup", func(placeholder string) (string, error) {
+		return Lookup(placeholder, client, user, runtime, dependencies, depth)
 	})
+
+	t := New(name, value, variables, fm.FuncMap())
 
 	parsed, err := t.Parse("((", "))")
 

@@ -15,7 +15,7 @@ func New(name string, tmpl string, values Variables, functions template.FuncMap)
 }
 
 func (tmpl Template) Parse(left string, right string) (string, error) {
-	t, err := template.New(tmpl.Name).Funcs(tmpl.Functions).Delims(left, right).Parse(tmpl.Templated)
+	t, err := template.New(tmpl.Name).Funcs(tmpl.Functions).Option("missingkey=error").Delims(left, right).Parse(tmpl.Templated)
 
 	if err != nil {
 		return tmpl.Templated, err

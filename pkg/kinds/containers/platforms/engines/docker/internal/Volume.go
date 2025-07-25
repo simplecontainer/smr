@@ -23,6 +23,7 @@ type Volume struct {
 	ReadOnly      bool
 	SubPath       string
 	Prepared      bool
+	Permissions   *v1.FileInfo
 }
 
 func NewVolumes(name string, volumes []v1.ContainersVolume) (*Volumes, error) {
@@ -50,6 +51,7 @@ func NewVolume(name string, volume v1.ContainersVolume) *Volume {
 		Name:          volume.Name,
 		HostPath:      volume.HostPath,
 		MountPoint:    volume.MountPoint,
+		Permissions:   volume.Permissions,
 	}
 }
 

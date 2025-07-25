@@ -99,18 +99,26 @@ type ContainersPort struct {
 }
 
 type ContainersVolume struct {
-	Name       string `json:"name"`
-	Type       string `json:"type"`
-	HostPath   string `json:"hostPath"`
-	MountPoint string `json:"mountPoint"`
-	SubPath    string `json:"subPath" default:"/"`
+	Name        string    `json:"name"`
+	Type        string    `json:"type"`
+	HostPath    string    `json:"hostPath"`
+	MountPoint  string    `json:"mountPoint"`
+	SubPath     string    `json:"subPath" default:"/"`
+	Permissions *FileInfo `json:"fileInfo"`
 }
 
 type ContainersResource struct {
-	Name       string
-	Group      string
-	Key        string
-	MountPoint string
+	Name        string
+	Group       string
+	Key         string
+	MountPoint  string
+	Permissions *FileInfo
+}
+
+type FileInfo struct {
+	Owner       *int    `json:"owner"`
+	Group       *int    `json:"group"`
+	Permissions *uint32 `json:"permissions"`
 }
 
 type ContainersConfigurations struct {

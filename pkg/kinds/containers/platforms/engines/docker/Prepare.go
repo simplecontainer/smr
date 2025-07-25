@@ -158,9 +158,10 @@ func (container *Docker) PrepareResources(client *clients.Http, user *authentica
 		}
 
 		err = container.Volumes.Add(container.GetGeneratedName(), v1.ContainersVolume{
-			Type:       "resource",
-			HostPath:   tmpFile.Name(),
-			MountPoint: v.Reference.MountPoint,
+			Type:        "resource",
+			HostPath:    tmpFile.Name(),
+			MountPoint:  v.Reference.MountPoint,
+			Permissions: v.Reference.Permissions,
 		})
 
 		if err != nil {

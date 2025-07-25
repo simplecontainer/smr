@@ -12,7 +12,6 @@ import (
 	TDVolume "github.com/docker/docker/api/types/volume"
 	IDClient "github.com/docker/docker/client"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/mholt/archives"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -643,33 +642,20 @@ func (container *Docker) MountResources() error {
 	defer cancel()
 
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
-
 	if err != nil {
 		return err
 	}
 
-	var files []archives.FileInfo
-
-	format := archives.CompressedArchive{
-		Compression: archives.Gz{},
-		Archival:    archives.Tar{},
-	}
-
 	for _, vol := range container.Volumes.Volumes {
 		if vol.Type == "resource" {
-			files, err = archives.FilesFromDisk(ctx, nil, map[string]string{
-				vol.HostPath: vol.MountPoint,
-			})
-
 			var buf bytes.Buffer
-			err = format.Archive(ctx, &buf, files)
 
+			err = container.archive(&buf, vol.HostPath, vol.MountPoint, vol.Permissions)
 			if err != nil {
 				return err
 			}
 
 			err = cli.CopyToContainer(ctx, container.DockerID, "/", &buf, TDContainer.CopyToContainerOptions{})
-
 			if err != nil {
 				return err
 			}

@@ -88,7 +88,7 @@ func ParseYAML(name string, yamlBytes []byte, variablesBytes []byte, set []strin
 
 	var parsed string = string(yamlBytes)
 	if len(values) > 0 {
-		tmpl := template.New(name, string(yamlBytes), template.Variables{Values: values}, nil)
+		tmpl := template.New(name, string(yamlBytes), template.Variables{Values: values}, template.NewFunctionManager().FuncMap())
 		var err error
 		parsed, err = tmpl.Parse("{{", "}}")
 		if err != nil {
