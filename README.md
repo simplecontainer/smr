@@ -1,4 +1,5 @@
 # Simplecontainer
+[![Go Report Card](https://goreportcard.com/badge/github.com/simplecontainer/smr)](https://goreportcard.com/report/github.com/simplecontainer/smr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10512/badge)](https://www.bestpractices.dev/projects/10512)
 
 ![Simplecontainer GitOps](.github/resources/simplecontainer-gitops-promo.png)
