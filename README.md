@@ -1,4 +1,5 @@
 # Simplecontainer
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10512/badge)](https://www.bestpractices.dev/projects/10512)
 
 ![Simplecontainer GitOps](.github/resources/simplecontainer-gitops-promo.png)
 
