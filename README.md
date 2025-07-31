@@ -4,8 +4,6 @@
 
 ![Simplecontainer GitOps](.github/resources/simplecontainer-gitops-promo.png)
 
-[![Quay Pulls](https://img.shields.io/badge/dynamic/json?color=blue&label=quay%20pulls&query=tags[0].manifest_data.downloads&url=https%3A%2F%2Fquay.io%2Fapi%2Fv1%2Frepository%2Fsimplecontainer%2Fsmr%2Ftag%2Flatest)](https://quay.io/repository/simplecontainer/smr)
-
 > [!IMPORTANT]
 > This project is currently in **alpha** stage. Use with caution in production environments.
 
