@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"github.com/simplecontainer/smr/pkg/node"
+	"time"
 )
 
 type Configuration struct {
@@ -51,6 +52,7 @@ type Ports struct {
 	Control string
 	Overlay string
 	Etcd    string
+	Traefik string
 }
 
 type Certificates struct {
@@ -62,6 +64,28 @@ type IPs struct {
 }
 type Domains struct {
 	Members []string `yaml:"members"`
+}
+
+var Timeout = NewTimeouts()
+
+func NewTimeouts() *Timeouts {
+	return &Timeouts{
+		AcknowledgmentTimeout:     10 * time.Second,
+		ResourceDrainTimeout:      1800 * time.Second,
+		CompleteDrainTimeout:      360 * time.Second,
+		EtcdConnectionTimeout:     5 * time.Second,
+		NodeStartupTimeout:        60 * time.Second,
+		LeadershipTransferTimeout: 60 * time.Second,
+	}
+}
+
+type Timeouts struct {
+	AcknowledgmentTimeout     time.Duration `yaml:"acknowledgment_timeout"`
+	ResourceDrainTimeout      time.Duration `yaml:"resource_drain_timeout"`
+	CompleteDrainTimeout      time.Duration `yaml:"kind_drain_timeout"`
+	EtcdConnectionTimeout     time.Duration `yaml:"etcd_connection_timeout"`
+	NodeStartupTimeout        time.Duration `yaml:"node_startup_timeout"`
+	LeadershipTransferTimeout time.Duration `yaml:"leadership_transfer_timeout"`
 }
 
 type EtcdConfiguration struct {

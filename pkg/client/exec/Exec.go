@@ -65,6 +65,10 @@ func Read(ctx context.Context, conn *websocket.Conn) error {
 			var outBuf, errBuf bytes.Buffer
 			_, err = stdcopy.StdCopy(&outBuf, &errBuf, bytes.NewBuffer(msg))
 
+			if err != nil {
+				return err
+			}
+
 			if outBytes := outBuf.Bytes(); len(outBytes) > 0 {
 				if _, err := os.Stdout.Write(outBytes); err != nil {
 					return err

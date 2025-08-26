@@ -14,7 +14,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 	"os"
-	"time"
 )
 
 func Control(api iapi.Api) {
@@ -62,7 +61,7 @@ func Control(api iapi.Api) {
 
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{fmt.Sprintf("localhost:%s", conf.Ports.Etcd)},
-		DialTimeout: 5 * time.Second,
+		DialTimeout: configuration.Timeout.EtcdConnectionTimeout,
 	})
 
 	if err != nil {

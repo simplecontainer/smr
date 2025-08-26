@@ -656,7 +656,7 @@ func (rc *RaftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 }
 
 func (rc *RaftNode) serveRaft(keys *keys.Keys, tlsConfig *tls.Config) error {
-	logger.Log.Info(fmt.Sprintf("Starting raft listener at %s", rc.Peers.ToString()[rc.id-1]))
+	logger.Log.Info(fmt.Sprintf("starting raft listener at %s", rc.Peers.ToString()[rc.id-1]))
 
 	url, err := url.Parse(rc.Peers.ToString()[rc.id-1])
 	if err != nil {

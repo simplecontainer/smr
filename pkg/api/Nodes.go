@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/simplecontainer/smr/pkg/clients"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -180,10 +181,9 @@ func (a *Api) ListenNode() {
 					nodeID := n.NodeID
 
 					if nodeID != a.Cluster.Node.NodeID {
-						timeout := 5 * time.Second
 						ticker := time.NewTicker(500 * time.Millisecond)
 
-						timeoutChan := time.After(timeout)
+						timeoutChan := time.After(configuration.Timeout.EtcdConnectionTimeout)
 						pool := true
 
 						for pool {
@@ -222,7 +222,7 @@ func (a *Api) ListenNode() {
 							if a.Cluster.RaftNode.IsLeader.Load() {
 								logger.Log.Info(fmt.Sprintf("attempt to transfer leader role to %d", a.Cluster.Peers().Nodes[0].NodeID))
 
-								ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+								ctx, _ := context.WithTimeout(context.Background(), configuration.Timeout.LeadershipTransferTimeout)
 								a.Cluster.RaftNode.TransferLeadership(ctx, a.Cluster.Peers().Nodes[0].NodeID)
 
 								ticker := time.NewTicker(5 * time.Millisecond)

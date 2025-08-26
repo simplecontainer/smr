@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
 	"github.com/simplecontainer/smr/pkg/contracts/icontrol"
 	"github.com/simplecontainer/smr/pkg/control/generic"
@@ -37,7 +38,7 @@ func NewDrainCommand(options map[string]string) *Command {
 }
 
 func (c *Command) Node(api iapi.Api, params map[string]string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 160*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), configuration.Timeout.CompleteDrainTimeout)
 	defer cancel()
 
 	ticker := time.NewTicker(500 * time.Millisecond)
@@ -57,6 +58,20 @@ func (c *Command) Node(api iapi.Api, params map[string]string) error {
 
 	for _, value := range api.GetKindsRegistry() {
 		value.GetShared().Drain()
+
+		timeout := time.After(configuration.Timeout.ResourceDrainTimeout)
+		ticker := time.NewTicker(10 * time.Millisecond)
+
+		for !value.GetShared().IsDrained() {
+			select {
+			case <-timeout:
+				ticker.Stop()
+				return errors.New("timed out waiting for drain to complete for the kind")
+			case <-ticker.C:
+			}
+		}
+
+		ticker.Stop()
 	}
 
 	for {
@@ -72,7 +87,7 @@ func (c *Command) Node(api iapi.Api, params map[string]string) error {
 
 			events.Dispatch(event, api.GetKindsRegistry()[static.KIND_NODE].GetShared().(*nshared.Shared), api.GetCluster().Node.NodeID)
 
-			return errors.New("draining timeout exceeded 160 seconds, drain aborted - manual intervention needed")
+			return errors.New("draining timeout exceeded, drain aborted - restart will occur")
 
 		case <-ticker.C:
 			if isAllWatchersDrained(api) {

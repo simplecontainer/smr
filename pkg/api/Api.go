@@ -60,14 +60,14 @@ func (a *Api) SetupEtcd() {
 	case <-a.Server.Server.ReadyNotify():
 		a.Etcd, err = clientv3.New(clientv3.Config{
 			Endpoints:   []string{"localhost:2379"},
-			DialTimeout: 5 * time.Second,
+			DialTimeout: configuration.Timeout.EtcdConnectionTimeout,
 		})
 
 		if err != nil {
 			panic(err)
 		}
 		return
-	case <-time.After(60 * time.Second):
+	case <-time.After(configuration.Timeout.NodeStartupTimeout):
 		a.Server.Server.Stop()
 		panic("etcd server took too long to start!")
 	}

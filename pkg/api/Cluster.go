@@ -200,7 +200,6 @@ func (a *Api) StartCluster(c *gin.Context) {
 	a.SaveClusterConfiguration()
 
 	go a.ListenNode()
-
 	go events.Listen(a.Manager.KindsRegistry, a.Replication.EventsC, a.Replication.Informer, a.Wss)
 
 	err = flannel.Setup(c, a.Etcd, cmd.Data()["cidr"], cmd.Data()["backend"])

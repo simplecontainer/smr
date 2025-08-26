@@ -3,6 +3,7 @@ package exec
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -142,29 +143,52 @@ func input(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Con
 		}
 	}
 }
+
 func output(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Conn, reader *bufio.Reader) error {
+	buf := make([]byte, 4096)
+	frameBuf := make([]byte, 0)
+
 	for {
 		select {
 		case <-ctx.Done():
-			return websocketConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "context done"))
+			return websocketConn.WriteMessage(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, "context done"),
+			)
 		default:
-			buf := make([]byte, 4096)
-
 			n, err := reader.Read(buf)
-			if err != nil {
-				if err != io.EOF {
-					return websocketConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "eof"))
-				}
+			if n > 0 {
+				frameBuf = append(frameBuf, buf[:n]...)
 
-				return err
+				for {
+					if len(frameBuf) < 8 {
+						break
+					}
+
+					frameSize := binary.BigEndian.Uint32(frameBuf[4:8])
+					totalFrameLen := 8 + int(frameSize)
+
+					if len(frameBuf) < totalFrameLen {
+						break
+					}
+
+					frame := frameBuf[:totalFrameLen]
+					if err := websocketConn.WriteMessage(websocket.BinaryMessage, frame); err != nil {
+						return err
+					}
+
+					frameBuf = frameBuf[totalFrameLen:]
+				}
 			}
 
-			if n > 0 {
-				err = websocketConn.WriteMessage(websocket.BinaryMessage, buf[:n])
-
-				if err != nil {
-					return err
+			if err != nil {
+				if err == io.EOF {
+					return websocketConn.WriteMessage(
+						websocket.CloseMessage,
+						websocket.FormatCloseMessage(websocket.CloseNormalClosure, io.EOF.Error()),
+					)
 				}
+				return err
 			}
 		}
 	}

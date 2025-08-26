@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/smaps"
-	"time"
 )
 
 var ACKS = New()
 
 func New() *Acks {
-	return &Acks{Acks: smaps.New()}
+	return &Acks{
+		Acks:    smaps.New(),
+		Timeout: configuration.Timeout.AcknowledgmentTimeout,
+	}
 }
 
 func (acks *Acks) Ack(UUID uuid.UUID) error {
@@ -26,7 +29,7 @@ func (acks *Acks) Ack(UUID uuid.UUID) error {
 
 // Wait waits for acknowledgment for the given UUID or times out after a duration.
 func (acks *Acks) Wait(UUID uuid.UUID) error {
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), acks.Timeout)
 	defer cancel()
 
 	ackChan := make(chan bool)

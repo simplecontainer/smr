@@ -9,10 +9,12 @@ import (
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/f"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network/nameservers"
 	"github.com/simplecontainer/smr/pkg/objects"
 	"github.com/simplecontainer/smr/pkg/smaps"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"net"
 	"strings"
 	"sync"
@@ -156,6 +158,7 @@ func LookupLocal(records *Records, prefix string, q dns.Question) ([]dns.RR, int
 		for _, ip := range addresses {
 			rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ip))
 			if err != nil {
+				logger.Log.Error("failed to generate anwser", zap.String("q", q.Name), zap.Error(err))
 				return nil, dns.RcodeServerFailure, fmt.Errorf("failed to create RR: %v", err)
 			}
 

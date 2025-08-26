@@ -58,7 +58,7 @@ func (custom *CustomDefinition) SetState(state *commonv1.State) {
 }
 
 func (custom *CustomDefinition) GetKind() string {
-	return static.KIND_CERTKEY
+	return static.KIND_CUSTOM
 }
 
 func (custom *CustomDefinition) ResolveReferences(obj iobjects.ObjectInterface) ([]idefinitions.IDefinition, error) {
