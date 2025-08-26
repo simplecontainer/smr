@@ -165,14 +165,18 @@ func (containers *Containers) Event(event ievents.Event) error {
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				err := containerWatcher.Container.GetStatus().QueueState(status.CHANGE)
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-					return err
-				}
+				if !containerWatcher.Done {
+					err := containerWatcher.Container.GetStatus().QueueState(status.CHANGE)
+					if err != nil {
+						containerWatcher.Logger.Error(err.Error())
+						return err
+					}
 
-				containerWatcher.Logger.Info("responding to change")
-				containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
+					containerWatcher.Logger.Info("responding to change")
+					containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
+				} else {
+					containerWatcher.Logger.Info("ignoring response to the change since container is in delete state")
+				}
 			}
 		}
 
