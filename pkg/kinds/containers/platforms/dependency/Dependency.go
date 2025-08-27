@@ -44,8 +44,15 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 
 		err := backoff.Retry(dependency.Function, backOff)
 		if err != nil {
-			dependency.Cancel()
+			if ctx.Err() != nil {
+				channel <- &State{
+					State: CANCELED,
+					Error: errors.New("context canceled"),
+				}
+				return false, ctx.Err()
+			}
 
+			dependency.Cancel()
 			channel <- &State{
 				State: FAILED,
 				Error: err,
@@ -57,6 +64,11 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 
 	select {
 	case <-ctx.Done():
+		channel <- &State{
+			State: CANCELED,
+			Error: errors.New("context canceled"),
+		}
+
 		return false, ctx.Err() // avoid sending
 	case channel <- &State{
 		State: SUCCESS,

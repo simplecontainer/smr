@@ -19,7 +19,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 
 	if gitopsObj.Gitops.ForceClone {
 		gitopsObj.SetForceClone(false)
-		gitopsObj.GetStatus().SetState(status.CLONING_GIT)
+		gitopsObj.GetStatus().QueueState(status.CLONING_GIT)
 	}
 
 	gitopsWatcher.Logger.Info("reconcile", zap.String("gitops", gitopsObj.GetName()), zap.String("status", fmt.Sprintf("%v", gitopsObj.GetStatus().State)))

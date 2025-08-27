@@ -49,6 +49,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(cloned, syncing)
 	status.StateMachine.AddEdge(cloned, inspecting)
 	status.StateMachine.AddEdge(cloned, invaliddefinitions)
+	status.StateMachine.AddEdge(cloned, cloning)
 
 	status.StateMachine.AddEdge(inspecting, cloned)
 	status.StateMachine.AddEdge(inspecting, cloning)

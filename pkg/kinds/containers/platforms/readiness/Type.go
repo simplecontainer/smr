@@ -20,11 +20,13 @@ type Readiness struct {
 
 type ReadinessState struct {
 	State int8
+	Error error
 }
 
 const CHECKING = 0
 const SUCCESS = 1
 const FAILED = 2
+const CANCELED = 3
 
 const TYPE_URL = "url"
 const TYPE_COMMAND = "command"

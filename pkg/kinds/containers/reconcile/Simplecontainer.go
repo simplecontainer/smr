@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"reflect"
 	"time"
 
@@ -85,6 +86,7 @@ func handlePrepare(shared *shared.Shared, cw *watcher.Container, existing platfo
 		cw.Logger.Error(err.Error())
 		return status.PENDING, true
 	}
+
 	go func() {
 		_, err := dependency.Ready(cw.ReconcileCtx, shared.Registry, cw.Container.GetGroup(), cw.Container.GetGeneratedName(),
 			cw.Container.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, cw.DependencyChan)
@@ -92,6 +94,7 @@ func handlePrepare(shared *shared.Shared, cw *watcher.Container, existing platfo
 			cw.Logger.Error(err.Error())
 		}
 	}()
+
 	cw.Logger.Info("container prepared")
 	return status.DEPENDS_CHECKING, true
 }
@@ -119,6 +122,9 @@ func handleDependsChecking(shared *shared.Shared, cw *watcher.Container, existin
 			case dependency.FAILED:
 				cw.Logger.Info("dependency check failed")
 				return status.DEPENDS_FAILED, true
+			case dependency.CANCELED:
+				cw.Logger.Info("dependency check canceled")
+				return "", false
 			}
 		}
 	}
@@ -182,10 +188,10 @@ func handleReadinessChecking(shared *shared.Shared, cw *watcher.Container, exist
 
 			if state.State == "running" {
 				switch readinessResult.State {
-				case dependency.CHECKING:
+				case readiness.CHECKING:
 					cw.Logger.Info("checking readiness")
 					break
-				case dependency.SUCCESS:
+				case readiness.SUCCESS:
 					cw.Logger.Info("readiness check success")
 
 					// Add dns only when container is ready so no one can contact it earlier
@@ -200,9 +206,12 @@ func handleReadinessChecking(shared *shared.Shared, cw *watcher.Container, exist
 						cw.Logger.Info("container updated dns")
 						return status.READY, true
 					}
-				case dependency.FAILED:
+				case readiness.FAILED:
 					cw.Logger.Info("readiness check failed")
 					return status.READINESS_FAILED, true
+				case readiness.CANCELED:
+					cw.Logger.Info("readiness check canceled")
+					return "", false
 				}
 			} else {
 				return status.READINESS_FAILED, true

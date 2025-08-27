@@ -68,7 +68,6 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 		if newState == "" {
 			containerWatcher.Cancel()
-
 			return
 		}
 

@@ -165,7 +165,7 @@ func (containers *Containers) Event(event ievents.Event) error {
 	case events.EVENT_CHANGE:
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				if !containerWatcher.Done {
+				if containerWatcher.AllowPlatformEvents {
 					err := containerWatcher.Container.GetStatus().QueueState(status.CHANGE)
 					if err != nil {
 						containerWatcher.Logger.Error(err.Error())

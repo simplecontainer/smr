@@ -22,6 +22,7 @@ type State struct {
 const CHECKING = 0
 const SUCCESS = 1
 const FAILED = 2
+const CANCELED = 3
 
 type Result struct {
 	Data string
