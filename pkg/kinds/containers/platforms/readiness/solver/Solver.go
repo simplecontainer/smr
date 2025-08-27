@@ -41,6 +41,14 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 
 		err = backoff.Retry(r.Function, backOff)
 		if err != nil {
+			if ctx.Err() != nil {
+				channel <- &readiness.ReadinessState{
+					State: readiness.CANCELED,
+					Error: errors.New("context canceled"),
+				}
+				return false, ctx.Err()
+			}
+
 			channel <- &readiness.ReadinessState{
 				State: readiness.FAILED,
 			}
@@ -51,8 +59,14 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 
 	select {
 	case <-ctx.Done():
-		return false, ctx.Err() // avoid sending
-	case channel <- &readiness.ReadinessState{State: readiness.SUCCESS}:
+		channel <- &readiness.ReadinessState{
+			State: readiness.CANCELED,
+			Error: errors.New("context canceled"),
+		}
+
+		return false, ctx.Err()
+	default:
+		channel <- &readiness.ReadinessState{State: readiness.SUCCESS}
 	}
 
 	return true, nil

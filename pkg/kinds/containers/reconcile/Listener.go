@@ -26,6 +26,8 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 				lock.Lock()
 				defer lock.Unlock()
 
+				containerWatcher.Logger.Info("cleaning up container")
+
 				containerWatcher.Ticker.Stop()
 				containerWatcher.Done = true
 
@@ -73,21 +75,24 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 					}, shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode())
 				}
 
+				containerWatcher.Logger.Info("container cleaned up")
 				containerWatcher = nil
 			})
 
 			return
 
 		case <-containerWatcher.ContainerQueue:
-			workerQueue.Submit(queue.WorkTypeNormal, queue.PriorityNormal, func() {
-				if lock == nil || containerWatcher == nil {
-					return
-				}
+			if !containerWatcher.Done {
+				workerQueue.Submit(queue.WorkTypeNormal, queue.PriorityNormal, func() {
+					if lock == nil || containerWatcher == nil {
+						return
+					}
 
-				lock.Lock()
-				defer lock.Unlock()
-				Containers(shared, containerWatcher)
-			})
+					lock.Lock()
+					defer lock.Unlock()
+					Containers(shared, containerWatcher)
+				})
+			}
 
 		case <-containerWatcher.Ticker.C:
 			workerQueue.Submit(queue.WorkTypeTicker, queue.PriorityTicker, func() {
@@ -106,12 +111,13 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 
 		case <-containerWatcher.DeleteC:
 			if pauseHandler(containerWatcher) == nil {
+				containerWatcher.AllowPlatformEvents = false
+				containerWatcher.ReconcileCancel()
+
 				workerQueue.Submit(queue.WorkTypeDelete, queue.PriorityDelete, func() {
 					if lock == nil || containerWatcher == nil {
 						return
 					}
-
-					containerWatcher.ReconcileCancel()
 
 					lock.Lock()
 					defer lock.Unlock()
