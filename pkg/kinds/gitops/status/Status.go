@@ -88,6 +88,7 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(insync, inspecting)
 	status.StateMachine.AddEdge(insync, pushingchanges)
+	status.StateMachine.AddEdge(insync, cloning)
 
 	status.StateMachine.AddEdge(drifted, pendingdelete)
 	status.StateMachine.AddEdge(insync, pendingdelete)
