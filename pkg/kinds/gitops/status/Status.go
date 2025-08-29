@@ -257,6 +257,16 @@ func (status *Status) TransitionState(group string, name string, destination str
 	return false
 }
 
+func (status *Status) RejectTransition() bool {
+	if len(status.StateQueue) > 0 {
+		status.StateQueue = status.StateQueue[1:]
+		return true
+	} else {
+		status.StateQueue = []*StatusState{}
+		return false
+	}
+}
+
 func (status *Status) canTransitionTo(destination string) bool {
 	status.mu.RLock()
 	defer status.mu.RUnlock()

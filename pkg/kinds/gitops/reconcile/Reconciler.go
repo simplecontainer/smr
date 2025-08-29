@@ -28,19 +28,17 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 		err := gitopsObj.GetStatus().TransitionToNext()
 		if err != nil {
 			gitopsWatcher.Logger.Error("failed to transition state", zap.Error(err))
+
+			if gitopsObj.GetStatus().RejectTransition() {
+				gitopsWatcher.GitopsQueue <- gitopsObj
+			}
+
 			return
 		}
 	}
 
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
-
-	transitioned := gitopsObj.GetStatus().TransitionState(gitopsObj.GetGroup(), gitopsObj.GetName(), newState)
-
-	if !transitioned && newState != "" {
-		gitopsWatcher.Logger.Error("failed to transition state",
-			zap.String("old", gitopsObj.GetStatus().State.State),
-			zap.String("new", newState))
-	}
+	gitopsObj.GetStatus().QueueState(newState)
 
 	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
 
