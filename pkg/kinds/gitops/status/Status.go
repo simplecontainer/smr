@@ -88,6 +88,7 @@ func (status *Status) CreateGraph() {
 
 	status.StateMachine.AddEdge(insync, inspecting)
 	status.StateMachine.AddEdge(insync, pushingchanges)
+	status.StateMachine.AddEdge(insync, cloning)
 
 	status.StateMachine.AddEdge(drifted, pendingdelete)
 	status.StateMachine.AddEdge(insync, pendingdelete)
@@ -254,6 +255,16 @@ func (status *Status) TransitionState(group string, name string, destination str
 	}
 
 	return false
+}
+
+func (status *Status) RejectTransition() bool {
+	if len(status.StateQueue) > 0 {
+		status.StateQueue = status.StateQueue[1:]
+		return true
+	} else {
+		status.StateQueue = []*StatusState{}
+		return false
+	}
 }
 
 func (status *Status) canTransitionTo(destination string) bool {

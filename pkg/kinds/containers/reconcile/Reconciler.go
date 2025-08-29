@@ -36,13 +36,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		if containerObj.GetStatus().State.State != newState && newState != "" {
 			metrics.Containers.Get().DeletePartialMatch(prometheus.Labels{"container": containerObj.GetGeneratedName()})
 
-			transitioned := containerObj.GetStatus().TransitionState(containerObj.GetGroup(), containerObj.GetName(), newState)
-
-			if !transitioned {
-				containerWatcher.Logger.Error("failed to transition state",
-					zap.String("old", containerObj.GetStatus().State.State),
-					zap.String("new", newState))
-			}
+			containerObj.GetStatus().QueueState(newState)
 
 			metrics.Containers.Set(1, containerObj.GetGeneratedName(), newState)
 			metrics.ContainersHistory.Set(1, containerObj.GetGeneratedName(), newState)
