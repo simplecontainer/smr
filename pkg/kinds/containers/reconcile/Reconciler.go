@@ -37,11 +37,9 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 	nextState, reconcile := Reconcile(shared, containerWatcher, existing, cs.State, cs.Error)
 
-	if nextState != "" {
-		err = containerObj.GetStatus().QueueState(nextState)
-		if err != nil {
-			containerWatcher.Logger.Error("failed to queue state", zap.String("state", nextState), zap.Error(err))
-		}
+	err = containerObj.GetStatus().QueueState(nextState)
+	if err != nil {
+		containerWatcher.Logger.Error("failed to queue state", zap.Error(err))
 	}
 
 	// Do not touch container on this node since it is active on another node
