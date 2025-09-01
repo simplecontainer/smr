@@ -264,7 +264,8 @@ func handleDead(shared *shared.Shared, cw *watcher.Container, existing platforms
 }
 
 func handleDelete(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
-	cw.AllowPlatformEvents = false
+	cw.Done = true
+	cw.Cancel()
 	return "", false
 }
 

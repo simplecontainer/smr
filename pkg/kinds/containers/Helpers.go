@@ -24,6 +24,7 @@ func (containers *Containers) Create(cs []platforms.IContainer, exists bool, use
 			containers.Shared.Watchers.AddOrUpdate(groupIdentifier, w)
 			containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
+			containerObj.GetStatus().QueueState(status.CREATED)
 			w.Logger.Info("container object created")
 
 			go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
@@ -32,13 +33,11 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 		}
 
 		err := r.Reset()
-
 		if err != nil {
 			return false, errors.New("readiness reset failed")
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
-
 		err = backoff.Retry(r.Function, backOff)
 		if err != nil {
 			if ctx.Err() != nil {
@@ -46,6 +45,7 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 					State: readiness.CANCELED,
 					Error: errors.New("context canceled"),
 				}
+
 				return false, ctx.Err()
 			}
 
@@ -65,16 +65,16 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 		}
 
 		return false, ctx.Err()
-	default:
-		channel <- &readiness.ReadinessState{State: readiness.SUCCESS}
+	case channel <- &readiness.ReadinessState{State: readiness.SUCCESS}:
 	}
 
 	return true, nil
 }
 
 func SolveReadiness(client *clients.Http, user *authentication.User, container platforms.IContainer, logger *zap.Logger, r *readiness.Readiness, channel chan *readiness.ReadinessState) error {
-	if !container.GetStatus().IfStateIs(status.READINESS_CHECKING) {
+	if !container.GetStatus().IfStateIs(status.READINESS_CHECKING) && !container.GetStatus().IfStateIs(status.START) {
 		r.Cancel()
+		return fmt.Errorf("container is not in valid state for readiness checking: %v", container.GetStatus().GetState())
 	}
 
 	channel <- &readiness.ReadinessState{
@@ -131,15 +131,13 @@ func SolveReadiness(client *clients.Http, user *authentication.User, container p
 			var result types.ExecResult
 
 			session, err = exec.Create(r.Ctx, r.Cancel, nil, container, r.Command, false, "", "")
-
 			if err != nil {
-				return errors.New("readiness command failed")
+				return fmt.Errorf("readiness creating command failed: %v", err)
 			}
 
 			result, err = session.Output(container)
-
 			if err != nil {
-				return errors.New("readiness command failed")
+				return fmt.Errorf("readiness command failed: %v", err)
 			}
 
 			if result.Exit == 0 {

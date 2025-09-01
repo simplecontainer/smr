@@ -38,8 +38,6 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	}
 
 	newState, reconcile := Reconcile(shared, gitopsWatcher)
-	gitopsObj.GetStatus().QueueState(newState)
-
 	err := shared.Registry.Sync(gitopsObj.GetGroup(), gitopsObj.GetName())
 
 	if err != nil {
@@ -57,6 +55,7 @@ func Gitops(shared *shared.Shared, gitopsWatcher *watcher.Gitops) {
 	)
 
 	if reconcile {
+		gitopsObj.GetStatus().QueueState(newState)
 		gitopsWatcher.GitopsQueue <- gitopsObj
 	} else {
 		switch gitopsObj.GetStatus().GetState() {

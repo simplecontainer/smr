@@ -12,7 +12,6 @@ func NewReadinessFromDefinition(readiness v1.ContainersReadiness) (*Readiness, e
 	}
 
 	timeout, err := time.ParseDuration(readiness.Timeout)
-
 	if err != nil {
 		return nil, err
 	}
