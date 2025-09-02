@@ -94,7 +94,6 @@ func (c *Command) Node(api iapi.Api, params map[string]string) error {
 				ticker.Stop()
 
 				event, err := events.NewNodeEvent(events.EVENT_DRAIN_SUCCESS, api.GetCluster().Node)
-
 				if err != nil {
 					return err
 				}
@@ -102,12 +101,12 @@ func (c *Command) Node(api iapi.Api, params map[string]string) error {
 				logger.Log.Info("dispatched node event", zap.String("event", event.GetType()))
 
 				format := event.ToFormat().ToString()
-				api.GetReplication().Informer.AddCh(format)
+				api.GetReplication().Informer.AddCh(format, events.EVENT_DRAIN_SUCCESS)
 
 				events.Dispatch(event, api.GetKindsRegistry()[static.KIND_NODE].GetShared().(*nshared.Shared), api.GetCluster().Node.NodeID)
 
 				select {
-				case <-api.GetReplication().Informer.GetCh(format):
+				case <-api.GetReplication().Informer.GetCh(format, events.EVENT_DRAIN_SUCCESS):
 					break
 				case <-ctx.Done():
 					return errors.New("timed out waiting for event acknowledgment")

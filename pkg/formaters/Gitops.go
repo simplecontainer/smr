@@ -26,6 +26,8 @@ func Gitops(objects []json.RawMessage) {
 		gitopsObjs = append(gitopsObjs, gitopsObj)
 	}
 
+	fmt.Println(gitopsObjs)
+
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 
@@ -50,10 +52,6 @@ func Gitops(objects []json.RawMessage) {
 
 		if httpRef == "." {
 			httpRef = ""
-		}
-
-		if g.Definition == nil {
-			continue
 		}
 
 		if g.GetCommit() != nil {

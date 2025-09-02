@@ -45,15 +45,14 @@ func Handle(kindRegistry map[string]ikinds.Kind, informer *distributed.Informer,
 
 	if ok {
 		format := f.New(event.GetPrefix(), event.GetKind(), event.GetGroup(), event.GetName())
-
-		ch := informer.GetCh(format.ToString())
+		ch := informer.GetCh(format.ToString(), event.GetType())
 
 		if ch != nil {
 			select {
 			case ch <- event:
-				informer.RmCh(format.ToString())
+				informer.RmCh(format.ToString(), event.GetType())
 			case <-time.After(60 * time.Second):
-				informer.RmCh(format.ToString())
+				informer.RmCh(format.ToString(), event.GetType())
 				logger.Log.Error("informer channel timed out", zap.String("event", fmt.Sprintf("%s", event)))
 			}
 		}

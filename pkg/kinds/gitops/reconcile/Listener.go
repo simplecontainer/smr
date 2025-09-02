@@ -46,7 +46,7 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 								req.Definition.Definition.GetMeta().Name,
 							)
 
-							shared.Manager.Replication.Informer.AddCh(format.ToString())
+							shared.Manager.Replication.Informer.AddCh(format.ToString(), events.EVENT_DELETED)
 
 							err := req.Definition.ProposeRemove(
 								shared.Manager.Http.Clients[shared.Manager.User.Username].Http,
@@ -57,14 +57,19 @@ func HandleTickerAndEvents(shared *shared.Shared, gitopsWatcher *watcher.Gitops,
 								logger.Log.Error(err.Error())
 							}
 
+							gitopsWatcher.Logger.Info("waiting for container cleanup")
+
 							select {
-							case <-shared.Manager.Replication.Informer.GetCh(format.ToString()):
+							case <-shared.Manager.Replication.Informer.GetCh(format.ToString(), events.EVENT_DELETED):
+								gitopsWatcher.Logger.Info("container cleaned")
 								return
 							}
 						}(request)
 					}
 				}
 				wgChild.Wait()
+
+				gitopsWatcher.Logger.Info("removing gitops from state")
 
 				err := shared.Registry.Remove(
 					gitopsWatcher.Gitops.GetDefinition().GetPrefix(),
