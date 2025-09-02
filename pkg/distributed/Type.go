@@ -22,6 +22,6 @@ type Replication struct {
 }
 
 type Informer struct {
-	Chs  map[string]chan ievents.Event
+	Chs  map[string]map[string]chan ievents.Event
 	Lock *sync.RWMutex
 }

@@ -40,6 +40,8 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 					containerWatcher.Logger.Error(err.Error())
 				}
 
+				containerWatcher.Logger.Info("container cleaned up")
+
 				err = shared.Registry.Remove(
 					containerWatcher.Container.GetDefinition().GetPrefix(),
 					containerWatcher.Container.GetGroup(),
@@ -75,7 +77,6 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 					}, shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode())
 				}
 
-				containerWatcher.Logger.Info("container cleaned up")
 				containerWatcher = nil
 			})
 
@@ -122,15 +123,9 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 					lock.Lock()
 					defer lock.Unlock()
 
-					containerWatcher.Container.GetStatus().TransitionState(
-						containerWatcher.Container.GetGroup(),
-						containerWatcher.Container.GetGeneratedName(),
-						status.DELETE,
-					)
-
-					if !containerWatcher.Done {
-						Containers(shared, containerWatcher)
-					}
+					containerWatcher.Container.GetStatus().ClearQueue()
+					containerWatcher.Container.GetStatus().QueueState(status.DELETE)
+					Containers(shared, containerWatcher)
 				})
 			}
 		}

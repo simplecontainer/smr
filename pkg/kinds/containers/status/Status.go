@@ -201,6 +201,7 @@ func (status *Status) QueueState(state string) error {
 	defer status.mu.Unlock()
 
 	status.StateQueue = append(status.StateQueue, st)
+
 	return nil
 }
 
