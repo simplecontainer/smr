@@ -9,8 +9,8 @@ import (
 	"net/http"
 )
 
-func Get(context *contexts.ClientContext, prefix string, version string, category string, kind string, group string, name string) (json.RawMessage, error) {
-	response := network.Send(context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/kind/%s/%s/%s/%s/%s/%s", context.APIURL, prefix, version, category, kind, group, name), http.MethodGet, nil)
+func Get(context *contexts.ClientContext, storePrefix string, prefix string, version string, category string, kind string, group string, name string) (json.RawMessage, error) {
+	response := network.Send(context.GetHTTPClient(), fmt.Sprintf("%s/api/v1/%s/%s/%s/%s/%s/%s/%s", context.APIURL, storePrefix, prefix, version, category, kind, group, name), http.MethodGet, nil)
 
 	if response.HttpStatus != http.StatusOK {
 		return nil, errors.New(response.ErrorExplanation)

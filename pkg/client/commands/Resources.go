@@ -225,7 +225,7 @@ func action(cli *client.Client, args []string, action string) {
 
 	switch action {
 	case "get":
-		response, err = resources.Get(cli.Context, format.GetPrefix(), format.GetVersion(),
+		response, err = resources.Get(cli.Context, "kind", format.GetPrefix(), format.GetVersion(),
 			format.GetCategory(), format.GetKind(), format.GetGroup(), format.GetName())
 	case "inspect":
 		response, err = resources.Inspect(cli.Context, format.GetPrefix(), format.GetVersion(),
