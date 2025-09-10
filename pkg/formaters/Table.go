@@ -7,8 +7,10 @@ import (
 
 func SetStyle(table *tablewriter.Table) {
 	table.Configure(func(config *tablewriter.Config) {
+		config.Row.Padding.Global.Left = tw.PaddingNone.Left
 		config.Row.Formatting.AutoWrap = tw.WrapTruncate
 		config.Row.ColMaxWidths.Global = 60
+		config.Header.Padding.Global.Left = tw.PaddingNone.Left
 		config.Header.Formatting.AutoWrap = tw.WrapTruncate
 		config.Header.Alignment = tw.CellAlignment{
 			Global: tw.AlignLeft,

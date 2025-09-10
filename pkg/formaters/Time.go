@@ -5,7 +5,13 @@ import (
 	"time"
 )
 
-func RoundAndFormatDuration(d time.Duration) string {
+func RoundAndFormatDuration(timestamp time.Time) string {
+	if timestamp.IsZero() {
+		return "never"
+	}
+
+	d := time.Since(timestamp)
+
 	if d < time.Minute {
 		return fmt.Sprintf("%ds", int(d.Seconds()))
 	} else if d < time.Hour {

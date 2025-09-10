@@ -22,6 +22,8 @@ func PreloadCommands() {
 	Alias()
 	Streams()
 	Events()
+	Containers()
+	Gitops()
 }
 
 func Run(cli *client.Client, c *cobra.Command) {

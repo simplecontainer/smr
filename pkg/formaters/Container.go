@@ -21,9 +21,9 @@ func Container(objects []json.RawMessage) {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header([]string{"NODE", "RESOURCE", "PORTS", "IMAGE STATE", "ENGINE STATE", "SMR STATE"})
 
-		for _, container := range display {
-			SetStyle(table)
+		SetStyle(table)
 
+		for _, container := range display {
 			table.Append([]string{
 				fmt.Sprintf("%s", container.NodeName),
 				fmt.Sprintf("%s/%s/%s", static.KIND_CONTAINERS, helpers.CliRemoveComa(container.Group), helpers.CliRemoveComa(container.GeneratedName)),

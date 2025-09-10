@@ -70,7 +70,7 @@ var Timeout = NewTimeouts()
 
 func NewTimeouts() *Timeouts {
 	return &Timeouts{
-		AcknowledgmentTimeout:     10 * time.Second,
+		AcknowledgmentTimeout:     60 * time.Second,
 		ResourceDrainTimeout:      1800 * time.Second,
 		CompleteDrainTimeout:      360 * time.Second,
 		EtcdConnectionTimeout:     5 * time.Second,

@@ -16,7 +16,7 @@ func Gitops(objects []json.RawMessage) {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.Header([]string{"RESOURCE", "REPOSITORY", "REVISION", "SYNCED", "AUTO SYNC", "STATUS"})
+	table.Header([]string{"RESOURCE", "REVISION", "SYNCED", "AUTO SYNC", "STATUS"})
 
 	SetStyle(table)
 
@@ -43,7 +43,6 @@ func Gitops(objects []json.RawMessage) {
 		if g.GetCommit() != nil {
 			table.Append([]string{
 				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
-				helpers.CliMask(g.GetCommit() != nil && g.GetCommit().ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.GetGit().Repository), fmt.Sprintf("%s (%s)", g.GetGit().Repository, g.GetCommit().ID().String()[:7])),
 				g.GetGit().Revision,
 				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
 				fmt.Sprintf("%v", g.GetAutoSync()),
@@ -52,7 +51,6 @@ func Gitops(objects []json.RawMessage) {
 		} else {
 			table.Append([]string{
 				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
-				helpers.CliMask(g.GetCommit() != nil && g.GetCommit().ID().IsZero(), fmt.Sprintf("%s (Not pulled)", g.GetGit().Repository), fmt.Sprintf("%s", g.GetGit().Repository)),
 				g.GetGit().Revision,
 				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
 				fmt.Sprintf("%v", g.GetAutoSync()),

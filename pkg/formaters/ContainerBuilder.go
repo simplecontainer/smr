@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/containers"
-	"time"
 )
 
 func ContainerBuilder(objects []json.RawMessage) ([]ContainerInformation, error) {
@@ -67,7 +66,7 @@ func ContainerBuilder(objects []json.RawMessage) ([]ContainerInformation, error)
 			info.DockerState = "-"
 		}
 
-		info.LastUpdate = RoundAndFormatDuration(time.Since(containerObj.GetStatus().LastUpdate))
+		info.LastUpdate = RoundAndFormatDuration(containerObj.GetStatus().LastUpdate)
 
 		info.NodeURL = containerObj.GetRuntime().Node.URL
 		info.NodeName = containerObj.GetRuntime().Node.NodeName

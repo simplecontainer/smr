@@ -33,7 +33,6 @@ type GitopsInternal struct {
 	Commit          *object.Commit
 	Status          *status.Status
 	Auth            *Auth
-	Context         string
 	definition      *v1.GitopsDefinition
 	Pack            *packer.Pack
 	Ghost           bool
