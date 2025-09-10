@@ -162,6 +162,9 @@ jobs:
         run: |
           curl -fsSL https://get.docker.com -o get-docker.sh
           VERSION=28.0.3 sh get-docker.sh
+          sudo groupadd docker || true
+          sudo usermod -aG docker $USER
+          newgrp docker
 
       - name: Verify Docker installation
         run: |
