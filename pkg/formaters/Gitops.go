@@ -40,23 +40,13 @@ func Gitops(objects []json.RawMessage) {
 			httpRef = ""
 		}
 
-		if g.GetCommit() != nil {
-			table.Append([]string{
-				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
-				g.GetGit().Revision,
-				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
-				fmt.Sprintf("%v", g.GetAutoSync()),
-				g.GetStatus().State.State,
-			})
-		} else {
-			table.Append([]string{
-				fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
-				g.GetGit().Revision,
-				helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
-				fmt.Sprintf("%v", g.GetAutoSync()),
-				g.GetStatus().State.State,
-			})
-		}
+		table.Append([]string{
+			fmt.Sprintf("%s/%s/%s", static.KIND_GITOPS, g.GetGroup(), g.GetName()),
+			g.GetGit().Revision,
+			helpers.CliMask(g.GetStatus().LastSyncedCommit.IsZero(), "Never synced", g.GetStatus().LastSyncedCommit.String()[:7]),
+			fmt.Sprintf("%v", g.GetAutoSync()),
+			g.GetStatus().State.State,
+		})
 	}
 
 	table.Render()
