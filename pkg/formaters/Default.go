@@ -3,9 +3,9 @@ package formaters
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/rodaine/table"
+	"github.com/olekukonko/tablewriter"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
+	"os"
 )
 
 func Default(objects []json.RawMessage) {
@@ -15,7 +15,6 @@ func Default(objects []json.RawMessage) {
 		definition := v1.CommonDefinition{}
 
 		err := json.Unmarshal(obj, &definition)
-
 		if err != nil {
 			continue
 		}
@@ -23,15 +22,14 @@ func Default(objects []json.RawMessage) {
 		definitions = append(definitions, definition)
 	}
 
-	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
-	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	table := tablewriter.NewWriter(os.Stdout)
+	table.Header([]string{"RESOURCE"})
 
-	tbl := table.New("RESOURCE")
-	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+	SetStyle(table)
 
 	for _, d := range definitions {
-		tbl.AddRow(fmt.Sprintf("%s/%s/%s", d.GetKind(), d.Meta.Group, d.Meta.Name))
+		table.Append([]string{fmt.Sprintf("%s/%s/%s", d.GetKind(), d.Meta.Group, d.Meta.Name)})
 	}
 
-	tbl.Print()
+	table.Render()
 }

@@ -20,6 +20,11 @@ func Alias() {
 	)
 }
 
+func cmdPsGitops(api iapi.Api, cli *client.Client, args []string) {
+	args = []string{"gitops"}
+	cmdPs(api, cli, args)
+}
+
 func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 	if len(args) == 0 {
 		args = append(args, "containers")
@@ -35,7 +40,6 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 	}
 
 	format, err := f.Build(args[0], cli.Group)
-
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -45,7 +49,6 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 	switch format.GetKind() {
 	case static.KIND_GITOPS:
 		objects, err = resources.ListState(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
-
 		if err != nil {
 			helpers.PrintAndExit(err, 1)
 		}
@@ -54,7 +57,6 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 		break
 	case static.KIND_CONTAINERS:
 		objects, err = resources.ListState(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_STATE, format.GetKind())
-
 		if err != nil {
 			helpers.PrintAndExit(err, 1)
 		}
@@ -68,5 +70,5 @@ func cmdPs(api iapi.Api, cli *client.Client, args []string) {
 }
 
 func cmdPsFlags(cmd *cobra.Command) {
-	cmd.Flags().String("output", "full", "output format: full, short")
+	cmd.Flags().String("output", "table", "output format: table, json")
 }

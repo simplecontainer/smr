@@ -53,7 +53,6 @@ func New(definition *v1.GitopsDefinition, config *configuration.Configuration) (
 			DirectoryPath:   helpers.GetSanitizedDirectoryPath(definition.Spec.DirectoryPath),
 			PoolingInterval: duration,
 			AutomaticSync:   definition.Spec.AutomaticSync,
-			Context:         definition.Spec.Context,
 			Pack:            packer.New(),
 			Node:            node.NewNodeDefinition(config.KVStore.Cluster, config.KVStore.Node.NodeID),
 			Commit: &object.Commit{
@@ -262,6 +261,8 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 				} else {
 					request.Definition.Definition.GetState().Gitops.AddMessage("success", "object synced successfully")
 					request.Definition.Definition.GetState().Gitops.Set(commonv1.GITOPS_SYNCED, true)
+					request.Definition.Definition.GetState().Gitops.Changes = make([]jsondiff.Operation, 0)
+					request.Definition.Definition.GetState().Gitops.LastSync = time.Now()
 				}
 
 				request.Definition.Definition.GetState().AddOpt("action", static.STATE_KIND)
@@ -286,13 +287,16 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 					if request.Definition.Definition.GetState().Gitops.LastSync.IsZero() {
 						request.Definition.Definition.GetState().Gitops.LastSync = time.Now()
 					}
-
-					request.Definition.Definition.GetState().AddOpt("action", static.STATE_KIND)
-					request.Definition.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 				}
+
+				request.Definition.Definition.GetState().Gitops.Changes = make([]jsondiff.Operation, 0)
+
+				request.Definition.Definition.GetState().AddOpt("action", static.STATE_KIND)
+				request.Definition.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 			} else {
 				request.Definition.Definition.GetState().Gitops.AddMessage("neutral", "object is not found on the cluster")
 				request.Definition.Definition.GetState().Gitops.Set(commonv1.GITOPS_MISSING, true)
+				request.Definition.Definition.GetState().Gitops.Changes = make([]jsondiff.Operation, 0)
 				request.Definition.ProposeState(client.Clients[user.Username].Http, client.Clients[user.Username].API)
 			}
 		}
