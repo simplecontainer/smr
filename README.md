@@ -9,7 +9,10 @@
 
 ## Overview
 
-Simplecontainer is a container orchestration platform that transforms Docker daemons into managed nodes with GitOps capabilities. It provides enterprise-grade features like overlay networking, secrets management, and multi-node clustering while maintaining the simplicity of Docker.
+Setting up orchestrator on top of docker nodes in seconds with simplecontainer.
+
+Simplecontainer is a container orchestration platform that transforms Docker daemons into managed nodes with GitOps capabilities. 
+It provides enterprise-grade features like overlay networking, secrets management, and multi-node clustering while maintaining the simplicity of Docker management.
 
 ### Key Features
 
@@ -282,8 +285,8 @@ spec:
 smrctl ps
 
 # List specific resource types
-smrctl ps gitops
-smrctl ps secrets
+smrctl ps gitops | smrctl gitops
+smrctl ps secrets | smrctl containers
 
 # Get detailed information
 smrctl get containers/example/busybox-1
@@ -336,7 +339,8 @@ smrctl ps
 
 ## Resources
 
-- **Dashboard**: [app.simplecontainer.io](https://app.simplecontainer.io)
+- **Managed infrastructure**: [app.simplecontainer.io](https://app.simplecontainer.io)
+- **Dashboard**: [github.com/simplecontainer/dashboard](https://app.simplecontainer.io)
 - **Documentation**: [docs.simplecontainer.io](https://docs.simplecontainer.io)
 - **Blog**: [blog.simplecontainer.io](https://blog.simplecontainer.io)
 - **Container Registry**: [quay.io/repository/simplecontainer/smr](https://quay.io/repository/simplecontainer/smr)
