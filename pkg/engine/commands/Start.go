@@ -102,9 +102,9 @@ func cmdStart(api iapi.Api, cli *client.Client, args []string) {
 		}
 
 		fmt.Println("/*********************************************************************/")
-		fmt.Println("/* Certificate is generated for the use by the smr client!           */")
+		fmt.Println("/* Certificate is generated for the use by the smr agent!            */")
 		fmt.Println("/* It is located in the .ssh directory in home of the running user!  */")
-		fmt.Println("/* ls $HOME/.ssh/simplecontainer                                     */")
+		fmt.Println("/* ls $HOME/nodes/node_name/.ssh/simplecontainer                     */")
 		fmt.Println("/*********************************************************************/")
 
 		err = api.GetKeys().GeneratePemBundle(static.SMR_SSH_HOME, api.GetConfig().NodeName, api.GetKeys().Clients[api.GetConfig().NodeName])
