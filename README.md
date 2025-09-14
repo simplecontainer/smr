@@ -4,8 +4,14 @@
 
 ![Simplecontainer GitOps](.github/resources/simplecontainer-gitops-promo.png)
 
-> [!IMPORTANT]
-> This project is currently in **alpha** stage. Use with caution in production environments.
+## Quickest start
+```cgo
+curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
+chmod +x smrmgr
+sudo mv smrmgr /usr/local/bin
+sudo smrmgr install
+smrmgr start
+```
 
 ## Overview
 
