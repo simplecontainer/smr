@@ -248,6 +248,9 @@ func (c *Container) Exec(ctx context.Context, command []string, interactive bool
 func (c *Container) ExecInspect(ID string) (bool, int, error) {
 	return c.Platform.ExecInspect(ID)
 }
+func (c *Container) ExecResize(ID string, width int, height int) error {
+	return c.Platform.ExecResize(ID, width, height)
+}
 func (c *Container) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {
 	return c.Platform.Logs(ctx, follow)
 }

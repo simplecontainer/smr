@@ -72,6 +72,7 @@ type IContainer interface {
 	Rename(newName string) error
 	Exec(ctx context.Context, command []string, interactive bool, height string, width string) (string, *bufio.Reader, net.Conn, error)
 	ExecInspect(string) (bool, int, error)
+	ExecResize(string, int, int) error
 	Logs(context.Context, bool) (io.ReadCloser, error)
 	Clean() error
 
@@ -119,6 +120,7 @@ type IPlatform interface {
 	Rename(newName string) error
 	Exec(ctx context.Context, command []string, interactive bool, height string, width string) (string, *bufio.Reader, net.Conn, error)
 	ExecInspect(string) (bool, int, error)
+	ExecResize(string, int, int) error
 	Logs(context.Context, bool) (io.ReadCloser, error)
 	Wait(string) error
 	Clean() error

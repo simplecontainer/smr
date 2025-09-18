@@ -6,11 +6,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/kinds/common"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/network"
 	"github.com/simplecontainer/smr/pkg/static"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
@@ -102,6 +104,8 @@ func (a *Api) join(c *gin.Context, kvs []*mvccpb.KeyValue, prefix, version, kind
 
 		combined, err := a.append(c, kv.Value, prefix, version, kind, tmp.GetGroup(), tmp.GetName())
 		if err != nil {
+			logger.Log.Error("failed to find definition", zap.String("format", tmp.ToString()), zap.Error(err))
+
 			kinds = append(kinds, kv.Value)
 			continue
 		}

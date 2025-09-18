@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/logger"
@@ -32,6 +33,7 @@ func Create(c context.Context, cancel context.CancelFunc, clientConn *websocket.
 		Reader:     reader,
 		Conn:       &execConn,
 		ClientConn: clientConn,
+		Container:  container,
 		context:    c,
 		cancel:     cancel,
 		engine:     make(chan error),
@@ -48,7 +50,7 @@ func (s *Session) Exec() error {
 	go func() {
 		defer wg.Done()
 
-		if err := input(s.context, s.ClientConn, s.Conn, s.Reader); err != nil {
+		if err := input(s.context, s.ClientConn, s.Conn, s.Reader, s.ID, s.Container); err != nil {
 			logger.Log.Info("client to remote exec ended", zap.Error(err))
 
 			select {
@@ -98,7 +100,7 @@ func (s *Session) Exec() error {
 	}
 }
 
-func input(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Conn, reader *bufio.Reader) error {
+func input(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Conn, reader *bufio.Reader, sessionID string, container platforms.IContainer) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -130,9 +132,22 @@ func input(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Con
 			}
 
 			switch messageType {
-			case websocket.TextMessage, websocket.BinaryMessage:
+			case websocket.BinaryMessage:
+				fmt.Println("binary", string(message))
 				_, err = (*execConn).Write(message)
 
+				if err != nil {
+					return err
+				}
+				break
+			case websocket.TextMessage:
+				fmt.Println("text", string(message))
+				ctrl, err := UnmarshalControl(message)
+				if err != nil {
+					return err
+				}
+
+				err = control(container, sessionID, ctrl)
 				if err != nil {
 					return err
 				}
@@ -192,6 +207,20 @@ func output(ctx context.Context, websocketConn *websocket.Conn, execConn *net.Co
 			}
 		}
 	}
+}
+
+func control(container platforms.IContainer, sessionID string, ctrl *Control) error {
+	switch ctrl.Type {
+	case RESIZE_TYPE:
+		resize, err := ctrl.DecodeResize()
+		if err != nil {
+			return err
+		}
+
+		return container.ExecResize(sessionID, resize.Width, resize.Height)
+	}
+
+	return errors.New("unsupported control message")
 }
 
 func handleCloseMaybe(target *net.Conn, err error) error {

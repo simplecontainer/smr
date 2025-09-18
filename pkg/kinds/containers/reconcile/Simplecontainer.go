@@ -62,6 +62,8 @@ func handleTransferring(shared *shared.Shared, cw *watcher.Container, existing p
 }
 
 func handleRestart(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
+	cw.AllowPlatformEvents = false
+
 	cw.Logger.Info("container is restarted")
 	return status.CLEAN, true
 }

@@ -579,15 +579,18 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 				return "", nil, nil, err
 			}
 
-			err = cli.ContainerExecResize(ctx, exec.ID, TDContainer.ResizeOptions{
-				Height: uint(h),
-				Width:  uint(w),
-			})
-
+			res, err := cli.ContainerExecInspect(ctx, exec.ID)
 			if err != nil {
-				if err != nil {
-					return "", nil, nil, err
-				}
+				return "", nil, nil, err
+			}
+
+			if res.Running {
+				// Don't handle error fail is fine for short lived commands
+				// For long running commands fail is not find but it will only affect UX in terminal
+				cli.ContainerExecResize(ctx, exec.ID, TDContainer.ResizeOptions{
+					Height: uint(h),
+					Width:  uint(w),
+				})
 			}
 		}
 
@@ -611,6 +614,28 @@ func (container *Docker) ExecInspect(ID string) (bool, int, error) {
 	}
 
 	return res.Running, res.ExitCode, nil
+}
+func (container *Docker) ExecResize(ID string, width int, height int) error {
+	ctx := context.Background()
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
+
+	if err != nil {
+		return err
+	}
+
+	res, err := cli.ContainerExecInspect(ctx, ID)
+	if err != nil {
+		return err
+	}
+
+	if res.Running {
+		return cli.ContainerExecResize(ctx, ID, TDContainer.ResizeOptions{
+			Height: uint(height),
+			Width:  uint(width),
+		})
+	}
+
+	return nil
 }
 
 func (container *Docker) Logs(ctx context.Context, follow bool) (io.ReadCloser, error) {

@@ -191,7 +191,8 @@ func (containers *Containers) Event(event ievents.Event) error {
 		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
 
 		if !containerW.Done {
-			containerObj.GetStatus().QueueState(status.RESTART)
+			containerW.Logger.Info("restart event dispatched to the container")
+			containerW.Container.GetStatus().QueueState(status.RESTART)
 			containerW.ContainerQueue <- containerObj
 		}
 

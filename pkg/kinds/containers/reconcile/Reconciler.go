@@ -26,6 +26,8 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		if err != nil {
 			containerWatcher.Logger.Error("failed to transition state", zap.Error(err))
 			return
+		} else {
+			containerWatcher.Logger.Info("transition of state", zap.String("current state", containerObj.GetStatus().GetState()))
 		}
 	}
 
@@ -37,10 +39,12 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	existing := shared.Registry.Find(containerObj.GetDefinition().GetPrefix(), containerObj.GetGroup(), containerObj.GetGeneratedName())
 	nextState, reconcile := Reconcile(shared, containerWatcher, existing, cs.State, cs.Error)
 
-	if nextState != "" {
+	if nextState != "" && reconcile {
 		err = containerObj.GetStatus().QueueState(nextState)
 		if err != nil {
 			containerWatcher.Logger.Error("failed to queue state", zap.String("state", nextState), zap.Error(err))
+		} else {
+			containerWatcher.Logger.Info("queued state", zap.String("queued state", nextState))
 		}
 	}
 
@@ -67,19 +71,19 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 				metrics.ContainersHistory.Set(1, containerObj.GetGeneratedName(), nextState)
 			}()
 		} else {
-			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
-				events.Dispatch(
-					events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
-					shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
-				)
-			}
-
-			// Update set for the end since no new call to this function will occur except for delete that is graveyard
+			// Update state for the end since no new call to this function will occur except for delete that is graveyard
 			if nextState != "" {
 				err = shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
 				if err != nil {
 					containerWatcher.Logger.Error(err.Error())
 				}
+			}
+
+			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
+				events.Dispatch(
+					events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
+					shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
+				)
 			}
 		}
 	}

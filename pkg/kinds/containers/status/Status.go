@@ -70,6 +70,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(clean, daemonFailure)
 
 	status.StateMachine.AddEdge(restart, clean)
+	status.StateMachine.AddEdge(restart, pendingDelete)
 
 	status.StateMachine.AddEdge(prepare, change)
 	status.StateMachine.AddEdge(prepare, dependsChecking)
@@ -201,7 +202,6 @@ func (status *Status) QueueState(state string) error {
 	defer status.mu.Unlock()
 
 	status.StateQueue = append(status.StateQueue, st)
-
 	return nil
 }
 

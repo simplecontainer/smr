@@ -9,6 +9,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/client/exec"
 	"github.com/simplecontainer/smr/pkg/command"
 	"github.com/simplecontainer/smr/pkg/contracts/iapi"
+	CExec "github.com/simplecontainer/smr/pkg/exec"
 	"github.com/simplecontainer/smr/pkg/f"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/network"
@@ -119,23 +120,18 @@ func cmdExec(api iapi.Api, cli *client.Client, args []string) {
 	interactive := viper.GetBool("it")
 	command := viper.GetString("c")
 
-	url := fmt.Sprintf("%s/api/v1/exec/%s/%s", cli.Context.APIURL, format.ToString(), strconv.FormatBool(interactive))
-
 	width, height, err := term.GetSize(int(os.Stdin.Fd()))
 
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	requestHeaders := http.Header{}
-	requestHeaders.Add("command", command)
-	requestHeaders.Add("width", strconv.Itoa(width))
-	requestHeaders.Add("height", strconv.Itoa(height))
+	url := fmt.Sprintf("%s/api/v1/exec/%s/%s?command=%s&width=%d&height=%d", cli.Context.APIURL, format.ToString(), strconv.FormatBool(interactive), command, width, height)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetHTTPClient(), requestHeaders, url)
+	conn, cancelWSS, err := wss.Request(ctx, cli.Context.GetHTTPClient(), nil, url)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -191,6 +187,23 @@ func handle(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn
 					}
 
 					logger.Log.Debug("terminal resized", zap.Int("cols", width), zap.Int("rows", height))
+					resize, err := CExec.NewResize(width, height)
+					if err != nil {
+						logger.Log.Warn("failed to set terminal size", zap.Error(err))
+						continue
+					}
+
+					bytes, err := resize.Marshal()
+					if err != nil {
+						logger.Log.Warn("failed to set terminal size", zap.Error(err))
+						continue
+					}
+
+					err = conn.WriteMessage(websocket.TextMessage, bytes)
+					if err != nil {
+						logger.Log.Warn("failed to set terminal size", zap.Error(err))
+						continue
+					}
 				}
 			}()
 

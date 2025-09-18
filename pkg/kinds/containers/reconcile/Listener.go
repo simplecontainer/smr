@@ -85,6 +85,7 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 		case <-containerWatcher.ContainerQueue:
 			if !containerWatcher.Done {
 				workerQueue.Submit(queue.WorkTypeNormal, queue.PriorityNormal, func() {
+					containerWatcher.Ticker.Stop()
 					if lock == nil || containerWatcher == nil {
 						return
 					}

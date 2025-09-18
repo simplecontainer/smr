@@ -33,13 +33,14 @@ var wssUpgrader = websocket.Upgrader{
 func (a *Api) Exec(c *gin.Context) {
 	prefix := c.Param("prefix")
 	version := c.Param("version")
-	category := c.Param("kind")
-	kind := c.Param("containers")
+	category := c.Param("category")
+	kind := c.Param("kind")
 	group := c.Param("group")
 	name := c.Param("name")
-	command := c.Request.Header.Get("command")
-	height := c.Request.Header.Get("height")
-	width := c.Request.Header.Get("width")
+
+	command := c.Query("command")
+	height := c.Query("height")
+	width := c.Query("width")
 
 	interactive, err := strconv.ParseBool(c.Param("interactive"))
 	if err != nil {

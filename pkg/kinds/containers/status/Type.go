@@ -57,7 +57,7 @@ const RUNNING string = "running"
 const DEAD string = "dead"
 const BACKOFF string = "backoff"
 const DAEMON_FAILURE string = "daemon_failure"
-const RESTART string = "restart"
+const RESTART string = "restarting"
 
 const DEPENDS_FAILED string = "depends_failed"
 const READINESS_FAILED string = "readiness_failed"
