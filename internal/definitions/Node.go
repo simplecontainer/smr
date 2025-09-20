@@ -34,6 +34,7 @@ func Node(name string, config *configuration.Configuration, entrypoint []string,
 			Entrypoint: entrypoint,
 			Args:       args,
 			User:       config.Environment.Host.User,
+			GroupAdd:   config.Environment.Host.Groups,
 			Ports: []v1.ContainersPort{
 				{
 					Container: "1443",

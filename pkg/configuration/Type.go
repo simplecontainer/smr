@@ -32,6 +32,7 @@ type EnvironmentDual struct {
 
 type Environment struct {
 	User            string
+	Groups          []string
 	Home            string
 	NodeIP          string
 	NodeDirectory   string

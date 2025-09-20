@@ -5,6 +5,7 @@ import (
 	ips "github.com/simplecontainer/smr/pkg/network/ip"
 	"github.com/spf13/viper"
 	"os"
+	"strconv"
 )
 
 func NewConfig() *Configuration {
@@ -52,6 +53,15 @@ func WithContainerConfig() EnvOption {
 func WithHostConfig() EnvOption {
 	return func(env *Environment) {
 		env.User = fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
+		gids, err := os.Getgroups()
+		if err != nil {
+			panic("failed to get groups")
+		}
+
+		for _, gid := range gids {
+			env.Groups = append(env.Groups, strconv.Itoa(gid))
+		}
+
 		env.Home = viper.GetString("home")
 		env.NodeDirectory = fmt.Sprintf("%s/nodes/%s", viper.GetString("home"), viper.GetString("node"))
 		env.ClientDirectory = fmt.Sprintf("%s/.smrctl", viper.GetString("home"))
