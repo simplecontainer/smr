@@ -34,7 +34,7 @@ jobs:
         run: |
           TAG=$(gh release list --limit 100 --json tagName \
                 | jq -r '.[].tagName' \
-                | grep '^smr-v[0-9]\+\.[0-9]\+\.[0-9]\+$' \
+                | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+-smr$' \
                 | sort -V \
                 | tail -n1)
   
