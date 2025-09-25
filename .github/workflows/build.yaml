@@ -274,12 +274,12 @@ jobs:
           TAG_SMR=""
 
           if [[ "$COMPONENT" == "all" && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG_CTL="smrctl-${VERSION_CTL}"
-            TAG_SMR="smr-${VERSION_SMR}"
+            TAG_CTL="${VERSION_CTL}-smrctl"
+            TAG_SMR="${VERSION_SMR}-smr"
           elif [[ "$COMPONENT" == "smrctl" ]]; then
-            TAG_CTL="smrctl-${VERSION_CTL}"
+            TAG_CTL="${VERSION_CTL}-smrctl"
           elif [[ "$COMPONENT" == "smr" ]]; then
-            TAG_SMR="smr-${VERSION_SMR}"
+            TAG_SMR="${VERSION_SMR}-smrctl"
           fi
 
           echo "Generated tags: $TAG_CTL $TAG_SMR"

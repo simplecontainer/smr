@@ -3,7 +3,7 @@ name: Release smr
 on:
   push:
     tags:
-      - 'smr-v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]*.[0-9]*.[0-9]*-smr'
 
 jobs:
   build:

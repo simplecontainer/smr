@@ -3,7 +3,7 @@ name: Release smrctl
 on:
   push:
     tags:
-      - 'smrctl-v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]*.[0-9]*.[0-9]*-smrctl'
 
 jobs:
   build:
