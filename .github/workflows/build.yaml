@@ -273,6 +273,7 @@ jobs:
           
           VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "$COMMIT_MSG")
           VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "$COMMIT_MSG")
+          VERSION_PKG=$(.github/scripts/version.sh "$(cat version)" "$COMMIT_MSG")
 
           TAG_CTL=""
           TAG_SMR=""
@@ -285,17 +286,19 @@ jobs:
           elif [[ "$COMPONENT" == "smr" ]]; then
             TAG_SMR="${VERSION_SMR}-smrctl"
           fi
+          
+          TAG_PKG=$VERSION_PKG
 
           echo "Generated tags: $TAG_CTL $TAG_SMR"
           echo "tag_smr=$TAG_SMR" >> $GITHUB_OUTPUT
           echo "tag_ctl=$TAG_CTL" >> $GITHUB_OUTPUT
 
           if [[ -n "$TAG_SMR" && -n "$TAG_CTL" ]]; then
-            MATRIX=$(printf '[{"tag": "%s", "component":"smr"}, {"tag": "%s", "component":"smrctl"}]' "$TAG_SMR" "$TAG_CTL")
+            MATRIX=$(printf '[{"tag": "%s", "component":"smr", "versionFile": "cmd/smr/version"}, {"tag": "%s", "component":"smrctl", "versionFile": "cmd/smrctl/version"}, {"tag": "%s", "component":"", "versionFile": "version"}]' "$TAG_SMR" "$TAG_CTL" "$TAG_PKG")
           elif [[ -n "$TAG_SMR" ]]; then
-            MATRIX=$(printf '[{"tag": "%s", "component":"smr"}]' "$TAG_SMR")
+            MATRIX=$(printf '[{"tag": "%s", "component":"smr", "versionFile": "cmd/smr/version"}, {"tag": "%s", "component":"", "versionFile": "version"}]' "$TAG_SMR" "$TAG_PKG")
           elif [[ -n "$TAG_CTL" ]]; then
-            MATRIX=$(printf '[{"tag": "%s", "component":"smrctl"}]' "$TAG_CTL")
+            MATRIX=$(printf '[{"tag": "%s", "component":"smrctl", "versionFile": "cmd/smrctl/version"}, {"tag": "%s", "component":"", "versionFile": "version"}]' "$TAG_CTL" "$TAG_PKG")
           fi
 
           echo "$MATRIX" | jq -c
@@ -320,16 +323,17 @@ jobs:
           for item in $matrix; do
             COMPONENT=$(echo $item | jq -r '.component')
             TAG=$(echo $item | jq -r '.tag')
+            FILE=$(echo $item | jq -r '.versionFile')
           
             echo "Processing $COMPONENT with tag $TAG"
           
-            VERSION=$(cat cmd/$COMPONENT/version)
+            VERSION=$(cat $FILE)
             VERSION=$(.github/scripts/version.sh "$VERSION" "$COMMIT_MSG")
-            echo "$VERSION" > cmd/$COMPONENT/version
+            echo "$VERSION" > $FILE
           
             git config user.name "actions"
             git config user.email "actions-user@github.com"
-            git add cmd/$COMPONENT/version
+            git add $FILE
             git commit -m "Automated version tracking for $TAG" || echo "No changes to commit"
             git pull
             git tag "$TAG"
