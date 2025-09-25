@@ -378,7 +378,7 @@ install_systemd_service() {
     version_smr=$(fetch_latest_version "$VERSION_URL")
 
     local unit_file
-    unit_file=$(curl -sL "https://github.com/simplecontainer/smr/releases/download/smr-$version_smr/simplecontainer.unit" --fail) || \
+    unit_file=$(curl -sL "https://github.com/simplecontainer/smr/releases/download/$version_smr-smr/simplecontainer.unit" --fail) || \
         die "Failed to download systemd unit file"
 
     echo "$unit_file" | sudo tee "$SYSTEMD_UNIT_PATH" > /dev/null || \
@@ -486,7 +486,7 @@ download_binaries() {
     log_info "Downloading smr:$version_smr and smrctl:$version_ctl for platform: $platform"
 
     # Download smr
-    local smr_url="https://github.com/simplecontainer/smr/releases/download/smr-$version_smr/smr-$platform"
+    local smr_url="https://github.com/simplecontainer/smr/releases/download/$version_smr-smr/smr-$platform"
     log_info "Downloading: $smr_url"
 
     curl -Lo smr "$smr_url" --fail || die "Failed to download smr binary"
@@ -498,7 +498,7 @@ download_binaries() {
     fi
 
     # Download smrctl
-    local smrctl_url="https://github.com/simplecontainer/smr/releases/download/smrctl-$version_ctl/smrctl-$platform"
+    local smrctl_url="https://github.com/simplecontainer/smr/releases/download/$version_ctl-smrctl/smrctl-$platform"
     log_info "Downloading: $smrctl_url"
 
     curl -Lo smrctl "$smrctl_url" --fail || die "Failed to download smrctl binary"
