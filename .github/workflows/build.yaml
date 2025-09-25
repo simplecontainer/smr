@@ -70,12 +70,14 @@ jobs:
       - name: Display Go version
         run: go version
       - name: Bump versions
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           VERSION_SMR=$(cat cmd/smr/version)
           VERSION_SMRCTL=$(cat cmd/smrctl/version)
           
-          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-          VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "${{ github.event.head_commit.message }}")
+          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "$COMMIT_MSG")
+          VERSION_SMRCTL=$(.github/scripts/version.sh "$VERSION_SMRCTL" "$COMMIT_MSG")
           
           echo "$VERSION_SMR" > cmd/smr/version.tmp
           echo "$VERSION_SMRCTL" > cmd/smrctl/version.tmp
@@ -254,6 +256,8 @@ jobs:
 
       - name: Generate tag name for workflow dispatch
         id: generate_tag
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           COMPONENT="${{ github.event.inputs.component || 'all' }}"
           VERSION=""
@@ -267,8 +271,8 @@ jobs:
             VERSION_SMR=$(cat cmd/smr/version)
           fi
           
-          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "${{ github.event.head_commit.message }}")
-          VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "${{ github.event.head_commit.message }}")
+          VERSION_SMR=$(.github/scripts/version.sh "$VERSION_SMR" "$COMMIT_MSG")
+          VERSION_CTL=$(.github/scripts/version.sh "$VERSION_CTL" "$COMMIT_MSG")
 
           TAG_CTL=""
           TAG_SMR=""
@@ -308,6 +312,8 @@ jobs:
           show-progress: false
 
       - name: Parse matrix and run sequentially
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           matrix=$(echo '${{ needs.prepare-release.outputs.matrix }}' | jq -c '.[]')
           
@@ -318,7 +324,7 @@ jobs:
             echo "Processing $COMPONENT with tag $TAG"
           
             VERSION=$(cat cmd/$COMPONENT/version)
-            VERSION=$(.github/scripts/version.sh "$VERSION" "${{ github.event.head_commit.message }}")
+            VERSION=$(.github/scripts/version.sh "$VERSION" "$COMMIT_MSG")
             echo "$VERSION" > cmd/$COMPONENT/version
           
             git config user.name "actions"
