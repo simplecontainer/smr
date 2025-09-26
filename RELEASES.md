@@ -1,30 +1,15 @@
 # Branches and Tags
 
-> 📌 For details about how patch releases are handled, please see [PATCH-RELEASES.md](PATCH-RELEASES.md).
-
----
-
 ## Branches
 
 The `main` branch represents active development for upcoming releases.  
-All new features and fixes should target `main`. Changes to release branches should only happen through **cherry-picked commits**, and only when relevant to maintenance (e.g., bug or security fixes).
-
-Each release branch has a sponsoring maintainer who serves as the point of contact and is responsible for guidance on contributions to that branch.
-
-🚫 **Note:** Release branches are not meant for new feature development. Only bug fixes and security updates are eligible for backports.
+All new features and fixes should target `main`.
 
 ### Currently Maintained Branches
 
 | Branch Name                | Sponsoring Maintainer(s)         | Contribution Status   | Planned End of Maintenance | Known Distributors                     |
 |-----------------------------|----------------------------------|-----------------------|-----------------------------|----------------------------------------|
-| main (development branch)   | [SMR Maintainers](../MAINTAINERS.md) | N/A                   | -                           | N/A                                    |
-| 1.2.x                       | [SMR Maintainers](../MAINTAINERS.md) | Maintained            | After 1.3.x release         | [Docker Hub][dockerhub], [GitHub][ghcr] |
-| 1.1.x                       | @yourhandle                      | Maintained (security) | 2026-01-15                  | [GitHub][ghcr]                         |
-| 1.0.x                       |                                  | Unmaintained          | -                           |                                        |
-| Older than 1.0              |                                  | Unmaintained          | -                           |                                        |
-
-[dockerhub]: https://hub.docker.com/r/simplecontainer/smr
-[ghcr]: https://github.com/simplecontainer/smr/pkgs/container/smr
+| main (development branch)   | [SMR Maintainers](../MAINTAINERS.md) | N/A                   | -                       | N/A                                    |
 
 ---
 
@@ -50,6 +35,5 @@ vX.Y.Z[-suffix[N]]
 ```
 
 Examples:
-- `v1.2.0` → stable release
-- `v1.3.0-rc1` → first release candidate for `1.3.0`
-- `v2.0.0-alpha2` → second alpha for the `2.0.0` release  
+- `v1.2.0-smr` → stable release of smr
+- `v1.3.0-smrctl` → stable release of smrctl
