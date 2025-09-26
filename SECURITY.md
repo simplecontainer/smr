@@ -8,7 +8,7 @@ We take the security of this project seriously and are committed to protecting o
 
 ⚠️ **Do not open a public issue.**
 
-Instead, please email your findings to **security@[yourdomain].com**.
+Instead, please email your findings to **security@simplecontainer.io**.
 
 When reporting, include as much detail as possible:
 - A clear description of the issue.
