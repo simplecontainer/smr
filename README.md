@@ -5,6 +5,10 @@
 ![Simplecontainer GitOps](.github/resources/simplecontainer-gitops-promo.png)
 
 ## Quickest start
+> [!IMPORTANT]
+> ⚠️️ Don't run `smrmgr start` as root. It will not work. Ensure that non-root user has access to the `/var/run/docker.sock`.
+
+
 ```cgo
 curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
 chmod +x smrmgr
@@ -50,6 +54,9 @@ sudo smrmgr install
 ```
 
 2. **Start a single node with default configuration:**
+
+> [!IMPORTANT]
+> ⚠️️ Don't run this command as root. It will not work. Ensure that non-root user has access to the `/var/run/docker.sock`.
 
 ```bash
 smrmgr start

@@ -521,6 +521,7 @@ download_binaries() {
 # ============================================================================
 
 cmd_start() {
+    check_not_root
     parse_arguments "$@"
     initialize_defaults
     validate_configuration
@@ -674,6 +675,12 @@ main() {
             exit 1
             ;;
     esac
+}
+
+check_not_root() {
+    if [[ $EUID -eq 0 ]]; then
+        die "This command cannot be run as root. Please run as a regular user. Ensure that user has permissions to access /var/run/docker.sock"
+    fi
 }
 
 # Run main function if script is executed directly
