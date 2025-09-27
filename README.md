@@ -16,6 +16,12 @@ sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
 smrmgr start
 ```
+Verify installation:
+```
+smrctl ps
+NODE         RESOURCE                             PORTS IMAGE STATE ENGINE STATE     SMR STATE        
+──────────────────────────────────────────────────────────────────────────────────────────────────────
+```
 
 ## Overview
 
@@ -62,11 +68,12 @@ sudo smrmgr install
 smrmgr start
 ```
 
-3. **Configure the CLI client:**
+3. **Use the CLI client:**
 
 ```bash
-smrctl context import $(smr agent export) -y
 smrctl ps
+NODE         RESOURCE                             PORTS IMAGE STATE ENGINE STATE     SMR STATE        
+──────────────────────────────────────────────────────────────────────────────────────────────────────
 ```
 
 ### Running dashboard
@@ -169,7 +176,7 @@ Replace `smr.example.com` with your domain:
 
 ```bash
 smrmgr start -d smr.example.com
-smr agent export --api smr.example.com:1443
+smrctl context export --api smr.example.com:1443
 ```
 
 From external machines:
@@ -183,7 +190,7 @@ smrctl ps
 #### Node 1 (Cluster Leader)
 ```bash
 smrmgr start -d smr-1.example.com
-smr agent export --api smr-1.example.com:1443
+smrctl context export --api smr-1.example.com:1443
 ```
 
 #### Node 2+ (Joining Nodes)

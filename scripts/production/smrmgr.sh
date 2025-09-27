@@ -330,6 +330,7 @@ stop_node() {
 wait_for_cluster_ready() {
     log_info "Waiting for cluster to be ready..."
     smr agent events --wait cluster_started --node "$NODE_NAME" || die "Cluster failed to start"
+    smrctl context import $(smr agent export)
     log_info "Cluster is ready"
 }
 
