@@ -330,7 +330,7 @@ stop_node() {
 wait_for_cluster_ready() {
     log_info "Waiting for cluster to be ready..."
     smr agent events --wait cluster_started --node "$NODE_NAME" || die "Cluster failed to start"
-    smrctl context import $(smr agent export)
+    smrctl context import $(smr agent export --node "$NODE_NAME")
     log_info "Cluster is ready"
 }
 
@@ -523,6 +523,7 @@ download_binaries() {
 
 cmd_start() {
     check_not_root
+    check_docker_access
     parse_arguments "$@"
     initialize_defaults
     validate_configuration
@@ -682,6 +683,39 @@ check_not_root() {
     if [[ $EUID -eq 0 ]]; then
         die "This command cannot be run as root. Please run as a regular user. Ensure that user has permissions to access /var/run/docker.sock"
     fi
+}
+
+check_docker_access() {
+    local docker_socket="/var/run/docker.sock"
+
+    # Check if docker socket exists
+    if [[ ! -S "$docker_socket" ]]; then
+        die "Docker socket not found at $docker_socket. Is Docker installed and running?"
+    fi
+
+    if [[ ! -r "$docker_socket" || ! -w "$docker_socket" ]]; then
+        local current_user=$(whoami)
+        local socket_group=$(stat -c '%G' "$docker_socket" 2>/dev/null || echo "unknown")
+
+        log_error "Current user '$current_user' does not have access to Docker socket"
+        log_error "Socket group: $socket_group"
+
+        # Provide helpful guidance
+        echo "To fix this issue, you can:" >&2
+        echo "1. Add your user to the docker group:" >&2
+        echo "   sudo usermod -aG docker $current_user" >&2
+        echo "   newgrp docker  # or logout and login again" >&2
+        echo "" >&2
+
+        die "Docker socket access denied"
+    fi
+
+    # Test actual Docker connectivity
+    if ! docker version >/dev/null 2>&1; then
+        die "Cannot connect to Docker daemon. Please ensure Docker is running and accessible"
+    fi
+
+    log_debug "Docker socket access verified successfully"
 }
 
 # Run main function if script is executed directly
