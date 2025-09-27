@@ -39,23 +39,19 @@ func (a *Api) AddNode(c *gin.Context) {
 	}
 
 	data, err := io.ReadAll(c.Request.Body)
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		return
 	}
 
 	n := node.NewNode()
-
 	err = json.Unmarshal(data, n)
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		return
 	}
 
 	existing := a.Cluster.Cluster.Find(n)
-
 	if existing == nil {
 		n.NodeID = a.Cluster.Cluster.GenerateID()
 	} else {
@@ -64,7 +60,6 @@ func (a *Api) AddNode(c *gin.Context) {
 
 	var bytes []byte
 	bytes, err = n.ToJSON()
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", err, nil))
 		return

@@ -111,28 +111,24 @@ func (a *Api) StartCluster(c *gin.Context) {
 			}
 
 			data, err = json.Marshal(a.Cluster.Node)
-
 			if err != nil {
 				c.JSON(http.StatusBadRequest, common.Response(http.StatusBadRequest, "", errors.New(static.USER_NOT_FOUND), nil))
 				return
 			}
 
 			response := network.Send(a.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/node", peer.API), http.MethodPost, data)
-
 			if response.Error {
 				c.JSON(http.StatusBadRequest, response)
 				return
 			}
 
 			err = json.Unmarshal(response.Data, &a.Cluster.Node)
-
 			if err != nil {
 				c.JSON(http.StatusBadRequest, response)
 				return
 			}
 
 			response = network.Send(a.Manager.Http.Clients[user.Username].Http, fmt.Sprintf("%s/api/v1/cluster/", peer.API), http.MethodGet, nil)
-
 			if response.Success {
 				var bytes []byte
 				var tmp []*node.Node

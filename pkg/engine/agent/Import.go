@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/client"
 	"github.com/simplecontainer/smr/pkg/configuration"
+	"github.com/simplecontainer/smr/pkg/contexts"
 	"github.com/simplecontainer/smr/pkg/static"
 	"path/filepath"
 	"time"
@@ -46,4 +47,17 @@ func Import(encrypted string, key string) {
 	}
 
 	fmt.Printf("context '%s' successfully imported and set as active\n", cli.Context.Name)
+}
+
+func Peer() {
+	environment := configuration.NewEnvironment(configuration.WithHostConfig())
+	cli := client.New(nil, environment.NodeDirectory)
+
+	var err error
+	cli.Context, err = contexts.LoadActive(contexts.DefaultConfig(environment.NodeDirectory))
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	fmt.Println(cli.Context.APIURL)
 }

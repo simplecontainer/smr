@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/simplecontainer/smr/internal/helpers"
 	"github.com/simplecontainer/smr/pkg/bootstrap"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -11,7 +10,6 @@ import (
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/spf13/viper"
 	"net"
-	"regexp"
 )
 
 func Create(api iapi.Api) {
@@ -31,11 +29,6 @@ func Create(api iapi.Api) {
 	}
 
 	api.GetConfig().NodeName = viper.GetString("node")
-
-	pattern := regexp.MustCompile(`^.+-\d+$`)
-	if !pattern.MatchString(api.GetConfig().NodeName) {
-		helpers.PrintAndExit(errors.New("node name must contain text and finish with dash index eg. test-1 OR test-2"), 1)
-	}
 
 	api.GetConfig().NodeImage = viper.GetString("image")
 	api.GetConfig().NodeTag = viper.GetString("tag")

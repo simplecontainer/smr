@@ -27,7 +27,7 @@ func cmdNodeCreate(api iapi.Api, cli *client.Client, args []string) {
 func cmdNodeCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("platform", static.PLATFORM_DOCKER, "Container platform to manage containers lifecycle")
 
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
+	cmd.Flags().String("node", "simplecontainer-node", "Node container name")
 
 	cmd.Flags().String("image", "quay.io/simplecontainer/smr", "Node image name")
 	cmd.Flags().String("tag", "latest", "Node image tag")
@@ -52,7 +52,7 @@ func cmdNodeStart(api iapi.Api, cli *client.Client, args []string) {
 	node.SetupAccess()
 }
 func cmdNodeStartFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
+	cmd.Flags().String("node", "simplecontainer-node", "Node container name")
 	cmd.Flags().String("entrypoint", "/opt/smr/smr", "Entrypoint")
 	cmd.Flags().String("args", "start", "Args")
 	cmd.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
@@ -62,20 +62,20 @@ func cmdNodeClean(api iapi.Api, cli *client.Client, args []string) {
 	node.Clean()
 }
 func cmdNodeCleanFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
+	cmd.Flags().String("node", "simplecontainer-node", "Node container name")
 }
 
 func cmdNodeLogs(api iapi.Api, cli *client.Client, args []string) {
 	node.Logs()
 }
 func cmdNodeLogsFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node container name")
+	cmd.Flags().String("node", "simplecontainer-node", "Node container name")
 }
 
 func cmdNodeNetworks(api iapi.Api, cli *client.Client, args []string) {
 	node.Networks()
 }
 func cmdNodeNetworksFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmd.Flags().String("node", "simplecontainer-node", "Node")
 	cmd.Flags().String("network", "bridge", "Network name")
 }

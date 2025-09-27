@@ -25,7 +25,7 @@ func Container(objects []json.RawMessage) {
 
 		for _, container := range display {
 			table.Append([]string{
-				fmt.Sprintf("%s", container.NodeName),
+				fmt.Sprintf("%s (%d)", container.NodeName, container.NodeID),
 				fmt.Sprintf("%s/%s/%s", static.KIND_CONTAINERS, helpers.CliRemoveComa(container.Group), helpers.CliRemoveComa(container.GeneratedName)),
 				helpers.CliRemoveComa(container.Ports),
 				container.ImageState,

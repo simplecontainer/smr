@@ -14,6 +14,7 @@ type ContainerInformation struct {
 	SmrState      string
 	NodeName      string
 	NodeURL       string
+	NodeID        uint64
 	Recreated     bool
 	LastUpdate    string
 }

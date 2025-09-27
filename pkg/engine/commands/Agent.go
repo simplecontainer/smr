@@ -19,6 +19,7 @@ func Agent() {
 		command.NewBuilder().Parent("agent").Name("start").Function(cmdAgentStart).Flags(cmdAgentStartFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("export").Function(cmdAgentExport).Flags(cmdAgentExportFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("import").Args(cobra.ExactArgs(2)).Function(cmdAgentImport).Flags(cmdAgentImportFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("agent").Name("peer").Args(cobra.ExactArgs(0)).Function(cmdAgentPeer).Flags(cmdAgentPeerFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("agent").Name("stop").Function(command.EmptyFunction).BuildWithValidation(),
 		command.NewBuilder().Parent("stop").Name("agent").Function(cmdAgentStopFlannel).BuildWithValidation(),
 		command.NewBuilder().Parent("stop").Name("control").Function(cmdAgentStopControl).BuildWithValidation(),
@@ -51,7 +52,7 @@ func cmdAgentStart(api iapi.Api, cli *client.Client, args []string) {
 }
 func cmdAgentStartFlags(cmdAgent *cobra.Command) {
 	cmdAgent.Flags().String("raft", "", "raft endpoint")
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node container name")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node container name")
 }
 
 func cmdAgentDrain(api iapi.Api, cli *client.Client, args []string) {
@@ -65,7 +66,7 @@ func cmdAgentDrain(api iapi.Api, cli *client.Client, args []string) {
 	agent.Batch(b)
 }
 func cmdAgentDrainFlags(cmdAgent *cobra.Command) {
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 	cmdAgent.Flags().String("wait", "", "Node")
 }
 
@@ -82,7 +83,7 @@ func cmdAgentRestart(api iapi.Api, cli *client.Client, args []string) {
 	agent.Batch(b)
 }
 func cmdAgentRestartFlags(cmdAgent *cobra.Command) {
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 	cmdAgent.Flags().String("wait", "", "Node")
 }
 
@@ -99,7 +100,7 @@ func cmdAgentUpgrade(api iapi.Api, cli *client.Client, args []string) {
 	agent.Batch(b)
 }
 func cmdAgentUpgradeFlags(cmdAgent *cobra.Command) {
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 	cmdAgent.Flags().String("wait", "", "Node")
 }
 
@@ -108,14 +109,22 @@ func cmdAgentExport(api iapi.Api, cli *client.Client, args []string) {
 }
 func cmdAgentExportFlags(cmdAgent *cobra.Command) {
 	cmdAgent.Flags().String("api", "localhost:1443", "Public/private facing endpoint for control plane. eg example.com:1443")
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 }
 
 func cmdAgentImport(api iapi.Api, cli *client.Client, args []string) {
 	agent.Import(args[0], args[1])
 }
 func cmdAgentImportFlags(cmdAgent *cobra.Command) {
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
+	cmdAgent.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
+}
+
+func cmdAgentPeer(api iapi.Api, cli *client.Client, args []string) {
+	agent.Peer()
+}
+func cmdAgentPeerFlags(cmdAgent *cobra.Command) {
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 	cmdAgent.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 }
 
@@ -131,7 +140,7 @@ func cmdAgentControl(api iapi.Api, cli *client.Client, args []string) {
 	controller.Control(api)
 }
 func cmdAgentControlFlags(cmdAgent *cobra.Command) {
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 	cmdAgent.Flags().BoolP("y", "y", false, "Say yes to overwrite of context")
 }
 
@@ -139,6 +148,6 @@ func cmdAgentEvents(api iapi.Api, cli *client.Client, args []string) {
 	agent.Events()
 }
 func cmdAgentEventsFlags(cmdAgent *cobra.Command) {
-	cmdAgent.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmdAgent.Flags().String("node", "simplecontainer-node", "Node")
 	cmdAgent.Flags().String("wait", "", "Node")
 }

@@ -70,6 +70,7 @@ func ContainerBuilder(objects []json.RawMessage) ([]ContainerInformation, error)
 
 		info.NodeURL = containerObj.GetRuntime().Node.URL
 		info.NodeName = containerObj.GetRuntime().Node.NodeName
+		info.NodeID = containerObj.GetRuntime().Node.NodeID
 
 		display = append(display, info)
 	}

@@ -54,7 +54,7 @@ func cmdCommit(api iapi.Api, cli *client.Client, args []string) {
 	Event(cli.Context, format.GetPrefix(), format.GetVersion(), static.CATEGORY_EVENT, format.GetKind(), format.GetGroup(), format.GetName(), bytes)
 }
 func cmdCommitFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmd.Flags().String("node", "simplecontainer-node", "Node")
 	cmd.Flags().String("wait", "", "Wait for specific event")
 	cmd.Flags().String("resource", "", "Specify resource you want to track")
 }
@@ -69,7 +69,7 @@ func cmdEvents(api iapi.Api, cli *client.Client, args []string) {
 	}
 }
 func cmdEventsFlags(cmd *cobra.Command) {
-	cmd.Flags().String("node", "simplecontainer-node-1", "Node")
+	cmd.Flags().String("node", "simplecontainer-node", "Node")
 	cmd.Flags().String("wait", "", "Wait for specific event")
 	cmd.Flags().String("resource", "", "Specify resource you want to track")
 }

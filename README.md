@@ -136,7 +136,7 @@ smrctl ps
 Expected output:
 ```
 NODE                    RESOURCE                              PORTS  DEPS  ENGINE STATE      SMR STATE     
-simplecontainer-node-1  containers/example/example-busybox-1  -      -     running (docker)  running (9s)  
+simplecontainer-node  containers/example/example-busybox-1  -      -     running (docker)  running (9s)  
 ```
 
 ## Architecture
@@ -182,14 +182,17 @@ smrctl ps
 
 #### Node 1 (Cluster Leader)
 ```bash
-smrmgr start -n simplecontainer-1 -d smr-1.example.com
+smrmgr start -d smr-1.example.com
 smr agent export --api smr-1.example.com:1443
 ```
 
 #### Node 2+ (Joining Nodes)
+> [!IMPORTANT]
+> ⚠️️ The smr binary is importing context not the smrctl!
+
 ```bash
-smr agent import --node simplecontainer-2 -y PASTE_EXPORTED_OUTPUT
-smrmgr start -n simplecontainer-2 -d smr-2.example.com -j -p smr-1.example.com
+smr agent import -y PASTE_EXPORTED_OUTPUT
+smrmgr start -d smr-2.example.com -j
 ```
 
 ## Container Management

@@ -18,7 +18,7 @@ readonly SCRIPT_VERSION="2.0.0"
 # Default configuration
 readonly DEFAULT_REGISTRY="http://api.simplecontainer.io"
 readonly DEFAULT_IMAGE="quay.io/simplecontainer/smr"
-readonly DEFAULT_NODE_NAME="simplecontainer-node-1"
+readonly DEFAULT_NODE_NAME="simplecontainer-node"
 readonly DEFAULT_DOMAIN="localhost"
 readonly DEFAULT_NODE_ARGS="--listen 0.0.0.0:1443"
 readonly DEFAULT_CLIENT_ARGS="--port.control 0.0.0.0:1443 --port.overlay 0.0.0.0:9212"
@@ -196,7 +196,7 @@ validate_configuration() {
     fi
 
     if [[ "$JOIN_CLUSTER" == "true" && -z "$PEER_ADDRESS" ]]; then
-        die "Peer address is required when joining a cluster"
+        PEER_ADDRESS=$(smr agent peer --node $NODE_NAME)
     fi
 }
 
