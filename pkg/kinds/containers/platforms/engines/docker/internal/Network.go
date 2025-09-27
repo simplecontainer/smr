@@ -3,8 +3,8 @@ package internal
 import (
 	"context"
 	"errors"
-	dockerNetwork "github.com/docker/docker/api/types/network"
-	dockerClient "github.com/docker/docker/client"
+	TDNetwork "github.com/docker/docker/api/types/network"
+	IDClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"sync"
 )
@@ -114,20 +114,20 @@ func (networks *Networks) Find(networkId string) *Network {
 
 func (network *Network) Connect(containerId string) error {
 	ctx := context.Background()
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 	if err != nil {
 		panic(err)
 	}
 
-	defer func(cli *dockerClient.Client) {
+	defer func(cli *IDClient.Client) {
 		err = cli.Close()
 		if err != nil {
 			return
 		}
 	}(cli)
 
-	EndpointSettings := &dockerNetwork.EndpointSettings{
+	EndpointSettings := &TDNetwork.EndpointSettings{
 		NetworkID: network.Docker.NetworkId,
 	}
 
@@ -142,13 +142,13 @@ func (network *Network) Connect(containerId string) error {
 
 func (network *Network) Disconnect(containerId string) error {
 	ctx := context.Background()
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 	if err != nil {
 		panic(err)
 	}
 
-	defer func(cli *dockerClient.Client) {
+	defer func(cli *IDClient.Client) {
 		err = cli.Close()
 		if err != nil {
 			return

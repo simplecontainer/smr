@@ -25,7 +25,7 @@ func New(bytes []byte) *Network {
 }
 
 func (network *Network) Create() error {
-	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv)
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (network *Network) Create() error {
 }
 
 func (network *Network) Remove() error {
-	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv)
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 	if err != nil {
 		return err
