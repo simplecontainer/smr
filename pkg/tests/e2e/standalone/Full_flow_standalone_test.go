@@ -19,7 +19,7 @@ func TestStandaloneMode(t *testing.T) {
 	nm := node.NewNodeManager()
 	nm.SetupTestCleanup(t)
 
-	opts := node.DefaultNodeOptions("test", 1)
+	opts := node.DefaultNodeOptions("test")
 	opts.Image = flags.Image
 	opts.Tag = flags.Tag
 	if flags.BinaryPath != "" {

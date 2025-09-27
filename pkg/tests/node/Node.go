@@ -19,7 +19,6 @@ import (
 
 type Node struct {
 	Name       string
-	Index      int
 	Image      string
 	Tag        string
 	Join       bool
@@ -57,10 +56,9 @@ type Options struct {
 	BinaryPath string
 }
 
-func DefaultNodeOptions(name string, index int) Options {
+func DefaultNodeOptions(name string) Options {
 	return Options{
 		Name:  name,
-		Index: index,
 		Image: "default-image",
 		Tag:   "latest",
 		Join:  false,
@@ -68,26 +66,29 @@ func DefaultNodeOptions(name string, index int) Options {
 	}
 }
 
+var LAST_INDEX = 1
+
 func New(t *testing.T, opts Options) (*Node, error) {
 	if opts.Name == "" {
 		return nil, errors.New("node name cannot be empty")
 	}
 
-	nodeName := fmt.Sprintf("%s-%d", opts.Name, opts.Index)
+	nodeName := fmt.Sprintf("%s", opts.Name)
 
 	node := &Node{
 		Name:  nodeName,
-		Index: opts.Index,
 		Image: opts.Image,
 		Tag:   opts.Tag,
 		Join:  opts.Join,
 		Peer:  opts.Peer,
 		Ports: Ports{
-			Control: 1442 + opts.Index,
-			Etcd:    2378 + opts.Index,
-			Overlay: 9211 + opts.Index,
+			Control: 1442 + LAST_INDEX,
+			Etcd:    2378 + LAST_INDEX,
+			Overlay: 9211 + LAST_INDEX,
 		},
 	}
+
+	LAST_INDEX += 1
 
 	root := helpers.GetProjectRoot(t)
 	if err := os.Chdir(root); err != nil {
