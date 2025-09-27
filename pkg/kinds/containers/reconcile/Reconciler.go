@@ -1,7 +1,6 @@
 package reconcile
 
 import (
-	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
@@ -67,7 +66,6 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		)
 
 		if reconcile {
-			containerWatcher.Logger.Info(fmt.Sprintf("%s -> %s", nextState, reconcile))
 			containerWatcher.ContainerQueue <- containerObj
 
 			go func() {

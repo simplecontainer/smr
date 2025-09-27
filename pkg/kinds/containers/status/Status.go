@@ -201,7 +201,6 @@ func (status *Status) QueueState(state string, parentQueuedAt time.Time) error {
 	}
 
 	if parentQueuedAt.Before(status.QueueRejectOlderThan) {
-		fmt.Println(parentQueuedAt, status.QueueRejectOlderThan)
 		return errors.New(fmt.Sprintf("parent queue expired - can't transition to the next state %s", st.State))
 	}
 
