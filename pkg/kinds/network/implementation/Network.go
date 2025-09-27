@@ -3,9 +3,8 @@ package implementation
 import (
 	"context"
 	"encoding/json"
-	"github.com/docker/docker/api/types"
-	dockerNetwork "github.com/docker/docker/api/types/network"
-	dockerClient "github.com/docker/docker/client"
+	TDNetwork "github.com/docker/docker/api/types/network"
+	IDClient "github.com/docker/docker/client"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 )
 
@@ -26,15 +25,15 @@ func New(bytes []byte) *Network {
 }
 
 func (network *Network) Create() error {
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv)
 
 	if err != nil {
 		return err
 	}
 
-	newNetwork := types.NetworkCreate{IPAM: &dockerNetwork.IPAM{
+	newNetwork := TDNetwork.CreateOptions{IPAM: &TDNetwork.IPAM{
 		Driver: "default",
-		Config: []dockerNetwork.IPAMConfig{dockerNetwork.IPAMConfig{
+		Config: []TDNetwork.IPAMConfig{TDNetwork.IPAMConfig{
 			Subnet: network.IPV4AddressPool,
 		}},
 	}}
@@ -45,7 +44,7 @@ func (network *Network) Create() error {
 }
 
 func (network *Network) Remove() error {
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv)
 
 	if err != nil {
 		return err
@@ -56,23 +55,23 @@ func (network *Network) Remove() error {
 	return err
 }
 
-func (network *Network) Find() (map[string]dockerNetwork.EndpointResource, bool, error) {
+func (network *Network) Find() (map[string]TDNetwork.EndpointResource, bool, error) {
 	ctx := context.Background()
-	cli, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 
 	if err != nil {
 		return nil, false, err
 	}
 
-	defer func(cli *dockerClient.Client) {
+	defer func(cli *IDClient.Client) {
 		err = cli.Close()
 		if err != nil {
 			return
 		}
 	}(cli)
 
-	var networks []types.NetworkResource
-	networks, err = cli.NetworkList(ctx, types.NetworkListOptions{})
+	var networks []TDNetwork.Summary
+	networks, err = cli.NetworkList(ctx, TDNetwork.ListOptions{})
 
 	if err != nil {
 		return nil, false, err

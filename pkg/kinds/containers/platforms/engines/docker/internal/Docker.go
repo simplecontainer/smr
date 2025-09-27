@@ -3,13 +3,13 @@ package internal
 import (
 	"context"
 	"errors"
-	"github.com/docker/docker/api/types"
+	"github.com/containerd/errdefs"
 	TDContainer "github.com/docker/docker/api/types/container"
 	TDNetwork "github.com/docker/docker/api/types/network"
 	IDClient "github.com/docker/docker/client"
 )
 
-func Inspect(DockerID string) (types.ContainerJSON, error) {
+func Inspect(DockerID string) (TDContainer.InspectResponse, error) {
 	ctx := context.Background()
 	cli := &IDClient.Client{}
 
@@ -17,7 +17,7 @@ func Inspect(DockerID string) (types.ContainerJSON, error) {
 
 	cli, err = IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
-		return types.ContainerJSON{}, err
+		return TDContainer.InspectResponse{}, err
 	}
 
 	defer func(cli *IDClient.Client) {
@@ -30,7 +30,7 @@ func Inspect(DockerID string) (types.ContainerJSON, error) {
 	data, err := cli.ContainerInspect(ctx, DockerID)
 
 	if err != nil {
-		return types.ContainerJSON{}, err
+		return TDContainer.InspectResponse{}, err
 	}
 
 	return data, nil
@@ -45,13 +45,13 @@ func InspectNetwork(NetworkID string) (TDNetwork.Inspect, error) {
 		return TDNetwork.Inspect{}, err
 	}
 
-	return cli.NetworkInspect(ctx, NetworkID, types.NetworkInspectOptions{
+	return cli.NetworkInspect(ctx, NetworkID, TDNetwork.InspectOptions{
 		Scope:   "",
 		Verbose: false,
 	})
 }
 
-func Get(name string) (types.Container, error) {
+func Get(name string) (TDContainer.Summary, error) {
 	ctx := context.Background()
 	cli, err := IDClient.NewClientWithOpts(IDClient.FromEnv, IDClient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -69,7 +69,7 @@ func Get(name string) (types.Container, error) {
 	})
 
 	if err != nil {
-		return types.Container{}, err
+		return TDContainer.Summary{}, err
 	}
 
 	for i, container := range containers {
@@ -84,7 +84,7 @@ func Get(name string) (types.Container, error) {
 		}
 	}
 
-	return types.Container{}, errors.New("container not found")
+	return TDContainer.Summary{}, errdefs.ErrNotFound
 }
 
 func GetNetwork(name string) (TDNetwork.Summary, error) {
@@ -98,7 +98,7 @@ func GetNetwork(name string) (TDNetwork.Summary, error) {
 	defer cli.Close()
 
 	var networks []TDNetwork.Summary
-	networks, err = cli.NetworkList(ctx, types.NetworkListOptions{})
+	networks, err = cli.NetworkList(ctx, TDNetwork.ListOptions{})
 	if err != nil {
 		panic(err)
 	}

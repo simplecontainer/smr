@@ -24,6 +24,7 @@ import (
 	"github.com/wI2L/jsondiff"
 	"net/http"
 	"os"
+	"time"
 )
 
 func (containers *Containers) Start() error {
@@ -166,7 +167,7 @@ func (containers *Containers) Event(event ievents.Event) error {
 		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
 				if containerWatcher.AllowPlatformEvents {
-					err := containerWatcher.Container.GetStatus().QueueState(status.CHANGE)
+					err := containerWatcher.Container.GetStatus().QueueState(status.RESTART, time.Now())
 					if err != nil {
 						containerWatcher.Logger.Error(err.Error())
 						return err
@@ -192,7 +193,7 @@ func (containers *Containers) Event(event ievents.Event) error {
 
 		if !containerW.Done {
 			containerW.Logger.Info("restart event dispatched to the container")
-			containerW.Container.GetStatus().QueueState(status.RESTART)
+			containerW.Container.GetStatus().QueueState(status.RESTART, time.Now())
 			containerW.ContainerQueue <- containerObj
 		}
 

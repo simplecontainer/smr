@@ -3,19 +3,19 @@ package listener
 import (
 	"context"
 	"fmt"
-	DTTypes "github.com/docker/docker/api/types"
 	DTEvents "github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/simplecontainer/smr/pkg/contracts/ievents"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/types"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/shared"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/static"
+	"time"
 )
 
 func Listen(shared *shared.Shared, platform string) {
@@ -35,7 +35,7 @@ func Listen(shared *shared.Shared, platform string) {
 			}
 		}(cli)
 
-		cEvents, cErr := cli.Events(ctx, DTTypes.EventsOptions{})
+		cEvents, cErr := cli.Events(ctx, DTEvents.ListOptions{})
 
 		for {
 			select {
@@ -56,35 +56,35 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 		break
 	}
 
-	var containerObj platforms.IContainer
+	var cw *watcher.Container
 
 	if event.GetGroup() != "" && event.GetName() != "" {
-		containerObj = shared.Registry.FindLocal(event.GetGroup(), event.GetName())
+		cw = shared.Watchers.Find(fmt.Sprintf("%s/%s", event.GetGroup(), event.GetName()))
 	}
 
-	if containerObj == nil {
+	if cw == nil {
 		return
 	}
 
 	if event.IsManaged() {
 		switch event.GetType() {
 		case types.EVENT_NETWORK_CONNECT:
-			HandleConnect(shared, containerObj, event)
+			HandleConnect(shared, cw, event)
 			return
 		case types.EVENT_NETWORK_DISCONNECT:
-			HandleDisconnect(shared, containerObj, event)
+			HandleDisconnect(shared, cw, event)
 			return
 		case types.EVENT_START:
-			HandleStart(shared, containerObj, event)
+			HandleStart(shared, cw, event)
 			return
 		case types.EVENT_KILL:
-			HandleKill(shared, containerObj, event)
+			HandleKill(shared, cw, event)
 			return
 		case types.EVENT_STOP:
-			HandleStop(shared, containerObj, event)
+			HandleStop(shared, cw, event)
 			return
 		case types.EVENT_DIE:
-			HandleDie(shared, containerObj, event)
+			HandleDie(shared, cw, event)
 			return
 		default:
 			return
@@ -92,69 +92,70 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 	}
 }
 
-func HandleConnect(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	logger.Log.Info(fmt.Sprintf("container %s is connected to the network: %s", container.GetGeneratedName(), event.GetNetworkId()))
-	err := container.SyncNetwork()
+func HandleConnect(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
+	cw.Logger.Info(fmt.Sprintf("container %s is connected to the network: %s", cw.Container.GetGeneratedName(), event.GetNetworkId()))
+	err := cw.Container.SyncNetwork()
 
 	if err != nil {
-		logger.Log.Error(err.Error())
+		cw.Logger.Error(err.Error())
 	}
 
-	err = container.UpdateDns(shared.DnsCache)
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
-}
-
-func HandleDisconnect(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	logger.Log.Info(fmt.Sprintf("container %s is disconnected from the network: %s", container.GetGeneratedName(), event.GetNetworkId()))
-	err := container.RemoveDns(shared.DnsCache, event.GetNetworkId())
-
-	if err != nil {
-		logger.Log.Error(err.Error())
-	}
-
-	err = container.SyncNetwork()
+	err = cw.Container.UpdateDns(shared.DnsCache)
 
 	if err != nil {
 		logger.Log.Error(err.Error())
 	}
 }
 
-func HandleStart(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	if !reconcileIgnore(container.GetLabels()) {
+func HandleDisconnect(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
+	cw.Logger.Info(fmt.Sprintf("container %s is disconnected from the network: %s", cw.Container.GetGeneratedName(), event.GetNetworkId()))
+	err := cw.Container.RemoveDns(shared.DnsCache, event.GetNetworkId())
+
+	if err != nil {
+		cw.Logger.Error(err.Error())
+	}
+
+	err = cw.Container.SyncNetwork()
+
+	if err != nil {
+		cw.Logger.Error(err.Error())
+	}
+}
+
+func HandleStart(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
+	if !reconcileIgnore(cw.Container.GetLabels()) {
 		// NO OP
 	}
 }
 
-func HandleKill(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	if !reconcileIgnore(container.GetLabels()) {
-		logger.Log.Info(fmt.Sprintf("container is killed - event ignored till container is exited %s", container.GetGeneratedName()))
+func HandleKill(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
+	if !reconcileIgnore(cw.Container.GetLabels()) {
+		cw.Logger.Info(fmt.Sprintf("container is killed - event ignored till container is exited %s", cw.Container.GetGeneratedName()))
 	}
 }
 
-func HandleStop(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
+func HandleStop(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
 	// NO OP
 }
 
-func HandleDie(shared *shared.Shared, container platforms.IContainer, event ievents.Event) {
-	if !reconcileIgnore(container.GetLabels()) {
-		containerW := shared.Watchers.Find(container.GetGroupIdentifier())
+func HandleDie(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
+	if !reconcileIgnore(cw.Container.GetLabels()) {
+		containerW := shared.Watchers.Find(cw.Container.GetGroupIdentifier())
 
 		if containerW != nil && containerW.AllowPlatformEvents {
-			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", container.GetGeneratedName()))
+			cw.Logger.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", cw.Container.GetGeneratedName()))
 
-			container.GetStatus().GetPending().Clear()
-			container.GetStatus().SetState(status.DEAD)
+			cw.Container.GetStatus().RejectQueueAttempts(time.Now())
+			cw.Container.GetStatus().GetPending().Clear()
+			cw.Container.GetStatus().QueueState(status.DEAD, time.Now())
 
-			metrics.Containers.Get().DeletePartialMatch(prometheus.Labels{"container": container.GetGeneratedName()})
-			metrics.Containers.Set(1, container.GetGeneratedName(), status.DEAD)
-			metrics.ContainersHistory.Set(1, container.GetGeneratedName(), status.DEAD)
+			metrics.Containers.Get().DeletePartialMatch(prometheus.Labels{"container": cw.Container.GetGeneratedName()})
+			metrics.Containers.Set(1, cw.Container.GetGeneratedName(), status.DEAD)
+			metrics.ContainersHistory.Set(1, cw.Container.GetGeneratedName(), status.DEAD)
 
-			shared.Watchers.Find(container.GetGroupIdentifier()).ContainerQueue <- container
+			shared.Watchers.Find(cw.Container.GetGroupIdentifier()).ContainerQueue <- cw.Container
 		} else {
-			logger.Log.Info(fmt.Sprintf("container is stopped - reconcile will be ignored since it is not allowed %s", container.GetGeneratedName()))
+			cw.Logger.Info(fmt.Sprintf("container is stopped - reconcile will be ignored since it is not allowed %s", cw.Container.GetGeneratedName()))
 		}
 	}
 }

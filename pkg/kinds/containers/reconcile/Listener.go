@@ -10,6 +10,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/queue"
 	"go.uber.org/zap"
 	"sync"
+	"time"
 )
 
 func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Container, pauseHandler func(*watcher.Container) error) {
@@ -124,8 +125,9 @@ func HandleTickerAndEvents(shared *shared.Shared, containerWatcher *watcher.Cont
 					lock.Lock()
 					defer lock.Unlock()
 
+					containerWatcher.Container.GetStatus().RejectQueueAttempts(time.Now())
 					containerWatcher.Container.GetStatus().ClearQueue()
-					containerWatcher.Container.GetStatus().QueueState(status.DELETE)
+					containerWatcher.Container.GetStatus().QueueState(status.DELETE, time.Now())
 					Containers(shared, containerWatcher)
 				})
 			}

@@ -104,7 +104,7 @@ func (a *Api) join(c *gin.Context, kvs []*mvccpb.KeyValue, prefix, version, kind
 
 		combined, err := a.append(c, kv.Value, prefix, version, kind, tmp.GetGroup(), tmp.GetName())
 		if err != nil {
-			logger.Log.Error("failed to find definition", zap.String("format", tmp.ToString()), zap.Error(err))
+			logger.Log.Debug("failed to find definition", zap.String("format", tmp.ToString()), zap.Error(err))
 
 			kinds = append(kinds, kv.Value)
 			continue

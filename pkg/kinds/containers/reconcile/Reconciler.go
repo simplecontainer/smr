@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/simplecontainer/smr/pkg/events/events"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/state"
@@ -22,14 +23,16 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 
 	if !containerObj.GetStatus().IsQueueEmpty() {
 		err := containerObj.GetStatus().TransitionToNext()
-
 		if err != nil {
 			containerWatcher.Logger.Error("failed to transition state", zap.Error(err))
 			return
 		} else {
-			containerWatcher.Logger.Info("transition of state", zap.String("current state", containerObj.GetStatus().GetState()))
+			containerWatcher.Logger.Info("transitioned to the state", zap.String("new state", containerObj.GetStatus().GetState()))
 		}
 	}
+
+	// Remember my QueuedAt locally, because containerObj.GetStatus().State can be changed to another state
+	QueuedAt := containerObj.GetStatus().State.QueuedAt
 
 	err := shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
 	if err != nil {
@@ -40,9 +43,10 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	nextState, reconcile := Reconcile(shared, containerWatcher, existing, cs.State, cs.Error)
 
 	if nextState != "" && reconcile {
-		err = containerObj.GetStatus().QueueState(nextState)
+		err = containerObj.GetStatus().QueueState(nextState, QueuedAt)
 		if err != nil {
 			containerWatcher.Logger.Error("failed to queue state", zap.String("state", nextState), zap.Error(err))
+			return
 		} else {
 			containerWatcher.Logger.Info("queued state", zap.String("queued state", nextState))
 		}
@@ -63,6 +67,7 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 		)
 
 		if reconcile {
+			containerWatcher.Logger.Info(fmt.Sprintf("%s -> %s", nextState, reconcile))
 			containerWatcher.ContainerQueue <- containerObj
 
 			go func() {
@@ -72,11 +77,8 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			}()
 		} else {
 			// Update state for the end since no new call to this function will occur except for delete that is graveyard
-			if nextState != "" {
-				err = shared.Registry.Sync(containerObj.GetGroup(), containerObj.GetGeneratedName())
-				if err != nil {
-					containerWatcher.Logger.Error(err.Error())
-				}
+			if nextState == "" {
+				return
 			}
 
 			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
@@ -89,11 +91,11 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 	}
 }
 
-func GetState(containerWatcher *watcher.Container) state.State {
+func GetState(containerWatcher *watcher.Container) *state.State {
 	engine, err := containerWatcher.Container.GetState()
 
 	if err != nil {
-		return state.State{
+		return &state.State{
 			Error: err.Error(),
 			State: "",
 		}

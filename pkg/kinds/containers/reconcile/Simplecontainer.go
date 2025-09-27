@@ -75,10 +75,13 @@ func handleCreated(shared *shared.Shared, cw *watcher.Container, existing platfo
 
 func handleClean(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.Logger.Info("container is cleaning old container")
+
+	cw.AllowPlatformEvents = false
 	if err := cw.Container.Clean(); err != nil {
 		cw.Logger.Error(err.Error())
 		return status.DAEMON_FAILURE, true
 	}
+	cw.AllowPlatformEvents = true
 
 	return status.PREPARE, true
 }

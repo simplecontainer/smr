@@ -1,7 +1,7 @@
 package docker
 
 import (
-	DTTypes "github.com/docker/docker/api/types"
+	TDContainer "github.com/docker/docker/api/types/container"
 	DTEvents "github.com/docker/docker/api/types/events"
 	"github.com/simplecontainer/smr/pkg/events/platform"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/engines/docker/internal"
@@ -9,7 +9,7 @@ import (
 )
 
 func NewEvent(event DTEvents.Message) platform.Event {
-	var c DTTypes.Container
+	var c TDContainer.Summary
 	var err error
 
 	switch event.Type {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/containerd/errdefs"
 	"github.com/mattn/go-shellwords"
 	"github.com/simplecontainer/smr/internal/definitions"
 	"github.com/simplecontainer/smr/internal/helpers"
@@ -21,8 +22,8 @@ import (
 
 func Start(entrypoint string, args string) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
-	conf, err := startup.Load(environment)
 
+	conf, err := startup.Load(environment)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -31,7 +32,6 @@ func Start(entrypoint string, args string) {
 	containerArgsParsed, _ := shellwords.Parse(args)
 
 	definition, err := definitions.Node(conf.NodeName, conf, entrypointParsed, containerArgsParsed)
-
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}
@@ -43,30 +43,44 @@ func Start(entrypoint string, args string) {
 		if _, err = docker.IsDaemonRunning(); err != nil {
 			helpers.PrintAndExit(err, 1)
 		}
-
 		container, err = docker.New(conf.NodeName, definition)
+
+		if err != nil {
+			helpers.PrintAndExit(errors.New("platform not supported"), 1)
+			return
+		}
 		break
 	default:
 		helpers.PrintAndExit(errors.New("platform not supported"), 1)
+		return
+	}
+
+	if container == nil {
+		helpers.PrintAndExit(err, 1)
+		return
 	}
 
 	state, err := container.GetState()
-
-	switch state.State {
-	case "running":
-		helpers.PrintAndExit(errors.New("container is already running"), 1)
-		break
-	default:
-		err = container.Delete()
-
-		if err != nil {
+	if err == nil {
+		switch state.State {
+		case "running":
+			helpers.PrintAndExit(errors.New("container is already running"), 1)
+			break
+		default:
+			err = container.Delete()
+			if err != nil {
+				helpers.PrintAndExit(err, 1)
+			}
+		}
+	} else {
+		if !errdefs.IsNotFound(err) {
 			helpers.PrintAndExit(err, 1)
 		}
 	}
 
 	fmt.Println(fmt.Sprintf("starting node with the user: %s", definition.Spec.User))
-	err = container.Run()
 
+	err = container.Run()
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

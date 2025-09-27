@@ -6,6 +6,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/containers/reconcile"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/status"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/watcher"
+	"time"
 )
 
 func (containers *Containers) Create(cs []platforms.IContainer, exists bool, user *authentication.User) {
@@ -24,7 +25,7 @@ func (containers *Containers) Create(cs []platforms.IContainer, exists bool, use
 			containers.Shared.Watchers.AddOrUpdate(groupIdentifier, w)
 			containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
-			containerObj.GetStatus().QueueState(status.CREATED)
+			containerObj.GetStatus().QueueState(status.CREATED, time.Now())
 			w.Logger.Info("container object created")
 
 			go reconcile.HandleTickerAndEvents(containers.Shared, w, func(w *watcher.Container) error {
@@ -49,7 +50,7 @@ func (containers *Containers) Update(cs []platforms.IContainer, exists bool) {
 			if existingContainer != nil {
 				existingWatcher.Ticker.Stop()
 
-				containerObj.GetStatus().QueueState(status.CREATED)
+				containerObj.GetStatus().QueueState(status.CREATED, time.Now())
 				containers.Shared.Registry.AddOrUpdate(containerObj.GetGroup(), containerObj.GetGeneratedName(), containerObj)
 
 				existingWatcher.Container = containerObj

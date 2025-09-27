@@ -146,7 +146,7 @@ func (c *Container) GetReadiness() []*readiness.Readiness {
 	return c.Platform.GetReadiness()
 }
 
-func (c *Container) GetState() (state.State, error) {
+func (c *Container) GetState() (*state.State, error) {
 	return c.Platform.GetState()
 }
 func (c *Container) GetEngineState() string { return c.Platform.GetEngineState() }

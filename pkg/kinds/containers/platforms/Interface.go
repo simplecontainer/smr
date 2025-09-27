@@ -34,7 +34,7 @@ type IContainer interface {
 	HasOwner() bool
 
 	GetReadiness() []*readiness.Readiness
-	GetState() (state.State, error)
+	GetState() (*state.State, error)
 	GetEngineState() string
 	GetRuntime() *types.Runtime
 	GetStatus() *status.Status
@@ -92,7 +92,7 @@ type IPlatform interface {
 
 	GetReadiness() []*readiness.Readiness
 
-	GetState() (state.State, error)
+	GetState() (*state.State, error)
 	GetEngineState() string
 	GetId() string
 	GetDefinition() idefinitions.IDefinition

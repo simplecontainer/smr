@@ -10,7 +10,7 @@ import (
 
 func New() *Status {
 	s := &Status{
-		State:      &State{CREATED, "", CATEGORY_PRERUN},
+		State:      &State{CREATED, "", time.Now(), CATEGORY_PRERUN},
 		StateQueue: make([]*State, 0),
 		Pending:    NewPending(),
 		LastUpdate: time.Now(),
@@ -23,33 +23,33 @@ func New() *Status {
 func (status *Status) CreateGraph() {
 	status.StateMachine = gograph.New[*State](gograph.Directed())
 
-	clean := gograph.NewVertex(&State{CLEAN, INITIAL, CATEGORY_CLEAN})
-	dependsFailed := gograph.NewVertex(&State{DEPENDS_FAILED, INITIAL, CATEGORY_PRERUN})
-	transfering := gograph.NewVertex(&State{TRANSFERING, INITIAL, CATEGORY_PRERUN})
-	created := gograph.NewVertex(&State{CREATED, INITIAL, CATEGORY_PRERUN})
-	prepare := gograph.NewVertex(&State{PREPARE, INITIAL, CATEGORY_PRERUN})
-	init := gograph.NewVertex(&State{INIT, INITIAL, CATEGORY_PRERUN})
-	dependsChecking := gograph.NewVertex(&State{DEPENDS_CHECKING, INITIAL, CATEGORY_PRERUN})
-	dependsSolved := gograph.NewVertex(&State{DEPENDS_SOLVED, INITIAL, CATEGORY_PRERUN})
-	start := gograph.NewVertex(&State{START, INITIAL, CATEGORY_PRERUN})
-	restart := gograph.NewVertex(&State{RESTART, INITIAL, CATEGORY_WHILERUN})
+	clean := gograph.NewVertex(&State{CLEAN, INITIAL, time.Now(), CATEGORY_CLEAN})
+	dependsFailed := gograph.NewVertex(&State{DEPENDS_FAILED, INITIAL, time.Now(), CATEGORY_PRERUN})
+	transfering := gograph.NewVertex(&State{TRANSFERING, INITIAL, time.Now(), CATEGORY_PRERUN})
+	created := gograph.NewVertex(&State{CREATED, INITIAL, time.Now(), CATEGORY_PRERUN})
+	prepare := gograph.NewVertex(&State{PREPARE, INITIAL, time.Now(), CATEGORY_PRERUN})
+	init := gograph.NewVertex(&State{INIT, INITIAL, time.Now(), CATEGORY_PRERUN})
+	dependsChecking := gograph.NewVertex(&State{DEPENDS_CHECKING, INITIAL, time.Now(), CATEGORY_PRERUN})
+	dependsSolved := gograph.NewVertex(&State{DEPENDS_SOLVED, INITIAL, time.Now(), CATEGORY_PRERUN})
+	start := gograph.NewVertex(&State{START, INITIAL, time.Now(), CATEGORY_PRERUN})
+	restart := gograph.NewVertex(&State{RESTART, INITIAL, time.Now(), CATEGORY_WHILERUN})
 
-	readinessFailed := gograph.NewVertex(&State{READINESS_FAILED, INITIAL, CATEGORY_WHILERUN})
-	runtimePending := gograph.NewVertex(&State{RUNTIME_PENDING, INITIAL, CATEGORY_WHILERUN})
-	kill := gograph.NewVertex(&State{KILL, INITIAL, CATEGORY_WHILERUN})
-	forceKill := gograph.NewVertex(&State{KILL, INITIAL, CATEGORY_WHILERUN})
-	readinessChecking := gograph.NewVertex(&State{READINESS_CHECKING, INITIAL, CATEGORY_WHILERUN})
-	change := gograph.NewVertex(&State{CHANGE, INITIAL, CATEGORY_WHILERUN})
-	readinessReady := gograph.NewVertex(&State{READY, INITIAL, CATEGORY_WHILERUN})
+	readinessFailed := gograph.NewVertex(&State{READINESS_FAILED, INITIAL, time.Now(), CATEGORY_WHILERUN})
+	runtimePending := gograph.NewVertex(&State{RUNTIME_PENDING, INITIAL, time.Now(), CATEGORY_WHILERUN})
+	kill := gograph.NewVertex(&State{KILL, INITIAL, time.Now(), CATEGORY_WHILERUN})
+	forceKill := gograph.NewVertex(&State{KILL, INITIAL, time.Now(), CATEGORY_WHILERUN})
+	readinessChecking := gograph.NewVertex(&State{READINESS_CHECKING, INITIAL, time.Now(), CATEGORY_WHILERUN})
+	change := gograph.NewVertex(&State{CHANGE, INITIAL, time.Now(), CATEGORY_WHILERUN})
+	readinessReady := gograph.NewVertex(&State{READY, INITIAL, time.Now(), CATEGORY_WHILERUN})
 
-	dead := gograph.NewVertex(&State{DEAD, INITIAL, CATEGORY_POSTRUN})
+	dead := gograph.NewVertex(&State{DEAD, INITIAL, time.Now(), CATEGORY_POSTRUN})
 
-	running := gograph.NewVertex(&State{RUNNING, INITIAL, CATEGORY_END})
-	backoff := gograph.NewVertex(&State{BACKOFF, INITIAL, CATEGORY_END})
-	pendingDelete := gograph.NewVertex(&State{PENDING_DELETE, INITIAL, CATEGORY_END})
-	daemonFailure := gograph.NewVertex(&State{DAEMON_FAILURE, INITIAL, CATEGORY_END})
-	initFailed := gograph.NewVertex(&State{INIT_FAILED, INITIAL, CATEGORY_END})
-	pending := gograph.NewVertex(&State{PENDING, INITIAL, CATEGORY_END})
+	running := gograph.NewVertex(&State{RUNNING, INITIAL, time.Now(), CATEGORY_END})
+	backoff := gograph.NewVertex(&State{BACKOFF, INITIAL, time.Now(), CATEGORY_END})
+	pendingDelete := gograph.NewVertex(&State{PENDING_DELETE, INITIAL, time.Now(), CATEGORY_END})
+	daemonFailure := gograph.NewVertex(&State{DAEMON_FAILURE, INITIAL, time.Now(), CATEGORY_END})
+	initFailed := gograph.NewVertex(&State{INIT_FAILED, INITIAL, time.Now(), CATEGORY_END})
+	pending := gograph.NewVertex(&State{PENDING, INITIAL, time.Now(), CATEGORY_END})
 
 	status.StateMachine.AddEdge(transfering, created)
 
@@ -161,6 +161,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(dependsFailed, dead)
 	status.StateMachine.AddEdge(dependsFailed, created)
 	status.StateMachine.AddEdge(dependsFailed, restart)
+	status.StateMachine.AddEdge(readinessFailed, daemonFailure)
 
 	status.StateMachine.AddEdge(readinessFailed, change)
 	status.StateMachine.AddEdge(readinessFailed, kill)
@@ -168,6 +169,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(readinessFailed, pendingDelete)
 	status.StateMachine.AddEdge(readinessFailed, created)
 	status.StateMachine.AddEdge(readinessFailed, restart)
+	status.StateMachine.AddEdge(readinessFailed, daemonFailure)
 
 	status.StateMachine.AddEdge(kill, dead)
 	status.StateMachine.AddEdge(kill, forceKill)
@@ -192,14 +194,21 @@ func (status *Status) GetPending() *Pending {
 	return status.Pending
 }
 
-func (status *Status) QueueState(state string) error {
+func (status *Status) QueueState(state string, parentQueuedAt time.Time) error {
 	st, err := status.TypeFromString(state)
 	if err != nil {
 		return err
 	}
 
+	if parentQueuedAt.Before(status.QueueRejectOlderThan) {
+		fmt.Println(parentQueuedAt, status.QueueRejectOlderThan)
+		return errors.New(fmt.Sprintf("parent queue expired - can't transition to the next state %s", st.State))
+	}
+
 	status.mu.Lock()
 	defer status.mu.Unlock()
+
+	st.QueuedAt = parentQueuedAt
 
 	status.StateQueue = append(status.StateQueue, st)
 	return nil
@@ -267,6 +276,18 @@ func (status *Status) ClearQueue() {
 	status.StateQueue = status.StateQueue[:0]
 }
 
+func (status *Status) RejectQueueAttempts(rejectOlderThan time.Time) {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+
+	status.QueueRejectOlderThan = rejectOlderThan
+}
+
+func (status *Status) AllowQueueAttempts() {
+	status.mu.Lock()
+	defer status.mu.Unlock()
+}
+
 func (status *Status) SetState(state string) error {
 	st, err := status.TypeFromString(state)
 	if err != nil {
@@ -285,7 +306,10 @@ func (status *Status) SetState(state string) error {
 
 func (status *Status) TransitionToNext() error {
 	status.mu.Lock()
-	defer status.mu.Unlock()
+	defer func() {
+		status.StateQueue = status.StateQueue[1:]
+		status.mu.Unlock()
+	}()
 
 	if len(status.StateQueue) == 0 {
 		return errors.New("no states in queue to transition to")
@@ -297,9 +321,8 @@ func (status *Status) TransitionToNext() error {
 		return errors.New(fmt.Sprintf("invalid transition from %s to %s", status.State.State, nextState.State))
 	}
 
-	status.StateQueue = status.StateQueue[1:]
-
 	oldState := strings.Clone(status.State.State)
+
 	status.State = nextState
 	status.State.PreviousState = oldState
 	status.LastUpdate = time.Now()

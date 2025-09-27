@@ -7,6 +7,7 @@ import (
 )
 
 type Status struct {
+	QueueRejectOlderThan        time.Time
 	State                       *State   `json:"state"`
 	StateQueue                  []*State `json:"state_queue"`
 	Pending                     *Pending `json:"pending"`
@@ -22,9 +23,10 @@ type Status struct {
 }
 
 type State struct {
-	State         string `json:"state"`
-	PreviousState string `json:"previous_state"`
-	category      int8   `json:"category"`
+	State         string    `json:"state"`
+	PreviousState string    `json:"previous_state"`
+	QueuedAt      time.Time `json:"queued_at"`
+	category      int8      `json:"category"`
 }
 
 type Pending struct {

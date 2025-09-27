@@ -30,12 +30,11 @@ func (container *Docker) GetReadiness() []*readiness.Readiness {
 	return container.Readiness.Readinesses
 }
 
-func (container *Docker) GetState() (state.State, error) {
-	dockerContainer, err := internal.Get(container.GeneratedName)
-
+func (container *Docker) GetState() (*state.State, error) {
+	dockerContainer, err := internal.Get(container.GetGeneratedName())
 	if err != nil {
 		container.DockerState = ""
-		return state.State{}, err
+		return &state.State{}, err
 	}
 
 	container.DockerID = dockerContainer.ID
@@ -45,10 +44,10 @@ func (container *Docker) GetState() (state.State, error) {
 	inspected, err = internal.Inspect(container.DockerID)
 
 	if err != nil {
-		return state.State{}, err
+		return &state.State{}, err
 	}
 
-	return state.State{
+	return &state.State{
 		State: dockerContainer.State,
 		Error: inspected.State.Error,
 	}, nil

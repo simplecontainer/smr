@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	TDTypes "github.com/docker/docker/api/types"
+	"github.com/containerd/errdefs"
 	TDContainer "github.com/docker/docker/api/types/container"
 	TDVolume "github.com/docker/docker/api/types/volume"
 	IDClient "github.com/docker/docker/client"
@@ -35,7 +35,6 @@ import (
 func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	definitionEncoded, err := json.Marshal(definition)
-
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +42,6 @@ func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
 	var definitionCopy v1.ContainersDefinition
 
 	err = json.Unmarshal(definitionEncoded, &definitionCopy)
-
 	if err != nil {
 		return nil, err
 	}
@@ -364,14 +362,14 @@ func (container *Docker) Stop(signal string) error {
 		})
 
 		if err != nil {
-			if IDClient.IsErrNotFound(err) {
+			if errdefs.IsNotFound(err) {
 				return nil
 			}
 		}
 
 		return err
 	} else {
-		return errors.New("container is nil when trying to stop it")
+		return errdefs.ErrNotFound
 	}
 }
 func (container *Docker) Kill(signal string) error {
@@ -415,7 +413,7 @@ func (container *Docker) Restart() error {
 			Timeout: &duration,
 		})
 	} else {
-		return errors.New("container is nil or not running when trying to restart it")
+		return errdefs.ErrNotFound
 	}
 }
 func (container *Docker) Delete() error {
@@ -440,7 +438,7 @@ func (container *Docker) Delete() error {
 	})
 
 	if err != nil {
-		if IDClient.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return nil
 		}
 
@@ -448,9 +446,8 @@ func (container *Docker) Delete() error {
 	}
 
 	err = container.Wait(string(TDContainer.WaitConditionRemoved))
-
 	if err != nil {
-		if IDClient.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return nil
 		}
 	}
@@ -491,7 +488,7 @@ func (container *Docker) Clean() error {
 		state, err := container.GetState()
 
 		if err != nil || state.State == "exited" || state.State == "created" {
-			if !errors.Is(errors.New("container not found"), err) {
+			if !errdefs.IsNotFound(err) {
 				return container.Delete()
 			} else {
 				return nil
@@ -563,7 +560,7 @@ func (container *Docker) Exec(ctx context.Context, command []string, interactive
 			return "", nil, nil, err
 		}
 
-		resp, err := cli.ContainerExecAttach(ctx, exec.ID, TDTypes.ExecStartCheck{})
+		resp, err := cli.ContainerExecAttach(ctx, exec.ID, TDContainer.ExecAttachOptions{})
 		if err != nil {
 			return "", nil, nil, err
 		}
@@ -736,9 +733,8 @@ func (container *Docker) InitContainer(definition *v1.ContainersInternal, config
 		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
 	}
 
-	var inspect TDTypes.ContainerJSON
+	var inspect TDContainer.InspectResponse
 	inspect, err = internal.Inspect(container.Init.DockerID)
-
 	if err != nil {
 		return errors.New(fmt.Sprintf("init container: %s", err.Error()))
 	}
