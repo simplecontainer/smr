@@ -24,6 +24,7 @@ func PreloadCommands() {
 	Events()
 	Containers()
 	Gitops()
+	Pack()
 }
 
 func Run(cli *client.Client, c *cobra.Command) {

@@ -10,6 +10,6 @@ type Definition struct {
 type Pack struct {
 	Name        string
 	Version     string
-	Definitions []*Definition
-	Variables   []byte
+	Definitions []*Definition `yaml:"-"`
+	Variables   []byte        `yaml:"-"`
 }
