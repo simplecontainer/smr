@@ -244,13 +244,13 @@ func (pm *ProcessManager) Start(cmd *exec.Cmd) error {
 	}
 
 	if err := cmd.Start(); err != nil {
-		errorMsg := fmt.Sprintf("failed to start command: %v", err)
+		errorMsg := fmt.Errorf("failed to start command: %v", err)
 		if pm.config.FailOnError {
 			pm.logger.Fatalf("[ENGINE] %s", errorMsg)
 		} else {
 			pm.logger.Errorf("[ENGINE] %s", errorMsg)
 		}
-		return fmt.Errorf(errorMsg)
+		return errorMsg
 	}
 
 	pm.process = cmd
@@ -265,13 +265,13 @@ func (pm *ProcessManager) Stop() error {
 	pm.logger.Logf("[ENGINE] Stopping command process")
 	err := pm.process.Process.Signal(os.Signal(syscall.SIGTERM))
 	if err != nil {
-		errorMsg := fmt.Sprintf("error stopping process: %v", err)
+		errorMsg := fmt.Errorf("error stopping process: %v", err)
 		if pm.config.FailOnError {
 			pm.logger.Fatalf("%s", errorMsg)
 		} else {
 			pm.logger.Errorf("%s", errorMsg)
 		}
-		return fmt.Errorf(errorMsg)
+		return errorMsg
 	}
 
 	pm.process = nil
