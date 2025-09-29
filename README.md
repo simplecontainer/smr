@@ -10,7 +10,7 @@
 
 
 ```cgo
-curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
+curl -sL https://smrmgr.simplecontainer.io/ -o smrmgr
 chmod +x smrmgr
 sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
@@ -53,7 +53,7 @@ It provides enterprise-grade features like overlay networking, secrets managemen
 1. **Download and install tooling(smrmgr.sh, smr, and smrctl):**
 
 ```bash
-curl -sL https://raw.githubusercontent.com/simplecontainer/smr/refs/heads/main/scripts/production/smrmgr.sh -o smrmgr
+curl -sL https://smrmgr.simplecontainer.io/ -o smrmgr
 chmod +x smrmgr
 sudo mv smrmgr /usr/local/bin
 sudo smrmgr install
