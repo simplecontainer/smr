@@ -265,9 +265,19 @@ This example demonstrates:
 Containers can depend on other containers being ready:
 
 ```yaml
-spec:
-  dependencies:
-    - mysql.*  # Wait for all mysql containers to be ready
+dependencies:
+  - prefix: "simplecontainer.io/v1"
+    group: "mysql"
+    name: "*" # Wildcard to wait for all replicas
+```
+
+O
+
+```yaml
+dependencies:
+  - prefix: "simplecontainer.io/v1"
+    group: "mysql"
+    name: "mysql-mysql-1" # wait for specific replica
 ```
 
 ### Readiness Probes
