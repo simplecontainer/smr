@@ -11,7 +11,6 @@ import (
 	TDContainer "github.com/docker/docker/api/types/container"
 	TDVolume "github.com/docker/docker/api/types/volume"
 	IDClient "github.com/docker/docker/client"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/simplecontainer/smr/pkg/authentication"
 	"github.com/simplecontainer/smr/pkg/clients"
 	"github.com/simplecontainer/smr/pkg/configuration"
@@ -33,7 +32,6 @@ import (
 )
 
 func New(name string, definition idefinitions.IDefinition) (*Docker, error) {
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	definitionEncoded, err := json.Marshal(definition)
 	if err != nil {
 		return nil, err
@@ -786,6 +784,5 @@ func (container *Docker) Usage() (*TDContainer.StatsResponse, error) {
 }
 
 func (container *Docker) ToJSON() ([]byte, error) {
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	return json.Marshal(container)
 }

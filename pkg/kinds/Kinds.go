@@ -7,6 +7,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/kinds/certkey"
 	"github.com/simplecontainer/smr/pkg/kinds/config"
 	"github.com/simplecontainer/smr/pkg/kinds/containers"
+
 	"github.com/simplecontainer/smr/pkg/kinds/custom"
 	"github.com/simplecontainer/smr/pkg/kinds/gitops"
 	"github.com/simplecontainer/smr/pkg/kinds/httpauth"

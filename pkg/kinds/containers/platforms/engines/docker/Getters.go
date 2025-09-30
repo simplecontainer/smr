@@ -2,7 +2,7 @@ package docker
 
 import (
 	"fmt"
-	TDTypes "github.com/docker/docker/api/types"
+	TDContainer "github.com/docker/docker/api/types/container"
 	"github.com/simplecontainer/smr/pkg/contracts/idefinitions"
 	v1 "github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -40,7 +40,7 @@ func (container *Docker) GetState() (*state.State, error) {
 	container.DockerID = dockerContainer.ID
 	container.DockerState = dockerContainer.State
 
-	var inspected TDTypes.ContainerJSON
+	var inspected TDContainer.InspectResponse
 	inspected, err = internal.Inspect(container.DockerID)
 
 	if err != nil {
@@ -57,7 +57,7 @@ func (container *Docker) GetEngineState() string {
 	return container.DockerState
 }
 
-func (container *Docker) Get() (*TDTypes.Container, error) {
+func (container *Docker) Get() (*TDContainer.Summary, error) {
 	dockerContainer, err := internal.Get(container.GeneratedName)
 
 	if err != nil {

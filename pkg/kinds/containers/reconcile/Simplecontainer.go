@@ -94,7 +94,7 @@ func handlePrepare(shared *shared.Shared, cw *watcher.Container, existing platfo
 
 	go func() {
 		_, err := dependency.Ready(cw.ReconcileCtx, shared.Registry, cw.Container.GetGroup(), cw.Container.GetGeneratedName(),
-			cw.Container.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, cw.DependencyChan)
+			cw.Container.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, cw.DependencyChan, cw.Logger)
 		if err != nil {
 			cw.Logger.Error(err.Error())
 		}
@@ -108,10 +108,6 @@ func handleDependsChecking(shared *shared.Shared, cw *watcher.Container, existin
 	for {
 		select {
 		case dependencyResult := <-cw.DependencyChan:
-			if dependencyResult == nil {
-				return status.DEPENDS_FAILED, true
-			}
-
 			switch dependencyResult.State {
 			case dependency.CHECKING:
 				cw.Logger.Info("checking dependency")
@@ -119,7 +115,6 @@ func handleDependsChecking(shared *shared.Shared, cw *watcher.Container, existin
 				if dependencyResult.Error != nil {
 					cw.Logger.Info(dependencyResult.Error.Error())
 				}
-
 				break
 			case dependency.SUCCESS:
 				cw.Logger.Info("dependency check success")
@@ -188,6 +183,9 @@ func handleStart(shared *shared.Shared, cw *watcher.Container, existing platform
 func handleReadinessChecking(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	for {
 		select {
+		case <-cw.Ctx.Done():
+			cw.Logger.Info("readiness parent context done")
+			break
 		case readinessResult := <-cw.ReadinessChan:
 			state := GetState(cw)
 

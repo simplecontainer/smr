@@ -19,10 +19,10 @@ type State struct {
 	Error error
 }
 
-const CHECKING = 0
-const SUCCESS = 1
-const FAILED = 2
-const CANCELED = 3
+const CHECKING = int8(0)
+const SUCCESS = int8(1)
+const FAILED = int8(2)
+const CANCELED = int8(3)
 
 type Result struct {
 	Data string

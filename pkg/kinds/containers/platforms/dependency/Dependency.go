@@ -7,7 +7,18 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
+	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
+	"go.uber.org/zap"
 	"time"
+)
+
+var (
+	ERROR_CONTEXT_CANCELED        = errors.New("context canceled")
+	ERROR_CONTEXT_TIMEOUT         = errors.New("context time out")
+	ERROR_CONTAINER_NOT_FOUND     = errors.New("container not found")
+	ERROR_WAITING_FOR_ATLEAST_ONE = errors.New("waiting for atleast one container from group to show up")
+	ERROR_DEPENDENCY_NOT_READY    = errors.New("dependency not ready")
+	ERROR_CONTAINER_NOT_READY     = errors.New("container not ready")
 )
 
 func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
@@ -16,7 +27,6 @@ func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
 	}
 
 	timeout, err := time.ParseDuration(depend.Timeout)
-
 	if err != nil {
 		return nil
 	}
@@ -33,32 +43,56 @@ func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
 	}
 }
 
-func Ready(ctx context.Context, registry platforms.Registry, group string, name string, dependsOn []v1.ContainersDependsOn, channel chan *State) (bool, error) {
+func Ready(ctx context.Context, registry platforms.Registry, group string, name string, dependsOn []v1.ContainersDependsOn, channel chan *State, logger *zap.Logger) (bool, error) {
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
-			return SolveDepends(registry, depend.Prefix, group, name, dependency, channel)
+			select {
+			case <-ctx.Done():
+			case <-dependency.Ctx.Done():
+				return backoff.Permanent(ERROR_CONTEXT_CANCELED)
+			default:
+				err := SolveDepends(registry, depend.Prefix, group, name, dependency, channel, logger)
+
+				if err != nil {
+					if errors.Is(err, ERROR_CONTAINER_NOT_FOUND) {
+						return backoff.Permanent(err)
+					} else {
+						channel <- &State{
+							State: CHECKING,
+							Error: err,
+						}
+
+						return err
+					}
+				}
+
+				return nil
+			}
+			return nil
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
-
 		err := backoff.Retry(dependency.Function, backOff)
-		if err != nil {
-			if ctx.Err() != nil {
+
+		select {
+		case <-ctx.Done():
+		case <-dependency.Ctx.Done():
+			state := &State{
+				State: readiness.CANCELED,
+				Error: ERROR_CONTEXT_CANCELED,
+			}
+			channel <- state
+			return false, state.Error
+
+		default:
+			if err != nil {
 				channel <- &State{
-					State: CANCELED,
-					Error: errors.New("context canceled"),
+					State: FAILED,
+					Error: err,
 				}
-				return false, ctx.Err()
+				return false, err
 			}
-
-			dependency.Cancel()
-			channel <- &State{
-				State: FAILED,
-				Error: err,
-			}
-
-			return false, err
 		}
 	}
 
@@ -66,10 +100,10 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 	case <-ctx.Done():
 		channel <- &State{
 			State: CANCELED,
-			Error: errors.New("context canceled"),
+			Error: ERROR_CONTEXT_CANCELED,
 		}
-
 		return false, ctx.Err() // avoid sending
+
 	case channel <- &State{
 		State: SUCCESS,
 		Error: nil,
@@ -79,12 +113,10 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 	return true, nil
 }
 
-func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, myName string, depend *Dependency, channel chan *State) error {
+func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, myName string, depend *Dependency, channel chan *State, logger *zap.Logger) error {
 	myContainer := registry.Find(myPrefix, myGroup, myName)
-
 	if myContainer == nil {
-		depend.Cancel()
-		return errors.New("container not found")
+		return ERROR_CONTAINER_NOT_FOUND
 	}
 
 	otherPrefix := depend.Prefix
@@ -95,49 +127,45 @@ func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, 
 		containers := registry.FindGroup(otherPrefix, otherGroup)
 
 		if len(containers) == 0 {
-			return errors.New("waiting for atleast one container from group to show up")
-		} else {
-			flagFail := false
-
-			for _, container := range containers {
-				if !container.GetStatus().LastReadiness {
-					channel <- &State{
-						State: CHECKING,
-						Error: errors.New(fmt.Sprintf("container not ready %s", container.GetGeneratedName())),
-					}
-
-					flagFail = true
-					break
-				}
-			}
-
-			if flagFail {
-				return errors.New("dependency not ready")
-			} else {
-				return nil
-			}
+			return ERROR_WAITING_FOR_ATLEAST_ONE
 		}
-	} else {
-		container := registry.Find(otherPrefix, otherGroup, otherName)
 
-		if container == nil {
-			channel <- &State{
-				State: CHECKING,
-				Error: errors.New(fmt.Sprintf("container not found %s.%s", otherGroup, otherName)),
-			}
-
-			return errors.New(fmt.Sprintf("container not found %s.%s", otherGroup, otherName))
-		} else {
-			if container.GetStatus().LastReadiness {
-				return nil
-			} else {
+		flagFail := false
+		for _, container := range containers {
+			if !container.GetStatus().LastReadiness {
 				channel <- &State{
 					State: CHECKING,
-					Error: errors.New("container not ready"),
+					Error: fmt.Errorf("container not ready %s", container.GetGeneratedName()),
 				}
-
-				return errors.New("container not ready")
+				flagFail = true
+				break
 			}
 		}
+
+		if flagFail {
+			return ERROR_DEPENDENCY_NOT_READY
+		}
+		return nil
+
+	} else {
+		container := registry.Find(otherPrefix, otherGroup, otherName)
+		if container == nil {
+			logger.Error("container not found", zap.String("group", otherGroup), zap.String("name", otherName))
+			channel <- &State{
+				State: CHECKING,
+				Error: nil,
+			}
+			return ERROR_CONTAINER_NOT_FOUND
+		}
+
+		if container.GetStatus().LastReadiness {
+			return nil
+		}
+
+		channel <- &State{
+			State: CHECKING,
+			Error: ERROR_CONTAINER_NOT_READY,
+		}
+		return ERROR_CONTAINER_NOT_READY
 	}
 }
