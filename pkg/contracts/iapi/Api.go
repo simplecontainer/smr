@@ -23,7 +23,7 @@ import (
 
 type Api interface {
 	SetupEtcd()
-	SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error
+	SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, raftConfiguration *configuration.RaftConfiguration, join bool) error
 
 	GetServer() *embed.Etcd
 	SetServer(*embed.Etcd)

@@ -126,6 +126,8 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *clients.Http, user *authe
 	var requests = make([]*common.Request, 0)
 	var errs = make([]error, 0)
 
+	index := 0
+
 	for k, request := range gitops.Gitops.Pack.Definitions {
 		logger.Info("syncing object", zap.String("object", request.Definition.Definition.GetMeta().Name))
 
@@ -150,7 +152,14 @@ func (gitops *Gitops) Sync(logger *zap.Logger, client *clients.Http, user *authe
 			gitops.Gitops.Pack.Definitions = helpers.RemoveElement(gitops.Gitops.Pack.Definitions, k)
 			break
 		}
+
+		if request.Definition.Definition.GetState().GetOpt("action").Value != "remove" {
+			gitops.Gitops.Pack.Definitions[index] = request
+			index++
+		}
 	}
+
+	gitops.Gitops.Pack.Definitions = gitops.Gitops.Pack.Definitions[:index]
 
 	return requests, errs
 }
@@ -232,7 +241,7 @@ func (gitops *Gitops) Drift(client *clients.Http, user *authentication.User) (bo
 						if !c.GetRuntime().GetOwner().IsEmpty() {
 							request.Definition.Definition.GetState().Gitops.Set(commonv1.GITOPS_NOTOWNER, true)
 
-							err = errors.New(fmt.Sprintf("owner of the object is %s", request.Definition.Definition.GetRuntime().GetOwner()))
+							err = errors.New(fmt.Sprintf("owner of the object is %s", c.GetRuntime().GetOwner()))
 							request.Definition.Definition.GetState().Gitops.AddError(err)
 							errs = append(errs, err)
 						}

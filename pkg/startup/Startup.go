@@ -16,26 +16,24 @@ func Load(environment *configuration.Environment) (*configuration.Configuration,
 	path := fmt.Sprintf("%s/%s/config.yaml", environment.NodeDirectory, static.CONFIGDIR)
 
 	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
 
 	defer func() {
 		file.Close()
 	}()
 
-	if err != nil {
-		return nil, err
-	}
-
 	configObj := configuration.NewConfig()
 
 	viper.SetConfigType("yaml")
-	err = viper.ReadConfig(file)
 
+	err = viper.ReadConfig(file)
 	if err != nil {
 		return nil, err
 	}
 
 	err = viper.Unmarshal(configObj)
-
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/simplecontainer/smr/pkg/channels"
+	"github.com/simplecontainer/smr/pkg/configuration"
 	"github.com/simplecontainer/smr/pkg/keys"
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/node"
@@ -16,6 +17,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -77,44 +80,53 @@ type RaftNode struct {
 	TLSConfig *tls.Config
 
 	logger *zap.Logger
+	config *configuration.RaftConfiguration
 }
 
-var defaultSnapshotCount uint64 = 10000
+var defaultSnapshotCount uint64 = 1000
+var snapshotCatchUpEntriesN uint64 = 10
 
 // newRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func NewRaftNode(keys *keys.Keys, TLSConfig *tls.Config, id uint64, peers *node.Nodes, join bool, replay bool, getSnapshot func() ([]byte, error), channels *channels.Cluster) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
+func NewRaftNode(
+	keys *keys.Keys,
+	TLSConfig *tls.Config,
+	id uint64,
+	peers *node.Nodes,
+	join bool,
+	replay bool,
+	getSnapshot func() ([]byte, error),
+	channels *channels.Cluster,
+	config *configuration.RaftConfiguration,
+) (*RaftNode, <-chan *Commit, <-chan error, <-chan *snap.Snapshotter) {
 	commitC := make(chan *Commit)
 	errorC := make(chan error)
 
 	raftnode := &RaftNode{
-		proposeC:    channels.Propose,
-		confChangeC: channels.ConfChange,
-		nodeUpdate:  channels.NodeUpdate,
-		commitC:     commitC,
-		errorC:      errorC,
-		id:          int(id),
-		Peers:       peers,
-		join:        join,
-		isRestart:   replay,
-		waldir:      fmt.Sprintf("/home/node/persistent/smr-%d", id),
-		snapdir:     fmt.Sprintf("/home/node/persistent/smr-%d-snap", id),
-		getSnapshot: getSnapshot,
-		snapCount:   defaultSnapshotCount,
-		stopc:       make(chan struct{}),
-		httpstopc:   make(chan struct{}),
-		httpdonec:   make(chan struct{}),
-
-		started: time.Now(),
-
-		TLSConfig: TLSConfig,
-
-		logger: logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{"stdout"}, []string{"stderr"}),
-
+		proposeC:         channels.Propose,
+		confChangeC:      channels.ConfChange,
+		nodeUpdate:       channels.NodeUpdate,
+		commitC:          commitC,
+		errorC:           errorC,
+		id:               int(id),
+		Peers:            peers,
+		join:             join,
+		isRestart:        replay,
+		waldir:           fmt.Sprintf("/home/node/persistent/smr-%d", id),
+		snapdir:          fmt.Sprintf("/home/node/persistent/smr-%d-snap", id),
+		getSnapshot:      getSnapshot,
+		snapCount:        config.SnapshotCount,
+		stopc:            make(chan struct{}),
+		httpstopc:        make(chan struct{}),
+		httpdonec:        make(chan struct{}),
+		started:          time.Now(),
+		TLSConfig:        TLSConfig,
+		logger:           logger.NewLogger(os.Getenv("LOG_LEVEL"), []string{"stdout"}, []string{"stderr"}),
 		snapshotterReady: make(chan *snap.Snapshotter, 1),
+		config:           config, // Store config
 	}
 
 	go raftnode.startRaft(keys, TLSConfig)
@@ -137,7 +149,25 @@ func (rc *RaftNode) saveSnap(snap raftpb.Snapshot) error {
 	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
 		return err
 	}
-	return rc.wal.ReleaseLockTo(snap.Metadata.Index)
+	if err := rc.wal.ReleaseLockTo(snap.Metadata.Index); err != nil {
+		return err
+	}
+
+	if rc.config.EnableWALCleanup {
+		rc.logger.Info("snapshot saved, starting cleanup",
+			zap.Uint64("snapshot_index", snap.Metadata.Index))
+
+		if err := rc.cleanupOldWALs(); err != nil {
+			rc.logger.Error("WAL cleanup failed", zap.Error(err))
+			// Don't fail the snapshot on cleanup errors
+		}
+
+		if err := rc.cleanupOldSnapshots(rc.config.KeepSnapshotCount); err != nil {
+			rc.logger.Error("snapshot cleanup failed", zap.Error(err))
+		}
+	}
+
+	return nil
 }
 
 func (rc *RaftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
@@ -318,21 +348,22 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
 
-	// signal replay has finished
 	rc.snapshotterReady <- rc.snapshotter
 
 	rpeers := make([]raft.Peer, len(rc.Peers.ToString()))
 	for i := range rpeers {
 		rpeers[i] = raft.Peer{ID: uint64(i + 1)}
 	}
+
+	// USE CONFIG VALUES
 	c := &raft.Config{
 		ID:                        uint64(rc.id),
-		ElectionTick:              10,
-		HeartbeatTick:             1,
+		ElectionTick:              rc.config.ElectionTick,  // From config
+		HeartbeatTick:             rc.config.HeartbeatTick, // From config
 		Storage:                   rc.raftStorage,
-		MaxSizePerMsg:             1024 * 1024,
-		MaxInflightMsgs:           256,
-		MaxUncommittedEntriesSize: 1 << 30,
+		MaxSizePerMsg:             rc.config.MaxSizePerMsg,         // From config
+		MaxInflightMsgs:           rc.config.MaxInflightMsgs,       // From config
+		MaxUncommittedEntriesSize: rc.config.MaxUncommittedEntries, // From config
 	}
 
 	if oldwal || rc.join {
@@ -346,8 +377,8 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 		ID:                 types.ID(rc.id),
 		ClusterID:          0x1000,
 		Raft:               rc,
-		DialTimeout:        5 * time.Second,
-		DialRetryFrequency: rate.Every(300 * time.Millisecond),
+		DialTimeout:        rc.config.DialTimeout,                    // From config
+		DialRetryFrequency: rate.Every(rc.config.DialRetryFrequency), // From config
 		ServerStats:        stats.NewServerStats("", ""),
 		LeaderStats:        stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
 		ErrorC:             make(chan error, 1),
@@ -376,6 +407,10 @@ func (rc *RaftNode) startRaft(keys *keys.Keys, tlsConfig *tls.Config) {
 
 	go rc.serveRaft(keys, tlsConfig)
 	go rc.serveChannels()
+
+	if rc.config.EnablePeriodicCleanup {
+		go rc.startPeriodicCleanup()
+	}
 }
 
 // stop closes http, closes all channels, and stops raft.
@@ -416,8 +451,6 @@ func (rc *RaftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 	rc.appliedIndex = snapshotToSave.Metadata.Index
 }
 
-var snapshotCatchUpEntriesN uint64 = 100
-
 func (rc *RaftNode) GetWALSize() (int64, error) {
 	walFiles, err := os.ReadDir(rc.waldir)
 	if err != nil {
@@ -448,13 +481,13 @@ func (rc *RaftNode) ForceSnapshot() error {
 		return err
 	}
 
-	if err := rc.saveSnap(snap); err != nil {
+	if err := rc.saveSnap(snap); err != nil { // Use new function
 		return err
 	}
 
 	compactIndex := uint64(1)
-	if rc.appliedIndex > 50 {
-		compactIndex = rc.appliedIndex - 50
+	if rc.appliedIndex > rc.config.SnapshotCatchUpEntries {
+		compactIndex = rc.appliedIndex - rc.config.SnapshotCatchUpEntries
 	}
 
 	if err := rc.raftStorage.Compact(compactIndex); err != nil {
@@ -472,7 +505,6 @@ func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		return
 	}
 
-	// wait until all committed entries are applied (or server is closed)
 	if applyDoneC != nil {
 		select {
 		case <-applyDoneC:
@@ -490,14 +522,14 @@ func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	if err != nil {
 		panic(err)
 	}
-	if err := rc.saveSnap(snap); err != nil {
+	if err := rc.saveSnap(snap); err != nil { // Use new function
 		panic(err)
 	}
 
-	// More aggressive compaction - keep fewer entries
+	// USE CONFIG VALUE for retention
 	compactIndex := uint64(1)
-	if rc.appliedIndex > snapshotCatchUpEntriesN {
-		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
+	if rc.appliedIndex > rc.config.SnapshotCatchUpEntries {
+		compactIndex = rc.appliedIndex - rc.config.SnapshotCatchUpEntries
 	}
 
 	if err := rc.raftStorage.Compact(compactIndex); err != nil {
@@ -505,7 +537,7 @@ func (rc *RaftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 			panic(err)
 		}
 	} else {
-		log.Printf("compacted log at index %d (kept only %d entries)", compactIndex, snapshotCatchUpEntriesN)
+		log.Printf("compacted log at index %d (kept only %d entries)", compactIndex, rc.config.SnapshotCatchUpEntries)
 	}
 
 	rc.snapshotIndex = rc.appliedIndex
@@ -714,4 +746,243 @@ func (rc *RaftNode) rebuildPeersFromCluster() {
 			})
 		}
 	}
+}
+
+func (rc *RaftNode) cleanupOldWALs() error {
+	rc.logger.Info("starting WAL cleanup",
+		zap.String("wal_dir", rc.waldir),
+		zap.Uint64("snapshot_index", rc.snapshotIndex))
+
+	entries, err := os.ReadDir(rc.waldir)
+	if err != nil {
+		return fmt.Errorf("failed to read WAL directory: %w", err)
+	}
+
+	deletedCount := 0
+	var deletedSize int64
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".wal") {
+			continue
+		}
+
+		// Parse WAL filename: seq-index.wal
+		// Example: 0000000000000001-0000000000000000.wal
+		parts := strings.Split(entry.Name(), "-")
+		if len(parts) != 2 {
+			continue
+		}
+
+		var walIndex uint64
+		_, err := fmt.Sscanf(strings.TrimSuffix(parts[1], ".wal"), "%016x", &walIndex)
+		if err != nil {
+			rc.logger.Warn("failed to parse WAL filename",
+				zap.String("filename", entry.Name()),
+				zap.Error(err))
+			continue
+		}
+
+		// Keep WAL files that might contain entries after snapshot
+		// We keep a safety margin of snapCount entries
+		if walIndex+rc.snapCount < rc.snapshotIndex {
+			filePath := filepath.Join(rc.waldir, entry.Name())
+
+			info, err := entry.Info()
+			if err == nil {
+				deletedSize += info.Size()
+			}
+
+			if err := os.Remove(filePath); err != nil {
+				rc.logger.Warn("failed to remove old WAL file",
+					zap.String("file", entry.Name()),
+					zap.Error(err))
+			} else {
+				deletedCount++
+				rc.logger.Debug("removed old WAL file",
+					zap.String("file", entry.Name()),
+					zap.Uint64("wal_index", walIndex))
+			}
+		}
+	}
+
+	rc.logger.Info("WAL cleanup completed",
+		zap.Int("deleted_files", deletedCount),
+		zap.Int64("freed_bytes", deletedSize))
+
+	return nil
+}
+
+// cleanupOldSnapshots keeps only the most recent N snapshots
+// Older snapshots are not needed for recovery
+func (rc *RaftNode) cleanupOldSnapshots(keepCount int) error {
+	rc.logger.Info("starting snapshot cleanup",
+		zap.String("snap_dir", rc.snapdir),
+		zap.Int("keep_count", keepCount))
+
+	entries, err := os.ReadDir(rc.snapdir)
+	if err != nil {
+		return fmt.Errorf("failed to read snapshot directory: %w", err)
+	}
+
+	// Parse snapshot files
+	type snapshotFile struct {
+		name  string
+		index uint64
+	}
+
+	var snapshots []snapshotFile
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".snap") {
+			continue
+		}
+
+		// Parse: term-index.snap
+		parts := strings.Split(entry.Name(), "-")
+		if len(parts) != 2 {
+			continue
+		}
+
+		var snapIndex uint64
+		_, err := fmt.Sscanf(strings.TrimSuffix(parts[1], ".snap"), "%016x", &snapIndex)
+		if err != nil {
+			rc.logger.Warn("failed to parse snapshot filename",
+				zap.String("filename", entry.Name()),
+				zap.Error(err))
+			continue
+		}
+
+		snapshots = append(snapshots, snapshotFile{
+			name:  entry.Name(),
+			index: snapIndex,
+		})
+	}
+
+	// Sort by index (ascending)
+	sort.Slice(snapshots, func(i, j int) bool {
+		return snapshots[i].index < snapshots[j].index
+	})
+
+	// Delete old snapshots, keep only the last N
+	deletedCount := 0
+	var deletedSize int64
+
+	if len(snapshots) > keepCount {
+		toDelete := snapshots[:len(snapshots)-keepCount]
+
+		for _, snap := range toDelete {
+			filePath := filepath.Join(rc.snapdir, snap.name)
+
+			info, err := os.Stat(filePath)
+			if err == nil {
+				deletedSize += info.Size()
+			}
+
+			if err := os.Remove(filePath); err != nil {
+				rc.logger.Warn("failed to remove old snapshot file",
+					zap.String("file", snap.name),
+					zap.Error(err))
+			} else {
+				deletedCount++
+				rc.logger.Debug("removed old snapshot file",
+					zap.String("file", snap.name),
+					zap.Uint64("snapshot_index", snap.index))
+			}
+		}
+	}
+
+	rc.logger.Info("snapshot cleanup completed",
+		zap.Int("deleted_files", deletedCount),
+		zap.Int64("freed_bytes", deletedSize),
+		zap.Int("remaining_snapshots", len(snapshots)-deletedCount))
+
+	return nil
+}
+
+func (rc *RaftNode) startPeriodicCleanup() {
+	ticker := time.NewTicker(rc.config.CleanupInterval)
+	defer ticker.Stop()
+
+	rc.logger.Info("periodic cleanup started",
+		zap.Duration("interval", rc.config.CleanupInterval))
+
+	for {
+		select {
+		case <-ticker.C:
+			// Only leader performs periodic snapshots
+			if rc.IsLeader.Load() {
+				rc.logger.Info("running periodic snapshot and cleanup")
+
+				stats, err := rc.GetMemoryStats()
+				if err == nil {
+					rc.logger.Info("memory stats before cleanup", zap.Any("stats", stats))
+				}
+
+				// Force snapshot if we're halfway to the threshold
+				entriesSinceSnapshot := rc.appliedIndex - rc.snapshotIndex
+				if entriesSinceSnapshot > rc.config.SnapshotCount/2 {
+					if err := rc.ForceSnapshot(); err != nil {
+						rc.logger.Error("periodic snapshot failed", zap.Error(err))
+					}
+				}
+
+				// Cleanup regardless
+				if rc.config.EnableWALCleanup {
+					if err := rc.cleanupOldWALs(); err != nil {
+						rc.logger.Error("periodic WAL cleanup failed", zap.Error(err))
+					}
+
+					if err := rc.cleanupOldSnapshots(rc.config.KeepSnapshotCount); err != nil {
+						rc.logger.Error("periodic snapshot cleanup failed", zap.Error(err))
+					}
+				}
+
+				stats, err = rc.GetMemoryStats()
+				if err == nil {
+					rc.logger.Info("memory stats after cleanup", zap.Any("stats", stats))
+				}
+			}
+
+		case <-rc.stopc:
+			rc.logger.Info("periodic cleanup stopped")
+			return
+		}
+	}
+}
+
+func (rc *RaftNode) GetMemoryStats() (map[string]interface{}, error) {
+	walSize, err := rc.GetWALSize()
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate snapshot directory size
+	var snapSize int64
+	snapEntries, err := os.ReadDir(rc.snapdir)
+	if err == nil {
+		for _, entry := range snapEntries {
+			if !entry.IsDir() {
+				info, err := entry.Info()
+				if err == nil {
+					snapSize += info.Size()
+				}
+			}
+		}
+	}
+
+	entriesSinceSnapshot := rc.appliedIndex - rc.snapshotIndex
+
+	// Estimate: 10KB per entry average
+	estimatedMemoryMB := float64(entriesSinceSnapshot*10) / 1024.0
+
+	return map[string]interface{}{
+		"wal_size_bytes":         walSize,
+		"snapshot_size_bytes":    snapSize,
+		"total_disk_bytes":       walSize + snapSize,
+		"applied_index":          rc.appliedIndex,
+		"snapshot_index":         rc.snapshotIndex,
+		"entries_since_snapshot": entriesSinceSnapshot,
+		"estimated_memory_mb":    estimatedMemoryMB,
+		"snapshot_threshold":     rc.snapCount,
+		"is_leader":              rc.IsLeader.Load(),
+	}, nil
 }

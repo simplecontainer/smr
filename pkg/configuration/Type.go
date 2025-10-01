@@ -6,23 +6,24 @@ import (
 )
 
 type Configuration struct {
-	Environment  *EnvironmentDual      `yaml:"-"`
-	Home         string                `yaml:"home"`
-	Platform     string                `yaml:"platform"`
-	NodeImage    string                `yaml:"nodeImage"`
-	NodeTag      string                `yaml:"nodeTag"`
-	NodeName     string                `yaml:"nodeName"`
-	HostPort     HostPort              `yaml:"hostport"`
-	KVStore      *KVStore              `yaml:"kvstore"`
-	Certificates *Certificates         `yaml:"certificates"`
-	Ports        *Ports                `yaml:"ports"`
-	Etcd         *EtcdConfiguration    `yaml:"etcd"`
-	Flannel      *FlannelConfiguration `yaml:"flannel"`
+	Environment  *EnvironmentDual      `mapstructure:"-"`
+	Home         string                `mapstructure:"home"`
+	Platform     string                `mapstructure:"platform"`
+	NodeImage    string                `mapstructure:"nodeImage"`
+	NodeTag      string                `mapstructure:"nodeTag"`
+	NodeName     string                `mapstructure:"nodeName"`
+	HostPort     HostPort              `mapstructure:"hostport"`
+	KVStore      *KVStore              `mapstructure:"kvstore"`
+	Certificates *Certificates         `mapstructure:"certificates"`
+	Ports        *Ports                `mapstructure:"ports"`
+	Etcd         *EtcdConfiguration    `mapstructure:"etcd"`
+	RaftConfig   *RaftConfiguration    `mapstructure:"raftConfig"`
+	Flannel      *FlannelConfiguration `mapstructure:"flannel"`
 }
 
 type HostPort struct {
-	Host string `yaml:"host"`
-	Port string `yaml:"port"`
+	Host string `mapstructure:"host"`
+	Port string `mapstructure:"port"`
 }
 
 type EnvironmentDual struct {
@@ -40,31 +41,33 @@ type Environment struct {
 }
 
 type KVStore struct {
-	Cluster []*node.Node `yaml:"cluster"`
-	Node    *node.Node   `yaml:"node"`
-	URL     string       `yaml:"url"`
-	API     string       `yaml:"api"`
-	Join    bool         `yaml:"join"`
-	Peer    string       `yaml:"peer"`
-	Replay  bool         `yaml:"replay"`
+	Cluster []*node.Node `mapstructure:"cluster"`
+	Node    *node.Node   `mapstructure:"node"`
+	URL     string       `mapstructure:"url"`
+	API     string       `mapstructure:"api"`
+	Join    bool         `mapstructure:"join"`
+	Peer    string       `mapstructure:"peer"`
+	Replay  bool         `mapstructure:"replay"`
 }
 
 type Ports struct {
-	Control string
-	Overlay string
-	Etcd    string
-	Traefik string
+	Control string `mapstructure:"control"`
+	Overlay string `mapstructure:"overlay"`
+	Etcd    string `mapstructure:"etcd"`
+	Traefik string `mapstructure:"traefik"`
 }
 
 type Certificates struct {
-	Domains *Domains `yaml:"domains"`
-	IPs     *IPs     `yaml:"ips"`
+	Domains *Domains `mapstructure:"domains"`
+	IPs     *IPs     `mapstructure:"ips"`
 }
+
 type IPs struct {
-	Members []string `yaml:"members"`
+	Members []string `mapstructure:"members"`
 }
+
 type Domains struct {
-	Members []string `yaml:"members"`
+	Members []string `mapstructure:"members"`
 }
 
 var Timeout = NewTimeouts()
@@ -81,39 +84,51 @@ func NewTimeouts() *Timeouts {
 }
 
 type Timeouts struct {
-	AcknowledgmentTimeout     time.Duration `yaml:"acknowledgment_timeout"`
-	ResourceDrainTimeout      time.Duration `yaml:"resource_drain_timeout"`
-	CompleteDrainTimeout      time.Duration `yaml:"kind_drain_timeout"`
-	EtcdConnectionTimeout     time.Duration `yaml:"etcd_connection_timeout"`
-	NodeStartupTimeout        time.Duration `yaml:"node_startup_timeout"`
-	LeadershipTransferTimeout time.Duration `yaml:"leadership_transfer_timeout"`
+	AcknowledgmentTimeout     time.Duration `mapstructure:"acknowledgment_timeout"`
+	ResourceDrainTimeout      time.Duration `mapstructure:"resource_drain_timeout"`
+	CompleteDrainTimeout      time.Duration `mapstructure:"kind_drain_timeout"`
+	EtcdConnectionTimeout     time.Duration `mapstructure:"etcd_connection_timeout"`
+	NodeStartupTimeout        time.Duration `mapstructure:"node_startup_timeout"`
+	LeadershipTransferTimeout time.Duration `mapstructure:"leadership_transfer_timeout"`
 }
 
 type EtcdConfiguration struct {
-	DataDir           string
-	QuotaBackendBytes int64
+	DataDir                 string   `mapstructure:"datadir"`
+	QuotaBackendBytes       int64    `mapstructure:"quotabackendbytes"`
+	SnapshotCount           uint64   `mapstructure:"snapshotcount"`
+	MaxSnapFiles            uint     `mapstructure:"maxsnapfiles"`
+	MaxWalFiles             uint     `mapstructure:"maxwalfiles"`
+	AutoCompactionMode      string   `mapstructure:"autocompactionmode"`
+	AutoCompactionRetention string   `mapstructure:"autocompactionretention"`
+	MaxTxnOps               uint     `mapstructure:"maxtxnops"`
+	EnableV2                bool     `mapstructure:"enablev2"`
+	EnableGRPCGateway       bool     `mapstructure:"enablegrpcgateway"`
+	LoggerType              string   `mapstructure:"loggertype"`
+	LogOutputs              []string `mapstructure:"logoutputs"`
+}
 
-	SnapshotCount uint64
-	MaxSnapFiles  uint
-	MaxWalFiles   uint
-
-	AutoCompactionMode      string
-	AutoCompactionRetention string
-
-	MaxTxnOps uint
-
-	EnableV2          bool
-	EnableGRPCGateway bool
-
-	LoggerType string
-	LogOutputs []string
+type RaftConfiguration struct {
+	SnapshotCount          uint64        `mapstructure:"snapshotcount"`
+	SnapshotCatchUpEntries uint64        `mapstructure:"snapshotcatchupentries"`
+	SnapshotInterval       time.Duration `mapstructure:"snapshotinterval"`
+	EnablePeriodicCleanup  bool          `mapstructure:"enableperiodiccleanup"`
+	CleanupInterval        time.Duration `mapstructure:"cleanupinterval"`
+	KeepSnapshotCount      int           `mapstructure:"keepsnapshotcount"`
+	EnableWALCleanup       bool          `mapstructure:"enablewalcleanup"`
+	ElectionTick           int           `mapstructure:"electiontick"`
+	HeartbeatTick          int           `mapstructure:"heartbeattick"`
+	MaxSizePerMsg          uint64        `mapstructure:"maxsizepermsg"`
+	MaxInflightMsgs        int           `mapstructure:"maxinflightmsgs"`
+	MaxUncommittedEntries  uint64        `mapstructure:"maxuncommittedentries"`
+	DialTimeout            time.Duration `mapstructure:"dialtimeout"`
+	DialRetryFrequency     time.Duration `mapstructure:"dialretryfrequency"`
 }
 
 type FlannelConfiguration struct {
-	Backend            string
-	CIDR               string
-	InterfaceSpecified string
-	EnableIPv4         bool
-	EnableIPv6         bool
-	IPv6Masq           bool
+	Backend            string `mapstructure:"backend"`
+	CIDR               string `mapstructure:"cidr"`
+	InterfaceSpecified string `mapstructure:"interfacespecified"`
+	EnableIPv4         bool   `mapstructure:"enableipv4"`
+	EnableIPv6         bool   `mapstructure:"enableipv6"`
+	IPv6Masq           bool   `mapstructure:"ipv6masq"`
 }

@@ -185,7 +185,7 @@ func (a *Api) StartCluster(c *gin.Context) {
 	a.SetupReplication()
 	go a.Replication.ListenData(a.Config.NodeName)
 
-	err = a.SetupCluster(tlsConfig, a.Cluster.Node, a.Cluster, a.Config.KVStore.Join)
+	err = a.SetupCluster(tlsConfig, a.Cluster.Node, a.Cluster, a.Config.RaftConfig, a.Config.KVStore.Join)
 
 	if err != nil {
 		logger.Log.Error("failed to setup clusters", zap.Error(err))

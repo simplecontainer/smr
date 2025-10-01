@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"strconv"
+	"time"
 )
 
 func NewConfig() *Configuration {
@@ -21,6 +22,7 @@ func NewConfig() *Configuration {
 		},
 		Certificates: &Certificates{},
 		Etcd:         DefaultEtcdConfig(),
+		RaftConfig:   DefaultRaftConfig(),
 		Flannel:      DefaultFlannelConfig(),
 	}
 }
@@ -82,6 +84,29 @@ func DefaultEtcdConfig() *EtcdConfiguration {
 		EnableGRPCGateway:       true,
 		LoggerType:              "zap",
 		LogOutputs:              []string{"/tmp/etcd.log"},
+	}
+}
+
+func DefaultRaftConfig() *RaftConfiguration {
+	return &RaftConfiguration{
+		SnapshotCount:          1000,             // Snapshot every 1k entries
+		SnapshotCatchUpEntries: 10,               // Keep only 10 entries after snapshot
+		SnapshotInterval:       10 * time.Minute, // Force snapshot every 10 minutes
+
+		EnablePeriodicCleanup: true,
+		CleanupInterval:       10 * time.Minute,
+		KeepSnapshotCount:     3, // Keep last 3 snapshots
+		EnableWALCleanup:      true,
+
+		ElectionTick:  10,
+		HeartbeatTick: 1,
+
+		MaxSizePerMsg:         1024 * 1024, // 1MB
+		MaxInflightMsgs:       256,
+		MaxUncommittedEntries: 1 << 30, // 1GB
+
+		DialTimeout:        5 * time.Second,
+		DialRetryFrequency: 300 * time.Millisecond,
 	}
 }
 

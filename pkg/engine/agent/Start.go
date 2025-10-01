@@ -18,8 +18,8 @@ import (
 
 func Start(batch icontrol.Batch) {
 	environment := configuration.NewEnvironment(configuration.WithHostConfig())
-	conf, err := startup.Load(environment)
 
+	conf, err := startup.Load(environment)
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

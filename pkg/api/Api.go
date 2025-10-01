@@ -73,7 +73,7 @@ func (a *Api) SetupEtcd() {
 	}
 }
 
-func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, join bool) error {
+func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster.Cluster, raftConfig *configuration.RaftConfiguration, join bool) error {
 	getSnapshot := func() ([]byte, error) { return a.Cluster.KVStore.GetSnapshot() }
 	raftNode, commitC, errorC, snapshotterReady := raft.NewRaftNode(
 		a.Keys,
@@ -84,6 +84,7 @@ func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster
 		a.Cluster.Replay,
 		getSnapshot,
 		cluster.Channels,
+		raftConfig,
 	)
 
 	var err error
