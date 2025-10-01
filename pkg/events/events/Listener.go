@@ -31,7 +31,10 @@ func Listen(kindRegistry map[string]ikinds.Kind, e chan KV.KV, informer *distrib
 
 			wss.Lock.RLock()
 			for _, ch := range wss.Channels {
-				ch <- event
+				select {
+				case ch <- event:
+				default:
+				}
 			}
 			wss.Lock.RUnlock()
 

@@ -85,12 +85,7 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 		}
 
 		if dependency.Ctx.Err() != nil {
-			state := &State{
-				State: CANCELED,
-				Error: ERROR_CONTEXT_CANCELED,
-			}
-			channel <- state
-			return false, state.Error
+			return false, ERROR_CONTEXT_CANCELED
 		}
 
 		if err != nil {

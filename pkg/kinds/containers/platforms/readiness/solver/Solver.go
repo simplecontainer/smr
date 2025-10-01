@@ -33,36 +33,35 @@ var (
 func Ready(ctx context.Context, client *clients.Http, container platforms.IContainer, user *authentication.User, channel chan *readiness.ReadinessState, logger *zap.Logger) (bool, error) {
 	for _, r := range container.GetReadiness() {
 		r.Function = func() error {
-			select {
-			case <-ctx.Done():
+			if ctx.Err() != nil {
 				state := &readiness.ReadinessState{
 					State: readiness.CANCELED,
 					Error: ERROR_CONTEXT_CANCELED,
 				}
 				channel <- state
 				return backoff.Permanent(state.Error)
+			}
 
-			case <-r.Ctx.Done():
+			if r.Ctx.Err() != nil {
 				state := &readiness.ReadinessState{
 					State: readiness.FAILED,
 					Error: ERROR_CONTEXT_TIMEOUT,
 				}
 				channel <- state
 				return backoff.Permanent(state.Error)
-
-			default:
-				container.GetStatus().LastReadinessStarted = time.Now()
-				err := SolveReadiness(client, user, container, logger, r, channel)
-				if err != nil {
-					logger.Info(err.Error())
-				}
-
-				if errors.Is(err, ERROR_READINESS_INVALID_STATE) {
-					return backoff.Permanent(err)
-				}
-
-				return err
 			}
+
+			container.GetStatus().LastReadinessStarted = time.Now()
+			err := SolveReadiness(client, user, container, logger, r, channel)
+			if err != nil {
+				logger.Info(err.Error())
+			}
+
+			if errors.Is(err, ERROR_READINESS_INVALID_STATE) {
+				return backoff.Permanent(err)
+			}
+
+			return err
 		}
 
 		err := r.Reset()
@@ -100,12 +99,7 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 	}
 
 	if ctx.Err() != nil {
-		state := &readiness.ReadinessState{
-			State: readiness.CANCELED,
-			Error: ERROR_CONTEXT_CANCELED,
-		}
-		channel <- state
-		return false, state.Error
+		return false, ERROR_CONTEXT_CANCELED
 	}
 
 	select {
