@@ -170,6 +170,7 @@ func (status *Status) CreateGraph() {
 	status.StateMachine.AddEdge(readinessFailed, created)
 	status.StateMachine.AddEdge(readinessFailed, restart)
 	status.StateMachine.AddEdge(readinessFailed, daemonFailure)
+	status.StateMachine.AddEdge(readinessFailed, dead)
 
 	status.StateMachine.AddEdge(kill, dead)
 	status.StateMachine.AddEdge(kill, forceKill)
