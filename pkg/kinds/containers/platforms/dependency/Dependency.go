@@ -7,7 +7,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"go.uber.org/zap"
 	"time"
 )
@@ -47,67 +46,73 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 	for _, depend := range dependsOn {
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
-			select {
-			case <-ctx.Done():
-			case <-dependency.Ctx.Done():
+			if ctx.Err() != nil {
 				return backoff.Permanent(ERROR_CONTEXT_CANCELED)
-			default:
-				err := SolveDepends(registry, depend.Prefix, group, name, dependency, channel, logger)
-
-				if err != nil {
-					if errors.Is(err, ERROR_CONTAINER_NOT_FOUND) {
-						return backoff.Permanent(err)
-					} else {
-						channel <- &State{
-							State: CHECKING,
-							Error: err,
-						}
-
-						return err
-					}
-				}
-
-				return nil
 			}
+
+			if dependency.Ctx.Err() != nil {
+				return backoff.Permanent(ERROR_CONTEXT_CANCELED)
+			}
+
+			err := SolveDepends(registry, depend.Prefix, group, name, dependency, channel, logger)
+
+			if err != nil {
+				if errors.Is(err, ERROR_CONTAINER_NOT_FOUND) {
+					return backoff.Permanent(err)
+				} else {
+					channel <- &State{
+						State: CHECKING,
+						Error: err,
+					}
+
+					return err
+				}
+			}
+
 			return nil
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
 		err := backoff.Retry(dependency.Function, backOff)
 
-		select {
-		case <-ctx.Done():
-		case <-dependency.Ctx.Done():
+		if ctx.Err() != nil {
 			state := &State{
-				State: readiness.CANCELED,
+				State: CANCELED,
 				Error: ERROR_CONTEXT_CANCELED,
 			}
 			channel <- state
 			return false, state.Error
+		}
 
-		default:
-			if err != nil {
-				channel <- &State{
-					State: FAILED,
-					Error: err,
-				}
-				return false, err
+		if dependency.Ctx.Err() != nil {
+			state := &State{
+				State: CANCELED,
+				Error: ERROR_CONTEXT_CANCELED,
 			}
+			channel <- state
+			return false, state.Error
+		}
+
+		if err != nil {
+			channel <- &State{
+				State: FAILED,
+				Error: err,
+			}
+			return false, err
 		}
 	}
 
-	select {
-	case <-ctx.Done():
+	if ctx.Err() != nil {
 		channel <- &State{
 			State: CANCELED,
 			Error: ERROR_CONTEXT_CANCELED,
 		}
-		return false, ctx.Err() // avoid sending
+		return false, ctx.Err()
+	}
 
-	case channel <- &State{
+	channel <- &State{
 		State: SUCCESS,
 		Error: nil,
-	}:
 	}
 
 	return true, nil

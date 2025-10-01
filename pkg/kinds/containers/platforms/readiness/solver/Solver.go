@@ -73,36 +73,42 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)
 		err = backoff.Retry(r.Function, backOff)
 
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			state := &readiness.ReadinessState{
 				State: readiness.CANCELED,
 				Error: ERROR_CONTEXT_CANCELED,
 			}
 			channel <- state
 			return false, state.Error
+		}
 
-		case <-r.Ctx.Done():
+		if r.Ctx.Err() != nil {
 			state := &readiness.ReadinessState{
 				State: readiness.FAILED,
 				Error: ERROR_CONTEXT_TIMEOUT,
 			}
 			channel <- state
 			return false, state.Error
+		}
 
-		default:
-			if err != nil {
-				channel <- &readiness.ReadinessState{
-					State: readiness.FAILED,
-				}
-				return false, err
+		if err != nil {
+			channel <- &readiness.ReadinessState{
+				State: readiness.FAILED,
 			}
+			return false, err
 		}
 	}
 
+	if ctx.Err() != nil {
+		state := &readiness.ReadinessState{
+			State: readiness.CANCELED,
+			Error: ERROR_CONTEXT_CANCELED,
+		}
+		channel <- state
+		return false, state.Error
+	}
+
 	select {
-	case <-ctx.Done():
-		return false, ERROR_CONTEXT_CANCELED
 	case channel <- &readiness.ReadinessState{State: readiness.SUCCESS}:
 	}
 
