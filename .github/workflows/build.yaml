@@ -48,7 +48,12 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - name: Test code
-        run: go test -tags=unit ./...
+        run: go test -tags=unit ./... -coverprofile=coverage.out
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
   build:
     runs-on: ubuntu-latest

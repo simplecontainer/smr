@@ -71,7 +71,7 @@ func TestBuild(t *testing.T) {
 			name:        "Real world example",
 			arg:         "simplecontainer.io/v1/kind/containers/example/busybox/",
 			group:       "flag-group",
-			expectError: false,
+			expectError: true,
 			expected:    "simplecontainer.io/v1/kind/containers/example/busybox",
 		},
 		{
