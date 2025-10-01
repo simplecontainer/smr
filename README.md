@@ -1,4 +1,5 @@
 # Simplecontainer
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=simplecontainer_smr&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=simplecontainer_smr)
 [![Go Report Card](https://goreportcard.com/badge/github.com/simplecontainer/smr)](https://goreportcard.com/report/github.com/simplecontainer/smr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10512/badge)](https://www.bestpractices.dev/projects/10512)
 
