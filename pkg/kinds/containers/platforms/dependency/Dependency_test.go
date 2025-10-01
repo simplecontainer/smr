@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"context"
+	"errors"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
 	"go.uber.org/zap"
 	"testing"
@@ -351,10 +352,12 @@ func TestReady_Example_Timeout(t *testing.T) {
 	foundCanceled := false
 	for len(channel) > 0 {
 		state := <-channel
-		if state.State == CANCELED {
-			foundCanceled = true
-			assert.Equal(t, ERROR_CONTEXT_CANCELED, state.Error)
-			break
+		if err != nil {
+
+			if errors.Is(state.Error, context.DeadlineExceeded) {
+				foundCanceled = true
+				assert.Equal(t, context.DeadlineExceeded, state.Error)
+			}
 		}
 	}
 	assert.True(t, foundCanceled)

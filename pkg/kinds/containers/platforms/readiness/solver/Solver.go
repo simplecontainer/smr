@@ -34,21 +34,11 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 	for _, r := range container.GetReadiness() {
 		r.Function = func() error {
 			if ctx.Err() != nil {
-				state := &readiness.ReadinessState{
-					State: readiness.CANCELED,
-					Error: ERROR_CONTEXT_CANCELED,
-				}
-				channel <- state
-				return backoff.Permanent(state.Error)
+				return backoff.Permanent(ctx.Err())
 			}
 
 			if r.Ctx.Err() != nil {
-				state := &readiness.ReadinessState{
-					State: readiness.FAILED,
-					Error: ERROR_CONTEXT_TIMEOUT,
-				}
-				channel <- state
-				return backoff.Permanent(state.Error)
+				return backoff.Permanent(r.Ctx.Err())
 			}
 
 			container.GetStatus().LastReadinessStarted = time.Now()
@@ -73,33 +63,28 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 		err = backoff.Retry(r.Function, backOff)
 
 		if ctx.Err() != nil {
-			state := &readiness.ReadinessState{
-				State: readiness.CANCELED,
-				Error: ERROR_CONTEXT_CANCELED,
-			}
-			channel <- state
-			return false, state.Error
+			return false, ctx.Err()
 		}
 
 		if r.Ctx.Err() != nil {
-			state := &readiness.ReadinessState{
-				State: readiness.FAILED,
-				Error: ERROR_CONTEXT_TIMEOUT,
+			channel <- &readiness.ReadinessState{
+				State: readiness.CANCELED,
+				Error: r.Ctx.Err(),
 			}
-			channel <- state
-			return false, state.Error
+			return false, r.Ctx.Err()
 		}
 
 		if err != nil {
 			channel <- &readiness.ReadinessState{
 				State: readiness.FAILED,
+				Error: err,
 			}
 			return false, err
 		}
 	}
 
 	if ctx.Err() != nil {
-		return false, ERROR_CONTEXT_CANCELED
+		return false, ctx.Err()
 	}
 
 	select {

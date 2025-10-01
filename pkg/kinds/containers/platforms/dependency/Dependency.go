@@ -47,11 +47,11 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 		dependency := NewDependencyFromDefinition(depend)
 		dependency.Function = func() error {
 			if ctx.Err() != nil {
-				return backoff.Permanent(ERROR_CONTEXT_CANCELED)
+				return backoff.Permanent(ctx.Err())
 			}
 
 			if dependency.Ctx.Err() != nil {
-				return backoff.Permanent(ERROR_CONTEXT_CANCELED)
+				return backoff.Permanent(dependency.Ctx.Err())
 			}
 
 			err := SolveDepends(registry, depend.Prefix, group, name, dependency, channel, logger)
@@ -76,16 +76,15 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 		err := backoff.Retry(dependency.Function, backOff)
 
 		if ctx.Err() != nil {
-			state := &State{
-				State: CANCELED,
-				Error: ERROR_CONTEXT_CANCELED,
-			}
-			channel <- state
-			return false, state.Error
+			return false, ctx.Err()
 		}
 
 		if dependency.Ctx.Err() != nil {
-			return false, ERROR_CONTEXT_CANCELED
+			channel <- &State{
+				State: CANCELED,
+				Error: dependency.Ctx.Err(),
+			}
+			return false, dependency.Ctx.Err()
 		}
 
 		if err != nil {
@@ -93,15 +92,12 @@ func Ready(ctx context.Context, registry platforms.Registry, group string, name 
 				State: FAILED,
 				Error: err,
 			}
+
 			return false, err
 		}
 	}
 
 	if ctx.Err() != nil {
-		channel <- &State{
-			State: CANCELED,
-			Error: ERROR_CONTEXT_CANCELED,
-		}
 		return false, ctx.Err()
 	}
 
