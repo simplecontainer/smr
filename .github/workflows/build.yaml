@@ -51,6 +51,12 @@ jobs:
         run: go test -tags=unit ./... -coverprofile=coverage.out
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          args: >
+            -Dsonar.organization=simplecontainer
+            -Dsonar.projectKey=simplecontainer_smr
+            -Dsonar.go.coverage.reportPaths=coverage.out
+            -Dsonar.verbose=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
