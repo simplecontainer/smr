@@ -54,6 +54,12 @@ func Build(arg string, group string) (iformat.Format, error) {
 
 	split := strings.Split(arg, "/")
 
+	for _, element := range split {
+		if element == "" {
+			return nil, errors.New("format elements cannot be empty")
+		}
+	}
+
 	switch len(split) {
 	case 1:
 		// kind

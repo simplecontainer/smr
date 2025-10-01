@@ -64,6 +64,9 @@ func (s *QueueTS) GetSnapshot() []*Commit {
 	defer s.Unlock()
 
 	snapshot := make([]*Commit, len(s.patches))
-	copy(snapshot, s.patches)
+	for i, c := range s.patches {
+		copyCommit := *c
+		snapshot[i] = &copyCommit
+	}
 	return snapshot
 }

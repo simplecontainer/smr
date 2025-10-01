@@ -1,8 +1,7 @@
-package solver_test
+package solver
 
 import (
 	"context"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness/solver"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -40,7 +39,7 @@ func TestReady_Success_SimpleBuilder(t *testing.T) {
 	probe := tests.NewHttpProbe(server.URL, "GET")
 	container := tests.NewContainerWithSingleProbe(probe)
 
-	result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.NoError(t, err)
 	assert.True(t, result)
@@ -69,7 +68,7 @@ func TestReady_Success_WithPreset(t *testing.T) {
 
 	user := tests.NewUserBuilder().Build()
 
-	result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.NoError(t, err)
 	assert.True(t, result)
@@ -105,7 +104,7 @@ func TestReady_MultipleProbes_UsingBuilders(t *testing.T) {
 
 	user := tests.NewUserBuilder().Build()
 
-	result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.NoError(t, err)
 	assert.True(t, result)
@@ -132,7 +131,7 @@ func TestReady_ContainerNotRunning_UsingBuilder(t *testing.T) {
 	httpClient := tests.NewHttpClientBuilder().Build()
 	user := tests.NewUserBuilder().Build()
 
-	_, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	_, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "container is not in valid state for readiness checking")
@@ -157,7 +156,7 @@ func TestReady_InvalidState_UsingBuilder(t *testing.T) {
 	httpClient := tests.NewHttpClientBuilder().Build()
 	user := tests.NewUserBuilder().Build()
 
-	_, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	_, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "container is not in valid state")
@@ -191,7 +190,7 @@ func TestReady_ShortTimeout_UsingBuilder(t *testing.T) {
 
 	user := tests.NewUserBuilder().WithUsername("test").Build()
 
-	result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.Error(t, err)
 	assert.False(t, result)
@@ -229,7 +228,7 @@ func TestReady_CustomScenario_UsingBuilder(t *testing.T) {
 		WithUsername("production-user").
 		Build()
 
-	result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.NoError(t, err)
 	assert.True(t, result)
@@ -277,7 +276,7 @@ func TestReady_VariousHTTPStatuses(t *testing.T) {
 
 			user := tests.NewUserBuilder().WithUsername("test").Build()
 
-			result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+			result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -320,7 +319,7 @@ func TestReady_ContextCancellation_UsingBuilder(t *testing.T) {
 		cancel()
 	}()
 
-	result, err := solver.Ready(ctx, httpClient, container, user, channel, logger)
+	result, err := Ready(ctx, httpClient, container, user, channel, logger)
 
 	assert.Error(t, err)
 	assert.False(t, result)

@@ -21,9 +21,12 @@ func NewCommit() *Commit {
 func (c *Commit) Parse(format string, spec string) error {
 	var err error
 	c.Format, err = f.Build(format, "")
-
 	if err != nil {
 		return err
+	}
+
+	if spec == "" {
+		return errors.New("patch spec can't be empty")
 	}
 
 	var data interface{}
@@ -52,8 +55,9 @@ func (c *Commit) ToJson() ([]byte, error) {
 
 func (c *Commit) UnmarshalJSON(data []byte) error {
 	var temp struct {
-		Format json.RawMessage `json:"Format"`
-		Patch  []byte          `json:"Patch"`
+		Format  json.RawMessage `json:"format"`
+		Patch   []byte          `json:"patch"`
+		Message string          `json:"message"`
 	}
 
 	if err := json.Unmarshal(data, &temp); err != nil {
@@ -67,6 +71,7 @@ func (c *Commit) UnmarshalJSON(data []byte) error {
 
 	c.Format = &concreteFormat
 	c.Patch = temp.Patch
+	c.Message = temp.Message
 	return nil
 }
 

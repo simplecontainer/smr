@@ -1,9 +1,8 @@
-package dependency_test
+package dependency
 
 import (
 	"context"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
-	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/dependency"
 	"go.uber.org/zap"
 	"testing"
 	"time"
@@ -20,7 +19,7 @@ import (
 func TestReady_Example_DirectMockSetup(t *testing.T) {
 
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	// Create mock registry
 	registry := tests.NewMockRegistry()
@@ -54,7 +53,7 @@ func TestReady_Example_DirectMockSetup(t *testing.T) {
 	}
 
 	// Execute
-	result, err := dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	// Assert
 	assert.NoError(t, err)
@@ -63,7 +62,7 @@ func TestReady_Example_DirectMockSetup(t *testing.T) {
 	// Verify success state
 	select {
 	case state := <-channel:
-		assert.Equal(t, dependency.SUCCESS, state.State)
+		assert.Equal(t, SUCCESS, state.State)
 	case <-time.After(1 * time.Second):
 		t.Fatal("expected success state")
 	}
@@ -77,7 +76,7 @@ func TestReady_Example_DirectMockSetup(t *testing.T) {
 
 func TestReady_Example_RegistryBuilder(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	// Build containers
 	myContainer := tests.NewContainerBuilder().
@@ -106,7 +105,7 @@ func TestReady_Example_RegistryBuilder(t *testing.T) {
 		{Prefix: "smr", Group: "cache", Name: "redis", Timeout: "5s"},
 	}
 
-	result, err := dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	assert.NoError(t, err)
 	assert.True(t, result)
@@ -120,7 +119,7 @@ func TestReady_Example_RegistryBuilder(t *testing.T) {
 
 func TestReady_Example_FailureNotFound(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -136,7 +135,7 @@ func TestReady_Example_FailureNotFound(t *testing.T) {
 		{Prefix: "smr", Group: "database", Name: "mysql", Timeout: "2s"},
 	}
 
-	result, err := dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	assert.Error(t, err)
 	assert.False(t, result)
@@ -148,10 +147,10 @@ func TestReady_Example_FailureNotFound(t *testing.T) {
 
 	for len(channel) > 0 {
 		state := <-channel
-		if state.State == dependency.CHECKING {
+		if state.State == CHECKING {
 			foundChecking = true
 		}
-		if state.State == dependency.FAILED {
+		if state.State == FAILED {
 			foundFailed = true
 		}
 	}
@@ -162,7 +161,7 @@ func TestReady_Example_FailureNotFound(t *testing.T) {
 
 func TestReady_Example_FailureNotReady(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -183,11 +182,11 @@ func TestReady_Example_FailureNotReady(t *testing.T) {
 		{Prefix: "smr", Group: "database", Name: "mysql", Timeout: "1s"},
 	}
 
-	dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	for len(channel) > 0 {
 		state := <-channel
-		if state.State == dependency.CHECKING {
+		if state.State == CHECKING {
 			assert.Error(t, state.Error)
 			assert.Contains(t, state.Error.Error(), "container not ready")
 		}
@@ -196,7 +195,7 @@ func TestReady_Example_FailureNotReady(t *testing.T) {
 
 func TestReady_Example_EmptyGroup(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -212,11 +211,11 @@ func TestReady_Example_EmptyGroup(t *testing.T) {
 		{Prefix: "smr", Group: "workers", Name: "*", Timeout: "1s"},
 	}
 
-	dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	for len(channel) > 0 {
 		state := <-channel
-		if state.State == dependency.CHECKING {
+		if state.State == CHECKING {
 			assert.Error(t, state.Error)
 			assert.Contains(t, state.Error.Error(), "waiting for atleast one container")
 		}
@@ -229,7 +228,7 @@ func TestReady_Example_EmptyGroup(t *testing.T) {
 
 func TestReady_Example_ComplexScenario(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 20)
+	channel := make(chan *State, 20)
 
 	// Application container
 	appContainer := tests.NewContainerBuilder().
@@ -290,18 +289,18 @@ func TestReady_Example_ComplexScenario(t *testing.T) {
 		{Prefix: "smr", Group: "workers", Name: "*", Timeout: "30s"},
 	}
 
-	result, err := dependency.Ready(ctx, registry, "api", "api-server", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "api", "api-server", dependencies, channel, zap.NewNop())
 
 	assert.NoError(t, err)
 	assert.True(t, result)
 
 	// Verify final success state
-	var finalState *dependency.State
+	var finalState *State
 	for len(channel) > 0 {
 		finalState = <-channel
 	}
 	assert.NotNil(t, finalState)
-	assert.Equal(t, dependency.SUCCESS, finalState.State)
+	assert.Equal(t, SUCCESS, finalState.State)
 
 	registry.AssertExpectations(t)
 }
@@ -312,7 +311,7 @@ func TestReady_Example_ComplexScenario(t *testing.T) {
 
 func TestReady_Example_Timeout(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -339,7 +338,7 @@ func TestReady_Example_Timeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	result, err := dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 	elapsed := time.Since(start)
 
 	assert.Error(t, err)
@@ -352,9 +351,9 @@ func TestReady_Example_Timeout(t *testing.T) {
 	foundCanceled := false
 	for len(channel) > 0 {
 		state := <-channel
-		if state.State == dependency.CANCELED {
+		if state.State == CANCELED {
 			foundCanceled = true
-			assert.Equal(t, dependency.ERROR_CONTEXT_CANCELED, state.Error)
+			assert.Equal(t, ERROR_CONTEXT_CANCELED, state.Error)
 			break
 		}
 	}
@@ -366,7 +365,7 @@ func TestReady_Example_Timeout(t *testing.T) {
 // ============================================================================
 
 func TestSolveDepends_Example_Direct(t *testing.T) {
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -382,7 +381,7 @@ func TestSolveDepends_Example_Direct(t *testing.T) {
 		WithContainer("smr", "database", "mysql", depContainer).
 		Build()
 
-	dep := &dependency.Dependency{
+	dep := &Dependency{
 		Prefix:  "smr",
 		Group:   "database",
 		Name:    "mysql",
@@ -390,7 +389,7 @@ func TestSolveDepends_Example_Direct(t *testing.T) {
 		Cancel:  func() {},
 	}
 
-	err := dependency.SolveDepends(registry, "smr", "app", "app", dep, channel, zap.NewNop())
+	err := SolveDepends(registry, "smr", "app", "app", dep, channel, zap.NewNop())
 
 	assert.NoError(t, err)
 	assert.Empty(t, channel, zap.NewNop()) // No state messages for success case
@@ -410,7 +409,7 @@ func TestReady_Example_ProgressiveReadiness(t *testing.T) {
 	// callbacks to simulate state changes during the retry loop.
 
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -441,7 +440,7 @@ func TestReady_Example_ProgressiveReadiness(t *testing.T) {
 		{Prefix: "smr", Group: "database", Name: "mysql", Timeout: "10s"},
 	}
 
-	result, err := dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	assert.NoError(t, err)
 	assert.True(t, result)
@@ -454,7 +453,7 @@ func TestReady_Example_ProgressiveReadiness(t *testing.T) {
 
 func TestReady_Example_WildcardWithBuilder(t *testing.T) {
 	ctx := context.Background()
-	channel := make(chan *dependency.State, 10)
+	channel := make(chan *State, 10)
 
 	myContainer := tests.NewContainerBuilder().
 		WithGeneratedName("app-1").
@@ -491,18 +490,18 @@ func TestReady_Example_WildcardWithBuilder(t *testing.T) {
 		},
 	}
 
-	result, err := dependency.Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
+	result, err := Ready(ctx, registry, "app", "app", dependencies, channel, zap.NewNop())
 
 	assert.NoError(t, err)
 	assert.True(t, result)
 
 	// Verify success state was sent
-	var finalState *dependency.State
+	var finalState *State
 	for len(channel) > 0 {
 		finalState = <-channel
 	}
 	assert.NotNil(t, finalState)
-	assert.Equal(t, dependency.SUCCESS, finalState.State)
+	assert.Equal(t, SUCCESS, finalState.State)
 	assert.Nil(t, finalState.Error)
 
 	registry.AssertExpectations(t)
