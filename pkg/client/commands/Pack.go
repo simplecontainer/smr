@@ -24,7 +24,7 @@ func Pack() {
 		command.NewBuilder().Parent("pack").Name("login").Args(cobra.ExactArgs(0)).Function(cmdPackLogin).Flags(cmdPackLoginFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("pack").Name("logout").Args(cobra.ExactArgs(0)).Function(cmdPackLogout).Flags(cmdPackLogoutFlags).BuildWithValidation(),
 		command.NewBuilder().Parent("pack").Name("push").Args(cobra.ExactArgs(1)).Function(cmdPackPush).Flags(cmdPackPushFlags).BuildWithValidation(),
-		command.NewBuilder().Parent("pack").Name("pull").Args(cobra.ExactArgs(2)).Function(cmdPackPull).Flags(cmdPackPullFlags).BuildWithValidation(),
+		command.NewBuilder().Parent("pack").Name("pull").Args(cobra.ExactArgs(1)).Function(cmdPackPull).Flags(cmdPackPullFlags).BuildWithValidation(),
 	)
 }
 
@@ -175,11 +175,28 @@ func cmdPackPushFlags(cmd *cobra.Command) {
 }
 
 func cmdPackPull(api iapi.Api, cli *client.Client, args []string) {
-	registry := ocicredentials.DefaultRegistry
-	name := args[0]
-	version := args[1]
+	registry := viper.GetString("registry")
 
-	err := cli.Credentials.Load()
+	ref, err := reference.Parse(args[0])
+	if err != nil {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	named, ok := ref.(reference.Named)
+	if !ok {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	repository := named.Name()
+
+	tagged, ok := ref.(reference.Tagged)
+	if !ok {
+		helpers.PrintAndExit(err, 1)
+	}
+
+	tag := tagged.Tag()
+
+	err = cli.Credentials.Load()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			cli.Credentials.Default(registry)
@@ -203,7 +220,7 @@ func cmdPackPull(api iapi.Api, cli *client.Client, args []string) {
 		helpers.PrintAndExit(err, 1)
 	}
 
-	pack, err := OCIClient.DownloadPackage(context.Background(), name, version, filepath.Join(".", name))
+	pack, err := OCIClient.DownloadPackage(context.Background(), repository, tag, filepath.Join(".", repository))
 	if err != nil {
 		helpers.PrintAndExit(err, 1)
 	}

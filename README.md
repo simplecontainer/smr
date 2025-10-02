@@ -96,7 +96,7 @@ Add these to /etc/hosts file:
 After that run:
 
 ```
-smrctl pack pull simplecontainer/dashboard
+smrctl pack pull simplecontainer/dashboard:0.0.1
 mkcert dashboard.localhost proxy.dashboard.localhost api.dashboard.localhost authentik.dashboard.localhost
 smrctl apply simplecontainer/dashboard --set user=$USER --set traefik.certificate="$(cat dashboard.localhost+3.pem)" --set traefik.key="$(cat dashboard.localhost+3-key.pem)"
 ```

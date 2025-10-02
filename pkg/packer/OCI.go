@@ -24,7 +24,6 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
@@ -63,16 +62,7 @@ func (c *Client) initRegistry(repository string) error {
 			}),
 		}
 	} else {
-		store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to create credential store: %w", err)
-		}
-
-		reg.Client = &auth.Client{
-			Client:     retry.DefaultClient,
-			Cache:      auth.NewCache(),
-			Credential: credentials.Credential(store),
-		}
+		reg.Client = retry.DefaultClient
 	}
 
 	reg.PlainHTTP = false
@@ -96,15 +86,12 @@ func (c *Client) testRegistry(ctx context.Context) error {
 			}),
 		}
 	} else {
-		store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to create credential store: %w", err)
-		}
-
 		reg.Client = &auth.Client{
-			Client:     retry.DefaultClient,
-			Cache:      auth.NewCache(),
-			Credential: credentials.Credential(store),
+			Client: retry.DefaultClient,
+			Cache:  auth.NewCache(),
+			Credential: func(ctx context.Context, registry string) (auth.Credential, error) {
+				return auth.EmptyCredential, nil
+			},
 		}
 	}
 
