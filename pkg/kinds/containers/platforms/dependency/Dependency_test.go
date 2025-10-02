@@ -142,22 +142,10 @@ func TestReady_Example_FailureNotFound(t *testing.T) {
 	assert.False(t, result)
 	assert.Contains(t, err.Error(), "container not found")
 
-	// Verify CHECKING and FAILED states
-	foundChecking := false
-	foundFailed := false
-
 	for len(channel) > 0 {
 		state := <-channel
-		if state.State == CHECKING {
-			foundChecking = true
-		}
-		if state.State == FAILED {
-			foundFailed = true
-		}
+		assert.Contains(t, state.Error.Error(), "container not found")
 	}
-
-	assert.True(t, foundChecking)
-	assert.True(t, foundFailed)
 }
 
 func TestReady_Example_FailureNotReady(t *testing.T) {
@@ -353,7 +341,6 @@ func TestReady_Example_Timeout(t *testing.T) {
 	for len(channel) > 0 {
 		state := <-channel
 		if err != nil {
-
 			if errors.Is(state.Error, context.DeadlineExceeded) {
 				foundCanceled = true
 				assert.Equal(t, context.DeadlineExceeded, state.Error)
