@@ -51,7 +51,7 @@ func (m *MockRegistry) AddContainer(key string, container platforms.IContainer) 
 	m.containers[key] = container
 }
 
-// Stub implementations for remaining Registry interface methods
+// Container Management
 func (m *MockRegistry) AddOrUpdate(group string, name string, containerAddr platforms.IContainer) {
 	m.Called(group, name, containerAddr)
 }
@@ -76,6 +76,17 @@ func (m *MockRegistry) NameReplica(group string, name string, index uint64) stri
 	return args.String(0)
 }
 
+// Restart Tracking - Lifecycle Events
+func (m *MockRegistry) MarkContainerStarted(group string, name string) {
+	m.Called(group, name)
+}
+
+func (m *MockRegistry) MarkContainerStopped(group string, name string) error {
+	args := m.Called(group, name)
+	return args.Error(0)
+}
+
+// Backoff Management
 func (m *MockRegistry) BackOff(group string, name string) error {
 	args := m.Called(group, name)
 	return args.Error(0)
@@ -85,6 +96,37 @@ func (m *MockRegistry) BackOffReset(group string, name string) {
 	m.Called(group, name)
 }
 
+func (m *MockRegistry) ResetRestartTracking(group string, name string) {
+	m.Called(group, name)
+}
+
+// Restart Statistics
+func (m *MockRegistry) GetBackOffCount(group string, name string) uint64 {
+	args := m.Called(group, name)
+	return args.Get(0).(uint64)
+}
+
+func (m *MockRegistry) GetRestartCount(group string, name string) int {
+	args := m.Called(group, name)
+	return args.Int(0)
+}
+
+// Cleanup and Monitoring
+func (m *MockRegistry) GetTrackerSize() int {
+	args := m.Called()
+	return args.Int(0)
+}
+
+func (m *MockRegistry) IsBanned(group string, name string) bool {
+	args := m.Called(group, name)
+	return args.Bool(0)
+}
+
+func (m *MockRegistry) UnbanContainer(group string, name string) {
+	m.Called(group, name)
+}
+
+// Legacy methods (if still needed)
 func (m *MockRegistry) GetIndexes(prefix string, group string, name string) ([]uint64, error) {
 	args := m.Called(prefix, group, name)
 	if args.Get(0) == nil {
@@ -142,6 +184,44 @@ func (b *RegistryBuilder) WithEmptyGroup(prefix, group string) *RegistryBuilder 
 // WithNotFound configures Find to return nil
 func (b *RegistryBuilder) WithNotFound(prefix, group, name string) *RegistryBuilder {
 	b.registry.On("Find", prefix, group, name).Return(nil)
+	return b
+}
+
+// Restart Tracking Builders
+func (b *RegistryBuilder) WithRestartAllowed(group, name string) *RegistryBuilder {
+	b.registry.On("MarkContainerStopped", group, name).Return(nil)
+	b.registry.On("IsBanned", group, name).Return(false)
+	return b
+}
+
+func (b *RegistryBuilder) WithRestartBlocked(group, name string, err error) *RegistryBuilder {
+	b.registry.On("MarkContainerStopped", group, name).Return(err)
+	b.registry.On("IsBanned", group, name).Return(true)
+	return b
+}
+
+func (b *RegistryBuilder) WithBackoffCount(group, name string, count uint64) *RegistryBuilder {
+	b.registry.On("GetBackOffCount", group, name).Return(count)
+	return b
+}
+
+func (b *RegistryBuilder) WithRestartCount(group, name string, count int) *RegistryBuilder {
+	b.registry.On("GetRestartCount", group, name).Return(count)
+	return b
+}
+
+func (b *RegistryBuilder) WithTrackerSize(size int) *RegistryBuilder {
+	b.registry.On("GetTrackerSize").Return(size)
+	return b
+}
+
+func (b *RegistryBuilder) AllowAllRestarts() *RegistryBuilder {
+	b.registry.On("MarkContainerStarted", mock.Anything, mock.Anything).Return()
+	b.registry.On("MarkContainerStopped", mock.Anything, mock.Anything).Return(nil)
+	b.registry.On("BackOff", mock.Anything, mock.Anything).Return(nil)
+	b.registry.On("BackOffReset", mock.Anything, mock.Anything).Return()
+	b.registry.On("ResetRestartTracking", mock.Anything, mock.Anything).Return()
+	b.registry.On("IsBanned", mock.Anything, mock.Anything).Return(false)
 	return b
 }
 

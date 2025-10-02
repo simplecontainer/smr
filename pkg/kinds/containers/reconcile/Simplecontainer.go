@@ -214,7 +214,7 @@ func handleReadinessChecking(shared *shared.Shared, cw *watcher.Container, exist
 					return status.READINESS_FAILED, true
 				case readiness.CANCELED:
 					cw.Logger.Info("readiness check canceled")
-					return "", false
+					return status.READINESS_FAILED, true
 				}
 			} else {
 				return status.READINESS_FAILED, true
@@ -237,8 +237,8 @@ func handleReadinessFailed(shared *shared.Shared, cw *watcher.Container, existin
 }
 
 func handleRunning(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
-	shared.Registry.BackOffReset(cw.Container.GetGroup(), cw.Container.GetGeneratedName())
-	cw.Logger.Info("container is running, backoff is cleared - reconciler going to sleep")
+	shared.Registry.MarkContainerStarted(cw.Container.GetGroup(), cw.Container.GetGeneratedName())
+	cw.Logger.Info("container is running")
 	return status.RUNNING, false
 }
 
@@ -252,7 +252,8 @@ func handleKill(shared *shared.Shared, cw *watcher.Container, existing platforms
 }
 
 func handleDead(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
-	if err := shared.Registry.BackOff(cw.Container.GetGroup(), cw.Container.GetGeneratedName()); err != nil {
+	err := shared.Registry.MarkContainerStopped(cw.Container.GetGroup(), cw.Container.GetGeneratedName())
+	if err != nil {
 		return status.BACKOFF, true
 	}
 

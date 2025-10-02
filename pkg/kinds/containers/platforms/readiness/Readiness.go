@@ -24,6 +24,7 @@ func NewReadinessFromDefinition(readiness v1.ContainersReadiness) (*Readiness, e
 		Command: readiness.Command,
 		Body:    readiness.Body,
 		Timeout: readiness.Timeout,
+		Method:  readiness.Method,
 		Ctx:     ctx,
 		Cancel:  cancel,
 	}, nil

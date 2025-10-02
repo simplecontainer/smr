@@ -142,6 +142,10 @@ type Registry interface {
 	BackOffReset(group string, name string)
 	GetIndexes(prefix string, group string, name string) ([]uint64, error)
 	GetIndexesLocal(prefix string, group string, name string) ([]uint64, error)
+	MarkContainerStarted(group string, name string)
+	MarkContainerStopped(group string, name string) error
+	ResetRestartTracking(group string, name string)
+	GetBackOffCount(group string, name string) uint64
 }
 
 type Readiness interface {

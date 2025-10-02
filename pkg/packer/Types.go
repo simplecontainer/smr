@@ -2,6 +2,10 @@ package packer
 
 import "github.com/simplecontainer/smr/pkg/kinds/common"
 
+const (
+	PackageMetadataFile = "Pack.yaml"
+)
+
 type Definition struct {
 	File       string
 	Definition *common.Request

@@ -9,12 +9,14 @@ import (
 	"github.com/simplecontainer/smr/pkg/dns"
 	"github.com/simplecontainer/smr/pkg/etcd"
 	"github.com/simplecontainer/smr/pkg/keys"
+	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/manager"
 	"github.com/simplecontainer/smr/pkg/node"
 	"github.com/simplecontainer/smr/pkg/raft"
 	"github.com/simplecontainer/smr/pkg/relations"
 	"github.com/simplecontainer/smr/pkg/wss"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -97,6 +99,8 @@ func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster
 	if a.Cluster.Replay {
 		if len(a.Cluster.KVStore.Restore) > 0 {
 			for i, v := range a.Cluster.KVStore.Restore {
+				logger.Log.Info("replaying key", zap.String("key", v.Key))
+
 				a.Replication.DataC <- *v
 				a.Cluster.KVStore.Restore[i] = nil
 			}
@@ -104,6 +108,8 @@ func (a *Api) SetupCluster(TLSConfig *tls.Config, n *node.Node, cluster *cluster
 
 		a.Cluster.KVStore.Restore = nil
 		a.Cluster.Replay = false
+
+		logger.Log.Info("cluster replayed")
 	}
 
 	a.Cluster.RaftNode = raftNode

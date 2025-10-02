@@ -2,12 +2,15 @@ package packer
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/opencontainers/image-spec/specs-go"
+	"github.com/simplecontainer/smr/pkg/packer/ocicredentials"
+	"github.com/simplecontainer/smr/pkg/packer/signature"
 	"io"
 	"oras.land/oras-go/v2"
 	"os"
@@ -25,60 +28,38 @@ import (
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
-const (
-	DefaultRegistry     = "registry.simplecontainer.io"
-	PackageMetadataFile = "Pack.yaml"
-	DefaultMediaType    = "application/vnd.simplecontainer.pack.v1+json"
-)
-
 type PackageMetadata struct {
 	Name    string `yaml:"name" json:"name"`
 	Version string `yaml:"version" json:"version"`
 }
 
-type Config struct {
-	Registry  string
-	Username  string
-	Password  string
-	Insecure  bool
-	PlainHTTP bool
-	Debug     bool
-}
-
 type Client struct {
-	config   *Config
-	registry *remote.Repository
+	registry    *remote.Repository
+	credentials *ocicredentials.Credentials
+	signature   *signature.Signature
 }
 
-func NewClient(config *Config) (*Client, error) {
-	if config == nil {
-		config = &Config{}
-	}
-
-	if config.Registry == "" {
-		config.Registry = DefaultRegistry
-	}
-
+func NewClient(credentials *ocicredentials.Credentials) (*Client, error) {
 	client := &Client{
-		config: config,
+		credentials: credentials,
 	}
 
 	return client, nil
 }
 
 func (c *Client) initRegistry(repository string) error {
-	reg, err := remote.NewRepository(fmt.Sprintf("%s/%s", c.config.Registry, repository))
+	reg, err := remote.NewRepository(fmt.Sprintf("%s/%s", c.credentials.Registry, repository))
 	if err != nil {
 		return fmt.Errorf("failed to create repository: %w", err)
 	}
 
-	if c.config.Username != "" && c.config.Password != "" {
+	if c.credentials.Username != "" && c.credentials.Password != "" {
 		reg.Client = &auth.Client{
 			Client: retry.DefaultClient,
 			Cache:  auth.NewCache(),
-			Credential: auth.StaticCredential(c.config.Registry, auth.Credential{
-				Username: c.config.Username,
-				Password: c.config.Password,
+			Credential: auth.StaticCredential(c.credentials.Registry, auth.Credential{
+				Username: c.credentials.Username,
+				Password: c.credentials.Password,
 			}),
 		}
 	} else {
@@ -94,14 +75,45 @@ func (c *Client) initRegistry(repository string) error {
 		}
 	}
 
-	reg.PlainHTTP = c.config.PlainHTTP
+	reg.PlainHTTP = false
 
 	c.registry = reg
 	return nil
 }
+func (c *Client) testRegistry(ctx context.Context) error {
+	reg, err := remote.NewRegistry(fmt.Sprintf("%s", c.credentials.Registry))
+	if err != nil {
+		return fmt.Errorf("failed to create repository: %w", err)
+	}
 
-func (c *Client) CreatePackage(ctx context.Context, sourceDir, outputDir string) (*PackageMetadata, error) {
-	metadata, err := c.readPackageMetadata(sourceDir)
+	if c.credentials.Username != "" && c.credentials.Password != "" {
+		reg.Client = &auth.Client{
+			Client: retry.DefaultClient,
+			Cache:  auth.NewCache(),
+			Credential: auth.StaticCredential(c.credentials.Registry, auth.Credential{
+				Username: c.credentials.Username,
+				Password: c.credentials.Password,
+			}),
+		}
+	} else {
+		store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create credential store: %w", err)
+		}
+
+		reg.Client = &auth.Client{
+			Client:     retry.DefaultClient,
+			Cache:      auth.NewCache(),
+			Credential: credentials.Credential(store),
+		}
+	}
+
+	reg.PlainHTTP = false
+	return reg.Ping(ctx)
+}
+
+func (c *Client) CreatePackage(ctx context.Context, signer *signature.Signer, repository string, outputDir string) (*PackageMetadata, error) {
+	metadata, err := c.readPackageMetadata(filepath.Base(repository))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read package metadata: %w", err)
 	}
@@ -115,7 +127,7 @@ func (c *Client) CreatePackage(ctx context.Context, sourceDir, outputDir string)
 		return nil, fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	layerDigest, layerSize, err := c.createLayer(sourceDir, blobsDir)
+	layerDigest, layerSize, err := c.createLayer(filepath.Base(repository), blobsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create layer: %w", err)
 	}
@@ -130,6 +142,13 @@ func (c *Client) CreatePackage(ctx context.Context, sourceDir, outputDir string)
 		return nil, fmt.Errorf("failed to create manifest: %w", err)
 	}
 
+	if signer.PrivateKeyPath != "" {
+		c.signature, err = signature.SignPackage(manifestDigest.String(), signer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign manifest: %w", err)
+		}
+	}
+
 	if err := c.createIndex(metadata, manifestDigest, outputDir); err != nil {
 		return nil, fmt.Errorf("failed to create index: %w", err)
 	}
@@ -140,17 +159,10 @@ func (c *Client) CreatePackage(ctx context.Context, sourceDir, outputDir string)
 
 	return metadata, nil
 }
-
 func (c *Client) UploadPackage(ctx context.Context, packagePath, repository, tag string) error {
 	if err := c.initRegistry(repository); err != nil {
 		return fmt.Errorf("failed to initialize registry: %w", err)
 	}
-
-	store, err := file.New(packagePath)
-	if err != nil {
-		return fmt.Errorf("failed to create file store: %w", err)
-	}
-	defer store.Close()
 
 	indexPath := filepath.Join(packagePath, "index.json")
 	indexData, err := os.ReadFile(indexPath)
@@ -169,14 +181,63 @@ func (c *Client) UploadPackage(ctx context.Context, packagePath, repository, tag
 
 	manifestDescriptor := index.Manifests[0]
 
-	_, err = oras.Copy(ctx, store, manifestDescriptor.Digest.String(), c.registry, tag, oras.DefaultCopyOptions)
+	manifestPath := filepath.Join(packagePath, "blobs", "sha256", manifestDescriptor.Digest.Encoded())
+	manifestData, err := os.ReadFile(manifestPath)
 	if err != nil {
-		return fmt.Errorf("failed to push package: %w", err)
+		return fmt.Errorf("failed to read manifest blob: %w", err)
+	}
+
+	var manifest v1.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return fmt.Errorf("failed to unmarshal manifest: %w", err)
+	}
+
+	publishedTime := time.Now().Format(time.RFC3339)
+	if manifest.Annotations == nil {
+		manifest.Annotations = make(map[string]string)
+	}
+	manifest.Annotations["org.opencontainers.image.created"] = publishedTime
+
+	manifestData, err = json.Marshal(manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated manifest: %w", err)
+	}
+
+	manifestDescriptor.Digest = digest.FromBytes(manifestData)
+	manifestDescriptor.Size = int64(len(manifestData))
+
+	configPath := filepath.Join(packagePath, "blobs", "sha256", manifest.Config.Digest.Encoded())
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config blob: %w", err)
+	}
+
+	if err := c.registry.Push(ctx, manifest.Config, bytes.NewReader(configData)); err != nil {
+		return fmt.Errorf("failed to push config: %w", err)
+	}
+
+	for i, layer := range manifest.Layers {
+		layerPath := filepath.Join(packagePath, "blobs", "sha256", layer.Digest.Encoded())
+		layerData, err := os.ReadFile(layerPath)
+		if err != nil {
+			return fmt.Errorf("failed to read layer blob %d (%s): %w", i, layer.Digest, err)
+		}
+
+		if err := c.registry.Push(ctx, layer, bytes.NewReader(layerData)); err != nil {
+			return fmt.Errorf("failed to push layer %d (%s): %w", i, layer.Digest, err)
+		}
+	}
+
+	if err := c.registry.Push(ctx, manifestDescriptor, bytes.NewReader(manifestData)); err != nil {
+		return fmt.Errorf("failed to push manifest: %w", err)
+	}
+
+	if err := c.registry.Tag(ctx, manifestDescriptor, tag); err != nil {
+		return fmt.Errorf("failed to tag package: %w", err)
 	}
 
 	return nil
 }
-
 func (c *Client) DownloadPackage(ctx context.Context, repository, tag, outputDir string) (*PackageMetadata, error) {
 	if err := c.initRegistry(repository); err != nil {
 		return nil, fmt.Errorf("failed to initialize registry: %w", err)
@@ -206,6 +267,50 @@ func (c *Client) DownloadPackage(ctx context.Context, repository, tag, outputDir
 
 	return metadata, nil
 }
+func (c *Client) TestLogin(ctx context.Context) error {
+	if err := c.testRegistry(ctx); err != nil {
+		return fmt.Errorf("failed to initialize registry: %w", err)
+	}
+
+	return nil
+}
+func (c *Client) VerifyDownloadedPackage(packagePath string) error {
+	indexPath := filepath.Join(packagePath, "..", "temp-store", "index.json")
+	indexData, err := os.ReadFile(indexPath)
+	if err != nil {
+		indexPath = filepath.Join(packagePath, "index.json")
+		indexData, err = os.ReadFile(indexPath)
+		if err != nil {
+			return fmt.Errorf("signature not found in package")
+		}
+	}
+
+	var index v1.Index
+	if err := json.Unmarshal(indexData, &index); err != nil {
+		return fmt.Errorf("failed to unmarshal index: %w", err)
+	}
+
+	if len(index.Manifests) == 0 {
+		return fmt.Errorf("no manifests found")
+	}
+
+	sigJSON, ok := index.Manifests[0].Annotations["simplecontainer.signature"]
+	if !ok {
+		return fmt.Errorf("package is not signed")
+	}
+
+	var sign signature.Signature
+	if err := json.Unmarshal([]byte(sigJSON), &sign); err != nil {
+		return fmt.Errorf("failed to unmarshal signature: %w", err)
+	}
+
+	manifestDigest := index.Manifests[0].Digest.String()
+	if err := signature.VerifyPackage(manifestDigest, &sign); err != nil {
+		return fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	return nil
+}
 
 func (c *Client) readPackageMetadata(sourceDir string) (*PackageMetadata, error) {
 	metadataPath := filepath.Join(sourceDir, PackageMetadataFile)
@@ -221,7 +326,6 @@ func (c *Client) readPackageMetadata(sourceDir string) (*PackageMetadata, error)
 
 	return &metadata, nil
 }
-
 func (c *Client) validateMetadata(metadata *PackageMetadata) error {
 	if metadata.Name == "" {
 		return fmt.Errorf("package name is required")
@@ -258,6 +362,13 @@ func (c *Client) createLayer(sourceDir, blobsDir string) (digest.Digest, int64, 
 	err = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
+		}
+
+		if strings.HasPrefix(filepath.Base(path), ".") {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 
 		relPath, err := filepath.Rel(sourceDir, path)
@@ -318,7 +429,6 @@ func (c *Client) createLayer(sourceDir, blobsDir string) (digest.Digest, int64, 
 
 	return layerDigest, stat.Size(), nil
 }
-
 func (c *Client) createConfig(metadata *PackageMetadata, layerDigest digest.Digest, blobsDir string) (digest.Digest, int64, error) {
 	config := v1.Image{
 		Created: &time.Time{},
@@ -360,7 +470,6 @@ func (c *Client) createConfig(metadata *PackageMetadata, layerDigest digest.Dige
 
 	return configDigest, int64(len(configJSON)), nil
 }
-
 func (c *Client) createManifest(metadata *PackageMetadata, configDigest digest.Digest, configSize int64, layerDigest digest.Digest, layerSize int64, blobsDir string) (digest.Digest, error) {
 	manifest := v1.Manifest{
 		Versioned: specs.Versioned{
@@ -411,6 +520,23 @@ func (c *Client) createIndex(metadata *PackageMetadata, manifestDigest digest.Di
 		return fmt.Errorf("failed to stat manifest: %w", err)
 	}
 
+	now := time.Now()
+
+	annotations := map[string]string{
+		"org.opencontainers.image.ref.name": fmt.Sprintf("%s:%s", metadata.Name, metadata.Version),
+		"org.opencontainers.image.created":  now.Format(time.RFC3339),
+	}
+
+	if c.signature != nil {
+		sigJSON, err := json.Marshal(c.signature)
+		if err != nil {
+			return fmt.Errorf("failed to marshal signature: %w", err)
+		}
+		annotations["simplecontainer.signature"] = string(sigJSON)
+		// Add signed indicator for Zot UI
+		annotations["io.artifacthub.package.signed"] = "true"
+	}
+
 	index := v1.Index{
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
@@ -421,15 +547,18 @@ func (c *Client) createIndex(metadata *PackageMetadata, manifestDigest digest.Di
 				MediaType: v1.MediaTypeImageManifest,
 				Digest:    manifestDigest,
 				Size:      stat.Size(),
-				Annotations: map[string]string{
-					"org.opencontainers.image.ref.name": fmt.Sprintf("%s:%s", metadata.Name, metadata.Version),
+				Platform: &v1.Platform{
+					Architecture: "amd64",
+					OS:           "linux",
 				},
+				Annotations: annotations,
 			},
 		},
 		Annotations: map[string]string{
 			"org.opencontainers.image.title":       metadata.Name,
 			"org.opencontainers.image.version":     metadata.Version,
 			"org.opencontainers.image.description": fmt.Sprintf("OCI package index: %s", metadata.Name),
+			"org.opencontainers.image.created":     time.Now().Format(time.RFC3339),
 			"simplecontainer.pack.name":            metadata.Name,
 			"simplecontainer.pack.version":         metadata.Version,
 		},
@@ -443,7 +572,6 @@ func (c *Client) createIndex(metadata *PackageMetadata, manifestDigest digest.Di
 	indexPath := filepath.Join(outputDir, "index.json")
 	return os.WriteFile(indexPath, indexJSON, 0644)
 }
-
 func (c *Client) createLayout(outputDir string) error {
 	layout := v1.ImageLayout{
 		Version: "1.0.0",
@@ -492,7 +620,6 @@ func (c *Client) extractPackage(ctx context.Context, store *file.Store, descript
 
 	return metadata, nil
 }
-
 func (c *Client) extractLayer(ctx context.Context, store *file.Store, layerDesc v1.Descriptor, outputDir string) error {
 	layerReader, err := store.Fetch(ctx, layerDesc)
 	if err != nil {

@@ -3,7 +3,6 @@ package dependency
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/simplecontainer/smr/pkg/definitions/v1"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms"
@@ -129,10 +128,6 @@ func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, 
 		flagFail := false
 		for _, container := range containers {
 			if !container.GetStatus().LastReadiness {
-				channel <- &State{
-					State: CHECKING,
-					Error: fmt.Errorf("container not ready %s", container.GetGeneratedName()),
-				}
 				flagFail = true
 				break
 			}
@@ -147,10 +142,6 @@ func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, 
 		container := registry.Find(otherPrefix, otherGroup, otherName)
 		if container == nil {
 			logger.Error("container not found", zap.String("group", otherGroup), zap.String("name", otherName))
-			channel <- &State{
-				State: CHECKING,
-				Error: nil,
-			}
 			return ERROR_CONTAINER_NOT_FOUND
 		}
 
@@ -158,10 +149,6 @@ func SolveDepends(registry platforms.Registry, myPrefix string, myGroup string, 
 			return nil
 		}
 
-		channel <- &State{
-			State: CHECKING,
-			Error: ERROR_CONTAINER_NOT_READY,
-		}
 		return ERROR_CONTAINER_NOT_READY
 	}
 }

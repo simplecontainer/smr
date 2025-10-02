@@ -25,6 +25,8 @@ func New() *Pack {
 }
 
 func Init(name string) error {
+	name = filepath.Base(filepath.Clean(name))
+
 	err := os.MkdirAll(name, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", name, err)

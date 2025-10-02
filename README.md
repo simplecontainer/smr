@@ -96,9 +96,9 @@ Add these to /etc/hosts file:
 After that run:
 
 ```
-git clone https://github.com/simplecontainer/dashboard-pack.git
+smrctl pack pull simplecontainer/dashboard
 mkcert dashboard.localhost proxy.dashboard.localhost api.dashboard.localhost authentik.dashboard.localhost
-smrctl apply dashboard-pack --set user=$USER --set traefik.certificate="$(cat dashboard.localhost+3.pem)" --set traefik.key="$(cat dashboard.localhost+3-key.pem)"
+smrctl apply simplecontainer/dashboard --set user=$USER --set traefik.certificate="$(cat dashboard.localhost+3.pem)" --set traefik.key="$(cat dashboard.localhost+3-key.pem)"
 ```
 
 That's it. This pack runs:

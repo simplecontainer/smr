@@ -100,10 +100,6 @@ func SolveReadiness(client *clients.Http, user *authentication.User, container p
 		return ERROR_READINESS_INVALID_STATE
 	}
 
-	channel <- &readiness.ReadinessState{
-		State: readiness.CHECKING,
-	}
-
 	if r.URL != "" {
 		r.Type = readiness.TYPE_URL
 	}
