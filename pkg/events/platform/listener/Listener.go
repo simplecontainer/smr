@@ -15,6 +15,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/logger"
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/static"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -49,6 +50,12 @@ func Listen(shared *shared.Shared, platform string) {
 }
 
 func Handle(platform string, shared *shared.Shared, msg interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Log.Error("panic in platform event handler", zap.Any("panic", r))
+		}
+	}()
+
 	var event ievents.Event
 	switch platform {
 	case static.PLATFORM_DOCKER:
@@ -62,7 +69,7 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 		cw = shared.Watchers.Find(fmt.Sprintf("%s/%s", event.GetGroup(), event.GetName()))
 	}
 
-	if cw == nil {
+	if cw == nil || cw.IsDone() {
 		return
 	}
 
@@ -91,7 +98,6 @@ func Handle(platform string, shared *shared.Shared, msg interface{}) {
 		}
 	}
 }
-
 func HandleConnect(shared *shared.Shared, cw *watcher.Container, event ievents.Event) {
 	cw.Logger.Info(fmt.Sprintf("container %s is connected to the network: %s", cw.Container.GetGeneratedName(), event.GetNetworkId()))
 	err := cw.Container.SyncNetwork()
@@ -142,7 +148,7 @@ func HandleDie(shared *shared.Shared, cw *watcher.Container, event ievents.Event
 	if !reconcileIgnore(cw.Container.GetLabels()) {
 		containerW := shared.Watchers.Find(cw.Container.GetGroupIdentifier())
 
-		if containerW != nil && containerW.AllowPlatformEvents {
+		if containerW != nil && !containerW.IsDone() && containerW.GetAllowPlatformEvents() {
 			cw.Logger.Info(fmt.Sprintf("container is stopped - reconcile to dead %s", cw.Container.GetGeneratedName()))
 
 			cw.Container.GetStatus().RejectQueueAttempts(time.Now())
@@ -153,7 +159,7 @@ func HandleDie(shared *shared.Shared, cw *watcher.Container, event ievents.Event
 			metrics.Containers.Set(1, cw.Container.GetGeneratedName(), status.DEAD)
 			metrics.ContainersHistory.Set(1, cw.Container.GetGeneratedName(), status.DEAD)
 
-			shared.Watchers.Find(cw.Container.GetGroupIdentifier()).ContainerQueue <- cw.Container
+			containerW.SendToQueue(cw.Container, 5*time.Second)
 		} else {
 			cw.Logger.Info(fmt.Sprintf("container is stopped - reconcile will be ignored since it is not allowed %s", cw.Container.GetGeneratedName()))
 		}

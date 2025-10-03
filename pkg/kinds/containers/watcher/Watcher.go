@@ -20,6 +20,7 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 	interval := 5 * time.Second
 	ctx, fn := context.WithCancel(context.Background())
 	rctx, rfn := context.WithCancel(context.Background())
+	cctx, cfn := context.WithCancel(context.Background())
 
 	format := f.New(containerObj.GetDefinition().GetPrefix(), "kind", static.KIND_CONTAINERS, containerObj.GetGroup(), containerObj.GetGeneratedName())
 	path := fmt.Sprintf("/tmp/%s", strings.Replace(format.ToString(), "/", "-", -1))
@@ -33,20 +34,25 @@ func New(containerObj platforms.IContainer, startState string, user *authenticat
 
 	watcher := &Container{
 		Container:           containerObj,
-		ContainerQueue:      make(chan platforms.IContainer),
-		ReadinessChan:       make(chan *readiness.ReadinessState),
-		DependencyChan:      make(chan *dependency.State),
-		DeleteC:             make(chan platforms.IContainer),
+		ContainerQueue:      make(chan platforms.IContainer, 10),      // ✅ Buffered
+		ReadinessChan:       make(chan *readiness.ReadinessState, 10), // ✅ Buffered
+		DependencyChan:      make(chan *dependency.State, 10),         // ✅ Buffered
+		DeleteC:             make(chan platforms.IContainer, 1),       // ✅ Buffered
 		AllowPlatformEvents: true,
 		Ctx:                 ctx,
 		Cancel:              fn,
 		ReconcileCtx:        rctx,
 		ReconcileCancel:     rfn,
+		ChecksCtx:           cctx,
+		ChecksCancel:        cfn,
 		Ticker:              time.NewTicker(interval),
 		Retry:               0,
 		Logger:              loggerObj,
 		User:                user,
 	}
+
+	watcher.allowPlatformEvents.Store(true)
+	watcher.done.Store(false)
 
 	// reconciler will turn on the ticker when needed
 	watcher.Ticker.Stop()

@@ -1,6 +1,7 @@
 package reconcile
 
 import (
+	"context"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/image"
 	"github.com/simplecontainer/smr/pkg/kinds/containers/platforms/readiness"
 	"reflect"
@@ -62,8 +63,6 @@ func handleTransferring(shared *shared.Shared, cw *watcher.Container, existing p
 }
 
 func handleRestart(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
-	cw.AllowPlatformEvents = false
-
 	cw.Logger.Info("container is restarted")
 	return status.CLEAN, true
 }
@@ -76,12 +75,16 @@ func handleCreated(shared *shared.Shared, cw *watcher.Container, existing platfo
 func handleClean(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.Logger.Info("container is cleaning old container")
 
-	cw.AllowPlatformEvents = false
+	cw.SetAllowPlatformEvents(false)
+	defer func() {
+		cw.ChecksCtx, cw.ChecksCancel = context.WithCancel(context.Background())
+		cw.SetAllowPlatformEvents(true)
+	}()
+
 	if err := cw.Container.Clean(); err != nil {
 		cw.Logger.Error(err.Error())
 		return status.DAEMON_FAILURE, true
 	}
-	cw.AllowPlatformEvents = true
 
 	return status.PREPARE, true
 }
@@ -93,7 +96,7 @@ func handlePrepare(shared *shared.Shared, cw *watcher.Container, existing platfo
 	}
 
 	go func() {
-		_, err := dependency.Ready(cw.ReconcileCtx, shared.Registry, cw.Container.GetGroup(), cw.Container.GetGeneratedName(),
+		_, err := dependency.Ready(cw.ChecksCtx, shared.Registry, cw.Container.GetGroup(), cw.Container.GetGeneratedName(),
 			cw.Container.GetDefinition().(*v1.ContainersDefinition).Spec.Dependencies, cw.DependencyChan, cw.Logger)
 		if err != nil {
 			cw.Logger.Error(err.Error())
@@ -106,7 +109,31 @@ func handlePrepare(shared *shared.Shared, cw *watcher.Container, existing platfo
 
 func handleDependsChecking(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	for {
+		if cw.ReconcileCtx.Err() != nil {
+			cw.Logger.Info("reconcile context done")
+			return status.DEPENDS_FAILED, true
+		}
+
+		if cw.Ctx.Err() != nil {
+			cw.Logger.Info("readiness parent context done")
+			return status.DEPENDS_FAILED, true
+		}
+
+		if cw.ChecksCtx.Err() != nil {
+			cw.Logger.Info("readiness parent context done")
+			return status.DEPENDS_FAILED, true
+		}
+
 		select {
+		case <-cw.ReconcileCtx.Done():
+			cw.Logger.Info("reconcile context done")
+			return status.DEPENDS_FAILED, true
+		case <-cw.Ctx.Done():
+			cw.Logger.Info("reconcile context done")
+			return status.DEPENDS_FAILED, true
+		case <-cw.ChecksCtx.Done():
+			cw.Logger.Info("reconcile context done")
+			return status.DEPENDS_FAILED, true
 		case dependencyResult := <-cw.DependencyChan:
 			switch dependencyResult.State {
 			case dependency.CHECKING:
@@ -124,7 +151,7 @@ func handleDependsChecking(shared *shared.Shared, cw *watcher.Container, existin
 				return status.DEPENDS_FAILED, true
 			case dependency.CANCELED:
 				cw.Logger.Info("dependency check canceled")
-				return "", false
+				return status.DEPENDS_FAILED, true
 			}
 		}
 	}
@@ -157,7 +184,7 @@ func handleInitFailed(shared *shared.Shared, cw *watcher.Container, existing pla
 
 func handleDependsFailed(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	cw.Logger.Info("container depends timeout or failed - retry again")
-	return status.PREPARE, true
+	return "", false
 }
 
 func handleStart(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
@@ -171,7 +198,7 @@ func handleStart(shared *shared.Shared, cw *watcher.Container, existing platform
 	cw.Logger.Info("container started")
 
 	go func() {
-		_, err := solver.Ready(cw.ReconcileCtx, shared.Client, cw.Container, cw.User, cw.ReadinessChan, cw.Logger)
+		_, err := solver.Ready(cw.ChecksCtx, shared.Client, cw.Container, cw.User, cw.ReadinessChan, cw.Logger)
 		if err != nil {
 			cw.Logger.Error(err.Error())
 		}
@@ -182,10 +209,31 @@ func handleStart(shared *shared.Shared, cw *watcher.Container, existing platform
 
 func handleReadinessChecking(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	for {
-		select {
-		case <-cw.Ctx.Done():
+		if cw.ReconcileCtx.Err() != nil {
+			cw.Logger.Info("reconcile context done")
+			return status.READINESS_FAILED, true
+		}
+
+		if cw.Ctx.Err() != nil {
 			cw.Logger.Info("readiness parent context done")
-			break
+			return status.READINESS_FAILED, true
+		}
+
+		if cw.ChecksCtx.Err() != nil {
+			cw.Logger.Info("readiness parent context done")
+			return status.READINESS_FAILED, true
+		}
+
+		select {
+		case <-cw.ReconcileCtx.Done():
+			cw.Logger.Info("reconcile context done")
+			return status.READINESS_FAILED, true
+		case <-cw.Ctx.Done():
+			cw.Logger.Info("reconcile context done")
+			return status.READINESS_FAILED, true
+		case <-cw.ChecksCtx.Done():
+			cw.Logger.Info("reconcile context done")
+			return status.READINESS_FAILED, true
 		case readinessResult := <-cw.ReadinessChan:
 			state := GetState(cw)
 
@@ -239,6 +287,7 @@ func handleReadinessFailed(shared *shared.Shared, cw *watcher.Container, existin
 func handleRunning(shared *shared.Shared, cw *watcher.Container, existing platforms.IContainer) (string, bool) {
 	shared.Registry.MarkContainerStarted(cw.Container.GetGroup(), cw.Container.GetGeneratedName())
 	cw.Logger.Info("container is running")
+	cw.SetAllowPlatformEvents(true)
 	return status.RUNNING, false
 }
 

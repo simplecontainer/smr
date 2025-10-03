@@ -38,6 +38,7 @@ type MockContainer struct {
 	name          string
 	runtime       *types.Runtime
 	node          *node.Node
+	definition    idefinitions.IDefinition
 }
 
 // Core methods used by solver
@@ -92,7 +93,7 @@ func (m *MockContainer) GetEngineState() string                        { return 
 func (m *MockContainer) GetNodeName() string                           { return "" }
 func (m *MockContainer) GetId() string                                 { return "" }
 func (m *MockContainer) GetGlobalDefinition() *v1.ContainersDefinition { return nil }
-func (m *MockContainer) GetDefinition() idefinitions.IDefinition       { return nil }
+func (m *MockContainer) GetDefinition() idefinitions.IDefinition       { return m.definition }
 func (m *MockContainer) GetLabels() map[string]string                  { return nil }
 func (m *MockContainer) GetGroupIdentifier() string                    { return "" }
 func (m *MockContainer) GetIndex() (uint64, error)                     { return 0, nil }
@@ -136,6 +137,7 @@ type ContainerBuilder struct {
 func NewContainerBuilder() *ContainerBuilder {
 	return &ContainerBuilder{
 		container: &MockContainer{
+			definition:    &MockDefinition{prefix: "simplecontainer/v1"},
 			status:        status.New(),
 			state:         &state.State{State: "running"},
 			generatedName: "test-container-1",

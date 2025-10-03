@@ -22,6 +22,7 @@ import (
 	"github.com/simplecontainer/smr/pkg/metrics"
 	"github.com/simplecontainer/smr/pkg/static"
 	"github.com/wI2L/jsondiff"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"time"
@@ -164,24 +165,34 @@ func (containers *Containers) Delete(user *authentication.User, definition []byt
 func (containers *Containers) Event(event ievents.Event) error {
 	switch event.GetType() {
 	case events.EVENT_CHANGE:
-		for _, containerWatcher := range containers.Shared.Watchers.Watchers {
+		watchersSnapshot := containers.Shared.Watchers.GetSnapshot()
+
+		for _, containerWatcher := range watchersSnapshot {
+			if containerWatcher == nil || containerWatcher.IsDone() {
+				continue
+			}
+
 			if containerWatcher.Container.HasDependencyOn(event.GetKind(), event.GetGroup(), event.GetName()) {
-				if containerWatcher.AllowPlatformEvents {
+				if containerWatcher.GetAllowPlatformEvents() {
 					err := containerWatcher.Container.GetStatus().QueueState(status.RESTART, time.Now())
 					if err != nil {
 						containerWatcher.Logger.Error(err.Error())
 						return err
 					}
 
-					containerWatcher.Logger.Info("responding to change")
-					containers.Shared.Watchers.Find(containerWatcher.Container.GetGroupIdentifier()).ContainerQueue <- containerWatcher.Container
+					containerWatcher.Logger.Info("responding to change", zap.String("event", fmt.Sprintf("%s/%s/%s", event.GetKind(), event.GetGroup(), event.GetName())))
+					containerWatcher.SendToQueue(containerWatcher.Container, 5*time.Second)
+
+					// cancel long-running deps and readiness checks
+					containerWatcher.ChecksCancel()
 				} else {
-					containerWatcher.Logger.Info("ignoring response to the change since container is in delete state")
+					containerWatcher.Logger.Info("ignoring response to the change since platform events are disabled")
 				}
 			}
 		}
 
 		return nil
+
 	case events.EVENT_RESTART:
 		containerObj := containers.Shared.Registry.FindLocal(event.GetGroup(), event.GetName())
 
@@ -191,11 +202,13 @@ func (containers *Containers) Event(event ievents.Event) error {
 
 		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
 
-		if !containerW.Done {
-			containerW.Logger.Info("restart event dispatched to the container")
-			containerW.Container.GetStatus().QueueState(status.RESTART, time.Now())
-			containerW.ContainerQueue <- containerObj
+		if containerW == nil || containerW.IsDone() {
+			return errors.New("container watcher not found or done")
 		}
+
+		containerW.Logger.Info("restart event dispatched to the container")
+		containerW.Container.GetStatus().QueueState(status.RESTART, time.Now())
+		containerW.SendToQueue(containerObj, 5*time.Second)
 
 		break
 	}

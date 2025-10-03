@@ -66,11 +66,10 @@ func (containers *Containers) Destroy(cs []platforms.IContainer, exists bool) {
 	for _, containerObj := range cs {
 		containerW := containers.Shared.Watchers.Find(containerObj.GetGroupIdentifier())
 
-		if containerW != nil && !containerW.Done {
-			select {
-			case containerW.DeleteC <- containerObj:
-			default:
-				containerW.Logger.Warn("delete signal already sent or watcher is done")
+		if containerW != nil && !containerW.IsDone() {
+			sent := containerW.SendDelete(containerObj, 5*time.Second)
+			if !sent {
+				containerW.Logger.Warn("failed to send delete signal")
 			}
 		}
 	}

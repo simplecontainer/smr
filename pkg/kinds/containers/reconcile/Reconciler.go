@@ -80,10 +80,10 @@ func Containers(shared *shared.Shared, containerWatcher *watcher.Container) {
 			}
 
 			if containerObj.GetStatus().GetCategory() == status.CATEGORY_END {
-				events.Dispatch(
+				events.DispatchGroup([]events.Event{
 					events.NewKindEvent(events.EVENT_INSPECT, containerWatcher.Container.GetDefinition(), nil),
-					shared, containerWatcher.Container.GetDefinition().GetRuntime().GetNode(),
-				)
+					events.NewKindEvent(events.EVENT_CHANGE, containerWatcher.Container.GetDefinition(), nil).SetName(containerWatcher.Container.GetGeneratedName()),
+				}, shared, containerWatcher.Container.GetRuntime().Node.NodeID)
 			}
 		}
 	}

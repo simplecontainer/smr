@@ -32,6 +32,11 @@ var (
 
 func Ready(ctx context.Context, client *clients.Http, container platforms.IContainer, user *authentication.User, channel chan *readiness.ReadinessState, logger *zap.Logger) (bool, error) {
 	for _, r := range container.GetReadiness() {
+		err := r.Reset(ctx)
+		if err != nil {
+			return false, ERROR_READINESS_RESET_FAILED
+		}
+
 		r.Function = func() error {
 			if ctx.Err() != nil {
 				return backoff.Permanent(ctx.Err())
@@ -52,11 +57,6 @@ func Ready(ctx context.Context, client *clients.Http, container platforms.IConta
 			}
 
 			return err
-		}
-
-		err := r.Reset()
-		if err != nil {
-			return false, ERROR_READINESS_RESET_FAILED
 		}
 
 		backOff := backoff.WithContext(backoff.NewExponentialBackOff(), ctx)

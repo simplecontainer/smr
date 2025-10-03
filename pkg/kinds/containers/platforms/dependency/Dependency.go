@@ -19,7 +19,7 @@ var (
 	ERROR_CONTAINER_NOT_READY     = errors.New("container not ready")
 )
 
-func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
+func NewDependencyFromDefinition(ctx context.Context, depend v1.ContainersDependsOn) *Dependency {
 	if depend.Timeout == "" {
 		depend.Timeout = "30s"
 	}
@@ -29,7 +29,7 @@ func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 
 	return &Dependency{
 		Prefix:  depend.Prefix,
@@ -43,7 +43,7 @@ func NewDependencyFromDefinition(depend v1.ContainersDependsOn) *Dependency {
 
 func Ready(ctx context.Context, registry platforms.Registry, group string, name string, dependsOn []v1.ContainersDependsOn, channel chan *State, logger *zap.Logger) (bool, error) {
 	for _, depend := range dependsOn {
-		dependency := NewDependencyFromDefinition(depend)
+		dependency := NewDependencyFromDefinition(ctx, depend)
 		dependency.Function = func() error {
 			if ctx.Err() != nil {
 				return backoff.Permanent(ctx.Err())

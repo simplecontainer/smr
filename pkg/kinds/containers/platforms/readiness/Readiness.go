@@ -7,17 +7,6 @@ import (
 )
 
 func NewReadinessFromDefinition(readiness v1.ContainersReadiness) (*Readiness, error) {
-	if readiness.Timeout == "" {
-		readiness.Timeout = "30s"
-	}
-
-	timeout, err := time.ParseDuration(readiness.Timeout)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-
 	return &Readiness{
 		Name:    readiness.Name,
 		URL:     readiness.URL,
@@ -25,12 +14,12 @@ func NewReadinessFromDefinition(readiness v1.ContainersReadiness) (*Readiness, e
 		Body:    readiness.Body,
 		Timeout: readiness.Timeout,
 		Method:  readiness.Method,
-		Ctx:     ctx,
-		Cancel:  cancel,
+		Ctx:     nil,
+		Cancel:  nil,
 	}, nil
 }
 
-func (r *Readiness) Reset() error {
+func (r *Readiness) Reset(ctx context.Context) error {
 	if r.Timeout == "" {
 		r.Timeout = "30s"
 	}
@@ -41,6 +30,6 @@ func (r *Readiness) Reset() error {
 		return err
 	}
 
-	r.Ctx, r.Cancel = context.WithTimeout(context.Background(), timeout)
+	r.Ctx, r.Cancel = context.WithTimeout(ctx, timeout)
 	return nil
 }
